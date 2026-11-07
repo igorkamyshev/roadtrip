@@ -1,10 +1,14 @@
-import type { BorderTable } from './index.ts';
+import { borderTable } from './border-table.ts';
+import { COUNTRIES } from './countries.ts';
+import type { BorderTable, VisaExemption } from './index.ts';
+import { SCHENGEN_AREA } from './schengen.ts';
 
 /** A country's zone code: an alpha-3, or Sherpa's `NX` for Northern Cyprus (#13). */
 const COUNTRY_CODE = /^(?:[A-Z]{3}|NX)$/u;
 /** A closed territory's zone code: longer than an alpha-3, so it never is one. */
 const TERRITORY_CODE = /^[A-Z][A-Z_]{3,}$/u;
 const DATE = /^\d{4}-\d{2}-\d{2}$/u;
+const ALPHA_3 = /^[A-Z]{3}$/u;
 const BLOCKING = new Set(['closed', 'no_crossing', 'pedestrian_only']);
 
 /**
@@ -114,15 +118,84 @@ function repeated(list: string, codes: readonly string[]): string[] {
 	return codes.filter((code, index) => codes.indexOf(code) !== index).map((code) => `${code} is twice in ${list}`);
 }
 
+/** A day of the calendar as YYYY-MM-DD: a date that exists, so not 2026-02-30, which Date.parse takes. */
+function isDate(text: string): boolean {
+	const time = Date.parse(text);
+	return DATE.test(text) && !Number.isNaN(time) && new Date(time).toISOString().slice(0, 10) === text;
+}
+
 function checkedProblems(what: string, row: { readonly checked: string; readonly sources: readonly string[] }): string[] {
 	const problems: string[] = [];
-	if (!DATE.test(row.checked) || Number.isNaN(Date.parse(row.checked))) {
+	if (!isDate(row.checked)) {
 		problems.push(`${what}: checked ${row.checked} is not a date YYYY-MM-DD`);
 	}
 	for (const source of row.sources) {
 		if (!/^https?:\/\/\S+$/u.test(source)) {
 			problems.push(`${what}: the source ${source} is not a link`);
 		}
+	}
+	return problems;
+}
+
+/** A country's alpha-3 among rules' `COUNTRIES`: so not Northern Cyprus (`NX`), nor Kosovo as XKX (it is RKS). */
+function isCountry(code: string): boolean {
+	return ALPHA_3.test(code) && code in COUNTRIES;
+}
+
+/**
+ * What is wrong with the visa exemptions' table beyond its types: a country that is not one, closed for everyone
+ * (#13: the row would open nothing; its rule waits in the table's comment), in Schengen for Schengen's visa or the
+ * visa's own country (the held visa opens those already); a country twice for one visa; a last day, a checked date
+ * or a source that is not one; citizenships that are not countries' codes, sorted and once each; no conditions.
+ * Empty when the table is fine.
+ */
+export function visaExemptionsProblems(rows: readonly VisaExemption[]): string[] {
+	const problems: string[] = [];
+	const closedForEveryone = new Set(borderTable.closedForEveryone);
+	const seen = new Set<string>();
+	for (const row of rows) {
+		const what = `the row ${row.country} by ${row.visa}`;
+		if (!isCountry(row.country)) {
+			problems.push(`${what}: ${row.country} is not a country's alpha-3`);
+		}
+		if (closedForEveryone.has(row.country)) {
+			problems.push(`${what}: ${row.country} is closed for everyone (#13), so the row would open nothing`);
+		}
+		if (row.visa === 'SCHENGEN' && SCHENGEN_AREA.includes(row.country)) {
+			problems.push(`${what}: ${row.country} is in Schengen, which Schengen's visa opens already`);
+		}
+		if (row.visa === row.country) {
+			problems.push(`${what}: a held visa opens its own country already`);
+		}
+		const key = `${row.country} ${row.visa}`;
+		if (seen.has(key)) {
+			problems.push(`${what} has two rows`);
+		}
+		seen.add(key);
+		if (row.until !== undefined && !isDate(row.until)) {
+			problems.push(`${what}: the last day ${row.until} is not a date YYYY-MM-DD`);
+		}
+		const { citizenships } = row;
+		if (citizenships !== undefined) {
+			if (citizenships.length === 0) {
+				problems.push(`${what}: an empty list of citizenships is for nobody; leave it out for everybody`);
+			}
+			for (const citizenship of citizenships) {
+				if (!isCountry(citizenship)) {
+					problems.push(`${what}: the citizenship ${citizenship} is not a country's alpha-3`);
+				}
+			}
+			if (citizenships.some((citizenship, index) => index > 0 && citizenships[index - 1] >= citizenship)) {
+				problems.push(`${what}: write the citizenships sorted, each once`);
+			}
+		}
+		if (row.conditions.trim() === '') {
+			problems.push(`${what}: write its conditions, for people`);
+		}
+		if (row.sources.length === 0) {
+			problems.push(`${what}: has no source`);
+		}
+		problems.push(...checkedProblems(what, row));
 	}
 	return problems;
 }

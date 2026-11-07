@@ -5,7 +5,7 @@
  * types cannot.
  */
 export { borderTable } from './border-table.ts';
-export { borderTableProblems } from './check.ts';
+export { borderTableProblems, visaExemptionsProblems } from './check.ts';
 // The client imports these by their own paths (`rules/countries`, `rules/passports`, `rules/schengen`,
 // `rules/held-visas`), without the border table.
 export { COUNTRIES } from './countries.ts';

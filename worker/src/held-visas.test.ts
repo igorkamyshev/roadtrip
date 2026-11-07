@@ -34,9 +34,9 @@ async function closedCountries(container: { bodies: unknown[] }): Promise<string
 }
 
 describe('a held visa', () => {
-	it("of a country opens that country, by that visa", async () => {
+	it('of a country opens that country, by that visa', async () => {
 		const container = recorded(await engineContainer(straightRoad));
-		const { get } = api({ container, sherpa: sherpaClosing() });
+		const { get } = api({ container, sherpa: sherpaClosing(), visaExemptions: [] });
 
 		const { body } = await get('lat=0&lon=0&hours=2&cit=RUS&visas=GEO');
 
@@ -45,9 +45,9 @@ describe('a held visa', () => {
 		expect(await closedCountries(container)).toContain('ARM');
 	});
 
-	it('SCHENGEN opens all of Schengen with the four entered through it, and no country beyond', async () => {
+	it('SCHENGEN opens all of Schengen with the four entered through it, and no country beyond without a row', async () => {
 		const container = recorded(await engineContainer(straightRoad));
-		const { get } = api({ container, sherpa: sherpaClosing() });
+		const { get } = api({ container, sherpa: sherpaClosing(), visaExemptions: [] });
 
 		const { body } = await get('lat=0&lon=0&hours=2&cit=RUS&visas=SCHENGEN');
 
