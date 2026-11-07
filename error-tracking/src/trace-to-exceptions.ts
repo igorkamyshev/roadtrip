@@ -68,25 +68,37 @@ const MAX_ID_LENGTH = 1_000;
 const BROWSER_KEYS = new Set(['distinct_id', 'session_id']);
 
 /** A worker's entrypoint and trigger, as the event's `worker`, `entrypoint` and `trigger` name them. */
-type ExpectedCancellation = Readonly<{ worker: string; entrypoint: string; trigger: string }>;
+type ExpectedCancellation = Readonly<{ worker: string; entrypoint: string; trigger: RegExp }>;
 
-// Runs whose `canceled` is no error: they end so on a normal run (PostHog and
-// Cloudflare's invocation log, November 2026), and a failure in them reaches
-// PostHog as its own exception or error log. Any other run cut off midway, such
-// as a request to the bot, is still a synthetic exception. Durable Object
-// migrations and the Workflow binding pin these class names.
+// Runs whose `canceled` is no error: they end so on a normal run, and a failure
+// in them reaches PostHog as its own exception or error log. Any other run cut
+// off midway is still a synthetic exception. Reviewed for roadtrip (#26) from
+// ytc's list, which held its container's alarm and a Workflow (roadtrip has no
+// Workflows). Not seen in prod yet: check PostHog and Cloudflare's invocation
+// log after launch. The Durable Object migration pins the class name, and the
+// routes are the spec's: a rename in the worker package changes this list too.
 const EXPECTED_CANCELLATIONS: readonly ExpectedCancellation[] = [
 	// @cloudflare/containers keeps the container's Durable Object awake with a
-	// loop of alarms. finishJob stops the container at the end of every job,
-	// successful or not, and one alarm then ends canceled (about 100 ms, no CPU).
-	// A container that dies during a job is reported by onStop or onError, a lost
-	// job by the Workflow's watchdog.
-	{ worker: 'ytc-yt-downloader', entrypoint: 'YouTubeDLContainer', trigger: 'alarm' },
-	// The Workflows engine pauses an instance at step.sleep (backoff-<n>) or
-	// step.waitForEvent by cancelling its `run`, then replays it in a new one. A
-	// failed download attempt or step is logged, and a run that fails throws.
-	{ worker: 'ytc-telegram-bot', entrypoint: 'EpisodeWorkflow', trigger: 'rpc run' },
+	// loop of alarms. When the container stops (sleepAfter ran out, or a new
+	// image replaces it), the alarm then waiting ends canceled: ytc saw it end
+	// so (about 100 ms, no CPU) on every stop. A container that crashes is
+	// reported by onStop or onError, and a failed ring by the Worker that asked.
+	{ worker: 'roadtrip', entrypoint: 'EngineContainer', trigger: /^alarm$/u },
+	// The person left the page before the ring came: the browser reports it as
+	// `abandoned`. A calculation can wait minutes in the Container's queue, so
+	// this is common and nothing to fix. What failed in such a run is logged.
+	// When the Worker's call into EngineContainer turns out to end canceled with
+	// it, that call's trigger joins this list (#27).
+	{ worker: 'roadtrip', entrypoint: 'default', trigger: /^GET \/api\/ring$/u },
+	// MapLibre aborts the tile requests it no longer needs whenever the map
+	// moves, so the Worker's read from R2 is cut off.
+	{ worker: 'roadtrip', entrypoint: 'default', trigger: /^GET \/tiles\//u },
 ];
+
+// The runtime's line when it cancels waitUntil work that outlived the run's 30 s
+// (the background Sherpa refresh, the PostHog sends). Such a run is never an
+// expected cancellation: something hung (Workers docs, «Context»).
+const WAIT_UNTIL_CUT_OFF = 'waitUntil() tasks did not complete';
 
 // uuid v5 namespace of the events. Never change it: PostHog drops an event
 // whose uuid it has seen, which is what makes a resend harmless
@@ -235,10 +247,19 @@ function isExpectedCancellation(item: TraceItem): boolean {
 	if (item.outcome !== 'canceled') {
 		return false;
 	}
-	const trigger = describeTrigger(item.event);
+	if (item.logs.some((log) => logText(log).includes(WAIT_UNTIL_CUT_OFF))) {
+		return false;
+	}
+	const trigger = describeTrigger(item.event) ?? '';
 	return EXPECTED_CANCELLATIONS.some(
-		(expected) => expected.worker === item.scriptName && expected.entrypoint === item.entrypoint && expected.trigger === trigger,
+		(expected) => expected.worker === item.scriptName && expected.entrypoint === item.entrypoint && expected.trigger.test(trigger),
 	);
+}
+
+// A log line's string arguments, whatever its level
+function logText(log: TraceLog): string {
+	const args: unknown[] = Array.isArray(log.message) ? log.message : [log.message];
+	return args.filter((arg) => typeof arg === 'string').join(' ');
 }
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {

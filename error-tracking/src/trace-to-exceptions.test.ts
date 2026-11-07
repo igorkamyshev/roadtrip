@@ -8,11 +8,12 @@ const T0 = Date.parse('2026-11-04T10:00:00.000Z');
 // posthog-js ids, as the browser sends them in X-POSTHOG-DISTINCT-ID and X-POSTHOG-SESSION-ID (UUIDv7)
 const BROWSER_ID = '019a5d2c-7f3e-7b1a-9c4d-2e6f8a0b1c3d';
 const SESSION_ID = '019a5d2c-8a41-7e02-b5c6-d7e8f9a0b1c2';
+const RING_URL = 'https://roadtrip.kamyshev.me/api/ring?lat=44.8125&lon=20.4612&hours=6&citizenships=RUS';
 
 // workerd cuts the "Name: message" header off stacks in a TraceItem: only frame lines are left
 const WORKER_STACK = [
-	'    at handleUpdate (index.js:120:15)',
-	'    at Composer.handler (node_modules/.pnpm/grammy@1.45.0/node_modules/grammy/out/composer.js:10:5)',
+	'    at handleRing (index.js:120:15)',
+	'    at PostHog.captureImmediate (node_modules/.pnpm/posthog-node@5.63.1/node_modules/posthog-node/dist/edge/index.mjs:10:5)',
 	'    at async Object.fetch (index.js:300:7)',
 ].join('\n');
 
@@ -23,12 +24,12 @@ function fetchEvent(method: string, url: string): TraceItemFetchEventInfo {
 
 function traceItem(overrides: Partial<TraceItem> = {}): TraceItem {
 	return {
-		event: fetchEvent('POST', 'https://ytc.kamyshev.me/webhook'),
+		event: fetchEvent('GET', RING_URL),
 		eventTimestamp: T0,
 		logs: [],
 		exceptions: [],
 		diagnosticsChannelEvents: [],
-		scriptName: 'ytc-telegram-bot',
+		scriptName: 'roadtrip',
 		entrypoint: 'default',
 		scriptVersion: { id: 'v-123' },
 		outcome: 'ok',
@@ -39,6 +40,9 @@ function traceItem(overrides: Partial<TraceItem> = {}): TraceItem {
 		...overrides,
 	};
 }
+
+// A request that no expected cancellation covers
+const otherRequest = { event: fetchEvent('GET', 'https://roadtrip.kamyshev.me/api/other') } satisfies Partial<TraceItem>;
 
 function errorLog(message: unknown[], errorInfo?: (TraceLogErrorInfo | null)[]): TraceLog {
 	return { timestamp: T0 + 1, level: 'error', message, errorInfo };
@@ -95,12 +99,12 @@ describe('traceToExceptions', () => {
 			event: '$exception',
 			timestamp: new Date(T0 + 2).toISOString(),
 			properties: {
-				worker: 'ytc-telegram-bot',
+				worker: 'roadtrip',
 				entrypoint: 'default',
 				execution_model: 'stateless',
 				outcome: 'exception',
 				release: 'v-123',
-				trigger: 'POST /webhook',
+				trigger: 'GET /api/ring',
 				environment: 'production',
 				$process_person_profile: false,
 			},
@@ -112,8 +116,8 @@ describe('traceToExceptions', () => {
 		expect(exception).toMatchObject({ type: 'TypeError', value: 'Cannot read properties of undefined', mechanism: { handled: false } });
 		const frames = exception.stacktrace?.frames ?? [];
 		expect(frames).toHaveLength(3);
-		expect(frames.find((f) => f.function === 'handleUpdate')).toMatchObject({ filename: 'index.js', lineno: 120, colno: 15, in_app: true });
-		expect(frames.find((f) => f.function === 'Composer.handler')?.in_app).toBe(false);
+		expect(frames.find((f) => f.function === 'handleRing')).toMatchObject({ filename: 'index.js', lineno: 120, colno: 15, in_app: true });
+		expect(frames.find((f) => f.function === 'PostHog.captureImmediate')?.in_app).toBe(false);
 	});
 
 	test('an error log with an Error argument: type and stack from errorInfo, the rest of the text in log_message', () => {
@@ -122,7 +126,7 @@ describe('traceToExceptions', () => {
 				traceItem({
 					logs: [
 						errorLog(
-							['[webhook] dispatch failed update_id=42', 'Error: boom'],
+							['[ring] the engine failed hours=6', 'Error: boom'],
 							[null, { name: 'Error', message: 'boom', stack: WORKER_STACK }],
 						),
 					],
@@ -131,7 +135,7 @@ describe('traceToExceptions', () => {
 		);
 
 		expect(firstException(event)).toMatchObject({ type: 'Error', value: 'boom', mechanism: { handled: true } });
-		expect(event.properties.log_message).toBe('[webhook] dispatch failed update_id=42');
+		expect(event.properties.log_message).toBe('[ring] the engine failed hours=6');
 		expect(event.timestamp).toBe(new Date(T0 + 1).toISOString());
 	});
 
@@ -228,7 +232,7 @@ describe('traceToExceptions', () => {
 
 		const event = onlyEvent(traceToExceptions(traceItem({ logs })));
 
-		expect(event.properties).toMatchObject({ outcome: 'ok', worker: 'ytc-telegram-bot' });
+		expect(event.properties).toMatchObject({ outcome: 'ok', worker: 'roadtrip' });
 	});
 
 	test('an error log without an Error argument is a LoggedError with the log text', () => {
@@ -263,7 +267,7 @@ describe('traceToExceptions', () => {
 	test.each(['exceededCpu', 'exceededMemory', 'canceled'])(
 		'a run that ended with %s is a synthetic exception typed as the outcome',
 		(outcome) => {
-			const event = onlyEvent(traceToExceptions(traceItem({ outcome })));
+			const event = onlyEvent(traceToExceptions(traceItem({ ...otherRequest, outcome })));
 
 			expect(firstException(event)).toMatchObject({
 				type: outcome,
@@ -273,51 +277,47 @@ describe('traceToExceptions', () => {
 		},
 	);
 
-	// Worked examples from PostHog project 227415. 2026-11-05 06:46:36Z: the container's alarm ended
-	// canceled as finishJob stopped it, and 0.6 s later the Episode was ready. 2026-11-04 19:02–19:09:
-	// the Workflow's runs ended canceled at the backoff and while waiting for the job's result.
+	// Runs of the roadtrip Worker that end canceled on a normal day (EXPECTED_CANCELLATIONS)
 	const containerAlarm = {
-		scriptName: 'ytc-yt-downloader',
-		entrypoint: 'YouTubeDLContainer',
+		entrypoint: 'EngineContainer',
 		executionModel: 'durableObject',
 		durableObjectId: 'do-1',
 		event: { scheduledTime: new Date(T0) },
 	} satisfies Partial<TraceItem>;
-	const workflowRun = {
-		scriptName: 'ytc-telegram-bot',
-		entrypoint: 'EpisodeWorkflow',
-		executionModel: 'stateless',
-		event: { rpcMethod: 'run' },
-	} satisfies Partial<TraceItem>;
+	const ringRequest = { event: fetchEvent('GET', RING_URL) } satisfies Partial<TraceItem>;
+	const tileRequest = { event: fetchEvent('GET', 'https://roadtrip.kamyshev.me/tiles/6/35/22') } satisfies Partial<TraceItem>;
 
 	test.each<[string, Partial<TraceItem>]>([
-		['the container Durable Object alarm (finishJob stops the container after each job)', containerAlarm],
-		['an EpisodeWorkflow run (the engine pauses the instance at a sleep or a wait)', workflowRun],
+		['the EngineContainer alarm (@cloudflare/containers stops the container after sleepAfter or for a new image)', containerAlarm],
+		['a ring request the person left before the answer', ringRequest],
+		['a tile request MapLibre dropped as the map moved', tileRequest],
 	])('%s that ends canceled is not an error', (_kind, run) => {
 		expect(traceToExceptions(traceItem({ ...run, outcome: 'canceled' }))).toEqual([]);
 	});
 
-	test('an error logged in a canceled EpisodeWorkflow run is sent without a synthetic exception', () => {
-		const failure = Object.assign(new Error('Credential access key has length 64'), { name: 'EpisodeDownloadError' });
+	test('an error logged in a canceled ring request is sent without a synthetic exception', () => {
+		class SherpaError extends Error {
+			name = 'SherpaError';
+		}
 		const logs = capturedErrorLogs(() => {
-			logger.error('A download attempt of an Episode failed', failure, {
+			logger.error('[sherpa] request failed, served the stale copy', new SherpaError('Sherpa timed out'), {
 				distinct_id: BROWSER_ID,
-				episodeId: 'ep1',
-				reason: 'other',
+				reason: 'timeout',
+				served: 'stale',
 			});
 		});
 
-		const event = onlyEvent(traceToExceptions(traceItem({ ...workflowRun, outcome: 'canceled', logs })));
+		const event = onlyEvent(traceToExceptions(traceItem({ ...ringRequest, outcome: 'canceled', logs })));
 
-		expect(firstException(event)).toMatchObject({ type: 'EpisodeDownloadError', mechanism: { handled: true } });
-		expect(event.properties).toMatchObject({ outcome: 'canceled', trigger: 'rpc run', reason: 'other' });
+		expect(firstException(event)).toMatchObject({ type: 'SherpaError', mechanism: { handled: true } });
+		expect(event.properties).toMatchObject({ outcome: 'canceled', trigger: 'GET /api/ring', reason: 'timeout' });
 	});
 
 	test.each<[string, Partial<TraceItem>]>([
-		['a request to the bot', {}],
-		['an RPC into the container Durable Object', { ...containerAlarm, event: { rpcMethod: 'startJob' } }],
-		['an alarm of another Durable Object', { ...containerAlarm, scriptName: 'ytc-telegram-bot', entrypoint: 'FlueAssistantAgent' }],
-		['a run of another Workflow', { ...workflowRun, entrypoint: 'OtherWorkflow' }],
+		['another request to the Worker', otherRequest],
+		['an RPC into the EngineContainer', { ...containerAlarm, event: { rpcMethod: 'calculate' } }],
+		['an alarm of another Durable Object', { ...containerAlarm, entrypoint: 'OtherObject' }],
+		['a ring request of another worker', { ...ringRequest, scriptName: 'other-worker' }],
 	])('%s that ends canceled is still a synthetic exception', (_kind, run) => {
 		const event = onlyEvent(traceToExceptions(traceItem({ ...run, outcome: 'canceled' })));
 
@@ -325,12 +325,27 @@ describe('traceToExceptions', () => {
 	});
 
 	test.each<[string, Partial<TraceItem>]>([
-		['the container Durable Object alarm', containerAlarm],
-		['an EpisodeWorkflow run', workflowRun],
+		['the EngineContainer alarm', containerAlarm],
+		['a ring request', ringRequest],
+		['a tile request', tileRequest],
 	])('%s that ran out of CPU is still a synthetic exception', (_kind, run) => {
 		const event = onlyEvent(traceToExceptions(traceItem({ ...run, outcome: 'exceededCpu' })));
 
 		expect(firstException(event)).toMatchObject({ type: 'exceededCpu', mechanism: { synthetic: true } });
+	});
+
+	test('a canceled ring request whose waitUntil work the runtime cut off is still a synthetic exception', () => {
+		// The background Sherpa refresh and the PostHog sends run in waitUntil, which gets 30 s after
+		// the person leaves; past that the runtime cancels it and logs this line (Workers docs, «Context»)
+		const cutOff: TraceLog = {
+			timestamp: T0 + 30_000,
+			level: 'warn',
+			message: ['waitUntil() tasks did not complete within the allowed time after invocation end and have been cancelled.'],
+		};
+
+		const event = onlyEvent(traceToExceptions(traceItem({ ...ringRequest, outcome: 'canceled', logs: [cutOff] })));
+
+		expect(firstException(event)).toMatchObject({ type: 'canceled', mechanism: { handled: false, synthetic: true } });
 	});
 
 	test('logged and rethrown is one unhandled event', () => {
@@ -437,8 +452,8 @@ describe('traceToExceptions', () => {
 
 	test.each<[string, TraceItem['event'], string]>([
 		['a cron', { cron: '*/5 * * * *', scheduledTime: T0 }, 'cron */5 * * * *'],
-		['a queue', { queue: 'ytc-video-ids', batchSize: 1 }, 'queue ytc-video-ids'],
-		['RPC', { rpcMethod: 'startJob' }, 'rpc startJob'],
+		['a queue', { queue: 'roadtrip-jobs', batchSize: 1 }, 'queue roadtrip-jobs'],
+		['RPC', { rpcMethod: 'calculate' }, 'rpc calculate'],
 		['a DO alarm', { scheduledTime: new Date(T0) }, 'alarm'],
 		['a WebSocket message', { getWebSocketEvent: { webSocketEventType: 'message' } }, 'websocket message'],
 	])('the trigger describes %s', (_kind, event, trigger) => {
