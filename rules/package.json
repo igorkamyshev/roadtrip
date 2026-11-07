@@ -8,7 +8,6 @@
 		".": "./src/index.ts",
 		"./countries": "./src/countries.ts",
 		"./passports": "./src/passports.ts",
-		"./schengen": "./src/schengen.ts",
 		"./held-visas": "./src/held-visas.ts"
 	},
 	"scripts": {

@@ -1,7 +1,7 @@
 // The Schengen area as the site sees it (spec «Таблица границ», «Визовые правила и сведение»; #9, #13): no border
 // delay between two of these on any road, and a held Schengen visa (`SCHENGEN`) opens all of them. The border
-// table holds it as `schengen`, so it is part of the table's hash; the client imports it by its own path
-// (`rules/schengen`), without the border table.
+// table holds it as `schengen`, so it is part of the table's hash; the held visas (held-visas.ts) read it here, so
+// the client gets it without the border table.
 
 /**
  * The 29 states of https://home-affairs.ec.europa.eu/policies/schengen/schengen-area_en (checked 2026-11-07), then
