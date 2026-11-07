@@ -155,6 +155,7 @@ export function Screen() {
 								void ring.refetch();
 							},
 							onCitizenships: openCitizenships,
+							onVisas: openVisas,
 						}}
 					/>
 				</div>

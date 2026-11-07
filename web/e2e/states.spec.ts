@@ -13,7 +13,7 @@ const outcomes: readonly { outcome: string; answer: RingResponse; texts: readonl
 		outcome: 'empty',
 		answer: { outcome: 'empty', maxHours: 3, startCountry: 'SRB', source: 'calculation', ...visaRules() },
 		texts: ['Дальше 3 ч не уехать', 'Дальше море или закрытые страны. Добавьте свои визы или уменьшите время.'],
-		buttons: [],
+		buttons: ['Мои визы'],
 	},
 	{
 		outcome: 'no_roads',

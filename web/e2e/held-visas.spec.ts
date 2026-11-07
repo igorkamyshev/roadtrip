@@ -146,6 +146,22 @@ test.describe('the sheet «Мои визы»', () => {
 	});
 });
 
+test('«Мои визы» of the card `empty` opens the sheet, and a visa chosen there asks for its ring', async ({ page, ringApi }) => {
+	ringApi.respond((call) =>
+		call.visas === null
+			? { outcome: 'empty', maxHours: 1, startCountry: 'SRB', source: 'calculation', access: {}, visaRulesLoadedAt: new Date().toISOString() }
+			: squareRing(Number(call.lat), Number(call.lon), 0.1, 0.2),
+	);
+	await page.goto(LINK);
+	await expect(firstCard(page)).toContainText('Дальше 1 ч не уехать');
+
+	await firstCard(page).getByRole('button', { name: 'Мои визы' }).click();
+	await sheet(page).locator('.pick-item').filter({ hasText: /^Шенген/u }).click();
+
+	await expect(firstCard(page)).toContainText('В кольце 1–2 ч');
+	expect(ringApi.calls.at(-1)?.visas).toBe('SCHENGEN');
+});
+
 test.describe('the held visas of a link', () => {
 	test('open with it, sorted, are saved, and show as chosen', async ({ page, ringApi }) => {
 		await page.goto(`${LINK}&visas=SCHENGEN,GEO`);
