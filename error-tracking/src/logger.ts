@@ -1,19 +1,22 @@
 // The one way roadtrip workers log errors (no console.error elsewhere in a worker). The
 // roadtrip-error-tracking Tail Worker turns each console.error into a PostHog
 // $exception: the Error argument gives the type, message and stack, and the
-// context object gives the User. `info` lines stay in the Workers logs.
+// context object ties it to the browser's session. `info` lines stay in the Workers logs.
 
 export type LogContext = Readonly<
 	{
-		/** Telegram `from.id` of the User the error happened for; becomes the PostHog distinct_id. */
-		userId?: number | string;
+		/** The browser's PostHog distinct_id (`X-POSTHOG-DISTINCT-ID`); becomes the event's distinct_id. */
+		distinct_id?: string;
+		/** The browser's PostHog session (`X-POSTHOG-SESSION-ID`); becomes the event's $session_id. */
+		session_id?: string;
 	} & Record<string, unknown>
 >;
 
 export const logger = {
 	/**
-	 * `context` fields other than `userId` (strings, numbers, booleans) become
-	 * event properties, for example `{ userId, reason: 'bot_check', episodeId }`.
+	 * `context` fields other than `distinct_id` and `session_id` (strings, numbers,
+	 * booleans) become event properties, for example
+	 * `{ distinct_id, session_id, reason: 'timeout', citizenship: 'RUS', served: 'stale' }`.
 	 */
 	error(message: string, error?: unknown, context?: LogContext): void {
 		const args: unknown[] = [message];

@@ -7,14 +7,16 @@ import type { ExceptionEvent } from './trace-to-exceptions';
 const EVENT: ExceptionEvent = {
 	event: '$exception',
 	uuid: '0b6f6a9e-1b4c-5d6e-8f90-123456789abc',
-	distinct_id: '115658593',
+	distinct_id: '019a5d2c-7f3e-7b1a-9c4d-2e6f8a0b1c3d',
 	properties: {
 		$lib: 'roadtrip-error-tracking',
 		environment: 'production',
-		worker: 'ytc-telegram-bot',
+		worker: 'roadtrip',
 		execution_model: 'stateless',
 		outcome: 'exception',
 		$exception_list: [{ type: 'Error', value: 'boom' }],
+		$process_person_profile: false,
+		$session_id: '019a5d2c-8a41-7e02-b5c6-d7e8f9a0b1c2',
 	},
 };
 

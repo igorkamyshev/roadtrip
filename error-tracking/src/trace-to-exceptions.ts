@@ -11,7 +11,14 @@ import { scrubContextValue, scrubString } from './scrub';
 //    exception typed as the outcome, except a `canceled` run of those that end
 //    so on a normal run too (EXPECTED_CANCELLATIONS).
 // 4. The same (type, message) within one run is one event: "log and rethrow"
-//    is not doubled, and the User, log text and context move to the event kept.
+//    is not doubled, and the browser's ids, log text and context move to the
+//    event kept.
+//
+// The distinct_id and session_id of the logger.error context, which the Worker
+// copies from the browser's X-POSTHOG-* headers, become the event's distinct_id
+// and $session_id. Without a distinct_id the event gets a one-off one. No event
+// creates a person: the browser's person is anonymous, and every Worker event is
+// personless (spec «Аналитика и ошибки»).
 
 export type ExceptionEvent = Readonly<{
 	event: '$exception';
@@ -32,11 +39,12 @@ type ExceptionEventProperties = Readonly<{
 	trigger?: string;
 	$exception_level?: ErrorTracking.SeverityLevel;
 	$exception_list: ErrorTracking.Exception[];
-	$process_person_profile?: false;
+	$process_person_profile: false;
+	$session_id?: string;
 	log_message?: string;
 }>;
 
-/** Primitive fields of the logger.error context other than userId. */
+/** Primitive fields of the logger.error context other than distinct_id and session_id. */
 type LogFields = Readonly<Record<string, unknown>>;
 
 type ErrorShape = Readonly<{ name: string; message: string; stack?: string }>;
@@ -46,13 +54,18 @@ type Candidate = Readonly<{
 	handled: boolean;
 	synthetic?: boolean;
 	timestamp: number | null;
-	userId?: string;
+	distinctId?: string;
+	sessionId?: string;
 	logMessage?: string;
 	fields?: LogFields;
 }>;
 
 const MAX_TEXT_LENGTH = 2_000;
 const MAX_CONTEXT_FIELDS = 20;
+// As PostHog's example of reading X-POSTHOG-* headers on a server cuts them
+const MAX_ID_LENGTH = 1_000;
+/** Context keys that tie the error to the browser instead of becoming fields. */
+const BROWSER_KEYS = new Set(['distinct_id', 'session_id']);
 
 /** A worker's entrypoint and trigger, as the event's `worker`, `entrypoint` and `trigger` name them. */
 type ExpectedCancellation = Readonly<{ worker: string; entrypoint: string; trigger: string }>;
@@ -93,8 +106,8 @@ export function traceToExceptions(item: TraceItem): ExceptionEvent[] {
 	];
 
 	// The error, handled and time come from the first candidate (unhandled
-	// exceptions come before logs); User, log text and context from the first
-	// that has them
+	// exceptions come before logs); the browser's ids, log text and context from
+	// the first that has them
 	const merged = new Map<string, Candidate>();
 	for (const candidate of candidates) {
 		const error = sanitizeError(candidate.error);
@@ -105,7 +118,8 @@ export function traceToExceptions(item: TraceItem): ExceptionEvent[] {
 			existing
 				? {
 						...existing,
-						userId: existing.userId ?? candidate.userId,
+						distinctId: existing.distinctId ?? candidate.distinctId,
+						sessionId: existing.sessionId ?? candidate.sessionId,
 						logMessage: existing.logMessage ?? candidate.logMessage,
 						fields: { ...candidate.fields, ...existing.fields },
 					}
@@ -134,14 +148,15 @@ export function traceToExceptions(item: TraceItem): ExceptionEvent[] {
 		return {
 			event: '$exception',
 			uuid,
-			distinct_id: candidate.userId ?? uuid,
+			distinct_id: candidate.distinctId ?? uuid,
 			timestamp: candidate.timestamp === null ? undefined : new Date(candidate.timestamp).toISOString(),
 			properties: {
 				// First, so the run's own properties win over a context field of the same name
 				...candidate.fields,
 				...base,
 				...exceptionProperties(candidate),
-				...(candidate.userId === undefined ? { $process_person_profile: false as const } : {}),
+				$process_person_profile: false,
+				...(candidate.sessionId === undefined ? {} : { $session_id: candidate.sessionId }),
 				...(candidate.logMessage === undefined ? {} : { log_message: candidate.logMessage }),
 			},
 		};
@@ -155,27 +170,35 @@ function errorLogToCandidates(log: TraceLog): Candidate[] {
 
 	// message is the array of console.error arguments; the runtime's any goes no further
 	const args: unknown[] = Array.isArray(log.message) ? log.message : [log.message];
-	const { error, text, userId, fields } = readErrorLogArgs(args, log.errorInfo ?? []);
+	const { error, text, distinctId, sessionId, fields } = readErrorLogArgs(args, log.errorInfo ?? []);
 	return [
 		{
 			error: error ?? { name: 'LoggedError', message: text === '' ? 'Empty error log' : text },
 			handled: true,
 			timestamp: log.timestamp,
-			userId,
+			distinctId,
+			sessionId,
 			logMessage: error !== undefined && text !== '' ? text : undefined,
 			fields,
 		},
 	];
 }
 
-type ErrorLogArgs = { error?: ErrorShape; text: string; userId?: string; fields: Record<string, string | number | boolean> };
+type ErrorLogArgs = {
+	error?: ErrorShape;
+	text: string;
+	distinctId?: string;
+	sessionId?: string;
+	fields: Record<string, string | number | boolean>;
+};
 
-// The first Error argument, the text of the string ones, and the User and fields of the context objects
+// The first Error argument, the text of the string ones, and the browser's ids and fields of the context objects
 function readErrorLogArgs(args: unknown[], errorInfo: (TraceLogErrorInfo | null)[]): ErrorLogArgs {
 	const textParts: string[] = [];
 	const fields: Record<string, string | number | boolean> = {};
 	let error: ErrorShape | undefined;
-	let userId: string | undefined;
+	let distinctId: string | undefined;
+	let sessionId: string | undefined;
 
 	for (const [index, arg] of args.entries()) {
 		const info = errorInfo[index];
@@ -186,11 +209,12 @@ function readErrorLogArgs(args: unknown[], errorInfo: (TraceLogErrorInfo | null)
 		if (typeof arg === 'string') {
 			textParts.push(arg);
 		} else if (isPlainObject(arg)) {
-			userId ??= parseUserId(arg.userId);
+			distinctId ??= parseBrowserId(arg.distinct_id);
+			sessionId ??= parseBrowserId(arg.session_id);
 			collectFields(arg, fields);
 		}
 	}
-	return { error, text: cleanText(textParts.join(' ').trim()), userId, fields };
+	return { error, text: cleanText(textParts.join(' ').trim()), distinctId, sessionId, fields };
 }
 
 function failedOutcomeCandidates(item: TraceItem): Candidate[] {
@@ -221,21 +245,20 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-// Telegram from.id: an integer, or its digits as a string
-function parseUserId(value: unknown): string | undefined {
-	if (typeof value === 'number' && Number.isInteger(value)) {
-		return String(value);
+// A posthog-js id from a browser header: a string, without control characters
+// (as PostHog's example cleans these headers), cut to a sane length
+function parseBrowserId(value: unknown): string | undefined {
+	if (typeof value !== 'string') {
+		return undefined;
 	}
-	if (typeof value === 'string' && /^-?\d+$/u.test(value)) {
-		return value;
-	}
-	return undefined;
+	const id = value.replaceAll(/[\u0000-\u001f\u007f]/gu, '').slice(0, MAX_ID_LENGTH);
+	return id === '' ? undefined : id;
 }
 
-// Primitive context fields, such as reason or episodeId, become event properties
+// Primitive context fields, such as reason or citizenship, become event properties
 function collectFields(context: Record<string, unknown>, fields: Record<string, string | number | boolean>): void {
 	for (const [key, value] of Object.entries(context)) {
-		if (key === 'userId' || key in fields || Object.keys(fields).length >= MAX_CONTEXT_FIELDS) {
+		if (BROWSER_KEYS.has(key) || key in fields || Object.keys(fields).length >= MAX_CONTEXT_FIELDS) {
 			continue;
 		}
 		if (typeof value === 'string') {
@@ -276,7 +299,7 @@ function exceptionProperties(candidate: Candidate): Pick<ExceptionEventPropertie
 
 function baseProperties(
 	item: TraceItem,
-): Omit<ExceptionEventProperties, '$exception_level' | '$exception_list' | '$process_person_profile' | 'log_message'> {
+): Omit<ExceptionEventProperties, '$exception_level' | '$exception_list' | '$process_person_profile' | '$session_id' | 'log_message'> {
 	return {
 		$lib: 'roadtrip-error-tracking' as const,
 		environment: 'production' as const,

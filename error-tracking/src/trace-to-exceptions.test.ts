@@ -5,6 +5,9 @@ import { traceToExceptions, type ExceptionEvent } from './trace-to-exceptions';
 
 const BOT_TOKEN = '1234567890:AAHkKf83jspq02mfDs83hfk39fkKsl39fk3';
 const T0 = Date.parse('2026-11-04T10:00:00.000Z');
+// posthog-js ids, as the browser sends them in X-POSTHOG-DISTINCT-ID and X-POSTHOG-SESSION-ID (UUIDv7)
+const BROWSER_ID = '019a5d2c-7f3e-7b1a-9c4d-2e6f8a0b1c3d';
+const SESSION_ID = '019a5d2c-8a41-7e02-b5c6-d7e8f9a0b1c2';
 
 // workerd cuts the "Name: message" header off stacks in a TraceItem: only frame lines are left
 const WORKER_STACK = [
@@ -102,7 +105,7 @@ describe('traceToExceptions', () => {
 				$process_person_profile: false,
 			},
 		});
-		// Without a userId the event is personless: a one-off distinct_id
+		// Without a distinct_id the event is personless: a one-off distinct_id
 		expect(event.distinct_id).toBe(event.uuid);
 
 		const exception = firstException(event);
@@ -132,29 +135,90 @@ describe('traceToExceptions', () => {
 		expect(event.timestamp).toBe(new Date(T0 + 1).toISOString());
 	});
 
-	test('logger.error ties the error to the User and sends the other context fields', () => {
-		class DownloadError extends Error {
-			name = 'DownloadError';
+	test('logger.error ties the error to the browser by distinct_id and session_id and sends the other context fields', () => {
+		class SherpaError extends Error {
+			name = 'SherpaError';
 		}
 		const logs = capturedErrorLogs(() => {
-			logger.error('[workflow] download failed', new DownloadError('yt-dlp: Sign in to confirm'), {
-				userId: 115658593,
-				reason: 'bot_check',
-				attempt: 2,
+			logger.error('[sherpa] refresh failed, served the stale copy', new SherpaError('Sherpa answered HTTP 503'), {
+				distinct_id: BROWSER_ID,
+				session_id: SESSION_ID,
+				reason: '503',
+				citizenship: 'RUS',
+				served: 'stale',
 			});
 		});
 
 		const event = onlyEvent(traceToExceptions(traceItem({ logs })));
 
-		expect(event.distinct_id).toBe('115658593');
-		expect(event.properties).not.toHaveProperty('$process_person_profile');
-		expect(event.properties).toMatchObject({ log_message: '[workflow] download failed', reason: 'bot_check', attempt: 2 });
+		expect(event.distinct_id).toBe(BROWSER_ID);
+		expect(event.properties).toMatchObject({
+			$session_id: SESSION_ID,
+			// The browser's person is anonymous, and no Worker event makes one (spec «Аналитика и ошибки»)
+			$process_person_profile: false,
+			log_message: '[sherpa] refresh failed, served the stale copy',
+			reason: '503',
+			citizenship: 'RUS',
+			served: 'stale',
+		});
+		expect(event.properties).not.toHaveProperty('distinct_id');
+		expect(event.properties).not.toHaveProperty('session_id');
 		expect(firstException(event)).toMatchObject({
-			type: 'DownloadError',
-			value: 'yt-dlp: Sign in to confirm',
+			type: 'SherpaError',
+			value: 'Sherpa answered HTTP 503',
 			mechanism: { handled: true },
 		});
 		expect(firstException(event).stacktrace?.frames?.length).toBeGreaterThan(0);
+	});
+
+	test('without a distinct_id the event gets a one-off distinct_id and creates no person; the session still links it', () => {
+		const logs = capturedErrorLogs(() => {
+			logger.error('[ring] the engine failed', new Error('boom'), { session_id: SESSION_ID });
+		});
+
+		const event = onlyEvent(traceToExceptions(traceItem({ logs })));
+
+		expect(event.distinct_id).toBe(event.uuid);
+		expect(event.properties).toMatchObject({ $session_id: SESSION_ID, $process_person_profile: false });
+	});
+
+	test('without a session_id the event has no $session_id', () => {
+		const logs = capturedErrorLogs(() => {
+			logger.error('[ring] the engine failed', new Error('boom'), { distinct_id: BROWSER_ID });
+		});
+
+		const event = onlyEvent(traceToExceptions(traceItem({ logs })));
+
+		expect(event.distinct_id).toBe(BROWSER_ID);
+		expect(event.properties).not.toHaveProperty('$session_id');
+	});
+
+	test.each<[string, Record<string, unknown>]>([
+		['not strings', { distinct_id: 42, session_id: { id: SESSION_ID } }],
+		['empty', { distinct_id: '', session_id: '' }],
+		['only control characters', { distinct_id: '\n\t', session_id: '\u0000' }],
+	])('a distinct_id and session_id that are %s are ignored', (_kind, context) => {
+		const logs = capturedErrorLogs(() => {
+			logger.error('boom', undefined, context);
+		});
+
+		const event = onlyEvent(traceToExceptions(traceItem({ logs })));
+
+		expect(event.distinct_id).toBe(event.uuid);
+		expect(event.properties).not.toHaveProperty('$session_id');
+		expect(event.properties).not.toHaveProperty('distinct_id');
+		expect(event.properties).not.toHaveProperty('session_id');
+	});
+
+	test('control characters are removed from distinct_id and session_id', () => {
+		const logs = capturedErrorLogs(() => {
+			logger.error('boom', undefined, { distinct_id: `${BROWSER_ID}\r\n`, session_id: `\u0000${SESSION_ID}` });
+		});
+
+		const event = onlyEvent(traceToExceptions(traceItem({ logs })));
+
+		expect(event.distinct_id).toBe(BROWSER_ID);
+		expect(event.properties.$session_id).toBe(SESSION_ID);
 	});
 
 	test('context fields never override what the worker reports about the run', () => {
@@ -237,7 +301,7 @@ describe('traceToExceptions', () => {
 		const failure = Object.assign(new Error('Credential access key has length 64'), { name: 'EpisodeDownloadError' });
 		const logs = capturedErrorLogs(() => {
 			logger.error('A download attempt of an Episode failed', failure, {
-				userId: 42,
+				distinct_id: BROWSER_ID,
 				episodeId: 'ep1',
 				reason: 'other',
 			});
@@ -283,17 +347,17 @@ describe('traceToExceptions', () => {
 		expect(firstException(event).mechanism?.handled).toBe(false);
 	});
 
-	test('logged with a userId and rethrown keeps the User, the log text and the context', () => {
+	test('logged with a distinct_id and session_id and rethrown keeps them, the log text and the context', () => {
 		const logs = capturedErrorLogs(() => {
-			logger.error('[workflow] failed', new Error('D1 is down'), { userId: 42, episodeId: 'ep1' });
+			logger.error('[ring] KV read failed', new Error('KV is down'), { distinct_id: BROWSER_ID, session_id: SESSION_ID, hours: 6 });
 		});
 
 		const event = onlyEvent(
-			traceToExceptions(traceItem({ outcome: 'exception', exceptions: [{ timestamp: T0, name: 'Error', message: 'D1 is down' }], logs })),
+			traceToExceptions(traceItem({ outcome: 'exception', exceptions: [{ timestamp: T0, name: 'Error', message: 'KV is down' }], logs })),
 		);
 
-		expect(event.distinct_id).toBe('42');
-		expect(event.properties).toMatchObject({ log_message: '[workflow] failed', episodeId: 'ep1' });
+		expect(event.distinct_id).toBe(BROWSER_ID);
+		expect(event.properties).toMatchObject({ $session_id: SESSION_ID, log_message: '[ring] KV read failed', hours: 6 });
 		expect(firstException(event).mechanism?.handled).toBe(false);
 	});
 
