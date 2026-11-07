@@ -7,7 +7,7 @@ The Worker `roadtrip` on `roadtrip.kamyshev.me` (spec «Устройство», 
 `src/index.ts` routes by path and builds each route's `deps` from `env` and `ctx`; the handlers take their side effects only from `deps`.
 
 - `GET /api/ring` (`src/ring.ts`): the ring, from the ring cache in KV or calculated in the Container. The query and the answer are typed in `src/api.ts` (`RingQuery`, `RingResponse`, `RingError`), which the client imports as `worker/api`.
-- The client's static assets (#28) are served before the Worker runs, so only paths without a file reach it; the tiles (#29) come as another route.
+- The client's static assets, `web/dist` (`"assets"` in `wrangler.jsonc`), are served before the Worker runs, so only paths without a file reach it; the tiles (#29) come as another route.
 
 ## GET /api/ring
 
@@ -37,6 +37,9 @@ The dataset's version is in `engine/dataset/dataset.json`: the Worker bundles it
 ```bash
 # At the root: the graph of one region, into the image's dataset directory
 pnpm --filter data build-graph https://download.geofabrik.de/europe/andorra-latest.osm.pbf engine/dataset/graph.graph
+
+# The client, which the Worker serves as its static assets
+pnpm --filter web build
 
 cd worker
 pnpm dev   # wrangler dev: builds the image, then http://localhost:8787
