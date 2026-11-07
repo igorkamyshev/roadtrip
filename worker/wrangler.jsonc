@@ -9,10 +9,14 @@
 	"preview_urls": false,
 	// In config, so every deploy keeps the domain.
 	"routes": [{ "pattern": "roadtrip.kamyshev.me", "custom_domain": true }],
-	// The client (web), built by `pnpm --filter web build`. Assets are served before the Worker runs: a path with no
-	// file, such as /api/ring and the tiles of #29, reaches the Worker. The screen keeps its state after `#`, so
-	// every page is index.html and nothing needs a fallback.
+	// The client (web), built by `pnpm --filter web build`, with the basemap's fonts and sprites. Assets are served
+	// before the Worker runs: a path with no file, such as /api/ring and /tiles/…, reaches the Worker. The screen
+	// keeps its state after `#`, so every page is index.html and nothing needs a fallback.
 	"assets": { "directory": "../web/dist" },
+	// The basemap (#29): the world's PMTiles archive, which the Owner uploads (#22) and GET /tiles/{z}/{x}/{y}
+	// serves. A manual update uploads the new build under a new key and changes the var.
+	"r2_buckets": [{ "binding": "BASEMAP", "bucket_name": "roadtrip-basemap" }],
+	"vars": { "BASEMAP_ARCHIVE": "20261107.pmtiles" },
 	"observability": {
 		"enabled": true,
 	},

@@ -1,0 +1,32 @@
+{
+	"$schema": "../node_modules/wrangler/config-schema.json",
+	// The Container bench's temporary Worker (bench/index.ts). The workflow deploys it as roadtrip-bench-<instance
+	// type>, with a copy of this file for each instance type, and deletes it with its Container application and image.
+	"name": "roadtrip-bench",
+	"main": "index.ts",
+	"compatibility_date": "2026-10-01",
+	// The runner calls it on workers.dev, with the token.
+	"workers_dev": true,
+	"preview_urls": false,
+	// The engine server's line on its start (graph load, ready after) goes to Workers Logs.
+	"observability": {
+		"enabled": true,
+	},
+	"containers": [
+		{
+			// As the Worker roadtrip's (worker/wrangler.jsonc): the engine server's image with the dataset's graph.
+			"class_name": "EngineContainer",
+			"image": "../../engine/Dockerfile",
+			"image_build_context": "../..",
+			"instance_type": "standard-1",
+			"max_instances": 1,
+			"scheduling_policy": "default",
+		},
+	],
+	"durable_objects": {
+		"bindings": [{ "name": "ENGINE", "class_name": "EngineContainer" }],
+	},
+	"migrations": [{ "tag": "v1", "new_sqlite_classes": ["EngineContainer"] }],
+	// Set at deploy (`--var BENCH_TOKEN:…`); empty, the Worker answers nothing.
+	"vars": { "BENCH_TOKEN": "" },
+}

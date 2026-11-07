@@ -8,6 +8,7 @@ import type { BorderTable } from 'rules';
 import { afterAll, describe, expect, it } from 'vitest';
 import { buildGraph } from '../src/build-graph.ts';
 import { openOsm } from '../src/osm/open.ts';
+import type { OsmSource } from '../src/osm/source.ts';
 import { fixtureGraph, fixturePath } from './fixture-graph.ts';
 import { crossing, pair, rules } from './rules.ts';
 import { writePbf } from './write-pbf.ts';
@@ -30,7 +31,7 @@ describe('a PBF extract', () => {
 	const directory = mkdtempSync(join(tmpdir(), 'roadtrip-pbf-'));
 	afterAll(() => rmSync(directory, { recursive: true }));
 
-	it.each(['straight-road.osm', 'two-countries.osm', 'roads.osm', 'chains.osm', 'borders.osm', 'closed-territory.osm', 'zones.osm'])(
+	it.each(['straight-road.osm', 'two-countries.osm', 'roads.osm', 'chains.osm', 'borders.osm', 'closed-territory.osm', 'zones.osm', 'edge-of-extract.osm'])(
 		'gives the graph its OSM XML gives: %s',
 		(name) => {
 			const pbf = join(directory, `${name}.pbf`);
@@ -40,7 +41,7 @@ describe('a PBF extract', () => {
 		},
 	);
 
-	it.each(['straight-road.osm', 'two-countries.osm', 'borders.osm'])('with the locations on its ways and no untagged nodes gives the same graph: %s', (name) => {
+	it.each(['straight-road.osm', 'two-countries.osm', 'borders.osm', 'edge-of-extract.osm'])('with the locations on its ways and no untagged nodes gives the same graph: %s', (name) => {
 		const pbf = join(directory, `${name}.locations.pbf`);
 		writePbf(openOsm(fixturePath(name)), pbf, { locationsOnWays: true });
 
@@ -92,6 +93,21 @@ describe('the graph', () => {
 		);
 	});
 
+	it('leaves out the segments to a node the extract lacks, and the zone whose boundary it holds only in part', () => {
+		const { graph, report } = buildGraph(openOsm(fixturePath('edge-of-extract.osm')));
+
+		expect(edges(graph)).toEqual(
+			[
+				['0,0.2 AAA', '0,0.4 AAA'],
+				['0,0.8 AAA', '0,1.2 '],
+			]
+				.flatMap(([one, two]) => [`${one} → ${two}`, `${two} → ${one}`])
+				.sort(),
+		);
+		expect([...graph.edgeSeconds].sort()).toEqual([1334, 1334, 2669, 2669]);
+		expect(report.incompleteZones).toEqual(['BBB']);
+	});
+
 	it('marks the edges across a border that pass a barrier=border_control', () => {
 		const graph = fixtureGraph('borders.osm');
 		const marked = new Set(graph.borderControlEdges);
@@ -105,6 +121,37 @@ describe('the graph', () => {
 				.flatMap(([one, two]) => [`${one} → ${two}`, `${two} → ${one}`])
 				.sort(),
 		);
+	});
+});
+
+describe('an extract the size of a part of the world', () => {
+	/**
+	 * One road along the equator from 0° east, a node every 1e-7° (1.1 cm), 17 M nodes in all: more than a JS Map
+	 * holds (2^24). Its ways of 1 001 nodes each share their ends, as `osmium add-locations-to-ways` writes them,
+	 * and the node ids are past 2^32, as OSM's are.
+	 */
+	const longRoad: OsmSource = {
+		read(visitor) {
+			const nodesPerWay = 1000;
+			for (let way = 0; way < 17_000; way++) {
+				const first = way * nodesPerWay;
+				const lon = Array.from({ length: nodesPerWay + 1 }, (_, index) => first + index);
+				visitor.way?.({
+					id: way + 1,
+					refs: lon.map((offset) => 10_000_000_000 + offset),
+					tags: { highway: 'secondary' },
+					locations: { lat: lon.map(() => 0), lon },
+				});
+			}
+		},
+	};
+
+	it('collapses a road of more nodes than a JS Map holds', { timeout: 120_000 }, () => {
+		const graph = buildGraph(longRoad).graph;
+
+		expect(edges(graph)).toEqual(['0,0  → 0,1.7 ', '0,1.7  → 0,0 ']);
+		// 189.0 km at 60 km/h.
+		expect([...graph.edgeSeconds]).toEqual([11342, 11342]);
 	});
 });
 

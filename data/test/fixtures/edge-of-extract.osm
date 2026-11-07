@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  An extract cut at its edge: it lacks nodes its ways refer to, as a Geofabrik extract lacks the nodes of a
+  neighbour's boundary beyond its polygon. AAA from 0° to 1°E and BBB from 1°E to 2°E, both from 1°S to 1°N, and a
+  secondary road along the equator:
+
+    way 1: 1 (0.2°E) – 2 (0.4°E) – 3 (0.6°E, missing) – 4 (0.8°E) – 5 (1.2°E)
+
+  BBB's boundary refers to node 203, which is missing too, so BBB is left out: node 5 is in no zone. The road
+  loses its segments to and from node 3, which leaves two edges, both ways: 1–2, 0.2° (22.24 km, 1334 s at
+  60 km/h), and 4–5, 0.4° (44.48 km, 2669 s), from AAA to no zone.
+-->
+<osm version="0.6" generator="hand">
+	<node id="1" lat="0" lon="0.2"/>
+	<node id="2" lat="0" lon="0.4"/>
+	<node id="4" lat="0" lon="0.8"/>
+	<node id="5" lat="0" lon="1.2"/>
+
+	<way id="1">
+		<nd ref="1"/><nd ref="2"/><nd ref="3"/><nd ref="4"/><nd ref="5"/>
+		<tag k="highway" v="secondary"/>
+	</way>
+
+	<node id="101" lat="-1" lon="0"/>
+	<node id="102" lat="-1" lon="1"/>
+	<node id="103" lat="1" lon="1"/>
+	<node id="104" lat="1" lon="0"/>
+	<way id="100">
+		<nd ref="101"/><nd ref="102"/><nd ref="103"/><nd ref="104"/><nd ref="101"/>
+	</way>
+	<relation id="1">
+		<member type="way" ref="100" role="outer"/>
+		<tag k="type" v="boundary"/>
+		<tag k="boundary" v="administrative"/>
+		<tag k="admin_level" v="2"/>
+		<tag k="ISO3166-1:alpha3" v="AAA"/>
+	</relation>
+
+	<node id="201" lat="-1" lon="1"/>
+	<node id="202" lat="-1" lon="2"/>
+	<node id="204" lat="1" lon="1"/>
+	<way id="200">
+		<nd ref="201"/><nd ref="202"/><nd ref="203"/><nd ref="204"/><nd ref="201"/>
+	</way>
+	<relation id="2">
+		<member type="way" ref="200" role="outer"/>
+		<tag k="type" v="boundary"/>
+		<tag k="boundary" v="administrative"/>
+		<tag k="admin_level" v="2"/>
+		<tag k="ISO3166-1:alpha3" v="BBB"/>
+	</relation>
+</osm>

@@ -1,6 +1,7 @@
 {
-	// The tests run in Node (vitest) and build their graphs with data's builder, so Node's types. They import only
-	// modules without Cloudflare's runtime: never src/index.ts. test/ holds their doubles.
+	// The tests run in Node (vitest) and build their graphs with data's builder, so Node's types, as does the Container
+	// bench's bench/measure.ts. They import only modules without Cloudflare's runtime: never src/index.ts. test/ holds
+	// their doubles.
 	"compilerOptions": {
 		"target": "es2024",
 		"lib": ["es2024"],
@@ -14,5 +15,5 @@
 		"allowImportingTsExtensions": true,
 		"types": ["node"]
 	},
-	"include": ["src/**/*.test.ts", "test/**/*.ts"]
+	"include": ["src/**/*.test.ts", "test/**/*.ts", "bench/measure.ts"]
 }
