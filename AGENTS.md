@@ -15,6 +15,8 @@ Read a package's `AGENTS.md` before working in it:
 
 `worker` is the Worker `roadtrip`: `GET /api/ring` from the ring cache in KV or the Container with the engine, the `EngineContainer` class and the wrangler config. Its `README.md` says how a request goes, where the routes and `deps` are built, and how to run it locally with the Container.
 
+`web` is the client, the one screen, built into the Worker's static assets. Its `README.md` says where the state, the ring requests, the map's layers and the phrase's slots are, and how the screen tests run (`pnpm e2e`, Playwright).
+
 ## Agent skills
 
 ### Issue tracker

@@ -1,0 +1,62 @@
+// The prototype's line icons (24×24, stroke).
+import type { ReactNode } from 'react';
+
+function Icon({ children }: { readonly children: ReactNode }) {
+	return (
+		<svg
+			viewBox="0 0 24 24"
+			width="20"
+			height="20"
+			fill="none"
+			stroke="currentColor"
+			strokeWidth="2"
+			strokeLinecap="round"
+			strokeLinejoin="round"
+			aria-hidden="true"
+		>
+			{children}
+		</svg>
+	);
+}
+
+export const LocateIcon = () => (
+	<Icon>
+		<circle cx="12" cy="12" r="4" />
+		<path d="M12 2v3M12 19v3M2 12h3M19 12h3" />
+	</Icon>
+);
+
+export const CloseIcon = () => (
+	<Icon>
+		<path d="M6 6l12 12M18 6 6 18" />
+	</Icon>
+);
+
+export const PinIcon = () => (
+	<Icon>
+		<path d="M12 21s-7-6.2-7-12a7 7 0 0 1 14 0c0 5.8-7 12-7 12z" />
+		<circle cx="12" cy="9" r="2.5" />
+	</Icon>
+);
+
+export const InfoIcon = () => (
+	<Icon>
+		<circle cx="12" cy="12" r="9" />
+		<path d="M12 11v6M12 7.5v.01" />
+	</Icon>
+);
+
+export const WarnIcon = () => (
+	<Icon>
+		<path d="M12 3 2 20h20L12 3z" />
+		<path d="M12 10v4M12 17v.01" />
+	</Icon>
+);
+
+/** The pin in the middle of the map in the pin mode: filled, its tip on the point. */
+export const DropPin = () => (
+	<svg viewBox="0 0 24 24" aria-hidden="true">
+		<path d="M12 22s-7-6.4-7-12.2a7 7 0 0 1 14 0C19 15.6 12 22 12 22z" />
+		<circle cx="12" cy="10" r="2.6" fill="#fff" />
+	</svg>
+);
