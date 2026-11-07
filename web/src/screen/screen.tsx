@@ -6,8 +6,10 @@ import type { RingResponse } from 'worker/api';
 import { type City, useCities } from '../cities/cities.ts';
 import { CitiesSheet } from '../cities/cities-sheet.tsx';
 import { CityCard, MoreCard } from '../cities/city-card.tsx';
+import { scrollToCard, useCarouselStops } from '../cities/carousel.ts';
 import { citiesInRing } from '../cities/in-ring.ts';
 import { MapView, type MapHandle } from '../map/map-view.tsx';
+import type { MapCity } from '../map/overlay.ts';
 import { RingRequestError } from '../ring/fetch-ring.ts';
 import { ringKey, useCachedHours, useRing } from '../ring/use-ring.ts';
 import type { Point } from '../state/point.ts';
@@ -22,8 +24,22 @@ import { Slider } from './slider.tsx';
 
 type SheetName = 'start' | 'citizenships' | 'info' | 'cities';
 
-/** The carousel's cards of cities: the biggest of the ring's. */
+/** The carousel's cards of cities: the biggest of the ring's, named on the map. */
 const CAROUSEL_CITIES = 12;
+/** The ring's cities the map dots, the biggest: a 12-hour ring holds thousands. */
+const MAP_CITIES = 250;
+/** The map comes at least this close to a city picked in the list of all. */
+const PICKED_CITY_ZOOM = 8;
+
+/** The cities the map shows: the biggest of the ring's, named if they have a card, and the chosen one. */
+function citiesOnMap(cities: readonly City[], chosen: number | undefined): MapCity[] {
+	const shown = cities.slice(0, MAP_CITIES);
+	const chosenCity = cities.find((city) => city.id === chosen);
+	if (chosenCity !== undefined && !shown.includes(chosenCity)) {
+		shown.push(chosenCity);
+	}
+	return shown.map(({ id, name, lat, lon }, index) => ({ id, name, lat, lon, label: index < CAROUSEL_CITIES || id === chosen, chosen: id === chosen }));
+}
 
 export function Screen() {
 	const { origin, hours, citizenships, setOrigin, setHours, setCitizenships } = useScreenState();
@@ -94,6 +110,37 @@ export function Screen() {
 	);
 	const shownCities = ring.isPlaceholderData ? undefined : ringCities;
 	const card = firstCardState(origin, hours, ring, geolocationFailed, requestId, shownCities);
+
+	// The chosen city: the card in the carousel's middle, a city tapped on the map or picked in the list of all. A new
+	// ring chooses none and shows the carousel from its start.
+	const [chosen, setChosen] = useState<number>();
+	const carousel = useRef<HTMLDivElement>(null);
+	useEffect(() => {
+		setChosen(undefined);
+		carousel.current?.scrollTo({ left: 0 });
+	}, [requestId]);
+	const cityById = (id: number | undefined) => (id === undefined ? undefined : shownCities?.find((city) => city.id === id));
+	const onCarouselScroll = useCarouselStops(carousel, (id) => {
+		setChosen(id);
+		const city = cityById(id);
+		if (city !== undefined) {
+			map.current?.goTo(city);
+		}
+	});
+	const tapCity = (id: number) => {
+		// A city with no card in the carousel is found in the list of all.
+		if (!scrollToCard(carousel.current, id)) {
+			setChosen(id);
+			setSheet('cities');
+		}
+	};
+	const pickCity = (city: City) => {
+		setSheet(undefined);
+		setChosen(city.id);
+		map.current?.goTo(city, PICKED_CITY_ZOOM);
+		scrollToCard(carousel.current, city.id);
+	};
+	const mapCities = useMemo(() => citiesOnMap(shownCities ?? [], chosen), [shownCities, chosen]);
 	const closed = answer === undefined ? [] : Object.keys(answer.access).filter((code) => answer.access[code].mode === 'closed');
 	const openCitizenships = () => {
 		setSheet('citizenships');
@@ -109,6 +156,8 @@ export function Screen() {
 				fit={ring.isPlaceholderData || shownRing === undefined ? undefined : requestId}
 				pinning={pinning}
 				closed={closed}
+				cities={mapCities}
+				onCity={tapCity}
 			/>
 			<Phrase
 				startLabel={origin === undefined ? undefined : 'на карте'}
@@ -151,7 +200,7 @@ export function Screen() {
 					</div>
 				</div>
 			) : (
-				<div className="c-car">
+				<div className="c-car" ref={carousel} onScroll={onCarouselScroll}>
 					<FirstCard
 						state={card}
 						actions={{
@@ -166,7 +215,16 @@ export function Screen() {
 					{origin !== undefined && access !== undefined
 						? shownCities
 								?.slice(0, CAROUSEL_CITIES)
-								.map((city) => <CityCard key={city.id} city={city} origin={origin} access={access} citizenships={citizenships} />)
+								.map((city) => (
+									<CityCard
+										key={city.id}
+										city={city}
+										origin={origin}
+										access={access}
+										citizenships={citizenships}
+										chosen={city.id === chosen}
+									/>
+								))
 						: null}
 					{shownCities !== undefined && shownCities.length > CAROUSEL_CITIES ? (
 						<MoreCard
@@ -202,10 +260,8 @@ export function Screen() {
 					cities={shownCities}
 					hours={hours}
 					access={access}
-					chosen={undefined}
-					onPick={() => {
-						setSheet(undefined);
-					}}
+					chosen={chosen}
+					onPick={pickCity}
 					onClose={() => {
 						setSheet(undefined);
 					}}

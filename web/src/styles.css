@@ -12,6 +12,9 @@
 	--ring: #1b5fd6;
 	--ring-fill: rgba(27, 95, 214, 0.24);
 	--start: #e2412c;
+	/* The cities on the map: dots and names, on a halo. */
+	--city: #0e2a5a;
+	--halo: #f4f6f2;
 	/* The hatching of closed countries over the basemap: lines on a veil. */
 	--hatch: rgba(84, 95, 90, 0.55);
 	--hatch-veil: rgba(220, 223, 216, 0.35);
@@ -42,6 +45,8 @@
 		--ring: #6aa3ff;
 		--ring-fill: rgba(106, 163, 255, 0.24);
 		--start: #ff6a52;
+		--city: #d6e4ff;
+		--halo: #1c2321;
 		--hatch: rgba(150, 162, 157, 0.5);
 		--hatch-veil: rgba(27, 33, 32, 0.4);
 		--evisa: #ffcf7d;

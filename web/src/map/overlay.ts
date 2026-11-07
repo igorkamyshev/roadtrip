@@ -3,13 +3,14 @@
 // 1. the hatching of closed countries and closed territories, `closed-hatch`: the zone outlines of the dataset
 //    (source `zones`, `/data/zones.json`), filtered to the zones `access` closes;
 // 2. the ring: `ring-fill`, or `ring-stripes` (running stripes) while a calculation replaces it, and `ring-line`;
-// 3. (#32) the labels of the carousel's cities, the chosen one highlighted: insert before `start`;
+// 3. the ring's cities (source `cities`): a dot for each of the biggest, `city-dots`, and the names of the
+//    carousel's cities and of the chosen one, `city-labels`; the chosen one larger, in the origin's colour;
 // 4. the origin's marker, `start`.
 //
-// The tests read the sources `ring`, `start` and `zones`, the hatching's filter and the layers' visibility, never
-// pixels.
+// The tests read the sources `ring`, `start`, `zones` and `cities`, the hatching's filter and the layers'
+// visibility, never pixels.
 import type { FeatureCollection } from 'geojson';
-import type { FilterSpecification, GeoJSONSource, Map as MapLibre } from 'maplibre-gl';
+import type { ExpressionSpecification, FilterSpecification, GeoJSONSource, Map as MapLibre } from 'maplibre-gl';
 import type { RingAnswer } from 'worker/api';
 import type { Point } from '../state/point.ts';
 
@@ -21,6 +22,19 @@ export const ZONES_SOURCE = 'zones';
 export const RING_LAYERS = { fill: 'ring-fill', stripes: 'ring-stripes', line: 'ring-line' } as const;
 export const START_LAYER = 'start';
 export const HATCH_LAYER = 'closed-hatch';
+export const CITIES_SOURCE = 'cities';
+export const CITY_LAYERS = { dots: 'city-dots', labels: 'city-labels' } as const;
+
+/** A city as the map shows it. */
+export interface MapCity {
+	readonly id: number;
+	readonly name: string;
+	readonly lat: number;
+	readonly lon: number;
+	/** Named on the map: a city of the carousel, or the chosen one. */
+	readonly label: boolean;
+	readonly chosen: boolean;
+}
 
 /** The zone outlines, a static asset of the Worker: the dataset's (data's `zoneOutlines`). */
 export const ZONE_OUTLINES_URL = '/data/zones.json';
@@ -36,8 +50,8 @@ const STRIPE_PERIOD = 10;
 const STRIPE_FRAME_MS = 160;
 
 /**
- * The colours of the ring, the marker and the hatching (`--ring`, `--ring-fill`, `--start`, `--hatch`,
- * `--hatch-veil`), from the page's CSS.
+ * The colours of the ring, the marker, the hatching and the cities (`--ring`, `--ring-fill`, `--start`, `--hatch`,
+ * `--hatch-veil`, `--city`, `--halo`), from the page's CSS.
  */
 interface OverlayColors {
 	readonly ring: string;
@@ -45,6 +59,8 @@ interface OverlayColors {
 	readonly start: string;
 	readonly hatch: string;
 	readonly hatchVeil: string;
+	readonly city: string;
+	readonly halo: string;
 }
 
 function colors(): OverlayColors {
@@ -56,14 +72,17 @@ function colors(): OverlayColors {
 		start: read('--start', '#e2412c'),
 		hatch: read('--hatch', 'rgba(84, 95, 90, .55)'),
 		hatchVeil: read('--hatch-veil', 'rgba(220, 223, 216, .35)'),
+		city: read('--city', '#0e2a5a'),
+		halo: read('--halo', '#f4f6f2'),
 	};
 }
 
 /** Adds the overlay's sources, images and layers to a map whose style has loaded. */
 export function addOverlay(map: MapLibre): void {
-	const { ring, ringFill, start, hatch, hatchVeil } = colors();
+	const { ring, ringFill, start, hatch, hatchVeil, city, halo } = colors();
 	map.addSource(ZONES_SOURCE, { type: 'geojson', data: EMPTY });
 	map.addSource(RING_SOURCE, { type: 'geojson', data: EMPTY });
+	map.addSource(CITIES_SOURCE, { type: 'geojson', data: EMPTY });
 	map.addSource(START_SOURCE, { type: 'geojson', data: EMPTY });
 	map.addImage(HATCH_IMAGE, hatching(hatch, hatchVeil), { pixelRatio: 2 });
 	for (let frame = 0; frame < STRIPE_FRAMES; frame++) {
@@ -79,6 +98,35 @@ export function addOverlay(map: MapLibre): void {
 		paint: { 'fill-pattern': stripeImage(0) },
 	});
 	map.addLayer({ id: RING_LAYERS.line, type: 'line', source: RING_SOURCE, paint: { 'line-color': ring, 'line-width': 1.6 } });
+	const chosen: ExpressionSpecification = ['get', 'chosen'];
+	map.addLayer({
+		id: CITY_LAYERS.dots,
+		type: 'circle',
+		source: CITIES_SOURCE,
+		paint: {
+			'circle-radius': ['case', chosen, 6, 3],
+			'circle-color': ['case', chosen, start, city],
+			'circle-stroke-color': halo,
+			'circle-stroke-width': 1.2,
+		},
+	});
+	map.addLayer({
+		id: CITY_LAYERS.labels,
+		type: 'symbol',
+		source: CITIES_SOURCE,
+		filter: ['get', 'label'],
+		layout: {
+			'text-field': ['get', 'name'],
+			// A fontstack of the basemap's (public/basemap/fonts).
+			'text-font': ['Noto Sans Medium'],
+			'text-size': ['case', chosen, 14, 12],
+			'text-anchor': 'left',
+			'text-offset': [0.6, 0],
+			// Where labels collide, the chosen one wins, then the bigger city.
+			'symbol-sort-key': ['case', chosen, -1, ['get', 'rank']],
+		},
+		paint: { 'text-color': city, 'text-halo-color': halo, 'text-halo-width': 1.5 },
+	});
 	map.addLayer({
 		id: START_LAYER,
 		type: 'circle',
@@ -100,6 +148,44 @@ export function showStart(map: MapLibre, origin: Point | undefined): void {
 	source(map, START_SOURCE).setData(
 		origin === undefined ? EMPTY : { type: 'Feature', properties: {}, geometry: { type: 'Point', coordinates: [origin.lon, origin.lat] } },
 	);
+}
+
+/** Shows the ring's cities, biggest first: their dots, and the names of those with a label. */
+export function showCities(map: MapLibre, cities: readonly MapCity[]): void {
+	source(map, CITIES_SOURCE).setData({
+		type: 'FeatureCollection',
+		features: cities.map(({ id, name, lat, lon, label, chosen }, rank) => ({
+			type: 'Feature',
+			properties: { id, name, label, chosen, rank },
+			geometry: { type: 'Point', coordinates: [lon, lat] },
+		})),
+	});
+}
+
+/** The city whose dot or label is nearest to a point of the map's canvas, within `radius` pixels. */
+export function cityAt(map: MapLibre, x: number, y: number, radius: number): number | undefined {
+	const near = map.queryRenderedFeatures(
+		[
+			[x - radius, y - radius],
+			[x + radius, y + radius],
+		],
+		{ layers: [CITY_LAYERS.dots, CITY_LAYERS.labels] },
+	);
+	let found: number | undefined;
+	let best = Infinity;
+	for (const feature of near) {
+		if (feature.geometry.type !== 'Point') {
+			continue;
+		}
+		const [lon, lat] = feature.geometry.coordinates;
+		const at = map.project([lon, lat]);
+		const distance = Math.hypot(at.x - x, at.y - y);
+		if (distance < best) {
+			best = distance;
+			found = Number(feature.properties.id);
+		}
+	}
+	return found;
 }
 
 /** Puts the zone outlines on the map, for the hatching. */

@@ -37,8 +37,8 @@ export async function dottedHours(page: Page): Promise<number[]> {
 	);
 }
 
-/** The GeoJSON of a map source: `ring` (the ring) or `start` (the origin's marker). */
-export async function sourceData(page: Page, source: 'ring' | 'start'): Promise<FeatureCollection> {
+/** The GeoJSON of a map source: `ring` (the ring), `start` (the origin's marker) or `cities` (the ring's cities). */
+export async function sourceData(page: Page, source: 'ring' | 'start' | 'cities'): Promise<FeatureCollection> {
 	return page.evaluate(async (id) => {
 		const map = (window as unknown as { __roadtripMap?: MapForTests }).__roadtripMap;
 		const data = await map?.getSource(id)?.getData();
@@ -86,6 +86,56 @@ export async function outlinesOnMap(page: Page): Promise<string[]> {
 	return data?.type === 'FeatureCollection' ? data.features.map((feature) => String(feature.properties?.zone)) : [];
 }
 
+/** A city on the map: a dot, and a label when it has a card in the carousel or is the chosen one. */
+export interface CityOnMap {
+	readonly name: string;
+	readonly label: boolean;
+	readonly chosen: boolean;
+}
+
+/** The cities the map shows, biggest first (the source `cities`). */
+export async function citiesOnMap(page: Page): Promise<CityOnMap[]> {
+	return (await sourceData(page, 'cities')).features.map(({ properties }) => ({
+		name: String(properties?.name),
+		label: properties?.label === true,
+		chosen: properties?.chosen === true,
+	}));
+}
+
+/** The names of the cities the map labels, and of the chosen one. */
+export async function labelsOnMap(page: Page): Promise<{ labels: string[]; chosen: string[] }> {
+	const cities = await citiesOnMap(page);
+	return { labels: cities.filter((city) => city.label).map((city) => city.name), chosen: cities.filter((city) => city.chosen).map((city) => city.name) };
+}
+
+/** Taps the map where the point (lat, lon) is, once the map has drawn everything and stopped. */
+export async function tapMap(page: Page, at: { readonly lat: number; readonly lon: number }): Promise<void> {
+	await page.waitForFunction(() => {
+		const map = (window as unknown as { __roadtripMap?: MapForTests }).__roadtripMap;
+		return map !== undefined && map.loaded() && !map.isMoving();
+	});
+	const { x, y } = await page.evaluate(([lat, lon]) => (window as unknown as { __roadtripMap: MapForTests }).__roadtripMap.project([lon, lat]), [at.lat, at.lon]);
+	const box = await page.locator('.map-canvas').boundingBox();
+	await page.mouse.click((box?.x ?? 0) + x, (box?.y ?? 0) + y);
+}
+
+/**
+ * How far, in pixels, the place is from the middle of the map that nothing covers: below the phrase, above the
+ * carousel, left of the slider. Once the camera has stopped.
+ */
+export async function distanceFromTheMiddle(page: Page, at: { readonly lat: number; readonly lon: number }): Promise<number> {
+	await mapAtRest(page);
+	const [phraseBox, carouselBox, sliderBox, canvasBox] = await Promise.all(
+		[phrase(page), page.locator('.c-car'), page.locator('.c-vs'), page.locator('.map-canvas')].map((element) => element.boundingBox()),
+	);
+	if (phraseBox === null || carouselBox === null || sliderBox === null || canvasBox === null) {
+		throw new Error('the phrase, the carousel, the slider or the map is not on the screen');
+	}
+	const { x, y } = await page.evaluate(([lat, lon]) => (window as unknown as { __roadtripMap: MapForTests }).__roadtripMap.project([lon, lat]), [at.lat, at.lon]);
+	const middle = { x: (canvasBox.x + sliderBox.x) / 2, y: (phraseBox.y + phraseBox.height + carouselBox.y) / 2 };
+	return Math.hypot(canvasBox.x + x - middle.x, canvasBox.y + y - middle.y);
+}
+
 /** The map's visible bounds, [west, south, east, north], once the camera has stopped. */
 export async function mapBounds(page: Page): Promise<[number, number, number, number]> {
 	await mapAtRest(page);
@@ -94,6 +144,12 @@ export async function mapBounds(page: Page): Promise<[number, number, number, nu
 		const bounds = map.getBounds();
 		return [bounds.getWest(), bounds.getSouth(), bounds.getEast(), bounds.getNorth()];
 	});
+}
+
+/** The map's zoom, once the camera has stopped. */
+export async function mapZoom(page: Page): Promise<number> {
+	await mapAtRest(page);
+	return page.evaluate(() => (window as unknown as { __roadtripMap: MapForTests }).__roadtripMap.getZoom());
 }
 
 /** The map's centre as { lat, lon }, once the camera has stopped. */
@@ -128,10 +184,13 @@ export async function dragMap(page: Page, dx: number, dy: number): Promise<void>
 /** What the tests use of MapLibre's `Map`, without importing MapLibre into Node. */
 interface MapForTests {
 	isMoving(): boolean;
+	loaded(): boolean;
+	project(lngLat: [number, number]): { x: number; y: number };
 	getSource(id: string): { getData(): Promise<GeoJSON> } | undefined;
 	getLayoutProperty(layer: string, name: string): unknown;
 	getLayer(layer: string): unknown;
 	getFilter(layer: string): unknown;
 	getBounds(): { getWest(): number; getSouth(): number; getEast(): number; getNorth(): number };
 	getCenter(): { lat: number; lng: number };
+	getZoom(): number;
 }

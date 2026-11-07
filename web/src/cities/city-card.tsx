@@ -13,11 +13,13 @@ export interface CityCardProps {
 	/** The entry modes of the answer shown. */
 	readonly access: Access;
 	readonly citizenships: readonly string[];
+	/** The chosen city: in the carousel's middle, labelled larger on the map. */
+	readonly chosen: boolean;
 }
 
-export function CityCard({ city, origin, access, citizenships }: CityCardProps) {
+export function CityCard({ city, origin, access, citizenships, chosen }: CityCardProps) {
 	return (
-		<div className="c-card" data-testid="city-card" data-city={city.id}>
+		<div className={chosen ? 'c-card focus' : 'c-card'} data-testid="city-card" data-city={city.id} aria-current={chosen ? 'true' : undefined}>
 			<h3>{city.name}</h3>
 			<div className="muted small">{cityFacts(city)}</div>
 			<EntryMark city={city} access={access} />

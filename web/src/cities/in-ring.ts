@@ -2,10 +2,9 @@
 // engine's answer is only the ring's outline (#19). A city is in the ring when its point is inside the ring's
 // MultiPolygon, its zone is open by `access`, and that zone is not a closed territory (`access` closes those, and a
 // zone `access` does not name is not open either). Biggest first.
-import type { Access, RingAnswer } from 'worker/api';
+import type { Access } from 'worker/api';
+import type { RingGeometry } from '../map/overlay.ts';
 import type { City } from './cities.ts';
-
-export type RingGeometry = Extract<RingAnswer, { outcome: 'ring' }>['ring'];
 
 export function citiesInRing(cities: readonly City[], ring: RingGeometry, access: Access): City[] {
 	const inside = ringContains(ring);

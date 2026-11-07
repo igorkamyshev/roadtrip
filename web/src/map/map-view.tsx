@@ -1,12 +1,25 @@
 // The map under the whole screen: MapLibre GL with the basemap and the overlay (overlay.ts). It shows the ring
-// whole when a new one comes, with room for the phrase, the slider and the carousel.
-import { Map as MapLibre } from 'maplibre-gl';
+// whole when a new one comes, with room for the phrase, the slider and the carousel, goes to a city when the screen
+// says, and tells the screen of a tap on a city.
+import { Map as MapLibre, type MapMouseEvent } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { useEffect, useImperativeHandle, useRef, useState, type Ref } from 'react';
 import { point, pointText, type Point } from '../state/point.ts';
 import { DropPin } from '../screen/icons.tsx';
 import { basemapStyle } from './basemap.ts';
-import { addOverlay, loadOutlines, runStripes, showClosed, showOutlines, showRing, showStart, type RingGeometry } from './overlay.ts';
+import {
+	addOverlay,
+	cityAt,
+	loadOutlines,
+	runStripes,
+	showCities,
+	showClosed,
+	showOutlines,
+	showRing,
+	showStart,
+	type MapCity,
+	type RingGeometry,
+} from './overlay.ts';
 
 declare global {
 	interface Window {
@@ -26,7 +39,12 @@ const ORIGIN_ZOOM = 7;
 export interface MapHandle {
 	/** The point under the pin: the map's centre. */
 	center(): Point;
+	/** Moves the map to a place, keeping the zoom unless it is below `minZoom`, with room for the phrase and the carousel. */
+	goTo(place: { readonly lat: number; readonly lon: number }, minZoom?: number): void;
 }
+
+/** How far from a city's dot a tap still picks it, in pixels: a finger is not a pointer. */
+const TAP_RADIUS = 16;
 
 export interface MapViewProps {
 	readonly origin: Point | undefined;
@@ -39,10 +57,14 @@ export interface MapViewProps {
 	readonly pinning: boolean;
 	/** The zones to hatch: the countries and closed territories `access` closes. */
 	readonly closed: readonly string[];
+	/** The ring's cities to show, biggest first. */
+	readonly cities: readonly MapCity[];
+	/** A tap on a city's dot or name. */
+	readonly onCity: (id: number) => void;
 	readonly ref?: Ref<MapHandle>;
 }
 
-export function MapView({ origin, ring, striped, fit, pinning, closed, ref }: MapViewProps) {
+export function MapView({ origin, ring, striped, fit, pinning, closed, cities, onCity, ref }: MapViewProps) {
 	const container = useRef<HTMLDivElement>(null);
 	const [map, setMap] = useState<MapLibre>();
 	const initialOrigin = useRef(origin);
@@ -83,9 +105,39 @@ export function MapView({ origin, ring, striped, fit, pinning, closed, ref }: Ma
 				const center = map?.getCenter().wrap();
 				return center === undefined ? (origin ?? point(OVERVIEW.center[1], OVERVIEW.center[0])) : point(center.lat, center.lng);
 			},
+			goTo(place, minZoom = 0) {
+				// An offset, not a padding: a padding would stay on the map and move its centre off the pin's.
+				const { top, right, bottom, left } = MAP_PADDING;
+				map?.easeTo({ center: [place.lon, place.lat], zoom: Math.max(map.getZoom(), minZoom), offset: [(left - right) / 2, (top - bottom) / 2] });
+			},
 		}),
 		[map, origin],
 	);
+
+	useEffect(() => {
+		if (map !== undefined) {
+			showCities(map, cities);
+		}
+	}, [map, cities]);
+
+	// The latest handler and mode, for the one listener the map keeps.
+	const tap = useRef({ onCity, pinning });
+	tap.current = { onCity, pinning };
+	useEffect(() => {
+		if (map === undefined) {
+			return;
+		}
+		const onClick = (event: MapMouseEvent) => {
+			const id = tap.current.pinning ? undefined : cityAt(map, event.point.x, event.point.y, TAP_RADIUS);
+			if (id !== undefined) {
+				tap.current.onCity(id);
+			}
+		};
+		map.on('click', onClick);
+		return () => {
+			map.off('click', onClick);
+		};
+	}, [map]);
 
 	const originText = origin === undefined ? undefined : pointText(origin);
 	useEffect(() => {

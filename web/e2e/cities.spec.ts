@@ -6,7 +6,7 @@
 import type { Locator, Page } from '@playwright/test';
 import type { Access } from 'worker/api';
 import { allowGeolocation, expect, serveCities, squareRing, test, visaRules } from './fixtures.ts';
-import { firstCard } from './screen.ts';
+import { citiesOnMap, distanceFromTheMiddle, firstCard, labelsOnMap, mapZoom, slider, tapMap } from './screen.ts';
 
 const BELGRADE = { lat: 44.8176, lon: 20.4573 };
 const LINK = '/#/?p=44.81760,20.45730&h=3';
@@ -56,6 +56,47 @@ test.describe('the first card', () => {
 		// Tuzla 1.8°, Mostar 2.6°, Subotica 1.3°, Ilidža 2.2°. Not Belgrade, 0.01°, in the ring's hole, nor
 		// Kragujevac, 0.8°, nor Budapest, 2.7°, in Hungary, closed, nor Pristina, 2.1°, in Kosovo, closed for everyone.
 		await expect.poll(() => read(firstCard(page))).toBe('В кольце 2–3 ч 7 городов в 3 странах Листайте → самые крупные');
+	});
+
+	test('says «Городов в кольце нет» for a ring without cities of 15 000 people', async ({ page, ringApi }) => {
+		// From 0.02° to 0.1°: Belgrade, 0.01°, is in the hole, Pančevo, 0.18°, outside.
+		ringApi.respond(() => ({ ...squareRing(BELGRADE.lat, BELGRADE.lon, 0.02, 0.1), ...visaRules(RUSSIAN) }));
+		await page.goto(LINK);
+
+		await expect.poll(() => read(firstCard(page))).toBe('В кольце 2–3 ч Городов в кольце нет Показываем города больше 15 000 жителей.');
+		await expect(cityCards(page)).toHaveCount(0);
+	});
+
+	test('takes the cities of Northern Cyprus by their zone, open while Cyprus is closed', async ({ page, ringApi }) => {
+		await serveCities(page, [
+			[146268, 'Никосия', 'Nicosia', 35.173, 33.354, 200_452, 'CYP'],
+			[146617, 'Фамагуста', 'Famagusta', 35.125, 33.941, 42_526, 'NX'],
+			[146412, 'Кирения', 'Kyrenia', 35.336, 33.317, 26_701, 'NX'],
+		]);
+		ringApi.respond((call) => ({
+			...squareRing(Number(call.lat), Number(call.lon), 0, 1),
+			...visaRules({ CYP: { mode: 'closed' }, NX: { mode: 'visa_free', citizenship: 'RUS' } }),
+		}));
+		await page.goto('/#/?p=35.20000,33.40000&h=2');
+
+		await expect.poll(() => read(firstCard(page))).toBe('В кольце 1–2 ч 2 города в 1 стране Листайте → самые крупные');
+		await expect(cityCards(page).locator('.muted')).toHaveText(['Famagusta · Северный Кипр · 43 тыс.', 'Kyrenia · Северный Кипр · 27 тыс.']);
+	});
+
+	test('leaves out the cities of a closed territory', async ({ page, ringApi }) => {
+		await serveCities(page, [
+			[693805, 'Симферополь', 'Simferopol', 44.952, 34.102, 336_460, 'CRIMEA'],
+			[694423, 'Севастополь', 'Sevastopol', 44.6, 33.523, 547_820, 'CRIMEA'],
+			[706448, 'Херсон', 'Kherson', 46.636, 32.617, 286_958, 'UKR'],
+		]);
+		// Access names Crimea closed for everyone, or does not name it at all: neither opens it.
+		const closedForEveryone: Access = { CRIMEA: { mode: 'closed', closedForEveryone: true } };
+		for (const crimea of [closedForEveryone, {}]) {
+			ringApi.respond((call) => ({ ...squareRing(Number(call.lat), Number(call.lon), 0, 2), ...visaRules({ ...crimea, UKR: { mode: 'visa_free', citizenship: 'SRB' } }) }));
+			await page.goto(`/#/?p=45.50000,33.50000&h=${'CRIMEA' in crimea ? 2 : 3}&cit=SRB`);
+
+			await expect(cityCards(page).locator('h3')).toHaveText(['Херсон']);
+		}
 	});
 });
 
@@ -138,6 +179,89 @@ test.describe('the list of all cities', () => {
 
 		await expect(rows(page).last()).toContainText('Город 3000');
 		expect(await rows(page).count()).toBeLessThan(50);
+	});
+});
+
+test.describe('the carousel and the map', () => {
+	/** The cards of the carousel, as the person scrolls it until the card is in the middle. */
+	async function scrollTo(page: Page, name: string): Promise<void> {
+		await cityCards(page)
+			.filter({ has: page.getByRole('heading', { name, exact: true }) })
+			.evaluate((card) => {
+				card.scrollIntoView({ inline: 'center', block: 'nearest' });
+			});
+	}
+	const chosenCard = (page: Page) => page.locator('[data-testid="city-card"][aria-current="true"]');
+
+	test.beforeEach(async ({ page, ringApi }) => {
+		ringApi.respond(() => ringAroundBelgrade(WITH_SCHENGEN_VISA));
+		await page.goto(LINK);
+		await expect(cityCards(page)).toHaveCount(12);
+	});
+
+	test("the map labels the carousel's cities, and dots the others of the ring", async ({ page }) => {
+		await expect.poll(() => labelsOnMap(page)).toEqual({
+			labels: ['Будапешт', 'Сараево', 'Ниш', 'Подгорица', 'Дебрецен', 'Арад', 'Сегед', 'Печ', 'Тузла', 'Кечкемет', 'Мостар', 'Суботица'],
+			chosen: [],
+		});
+		expect((await citiesOnMap(page)).map((city) => city.name).slice(12)).toEqual(['Решица', 'Дробета-Турну-Северин', 'Осиек', 'Ilidža']);
+	});
+
+	test('scrolling to a card chooses its city: the card and the label are marked, and the map goes to it', async ({ page }) => {
+		await scrollTo(page, 'Ниш');
+
+		await expect(chosenCard(page).locator('h3')).toHaveText('Ниш');
+		await expect.poll(async () => (await labelsOnMap(page)).chosen).toEqual(['Ниш']);
+		await expect.poll(() => distanceFromTheMiddle(page, { lat: 43.325, lon: 21.903 })).toBeLessThan(25);
+
+		// Back to the first card: no city is chosen.
+		await firstCard(page).evaluate((card) => {
+			card.scrollIntoView({ inline: 'center', block: 'nearest' });
+		});
+		await expect(chosenCard(page)).toHaveCount(0);
+		await expect.poll(async () => (await labelsOnMap(page)).chosen).toEqual([]);
+	});
+
+	test('tapping a city of the carousel on the map scrolls the carousel to its card', async ({ page }) => {
+		await tapMap(page, { lat: 43.325, lon: 21.903 });
+
+		await expect(chosenCard(page).locator('h3')).toHaveText('Ниш');
+		await expect(chosenCard(page)).toBeInViewport({ ratio: 0.9 });
+		await expect.poll(async () => (await labelsOnMap(page)).chosen).toEqual(['Ниш']);
+	});
+
+	test('tapping a city on the map that has no card opens the list of all, at that city', async ({ page }) => {
+		// Reşiţa, the 13th.
+		await tapMap(page, { lat: 45.301, lon: 21.889 });
+
+		const sheet = page.getByRole('dialog', { name: '16 городов в кольце 2–3 ч' });
+		await expect(sheet.locator('[aria-current="true"]')).toContainText('Решица');
+		await expect(sheet.locator('[aria-current="true"]')).toBeInViewport();
+	});
+
+	test('a city picked in the list of all is chosen on the map, which goes to it', async ({ page }) => {
+		await page.getByRole('button', { name: /и ещё/u }).click();
+
+		await page.getByRole('dialog').getByTestId('city-row').filter({ hasText: 'Осиек' }).click();
+
+		await expect(page.getByRole('dialog')).toHaveCount(0);
+		await expect.poll(() => labelsOnMap(page)).toMatchObject({ chosen: ['Осиек'] });
+		expect((await labelsOnMap(page)).labels).toContain('Осиек');
+		await expect.poll(() => distanceFromTheMiddle(page, { lat: 45.551, lon: 18.694 })).toBeLessThan(25);
+		expect(await mapZoom(page)).toBeGreaterThanOrEqual(8);
+		await expect(chosenCard(page)).toHaveCount(0);
+	});
+
+	test('a new ring chooses no city and shows the carousel from its start', async ({ page }) => {
+		await scrollTo(page, 'Суботица');
+		await expect(chosenCard(page).locator('h3')).toHaveText('Суботица');
+
+		await slider(page).press('ArrowDown');
+
+		await expect(firstCard(page)).toContainText('В кольце 1–2 ч');
+		await expect(firstCard(page)).toBeInViewport();
+		await expect(chosenCard(page)).toHaveCount(0);
+		await expect.poll(async () => (await labelsOnMap(page)).chosen).toEqual([]);
 	});
 });
 
