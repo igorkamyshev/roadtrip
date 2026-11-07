@@ -46,12 +46,16 @@ The port of Protomaps' PMTiles Worker for Cloudflare (`serverless/cloudflare` in
 
 `EngineContainer` in `src/index.ts`, its image `engine/Dockerfile` (the engine server, `engine/server/main.ts`, with the graph and the border table it loads at start):
 
-- `instance_type: "standard-1"`, `max_instances: 1`, `scheduling_policy: "default"`, `sleepAfter` the default 10 min, no internet.
-- It starts the Container itself with `portReadyTimeoutMS` of 120 s, instead of the library's 20 s, because the server opens its port only once the graph is loaded. 120 s is a placeholder: #25 measures the cold start with the world's graph and sets it.
+- `instance_type: "standard-2"` (1 vCPU, 6 GiB), `max_instances: 1`, `scheduling_policy: "default"`, `sleepAfter` the default 10 min, no internet. standard-2, not the spec's standard-1, by the bench of #25 (`docs/container-bench.md`): a 12 h ring from central Europe took 3.4–24 s on standard-1, over the spec's 3 s, and 2.2–3.5 s on standard-2.
+- It starts the Container itself with `instanceGetTimeoutMS` of 30 s and `portReadyTimeoutMS` of 60 s, instead of the library's 8 s and 20 s. With one instance, a start right after the Container stopped waits for Cloudflare to release the old one (up to 27 s in the bench, where 8 s failed), and the server opens its port only once the graph is loaded (0.7–1.6 s after the process's start with Europe's).
 - It tells the server how long a request waited for the start (`x-cold-start-ms`), which comes back in the timings.
 - Cloudflare marks the `default` scheduling policy deprecated in favour of `durable_object`, which is in beta, has no `max_instances` and does not take the `Container` class. The policy cannot change on a deployed application, so moving means a new class and application.
 
 The dataset's version is in `engine/dataset/dataset.json`: the Worker bundles it, and the image copies it next to the graph, so both say the version of the dataset they were built with. The graph (`engine/dataset/graph.graph`) is not in git. For now it is the graph of one region, built by `data`; the deploy (#36) takes the dataset's graph and version from R2 into `engine/dataset/` before `wrangler deploy`.
+
+## The Container bench
+
+`bench/` is the temporary Worker of the Container bench (#25) and its measurements, which `.github/workflows/container-bench.yml` deploys on the Owner's account as `roadtrip-bench-<instance type>`, measures and deletes. `docs/container-bench.md` has the numbers and says how to run it again, say for another instance type or a faster engine.
 
 ## Run it locally
 

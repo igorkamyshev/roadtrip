@@ -12,15 +12,15 @@ import { createTilesHandler, TILES_PREFIX } from './tiles.ts';
 
 /**
  * How long a start may wait for Cloudflare to give the Container an instance (the library's default is 8 s). With
- * `max_instances: 1`, a start right after the Container stopped waits until the old instance is released: 5–27 s in
- * the bench of #25 (docs/container-bench.md), and it failed after the default 8 s.
+ * `max_instances: 1`, a start right after the Container stopped waits until the old instance is released: up to
+ * 27 s in the bench of #25 (docs/container-bench.md), where 2 starts of 12 failed after the default 8 s.
  */
 const INSTANCE_GET_TIMEOUT_MS = 30_000;
 
 /**
- * How long a start may take in all, to the open port (the library's default is 20 s): the instance above, then the
- * engine server, which opens its port once the graph is loaded. Europe's graph took 0.8–1.6 s from the process's
- * start to the open port, and the slowest whole start 27 s (#25, docs/container-bench.md).
+ * How long a start may take in all, to the open port (the library's default is 20 s): the tries for an instance
+ * above count here too, then the engine server opens its port once the graph is loaded. With Europe's graph that
+ * took 0.7–1.6 s from the process's start, and the slowest whole start 27 s (#25, docs/container-bench.md).
  */
 const PORT_READY_TIMEOUT_MS = 60_000;
 

@@ -27,8 +27,10 @@
 			"image": "../engine/Dockerfile",
 			// The image copies rules/ and engine/ from the repository's root.
 			"image_build_context": "..",
-			// ½ vCPU, 4 GiB, 8 GB: the world's graph (~0.7 GB) in memory (ADR 0001). Explicit: the default is lite.
-			"instance_type": "standard-1",
+			// 1 vCPU, 6 GiB, 12 GB: spec «Движок»'s first step when a 12 h ring takes over 3 s. The bench of #25
+			// (docs/container-bench.md) took one from central Europe 3.4–24 s on standard-1 and 2.2–3.5 s here.
+			// Explicit: the default is lite.
+			"instance_type": "standard-2",
 			// One Container for everyone: the ceiling on what calculations cost (#15). Rings queue in it.
 			"max_instances": 1,
 			// The only policy with max_instances and the Container class. Cloudflare marks it deprecated in favour
