@@ -59,7 +59,7 @@ export interface BorderCrossing extends Checked {
 	/** Where the road crosses the border line, in degrees. */
 	readonly lat: number;
 	readonly lon: number;
-	/** The OSM element at the crossing: its `barrier=border_control` node, or else the road, as `node/123`. */
+	/** The OSM element at the crossing, usually the road where it crosses the border: `way/123` or `node/123`. */
 	readonly osm?: string;
 	readonly status: CrossingStatus;
 }
