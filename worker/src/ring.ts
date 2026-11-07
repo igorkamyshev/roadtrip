@@ -1,6 +1,7 @@
 // GET /api/ring (spec «API кольца», «Кэш колец»): the ring from the ring cache in KV, or calculated by the engine
 // in the Container. Side effects come through `deps`, built at the entry (index.ts).
 import type { LogContext, Logger } from 'error-tracking/logger';
+import { utcDate, type VisaExemption } from 'rules';
 import { type Calculation, type CalculationFailure, CALCULATION_PATH, type CalculationRequest, type RingOutcome } from 'engine/protocol';
 import { reduceVisaRules, withStartCountry } from './access.ts';
 import type { RingError, RingResponse } from './api.ts';
@@ -23,6 +24,8 @@ export interface RingDeps {
 	readonly rings: RingCache;
 	/** Sherpa's copies, by citizenship (visa-rules.ts). */
 	readonly visaRules: VisaRulesStore;
+	/** The visa exemptions' table: rules' `VISA_EXEMPTIONS`, which deploys with the Worker. */
+	readonly visaExemptions: readonly VisaExemption[];
 	readonly container: Container;
 	/** The version of the dataset the Worker was deployed with (engine/dataset/dataset.json). */
 	readonly datasetVersion: string;
@@ -53,11 +56,14 @@ export async function handleRing(request: Request, deps: RingDeps): Promise<Resp
 	if ('missing' in rules) {
 		return json(200, { outcome: 'visa_rules_missing', missingCitizenship: rules.missing } satisfies RingResponse);
 	}
-	// Step 3: their reduction, with the held visas (#31), into the entry modes and the closed countries.
+	// Step 3: their reduction with the held visas and the exemptions' rows acting today, into the entry modes and the
+	// closed countries.
 	const { access, closed } = reduceVisaRules({
 		citizenships: query.citizenships,
 		sherpa: new Map([...rules.copies].map(([citizenship, copy]) => [citizenship, copy.classes])),
 		heldVisas: query.visas,
+		exemptions: deps.visaExemptions,
+		today: utcDate(deps.now()),
 	});
 	const visaRulesLoadedAt = [...rules.copies.values()].map((copy) => copy.loadedAt).sort()[0];
 	// What the answer adds to the engine's outcome, the start country open in `access` (step 7).

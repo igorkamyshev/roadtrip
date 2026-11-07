@@ -6,7 +6,7 @@
 import { computeRing, dataVersion } from 'engine';
 import type { Graph } from 'engine/graph';
 import { createEngineServer } from 'engine/server';
-import { borderTable, COUNTRIES } from 'rules';
+import { borderTable, COUNTRIES, VISA_EXEMPTIONS, type VisaExemption } from 'rules';
 import { type Container, handleRing, type RingDeps } from '../src/ring.ts';
 
 export const DATASET = '2026-11-01';
@@ -190,7 +190,7 @@ export const SHERPA_API_KEY = 'sherpa-test-key';
 
 /**
  * The handler with its deps: a ring cache, a visa rules' store and a Sherpa of its own unless given ones, all on
- * `clock`. `get` sends GET /api/ring with `query` and waits for the handler's background work too; `request` does
+ * `clock`, and the shipped visa exemptions' table unless given rows. `get` sends GET /api/ring with `query` and waits for the handler's background work too; `request` does
  * not, and `settle` waits for it later.
  */
 export function api({
@@ -200,6 +200,7 @@ export function api({
 	rings = new MemoryKv(clock),
 	visaRules = new MemoryKv(clock),
 	sherpa = new SherpaDouble(),
+	visaExemptions = VISA_EXEMPTIONS,
 }: {
 	container: Container;
 	datasetVersion?: string;
@@ -207,12 +208,14 @@ export function api({
 	rings?: MemoryKv;
 	visaRules?: MemoryKv;
 	sherpa?: SherpaDouble;
+	visaExemptions?: readonly VisaExemption[];
 }) {
 	const errors: unknown[][] = [];
 	const background: Promise<unknown>[] = [];
 	const deps: RingDeps = {
 		rings,
 		visaRules,
+		visaExemptions,
 		container,
 		datasetVersion,
 		fetch: sherpa.fetch,

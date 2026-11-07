@@ -6,6 +6,7 @@ import { Container, getContainer } from '@cloudflare/containers';
 import dataset from 'engine/dataset';
 import { COLD_START_HEADER } from 'engine/protocol';
 import { logger } from 'error-tracking/logger';
+import { VISA_EXEMPTIONS } from 'rules';
 import { RING_PATH } from './api.ts';
 import { handleRing } from './ring.ts';
 import { createTilesHandler, TILES_PREFIX } from './tiles.ts';
@@ -64,6 +65,7 @@ export default {
 					get: (key) => env.VISA_RULES.get(key, 'text'),
 					put: (key, value, options) => env.VISA_RULES.put(key, value, options),
 				},
+				visaExemptions: VISA_EXEMPTIONS,
 				container: getContainer(env.ENGINE),
 				datasetVersion: dataset.version,
 				fetch: (sherpaRequest) => fetch(sherpaRequest),

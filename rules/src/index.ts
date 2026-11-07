@@ -6,11 +6,12 @@
  */
 export { borderTable } from './border-table.ts';
 export { borderTableProblems } from './check.ts';
-// The client imports these by their own paths (`rules/countries`, `rules/passports`, `rules/schengen`), without the
-// border table.
+// The client imports these by their own paths (`rules/countries`, `rules/passports`, `rules/schengen`,
+// `rules/held-visas`), without the border table.
 export { COUNTRIES } from './countries.ts';
 export { SHERPA_PASSPORTS } from './passports.ts';
 export { SCHENGEN_AREA } from './schengen.ts';
+export { actingExemptions, EXEMPTION_VISAS, HELD_VISAS, SCHENGEN, utcDate, VISA_EXEMPTIONS } from './held-visas.ts';
 
 /**
  * - `closed`: the border is closed.
@@ -87,4 +88,33 @@ export interface BorderTable {
 	readonly closedTerritories: readonly ClosedTerritory[];
 	/** The Schengen area as the engine sees it: no border delay between two of these, on any road. */
 	readonly schengen: readonly string[];
+}
+
+/** A visa that some countries let its holders in by (#9): Schengen's as a whole, the USA's, the UK's or Canada's. */
+export type ExemptionVisa = 'SCHENGEN' | 'USA' | 'GBR' | 'CAN';
+
+/**
+ * A row of the visa exemptions' table (spec «Визовые правила и сведение»; #9, #11): `country` lets in a person who
+ * holds `visa`, or a residence permit of the same issuer (one held visa, #11), though their citizenship needs a
+ * visa of its own. The reduction opens the country by that visa while the row acts: up to its last day, and for
+ * the citizenships it names. The rows are in `visa-exemptions.ts`, and `visaExemptionsProblems` checks them.
+ */
+export interface VisaExemption extends Checked {
+	/** The country that lets in: alpha-3, outside Schengen and not closed for everyone. */
+	readonly country: string;
+	readonly visa: ExemptionVisa;
+	/** What the row gives: entry without a visa (the entry mode «by a held visa»), or an e-visa. */
+	readonly gives: 'visa_free' | 'evisa';
+	/**
+	 * The last day the row acts, YYYY-MM-DD, against today's date in UTC. After it the row acts no more by itself:
+	 * better to close a country for nothing than to open it for nothing (#11).
+	 */
+	readonly until?: string;
+	/** The citizenships the row is for, alpha-3, sorted; every citizenship when left out. */
+	readonly citizenships?: readonly string[];
+	/**
+	 * The conditions, for people only, in Russian: multiple entries, used before, a residence permit rather than a
+	 * visa. The reduction does not check them and takes the best case.
+	 */
+	readonly conditions: string;
 }

@@ -1,15 +1,15 @@
 // The query of GET /api/ring (api.ts, `RingQuery`) and why a query is not one: the answer 400.
-import { SHERPA_PASSPORTS } from 'rules';
+import { HELD_VISAS, SHERPA_PASSPORTS } from 'rules';
 import type { RingQuery } from './api.ts';
 
 const DEGREES = /^-?\d{1,3}(\.\d+)?$/u;
 const HOURS = /^\d{1,2}$/u;
-const ALPHA_3 = /^[A-Z]{3}$/u;
 const PASSPORTS: ReadonlySet<string> = new Set(SHERPA_PASSPORTS);
+const VISAS: ReadonlySet<string> = new Set(HELD_VISAS);
 
 /**
- * The query, or what is wrong with it. A citizenship is one of Sherpa's passports; the visas are checked by form
- * only, until the held visas (#31).
+ * The query, or what is wrong with it. A citizenship is one of Sherpa's passports; a held visa is `SCHENGEN` or the
+ * country of one of them outside Schengen (rules' `HELD_VISAS`).
  */
 export function parseRingQuery(params: URLSearchParams): RingQuery | { readonly problem: string } {
 	const single = (name: string): string | undefined => {
@@ -30,9 +30,9 @@ export function parseRingQuery(params: URLSearchParams): RingQuery | { readonly 
 	if (citizenships === undefined || citizenships.length === 0) {
 		return { problem: "cit is the citizenships: Sherpa's passports, alpha-3, sorted, comma-separated, at least one" };
 	}
-	const visas = params.has('visas') ? codes(single('visas'), (code) => code === 'SCHENGEN' || ALPHA_3.test(code)) : [];
+	const visas = params.has('visas') ? codes(single('visas'), (code) => VISAS.has(code)) : [];
 	if (visas === undefined) {
-		return { problem: 'visas is the held visas: SCHENGEN and alpha-3, sorted, comma-separated' };
+		return { problem: 'visas is the held visas: SCHENGEN and alpha-3 of countries outside Schengen, sorted, comma-separated' };
 	}
 	return { origin: { lat, lon }, hours, citizenships, visas };
 }
