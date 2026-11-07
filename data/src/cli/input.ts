@@ -1,6 +1,9 @@
-import { createWriteStream, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { spawn } from 'node:child_process';
+import { once } from 'node:events';
+import { createReadStream, createWriteStream, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, join, resolve } from 'node:path';
+import { createInterface } from 'node:readline';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import type { ReadableStream } from 'node:stream/web';
@@ -17,11 +20,47 @@ export function userPath(path: string): string {
 }
 
 /** Runs `use` on a local copy of the file at `pathOrUrl`: the path itself, or a download deleted afterwards. */
-export async function withLocalFile<T>(pathOrUrl: string, use: (path: string) => T): Promise<T> {
+export async function withLocalFile<T>(pathOrUrl: string, use: (path: string) => T): Promise<Awaited<T>> {
+	const copy = await localCopy(pathOrUrl);
+	try {
+		// Awaited here, so that a download outlives an asynchronous `use`.
+		return await use(copy.path);
+	} finally {
+		copy.remove();
+	}
+}
+
+/**
+ * The lines of a text file, a path or a URL: as it is, or `<name>.txt` inside `<name>.zip`, as GeoNames packs its
+ * dumps (`cities1000.zip`, `alternateNamesV2.zip`, `alternatenames/RS.zip`), streamed out of the archive by `unzip`.
+ */
+export async function* fileLines(pathOrUrl: string): AsyncGenerator<string> {
+	const copy = await localCopy(pathOrUrl);
+	const unzip = copy.path.endsWith('.zip')
+		? spawn('unzip', ['-p', copy.path, `${basename(copy.path, '.zip')}.txt`], { stdio: ['ignore', 'pipe', 'inherit'] })
+		: undefined;
+	try {
+		const exited = unzip === undefined ? undefined : once(unzip, 'close');
+		yield* createInterface({ input: unzip?.stdout ?? createReadStream(copy.path), crlfDelay: Infinity });
+		const [code] = (await exited) ?? [0];
+		if (code !== 0) {
+			throw new Error(`unzip ${copy.path}: exit code ${String(code)}`);
+		}
+	} finally {
+		unzip?.kill();
+		copy.remove();
+	}
+}
+
+/** The file at `pathOrUrl` on disk: the path itself, or a download that `remove` deletes. */
+async function localCopy(pathOrUrl: string): Promise<{ path: string; remove: () => void }> {
 	if (!/^https?:\/\//u.test(pathOrUrl)) {
-		return use(userPath(pathOrUrl));
+		return { path: userPath(pathOrUrl), remove: () => {} };
 	}
 	const directory = mkdtempSync(join(tmpdir(), 'roadtrip-'));
+	const remove = () => {
+		rmSync(directory, { recursive: true, force: true });
+	};
 	try {
 		const path = join(directory, basename(new URL(pathOrUrl).pathname));
 		const started = performance.now();
@@ -31,9 +70,10 @@ export async function withLocalFile<T>(pathOrUrl: string, use: (path: string) =>
 		}
 		await pipeline(Readable.fromWeb(response.body as ReadableStream), createWriteStream(path));
 		log(`downloaded ${pathOrUrl} in ${seconds(started)}`);
-		return use(path);
-	} finally {
-		rmSync(directory, { recursive: true, force: true });
+		return { path, remove };
+	} catch (error) {
+		remove();
+		throw error;
 	}
 }
 
