@@ -317,19 +317,23 @@ const SEGMENTS: readonly Midpoints[] = [
  * smallest outer ring around it, then every ring is simplified, and one that simplifies away is dropped.
  */
 function polygons(rings: number[][], grid: Grid): number[][][][] {
-	const outers: { ring: number[]; area: number; holes: number[][] }[] = [];
+	const outers: { ring: number[]; area: number; box: Box; holes: number[][] }[] = [];
 	const holes: number[][] = [];
 	for (const ring of rings) {
 		const area = signedArea(ring);
 		if (area > 0) {
-			outers.push({ ring, area, holes: [] });
+			outers.push({ ring, area, box: boxOf(ring), holes: [] });
 		} else {
 			holes.push(ring);
 		}
 	}
 	outers.sort((one, two) => one.area - two.area);
 	for (const hole of holes) {
-		outers.find((outer) => contains(outer.ring, hole[0], hole[1]))?.holes.push(hole);
+		const [x, y] = hole;
+		// The box first: a ring of the 12 h ring's thousands is the size of the whole ring.
+		outers
+			.find(({ box, ring }) => x >= box.minX && x <= box.maxX && y >= box.minY && y <= box.maxY && contains(ring, x, y))
+			?.holes.push(hole);
 	}
 	const tolerance = (2 * SIMPLIFY_METERS) / grid.cellMeters;
 	const toLonLat = (ring: number[]) => {
@@ -358,6 +362,24 @@ function polygons(rings: number[][], grid: Grid): number[][][][] {
 		result.push(polygon);
 	}
 	return result;
+}
+
+interface Box {
+	readonly minX: number;
+	readonly maxX: number;
+	readonly minY: number;
+	readonly maxY: number;
+}
+
+function boxOf(ring: number[]): Box {
+	let [minX, maxX, minY, maxY] = [Infinity, -Infinity, Infinity, -Infinity];
+	for (let index = 0; index < ring.length; index += 2) {
+		minX = Math.min(minX, ring[index]);
+		maxX = Math.max(maxX, ring[index]);
+		minY = Math.min(minY, ring[index + 1]);
+		maxY = Math.max(maxY, ring[index + 1]);
+	}
+	return { minX, maxX, minY, maxY };
 }
 
 function round(degrees: number): number {
