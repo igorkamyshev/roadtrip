@@ -3,7 +3,7 @@
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import type { Graph } from 'engine/graph';
+import { decodeGraph, encodeGraph, type Graph } from 'engine/graph';
 import { afterAll, describe, expect, it } from 'vitest';
 import { buildGraph } from '../src/build-graph.ts';
 import { openOsm } from '../src/osm/open.ts';
@@ -38,6 +38,27 @@ describe('a PBF extract', () => {
 		writePbf(openOsm(fixturePath(name)), pbf, { locationsOnWays: true });
 
 		expect(buildGraph(openOsm(pbf)).graph).toEqual(fixtureGraph(name));
+	});
+});
+
+describe('a graph file', () => {
+	it('reads back as the graph it was written from', () => {
+		const graph = fixtureGraph('two-countries.osm');
+
+		expect(decodeGraph(encodeGraph(graph))).toEqual(graph);
+	});
+
+	it('reads back from bytes at any offset of a buffer', () => {
+		const graph = fixtureGraph('two-countries.osm');
+		const bytes = encodeGraph(graph);
+		const shifted = new Uint8Array(bytes.length + 3);
+		shifted.set(bytes, 3);
+
+		expect(decodeGraph(shifted.subarray(3))).toEqual(graph);
+	});
+
+	it('refuses bytes that are not a graph file', () => {
+		expect(() => decodeGraph(new TextEncoder().encode('<osm version="0.6"></osm>'))).toThrow('not a roadtrip graph');
 	});
 });
 

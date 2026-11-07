@@ -65,6 +65,111 @@ export interface GraphParts {
 	readonly zoneRings: ZoneRings;
 }
 
+/**
+ * The version of the graph file. Bump it when the arrays or their meaning change, so an engine never reads a
+ * file of another layout.
+ */
+export const GRAPH_FORMAT_VERSION = 1;
+
+const MAGIC = 'RTGRAPH\n';
+
+type ArrayName = 'nodeLat' | 'nodeLon' | 'nodeZone' | 'firstEdge' | 'edgeTarget' | 'edgeSeconds' | 'ringZone' | 'ringStart' | 'ringLat' | 'ringLon';
+
+const ARRAY_TYPES = {
+	nodeLat: Int32Array,
+	nodeLon: Int32Array,
+	nodeZone: Uint8Array,
+	firstEdge: Uint32Array,
+	edgeTarget: Uint32Array,
+	edgeSeconds: Uint16Array,
+	ringZone: Uint8Array,
+	ringStart: Uint32Array,
+	ringLat: Int32Array,
+	ringLon: Int32Array,
+} as const;
+
+interface FileHeader {
+	readonly format: number;
+	readonly zones: readonly string[];
+	/** Where each array starts in the file and how many elements it has. */
+	readonly arrays: Readonly<Record<ArrayName, { readonly offset: number; readonly length: number }>>;
+}
+
+/**
+ * The graph as a file: the magic `RTGRAPH\n`, the byte length of a JSON header (uint32), the header, then each
+ * array as is, 8-byte aligned, so `decodeGraph` takes views of it without a copy. Little-endian, as the typed
+ * arrays of every platform the engine runs on.
+ */
+export function encodeGraph(graph: Graph): Uint8Array {
+	const arrays: Record<ArrayName, Int32Array | Uint32Array | Uint16Array | Uint8Array> = {
+		nodeLat: graph.nodeLat,
+		nodeLon: graph.nodeLon,
+		nodeZone: graph.nodeZone,
+		firstEdge: graph.firstEdge,
+		edgeTarget: graph.edgeTarget,
+		edgeSeconds: graph.edgeSeconds,
+		ringZone: graph.zoneRings.zone,
+		ringStart: graph.zoneRings.start,
+		ringLat: graph.zoneRings.lat,
+		ringLon: graph.zoneRings.lon,
+	};
+	const names = Object.keys(ARRAY_TYPES) as ArrayName[];
+	// The header's length depends on the offsets, which depend on its length: lay the arrays out after a header
+	// slot big enough for any offsets.
+	const draft = (start: number) => {
+		const placed = {} as Record<ArrayName, { offset: number; length: number }>;
+		let offset = start;
+		for (const name of names) {
+			placed[name] = { offset, length: arrays[name].length };
+			offset = align(offset + arrays[name].byteLength);
+		}
+		return { header: { format: GRAPH_FORMAT_VERSION, zones: graph.zones, arrays: placed } satisfies FileHeader, end: offset };
+	};
+	const slot = align(MAGIC.length + 4 + new TextEncoder().encode(JSON.stringify(draft(Number.MAX_SAFE_INTEGER).header)).length);
+	const { header, end } = draft(slot);
+	const bytes = new Uint8Array(end);
+	bytes.set(new TextEncoder().encode(MAGIC));
+	const headerBytes = new TextEncoder().encode(JSON.stringify(header));
+	new DataView(bytes.buffer).setUint32(MAGIC.length, headerBytes.length, true);
+	bytes.set(headerBytes, MAGIC.length + 4);
+	for (const name of names) {
+		const array = arrays[name];
+		bytes.set(new Uint8Array(array.buffer, array.byteOffset, array.byteLength), header.arrays[name].offset);
+	}
+	return bytes;
+}
+
+/** The graph in a file `encodeGraph` wrote. Its arrays are views of `bytes` (of a copy, if `bytes` is misaligned). */
+export function decodeGraph(bytes: Uint8Array): Graph {
+	if (new TextDecoder().decode(bytes.subarray(0, MAGIC.length)) !== MAGIC) {
+		throw new Error('These bytes are not a roadtrip graph file');
+	}
+	const aligned = bytes.byteOffset % 8 === 0 ? bytes : bytes.slice();
+	const headerLength = new DataView(aligned.buffer, aligned.byteOffset).getUint32(MAGIC.length, true);
+	const header = JSON.parse(new TextDecoder().decode(aligned.subarray(MAGIC.length + 4, MAGIC.length + 4 + headerLength))) as FileHeader;
+	if (header.format !== GRAPH_FORMAT_VERSION) {
+		throw new Error(`The graph file has format ${header.format}, this engine reads ${GRAPH_FORMAT_VERSION}`);
+	}
+	const array = <Name extends ArrayName>(name: Name): InstanceType<(typeof ARRAY_TYPES)[Name]> => {
+		const { offset, length } = header.arrays[name];
+		return new ARRAY_TYPES[name](aligned.buffer as ArrayBuffer, aligned.byteOffset + offset, length) as InstanceType<(typeof ARRAY_TYPES)[Name]>;
+	};
+	return {
+		nodeLat: array('nodeLat'),
+		nodeLon: array('nodeLon'),
+		nodeZone: array('nodeZone'),
+		firstEdge: array('firstEdge'),
+		edgeTarget: array('edgeTarget'),
+		edgeSeconds: array('edgeSeconds'),
+		zones: header.zones,
+		zoneRings: { zone: array('ringZone'), start: array('ringStart'), lat: array('ringLat'), lon: array('ringLon') },
+	};
+}
+
+function align(offset: number): number {
+	return Math.ceil(offset / 8) * 8;
+}
+
 /** A graph of `parts`, its edges grouped by the node they leave (in their given order within a node). */
 export function createGraph(parts: GraphParts): Graph {
 	const nodeCount = parts.nodeLat.length;
