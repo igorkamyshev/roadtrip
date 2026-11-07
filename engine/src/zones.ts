@@ -59,6 +59,61 @@ export class ZoneLocator {
 		}
 		return Math.max(0, parity.indexOf(1));
 	}
+
+	/**
+	 * The zone of the centre of each cell of a grid, as `zoneAt` gives it, by scanlines: `rows` rows of `columns`
+	 * cells from the south-west corner (`minLat`, `minLon`), each `cellLat` by `cellLon` (1e-7 degrees), row by
+	 * row from the south.
+	 */
+	zonesOfCells(minLat: number, minLon: number, cellLat: number, cellLon: number, columns: number, rows: number): Uint8Array {
+		const { lat: ringLat, lon: ringLon } = this.#rings;
+		const cells = new Uint8Array(columns * rows);
+		const maxLat = minLat + rows * cellLat;
+		const maxLon = minLon + columns * cellLon;
+		const rings = this.#indexed
+			.filter((ring) => ring.maxLat > minLat && ring.minLat < maxLat && ring.maxLon > minLon && ring.minLon < maxLon)
+			.sort((one, two) => one.zone - two.zone);
+		const crossings: number[] = [];
+		for (let row = 0; row < rows; row++) {
+			const lat = minLat + (row + 0.5) * cellLat;
+			// Zone by zone from the lowest, which wins where zones overlap: a cell keeps the first zone that holds it.
+			for (let first = 0; first < rings.length; ) {
+				const zone = rings[first].zone;
+				crossings.length = 0;
+				let ringIndex = first;
+				for (; ringIndex < rings.length && rings[ringIndex].zone === zone; ringIndex++) {
+					const ring = rings[ringIndex];
+					if (lat < ring.minLat || lat >= ring.maxLat) {
+						continue;
+					}
+					const band = Math.min(ring.bandStart.length - 2, Math.floor((lat - ring.minLat) / ring.bandHeight));
+					for (let slot = ring.bandStart[band]; slot < ring.bandStart[band + 1]; slot++) {
+						const point = ring.bandEdges[slot];
+						const lat1 = ringLat[point];
+						const lat2 = ringLat[point + 1];
+						if (lat1 > lat !== lat2 > lat) {
+							const lon1 = ringLon[point];
+							crossings.push(lon1 + ((ringLon[point + 1] - lon1) * (lat - lat1)) / (lat2 - lat1));
+						}
+					}
+				}
+				first = ringIndex;
+				crossings.sort((one, two) => one - two);
+				// Inside the zone between each odd crossing and the next: an odd number of crossings east of the point.
+				for (let pair = 0; pair + 1 < crossings.length; pair += 2) {
+					const from = Math.max(0, Math.ceil((crossings[pair] - minLon) / cellLon - 0.5));
+					const to = Math.min(columns, Math.ceil((crossings[pair + 1] - minLon) / cellLon - 0.5));
+					for (let column = from; column < to; column++) {
+						const cell = row * columns + column;
+						if (cells[cell] === 0) {
+							cells[cell] = zone;
+						}
+					}
+				}
+			}
+		}
+		return cells;
+	}
 }
 
 function indexRing(rings: ZoneRings, ring: number): IndexedRing {

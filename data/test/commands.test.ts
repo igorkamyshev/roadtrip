@@ -1,5 +1,5 @@
 // The commands as a person runs them: `ring` writes GeoJSON, `build-graph` a graph file `ring` reads.
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -33,5 +33,27 @@ describe('the ring command', () => {
 		const fromGraph = JSON.parse(command('ring', graph, '--lat', '0', '--lon', '0', '--hours', '2'));
 		const fromExtract = JSON.parse(command('ring', fixturePath('straight-road.osm'), '--lat', '0', '--lon', '0', '--hours', '2'));
 		expect(fromGraph.features[0].geometry).toEqual(fromExtract.features[0].geometry);
+	});
+
+	it('takes the closed countries', () => {
+		// Road 3 of borders.osm, from its west end, stops before BBB (the fixture's header).
+		const geojson = JSON.parse(command('ring', fixturePath('borders.osm'), '--lat', '0.3', '--lon', '0.5', '--hours', '12', '--closed', 'BBB'));
+
+		expect(geojson.features[0].properties).toMatchObject({ outcome: 'empty', maxHours: 2, closedCountries: ['BBB'] });
+	});
+});
+
+describe('the build-graph command', () => {
+	const directory = mkdtempSync(join(tmpdir(), 'roadtrip-commands-'));
+	afterAll(() => rmSync(directory, { recursive: true }));
+
+	it('reports the pairs with passport control and no border crossing on their roads', () => {
+		const run = spawnSync(process.execPath, [fileURLToPath(new URL('../src/cli/build-graph.ts', import.meta.url)), fixturePath('chains.osm'), join(directory, 'chains.graph')], {
+			encoding: 'utf8',
+		});
+
+		expect(run.status).toBe(0);
+		expect(run.stderr).toContain('pairs with passport control and no border crossing on their roads');
+		expect(run.stderr).toContain('AAA–BBB (2 edges)');
 	});
 });

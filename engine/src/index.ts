@@ -2,6 +2,7 @@
 // in; the outcome, the ring, maxHours, the start country and the timings out. Portable: no Node APIs, so it
 // can move to a Worker or a browser.
 import type { BorderTable } from 'rules';
+import { closedForEveryone, passage } from './borders.ts';
 import { OFF_ROAD_SECONDS_PER_METER, ringContour } from './contour.ts';
 import { E7 } from './geo.ts';
 import type { Graph } from './graph.ts';
@@ -13,14 +14,33 @@ import { latestArrival, type Seed, traverse, TRAVEL_PER_DRIVING } from './traver
  * The version of the engine's results. It is part of the data version in the ring cache key (spec «Кэш колец»),
  * so bump it by hand whenever the same input would give another result: see engine/AGENTS.md.
  */
-export const ENGINE_VERSION = 1;
+export const ENGINE_VERSION = 2;
+
+/** SHA-256 of the border table as JSON, in hex: any change to the table, a note included, changes it. */
+export async function borderTableHash(table: BorderTable): Promise<string> {
+	const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify(table)));
+	return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('');
+}
+
+/**
+ * The data version of the ring cache key (spec «Кэш колец»): the dataset's version, the first 16 hex digits of the
+ * border table's hash and ENGINE_VERSION, as `2026-11-01.3f2a9c0d1e4b5a67.2`. A change to any of them puts rings
+ * under new keys.
+ */
+export async function dataVersion(dataset: string, table: BorderTable): Promise<string> {
+	return `${dataset}.${(await borderTableHash(table)).slice(0, 16)}.${ENGINE_VERSION}`;
+}
 
 export interface RingRequest {
 	/** The origin in degrees, already rounded by the caller. */
 	readonly origin: { readonly lat: number; readonly lon: number };
 	/** N: the ring holds the places reached in (N − 1, N] hours of travel. */
 	readonly hours: number;
-	/** The closed countries, alpha-3. Not applied yet: the borders ticket (#23) does. */
+	/**
+	 * The closed countries by the visa rules, alpha-3 (spec «Набор закрытых стран»): never entered, transit
+	 * included, but for the start country. Countries and territories closed for everyone are closed by the border
+	 * table, whatever this holds.
+	 */
 	readonly closedCountries: readonly string[];
 }
 
@@ -48,7 +68,9 @@ export type RingResult =
 	/** Nothing is reached after N − 1 hours; `maxHours` is the longest travel time to any road, rounded up. */
 	| (Outcome & { readonly outcome: 'empty'; readonly maxHours: number })
 	/** No road within 50 km of the origin, in the start country. */
-	| (Outcome & { readonly outcome: 'no_roads' });
+	| (Outcome & { readonly outcome: 'no_roads' })
+	/** The start country is closed for everyone, or the origin is in a closed territory: no ring from here. */
+	| (Outcome & { readonly outcome: 'no_ring' });
 
 const locators = new WeakMap<Graph, ZoneLocator>();
 
@@ -61,17 +83,24 @@ function zoneLocator(graph: Graph): ZoneLocator {
 	return locator;
 }
 
-export function computeRing(graph: Graph, _borderTable: BorderTable, request: RingRequest): RingResult {
+export function computeRing(graph: Graph, borderTable: BorderTable, request: RingRequest): RingResult {
 	const started = performance.now();
 	const lat = Math.round(request.origin.lat * E7);
 	const lon = Math.round(request.origin.lon * E7);
 	const originZone = zoneLocator(graph).zoneAt(lat, lon);
+	const closed = closedForEveryone(graph, borderTable);
+	if (closed[originZone]) {
+		return { outcome: 'no_ring', startCountry: zoneCode(graph, originZone), timings: since(started, started) };
+	}
 	// On land the origin snaps to a road of its own zone; at sea, to any road.
 	const snap = snapToRoad(graph, lat, lon, originZone === 0 ? undefined : originZone);
 	if (snap === undefined) {
 		return { outcome: 'no_roads', startCountry: zoneCode(graph, originZone), timings: since(started, started) };
 	}
 	const startZone = originZone !== 0 ? originZone : graph.nodeZone[snap.fraction < 0.5 ? snap.a : snap.b];
+	if (closed[startZone]) {
+		return { outcome: 'no_ring', startCountry: zoneCode(graph, startZone), timings: since(started, started) };
+	}
 
 	// The origin reaches the road in a straight line at 30 km/h of driving.
 	const accessSeconds = snap.meters * OFF_ROAD_SECONDS_PER_METER;
@@ -85,7 +114,8 @@ export function computeRing(graph: Graph, _borderTable: BorderTable, request: Ri
 	if (back !== undefined) {
 		seeds.push({ node: snap.a, seconds: accessSeconds + snap.fraction * back });
 	}
-	const traversal = traverse(graph, seeds, request.hours * 3600);
+	const allowed = passage(graph, borderTable, request.closedCountries, startZone);
+	const traversal = traverse(graph, allowed, seeds, request.hours * 3600);
 	const traversed = performance.now();
 	const startCountry = zoneCode(graph, startZone);
 
@@ -97,6 +127,8 @@ export function computeRing(graph: Graph, _borderTable: BorderTable, request: Ri
 	}
 	const ring = ringContour(
 		graph,
+		allowed,
+		zoneLocator(graph),
 		{ seconds: traversal.seconds, snap, accessSeconds, forwardSeconds: forward, backSeconds: back },
 		(request.hours - 1) * 3600,
 		request.hours * 3600,

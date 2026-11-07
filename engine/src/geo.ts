@@ -15,6 +15,18 @@ export function haversineMeters(lat1: number, lon1: number, lat2: number, lon2: 
 	return 2 * EARTH_RADIUS_M * Math.asin(Math.min(1, Math.sqrt(a)));
 }
 
+/** Distance from a point to the segment between two others, all in 1e-7 degrees, in metres; for short ones. */
+export function segmentMeters(lat: number, lon: number, lat1: number, lon1: number, lat2: number, lon2: number): number {
+	const projection = new LocalProjection(lat, lon);
+	const ax = projection.x(lon1);
+	const ay = projection.y(lat1);
+	const dx = projection.x(lon2) - ax;
+	const dy = projection.y(lat2) - ay;
+	const lengthSquared = dx * dx + dy * dy;
+	const fraction = lengthSquared === 0 ? 0 : Math.min(1, Math.max(0, -(ax * dx + ay * dy) / lengthSquared));
+	return Math.hypot(ax + fraction * dx, ay + fraction * dy);
+}
+
 /**
  * A flat projection in metres around a point, for distances of up to a few hundred kilometres: x east, y north.
  * Takes and gives coordinates in 1e-7 degrees.

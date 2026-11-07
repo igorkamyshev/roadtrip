@@ -51,6 +51,16 @@ export function loadGraph(path: string): { graph: Graph; report?: BuildReport } 
 			`zones ${report.zones.join(', ') || 'none'}` +
 			(report.incompleteZones.length > 0 ? `; left out, as the extract holds only part of them: ${report.incompleteZones.join(', ')}` : ''),
 	);
+	const { pairsWithoutCrossings, crossingsNotFound } = report.borders;
+	if (pairsWithoutCrossings.length > 0) {
+		log(
+			'pairs with passport control and no border crossing on their roads (add their crossings to the border table): ' +
+				pairsWithoutCrossings.map(({ pair, edges }) => `${pair} (${edges} edges)`).join(', '),
+		);
+	}
+	if (crossingsNotFound.length > 0) {
+		log(`open crossings of the border table near no road across their border: ${crossingsNotFound.join(', ')}`);
+	}
 	return { graph, report };
 }
 
