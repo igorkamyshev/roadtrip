@@ -64,8 +64,12 @@ export function buildGraph(source: OsmSource, borderTable: BorderTable = shipped
 			}
 		},
 	});
-	const coordinates = (way: OsmWay, index: number): [number, number] | undefined =>
-		way.locations === undefined ? boundaryNodes.coordinates(boundaryNodes.ids.get(way.refs[index])) : [way.locations.lat[index], way.locations.lon[index]];
+	const coordinates = (way: OsmWay, index: number): [number, number] | undefined => {
+		if (way.locations === undefined) {
+			return boundaryNodes.coordinates(boundaryNodes.ids.get(way.refs[index]));
+		}
+		return Number.isNaN(way.locations.lat[index]) ? undefined : [way.locations.lat[index], way.locations.lon[index]];
+	};
 
 	// Zones: the relations whose whole boundary the extract holds.
 	const ringsByZone = new Map<string, NonNullable<ReturnType<typeof joinRings>>>();
@@ -180,7 +184,7 @@ class RoadWays {
 		for (let index = 0; index < way.refs.length; index++) {
 			const number = nodes.add(way.refs[index]);
 			this.#nodes.push(number);
-			if (way.locations !== undefined) {
+			if (way.locations !== undefined && !Number.isNaN(way.locations.lat[index])) {
 				nodes.locate(number, way.locations.lat[index], way.locations.lon[index]);
 			}
 		}

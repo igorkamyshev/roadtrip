@@ -6,10 +6,16 @@ import { PbfWriter } from 'pbf';
 import type { OsmNode, OsmRelation, OsmSource, OsmWay, Tags } from '../src/osm/source.ts';
 
 const MEMBER_TYPES = { node: 0, way: 1, relation: 2 } as const;
+/**
+ * What `osmium add-locations-to-ways --ignore-missing-nodes` writes for a node the file lacks: libosmium's
+ * undefined coordinate, INT32_MAX, as both latitude and longitude.
+ */
+const UNDEFINED_COORDINATE = 2_147_483_647;
 
 export interface PbfOptions {
 	/**
-	 * Write the coordinates on the ways and leave out the untagged nodes, as `osmium add-locations-to-ways` does.
+	 * Write the coordinates on the ways and leave out the untagged nodes, as `osmium add-locations-to-ways` does,
+	 * with `--ignore-missing-nodes` for a node the source lacks.
 	 */
 	readonly locationsOnWays: boolean;
 }
@@ -60,8 +66,8 @@ export function writePbf(source: OsmSource, path: string, options: PbfOptions): 
 				writeTags(way.tags, pbf);
 				pbf.writePackedSVarint(8, deltas(way.refs));
 				if (options.locationsOnWays) {
-					pbf.writePackedSVarint(9, deltas(way.refs.map((ref) => coordinates.get(ref)!.lat)));
-					pbf.writePackedSVarint(10, deltas(way.refs.map((ref) => coordinates.get(ref)!.lon)));
+					pbf.writePackedSVarint(9, deltas(way.refs.map((ref) => coordinates.get(ref)?.lat ?? UNDEFINED_COORDINATE)));
+					pbf.writePackedSVarint(10, deltas(way.refs.map((ref) => coordinates.get(ref)?.lon ?? UNDEFINED_COORDINATE)));
 				}
 			}, null);
 		}

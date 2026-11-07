@@ -16,7 +16,7 @@ export interface OsmWay {
 	readonly tags: Tags;
 	/**
 	 * The coordinates of `refs`, when the file carries them on its ways (`osmium add-locations-to-ways`, which
-	 * also drops the untagged nodes).
+	 * also drops the untagged nodes). NaN for a node the file lacks (`--ignore-missing-nodes`).
 	 */
 	readonly locations?: { readonly lat: readonly number[]; readonly lon: readonly number[] };
 }

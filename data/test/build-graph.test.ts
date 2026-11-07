@@ -31,7 +31,7 @@ describe('a PBF extract', () => {
 	const directory = mkdtempSync(join(tmpdir(), 'roadtrip-pbf-'));
 	afterAll(() => rmSync(directory, { recursive: true }));
 
-	it.each(['straight-road.osm', 'two-countries.osm', 'roads.osm', 'chains.osm', 'borders.osm', 'closed-territory.osm', 'zones.osm'])(
+	it.each(['straight-road.osm', 'two-countries.osm', 'roads.osm', 'chains.osm', 'borders.osm', 'closed-territory.osm', 'zones.osm', 'edge-of-extract.osm'])(
 		'gives the graph its OSM XML gives: %s',
 		(name) => {
 			const pbf = join(directory, `${name}.pbf`);
@@ -41,7 +41,7 @@ describe('a PBF extract', () => {
 		},
 	);
 
-	it.each(['straight-road.osm', 'two-countries.osm', 'borders.osm'])('with the locations on its ways and no untagged nodes gives the same graph: %s', (name) => {
+	it.each(['straight-road.osm', 'two-countries.osm', 'borders.osm', 'edge-of-extract.osm'])('with the locations on its ways and no untagged nodes gives the same graph: %s', (name) => {
 		const pbf = join(directory, `${name}.locations.pbf`);
 		writePbf(openOsm(fixturePath(name)), pbf, { locationsOnWays: true });
 
@@ -91,6 +91,21 @@ describe('the graph', () => {
 				.flatMap(([one, two]) => [`${one} → ${two}`, `${two} → ${one}`])
 				.sort(),
 		);
+	});
+
+	it('leaves out the segments to a node the extract lacks, and the zone whose boundary it holds only in part', () => {
+		const { graph, report } = buildGraph(openOsm(fixturePath('edge-of-extract.osm')));
+
+		expect(edges(graph)).toEqual(
+			[
+				['0,0.2 AAA', '0,0.4 AAA'],
+				['0,0.8 AAA', '0,1.2 '],
+			]
+				.flatMap(([one, two]) => [`${one} → ${two}`, `${two} → ${one}`])
+				.sort(),
+		);
+		expect([...graph.edgeSeconds].sort()).toEqual([1334, 1334, 2669, 2669]);
+		expect(report.incompleteZones).toEqual(['BBB']);
 	});
 
 	it('marks the edges across a border that pass a barrier=border_control', () => {
