@@ -136,9 +136,12 @@ export function Screen() {
 	};
 	const pickCity = (city: City) => {
 		setSheet(undefined);
-		setChosen(city.id);
-		map.current?.goTo(city, PICKED_CITY_ZOOM);
-		scrollToCard(carousel.current, city.id);
+		// A city with a card is chosen when the carousel stops at it, which moves the map; another one here, and the
+		// map comes close to it.
+		if (city.id === chosen || !scrollToCard(carousel.current, city.id)) {
+			setChosen(city.id);
+			map.current?.goTo(city, PICKED_CITY_ZOOM);
+		}
 	};
 	const mapCities = useMemo(() => citiesOnMap(shownCities ?? [], chosen), [shownCities, chosen]);
 	const closed = answer === undefined ? [] : Object.keys(answer.access).filter((code) => answer.access[code].mode === 'closed');

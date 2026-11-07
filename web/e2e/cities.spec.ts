@@ -252,6 +252,16 @@ test.describe('the carousel and the map', () => {
 		await expect(chosenCard(page)).toHaveCount(0);
 	});
 
+	test('a city picked in the list of all that has a card is chosen in the carousel', async ({ page }) => {
+		await page.getByRole('button', { name: /и ещё/u }).click();
+
+		await page.getByRole('dialog').getByTestId('city-row').filter({ hasText: 'Тузла' }).click();
+
+		await expect(chosenCard(page).locator('h3')).toHaveText('Тузла');
+		await expect(chosenCard(page)).toBeInViewport({ ratio: 0.9 });
+		await expect.poll(() => distanceFromTheMiddle(page, { lat: 44.538, lon: 18.667 })).toBeLessThan(25);
+	});
+
 	test('a new ring chooses no city and shows the carousel from its start', async ({ page }) => {
 		await scrollTo(page, 'Суботица');
 		await expect(chosenCard(page).locator('h3')).toHaveText('Суботица');
