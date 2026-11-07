@@ -103,6 +103,22 @@ describe('the roads of the graph', () => {
 	});
 });
 
+describe('a calculation', () => {
+	it('gives the same result for the same input, on a graph built again from the same file', () => {
+		const { timings: _first, ...first } = computeRing(twoCountries, borderTable, request(0.5, 0.97, 2));
+		const { timings: _second, ...second } = computeRing(fixtureGraph('two-countries.osm'), borderTable, request(0.5, 0.97, 2));
+
+		expect(second).toEqual(first);
+	});
+
+	it('times the traversal and the contour', () => {
+		expect(computeRing(straightRoad, borderTable, request(0, 0, 2)).timings).toEqual({
+			traversalMs: expect.any(Number),
+			contourMs: expect.any(Number),
+		});
+	});
+});
+
 describe('a ring past the end of the roads', () => {
 	it('is empty, with the longest travel time rounded up: driving time × 1.2', () => {
 		// The whole road: 3.71 h at the wheel, 4.45 h of travel.

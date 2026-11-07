@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Chains of degree-2 nodes. AAA from 0° to 1°E and BBB from 1°E to 2°E, both from 1°S to 1°N; four secondary
+  roads along the equator and one off it:
+
+    way 1: 1 (0.1°E) – 2 (0.2°E) – 3 (0.3°E)
+    way 2: 3 – 4 (0.4°E) – 5 (0.5°E)                           joined to way 1 end to end at 3
+    way 3: 4 – 6 (0.1°N, 0.4°E)                                branches off at 4
+    way 4: 5 – 7 (0.8°E) – 8 (0.95°E) – 9 (1.05°E) – 10 (1.2°E) – 11 (1.5°E)    crosses the border between 8 and 9
+
+  Nodes 2, 3, 5, 7 and 10 have degree 2 and no neighbour in another zone, so the graph keeps 1, 4, 6, 8, 9 and
+  11, and its edges, both ways, are 1–4, 4–6, 4–8, 8–9 and 9–11. The edge across the border is 8–9.
+-->
+<osm version="0.6" generator="hand">
+	<node id="1" lat="0" lon="0.1"/>
+	<node id="2" lat="0" lon="0.2"/>
+	<node id="3" lat="0" lon="0.3"/>
+	<node id="4" lat="0" lon="0.4"/>
+	<node id="5" lat="0" lon="0.5"/>
+	<node id="6" lat="0.1" lon="0.4"/>
+	<node id="7" lat="0" lon="0.8"/>
+	<node id="8" lat="0" lon="0.95"/>
+	<node id="9" lat="0" lon="1.05"/>
+	<node id="10" lat="0" lon="1.2"/>
+	<node id="11" lat="0" lon="1.5"/>
+
+	<way id="1">
+		<nd ref="1"/><nd ref="2"/><nd ref="3"/>
+		<tag k="highway" v="secondary"/>
+	</way>
+	<way id="2">
+		<nd ref="3"/><nd ref="4"/><nd ref="5"/>
+		<tag k="highway" v="secondary"/>
+	</way>
+	<way id="3">
+		<nd ref="4"/><nd ref="6"/>
+		<tag k="highway" v="secondary"/>
+	</way>
+	<way id="4">
+		<nd ref="5"/><nd ref="7"/><nd ref="8"/><nd ref="9"/><nd ref="10"/><nd ref="11"/>
+		<tag k="highway" v="secondary"/>
+	</way>
+
+	<node id="201" lat="-1" lon="1"/>
+	<node id="202" lat="1" lon="1"/>
+	<node id="211" lat="-1" lon="0"/>
+	<node id="212" lat="1" lon="0"/>
+	<node id="221" lat="1" lon="2"/>
+	<node id="222" lat="-1" lon="2"/>
+	<way id="200">
+		<nd ref="201"/><nd ref="202"/>
+	</way>
+	<way id="210">
+		<nd ref="202"/><nd ref="212"/><nd ref="211"/><nd ref="201"/>
+	</way>
+	<way id="220">
+		<nd ref="202"/><nd ref="221"/><nd ref="222"/><nd ref="201"/>
+	</way>
+	<relation id="1000">
+		<member type="way" ref="200" role="outer"/>
+		<member type="way" ref="210" role="outer"/>
+		<tag k="type" v="boundary"/>
+		<tag k="boundary" v="administrative"/>
+		<tag k="admin_level" v="2"/>
+		<tag k="ISO3166-1:alpha3" v="AAA"/>
+	</relation>
+	<relation id="2000">
+		<member type="way" ref="200" role="outer"/>
+		<member type="way" ref="220" role="outer"/>
+		<tag k="type" v="boundary"/>
+		<tag k="boundary" v="administrative"/>
+		<tag k="admin_level" v="2"/>
+		<tag k="ISO3166-1:alpha3" v="BBB"/>
+	</relation>
+</osm>
