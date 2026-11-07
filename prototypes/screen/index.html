@@ -1,0 +1,943 @@
+<title>Прототип экрана Roadtrip</title>
+<!--
+  ПРОТОТИП, выбросить после решения. Тикет «Экран на телефоне: карта, кольцо, ползунок, города и настройки».
+  Три разных варианта единственного экрана, переключаются стрелками в чёрной панели снизу (или #a, #b, #c в адресе).
+  Там же переключатель состояний: нет геолокации, расчёт идёт, ошибка, лимит исчерпан, нет городов.
+  Данные ненастоящие: кольца считает игрушечный обход сетки 0,2° (скорость по прямой со случайным шумом,
+  ×1,2, +1,5 ч на границе вне Шенгена), визовые правила примерные. Города настоящие: GeoNames от 15 000 жителей.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700&family=Unbounded:wght@500;700&display=swap">
+<style>
+/* Layout: one phone screen, map fills it; each variant owns its layout. The black dev bar is prototype chrome, not design. */
+:root {
+  --bg: #eef1ef; --surface: #ffffff; --surface-2: #f3f6f4; --fg: #16201d; --muted: #5d6a66; --line: #dbe2df;
+  --land: #e8ebe5; --land-closed: #dcdfd8; --hatch: #b9c0bb; --sea: #c3d7de; --borderline: #9fa9a4; --label: #75817c;
+  --ring: #1b5fd6; --ring-fill: rgba(27, 95, 214, .24); --start: #e2412c; --city: #0e2a5a; --halo: #f4f6f2;
+  --evisa: #7f4b00; --evisa-bg: #ffecc7; --held: #54309e; --held-bg: #ebe3fb; --warn: #6e4a00; --warn-bg: #fff4dc;
+  --err: #b42d25; --err-bg: #fde7e4; --ok: #1d6f47;
+  --shadow: 0 2px 10px rgba(16, 30, 26, .14), 0 1px 2px rgba(16, 30, 26, .10);
+  --font: "Golos Text", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --display: "Unbounded", "Golos Text", system-ui, sans-serif;
+  --dev: #0b0b0c; --dev-fg: #f2f2f2; --dev-dim: #9a9a9a; --dev-accent: #ffd400;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0f1413; --surface: #19201f; --surface-2: #212a28; --fg: #e6edea; --muted: #98a6a1; --line: #2c3634;
+  --land: #222a28; --land-closed: #1b2120; --hatch: #36403d; --sea: #0e1a1f; --borderline: #4b5853; --label: #7f8d88;
+  --ring: #6aa3ff; --ring-fill: rgba(106, 163, 255, .24); --start: #ff6a52; --city: #d6e4ff; --halo: #1c2321;
+  --evisa: #ffcf7d; --evisa-bg: #3a2b0e; --held: #cbb3ff; --held-bg: #2c2444; --warn: #ffcf7d; --warn-bg: #2c2410;
+  --err: #ff8f85; --err-bg: #3b1915; --ok: #6fd3a0; --shadow: 0 2px 14px rgba(0, 0, 0, .55); color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #0f1413; --surface: #19201f; --surface-2: #212a28; --fg: #e6edea; --muted: #98a6a1; --line: #2c3634;
+  --land: #222a28; --land-closed: #1b2120; --hatch: #36403d; --sea: #0e1a1f; --borderline: #4b5853; --label: #7f8d88;
+  --ring: #6aa3ff; --ring-fill: rgba(106, 163, 255, .24); --start: #ff6a52; --city: #d6e4ff; --halo: #1c2321;
+  --evisa: #ffcf7d; --evisa-bg: #3a2b0e; --held: #cbb3ff; --held-bg: #2c2444; --warn: #ffcf7d; --warn-bg: #2c2410;
+  --err: #ff8f85; --err-bg: #3b1915; --ok: #6fd3a0; --shadow: 0 2px 14px rgba(0, 0, 0, .55); color-scheme: dark; }
+
+html, body { height: 100%; }
+body { margin: 0; background: var(--bg); color: var(--fg); font: 15px/1.4 var(--font); overflow: hidden; -webkit-tap-highlight-color: transparent; }
+#root { height: 100%; }
+button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+input, select { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+.stage { height: 100%; display: flex; flex-direction: column; }
+.phone { position: relative; flex: 1; min-height: 0; overflow: hidden; background: var(--bg); }
+@media (min-width: 720px) {
+  .stage { align-items: center; justify-content: center; gap: 12px; padding-block: 16px; box-sizing: border-box; }
+  .phone { flex: none; width: 390px; height: min(844px, calc(100% - 96px)); border-radius: 30px; border: 1px solid var(--line); box-shadow: 0 20px 60px rgba(0, 0, 0, .18); }
+  .dev { width: 390px; border-radius: 16px; }
+}
+
+/* ---------- dev bar (prototype chrome) ---------- */
+.dev { flex: none; background: var(--dev); color: var(--dev-fg); padding: 6px 10px; font-size: 13px; box-sizing: border-box; }
+.dev-row { display: flex; align-items: center; gap: 6px; }
+.dev-arrow { width: 34px; height: 34px; border-radius: 10px; background: #222; font-size: 18px; flex: none; }
+.dev-label { flex: 1; min-width: 0; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dev-label b { color: var(--dev-accent); text-transform: uppercase; margin-right: 4px; }
+.dev select { background: #222; border: 0; border-radius: 10px; color: var(--dev-fg); height: 34px; padding: 0 6px; max-width: 46%; }
+.dev-state { color: var(--dev-dim); font-size: 11px; margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: center; }
+
+/* ---------- map ---------- */
+.map { position: absolute; inset: 0; touch-action: none; user-select: none; -webkit-user-select: none; overflow: hidden; background: var(--sea); }
+.map svg { display: block; width: 100%; height: 100%; }
+.m-land { fill: var(--land); stroke: var(--borderline); }
+.m-closed { fill: url(#hatch); }
+.m-hatch-bg { fill: var(--land-closed); }
+.m-hatch-line { stroke: var(--hatch); }
+.m-clabel { fill: var(--label); font-family: var(--font); font-weight: 600; letter-spacing: .08em; pointer-events: none; }
+.ring { fill: var(--ring-fill); stroke: var(--ring); fill-rule: evenodd; }
+.ring-dim { opacity: .45; stroke-dasharray: 4 4; animation: dash 1s linear infinite; }
+.ring-stripes { fill: url(#stripes); stroke-dasharray: 3 5; }
+@keyframes dash { to { stroke-dashoffset: -16; } }
+.m-stripe { fill: var(--ring); opacity: .35; }
+.m-city { fill: var(--city); stroke: var(--halo); }
+.m-city-hl { fill: var(--start); stroke: var(--halo); }
+.m-clab { fill: var(--city); stroke: var(--halo); paint-order: stroke; stroke-linejoin: round; font-family: var(--font); font-weight: 600; pointer-events: none; }
+.m-start { fill: var(--start); stroke: #fff; }
+.m-pulse { fill: none; stroke: var(--ring); }
+.crosshair { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -100%); color: var(--start); pointer-events: none; filter: drop-shadow(0 2px 2px rgba(0,0,0,.3)); }
+.crosshair svg { width: 40px; height: 40px; fill: var(--start); stroke: #fff; }
+.ripple { position: absolute; width: 60px; height: 60px; margin: -30px 0 0 -30px; border-radius: 50%; border: 2px solid var(--start); pointer-events: none; animation: ripple .5s ease-out forwards; }
+@keyframes ripple { from { transform: scale(.2); opacity: 1; } to { transform: scale(1); opacity: 0; } }
+
+/* ---------- shared bits ---------- */
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 40px; padding: 0 14px; border-radius: 12px; background: var(--surface-2); font-weight: 500; text-decoration: none; color: var(--fg); white-space: nowrap; }
+.btn.primary { background: var(--ring); color: #fff; }
+:root[data-theme="dark"] .btn.primary { color: #0b1630; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .btn.primary { color: #0b1630; } }
+.btn svg { width: 18px; height: 18px; }
+.muted { color: var(--muted); }
+.small { font-size: 13px; }
+.badge { display: inline-block; font-size: 12px; font-weight: 500; line-height: 1; padding: 4px 7px; border-radius: 6px; white-space: nowrap; }
+.b-evisa { background: var(--evisa-bg); color: var(--evisa); }
+.b-held { background: var(--held-bg); color: var(--held); }
+.b-plain { background: var(--surface-2); color: var(--muted); }
+.note { display: flex; gap: 8px; align-items: flex-start; padding: 10px 12px; border-radius: 12px; background: var(--warn-bg); color: var(--warn); font-size: 13px; }
+.note svg { flex: none; width: 18px; height: 18px; margin-top: 1px; }
+.card-msg { padding: 14px; border-radius: 14px; background: var(--surface-2); display: grid; gap: 10px; }
+.card-msg.err { background: var(--err-bg); color: var(--err); }
+.card-msg h4 { margin: 0; font-size: 15px; }
+.card-msg p { margin: 0; font-size: 14px; color: var(--muted); }
+.card-msg.err p { color: inherit; opacity: .85; }
+.bar { height: 3px; background: var(--line); overflow: hidden; border-radius: 2px; }
+.bar i { display: block; height: 100%; width: 35%; background: var(--ring); animation: bar 1.1s ease-in-out infinite; }
+@keyframes bar { from { transform: translateX(-100%); } to { transform: translateX(300%); } }
+.skel { height: 44px; border-radius: 10px; background: linear-gradient(90deg, var(--surface-2), var(--line), var(--surface-2)); background-size: 200% 100%; animation: skel 1.2s linear infinite; }
+@keyframes skel { to { background-position: -200% 0; } }
+.toast { position: absolute; left: 50%; transform: translateX(-50%); background: var(--fg); color: var(--bg); padding: 9px 14px; border-radius: 12px; font-size: 14px; white-space: nowrap; z-index: 40; box-shadow: var(--shadow); display: flex; gap: 12px; align-items: center; }
+.toast button { color: var(--ring); font-weight: 600; filter: brightness(1.4); }
+.spin { display: inline-block; width: 12px; height: 12px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: spin .7s linear infinite; vertical-align: -1px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.row { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--line); text-align: left; width: 100%; }
+.row-main { flex: 1; min-width: 0; }
+.row-name { font-weight: 600; }
+.row-alt { font-weight: 400; color: var(--muted); font-size: 13px; margin-left: 6px; }
+.row-sub { font-size: 13px; color: var(--muted); }
+.search-in { display: flex; align-items: center; gap: 8px; height: 44px; padding: 0 12px; border-radius: 12px; background: var(--surface-2); }
+.search-in input { flex: 1; min-width: 0; border: 0; background: none; outline: none; font-size: 16px; }
+.pick { display: grid; }
+.pick-item { display: flex; align-items: center; gap: 10px; padding: 11px 2px; border-bottom: 1px solid var(--line); text-align: left; }
+.pick-box { width: 22px; height: 22px; border-radius: 6px; border: 2px solid var(--borderline); display: grid; place-items: center; flex: none; }
+.pick-item.on .pick-box { background: var(--ring); border-color: var(--ring); color: #fff; }
+.pick-box svg { width: 14px; height: 14px; }
+.pick-sub { font-size: 12px; color: var(--muted); }
+.pick-sep { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; padding: 14px 2px 4px; }
+.scrim { position: absolute; inset: 0; background: rgba(0, 0, 0, .35); z-index: 50; }
+.sheet { position: absolute; left: 0; right: 0; bottom: 0; max-height: 86%; background: var(--surface); border-radius: 20px 20px 0 0; z-index: 51; display: flex; flex-direction: column; box-shadow: var(--shadow); }
+.sheet-head { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px 8px; }
+.sheet-head h3 { margin: 0; font-size: 17px; }
+.sheet-body { overflow: auto; padding: 4px 16px 18px; }
+
+/* ---------- slider ---------- */
+.sl { touch-action: none; user-select: none; -webkit-user-select: none; cursor: pointer; }
+.sl-off { opacity: .4; pointer-events: none; }
+.sl-h { padding: 12px 10px 18px; }
+.sl-h .sl-track { position: relative; height: 6px; border-radius: 3px; background: var(--line); }
+.sl-h .sl-fill { position: absolute; left: 0; top: 0; bottom: 0; background: var(--ring); border-radius: 3px; }
+.sl-tick { position: absolute; }
+.sl-h .sl-tick { top: 50%; transform: translate(-50%, -50%); }
+.sl-tick i { display: block; width: 4px; height: 4px; border-radius: 50%; background: var(--borderline); }
+.sl-tick.on i { background: #fff; }
+.sl-tick.sl-cached i { width: 6px; height: 6px; background: var(--ok); box-shadow: 0 0 0 2px var(--surface); }
+.sl-tick em { position: absolute; font-style: normal; font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.sl-h .sl-tick em { top: 12px; left: 50%; transform: translateX(-50%); }
+.sl-thumb { position: absolute; width: 26px; height: 26px; border-radius: 50%; background: var(--surface); border: 3px solid var(--ring); box-sizing: border-box; box-shadow: var(--shadow); }
+.sl-h .sl-thumb { top: 50%; transform: translate(-50%, -50%); }
+.sl-thumb b { position: absolute; bottom: 34px; left: 50%; transform: translateX(-50%); background: var(--fg); color: var(--bg); font-size: 13px; padding: 3px 8px; border-radius: 8px; white-space: nowrap; }
+.sl-v { padding: 13px 14px; height: 100%; box-sizing: border-box; }
+.sl-v .sl-track { position: relative; width: 6px; height: 100%; border-radius: 3px; background: var(--line); margin: 0 auto; }
+.sl-v .sl-fill { position: absolute; left: 0; right: 0; bottom: 0; background: var(--ring); border-radius: 3px; }
+.sl-v .sl-tick { left: 50%; transform: translate(-50%, 50%); }
+.sl-v .sl-tick em { right: 12px; top: 50%; transform: translateY(-50%); }
+.sl-v .sl-thumb { left: 50%; transform: translate(-50%, 50%); }
+.sl-v .sl-thumb b { bottom: auto; left: auto; right: 34px; top: 50%; transform: translateY(-50%); }
+
+/* ---------- variant A: sheet ---------- */
+.a-top { position: absolute; top: 12px; left: 12px; right: 12px; display: flex; gap: 8px; z-index: 10; }
+.a-search { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; height: 48px; padding: 0 14px; border-radius: 24px; background: var(--surface); box-shadow: var(--shadow); text-align: left; }
+.a-search span { display: flex; flex-direction: column; min-width: 0; line-height: 1.15; }
+.a-search b { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 600; }
+.a-search small { color: var(--muted); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.a-gear { width: 48px; height: 48px; border-radius: 24px; background: var(--surface); box-shadow: var(--shadow); display: grid; place-items: center; position: relative; flex: none; }
+.a-gear i { position: absolute; top: 9px; right: 9px; width: 9px; height: 9px; border-radius: 50%; background: var(--start); border: 2px solid var(--surface); }
+.a-chip { position: absolute; top: 66px; left: 12px; z-index: 10; background: var(--surface); box-shadow: var(--shadow); border-radius: 14px; font-size: 12px; padding: 5px 10px; color: var(--muted); }
+.a-chip b { color: var(--fg); font-weight: 600; }
+.a-fab { position: absolute; right: 12px; width: 44px; height: 44px; border-radius: 22px; background: var(--surface); box-shadow: var(--shadow); display: grid; place-items: center; z-index: 9; transition: bottom .2s; }
+.a-sheet { position: absolute; left: 0; right: 0; bottom: 0; background: var(--surface); border-radius: 20px 20px 0 0; box-shadow: 0 -4px 20px rgba(0, 0, 0, .12); z-index: 20; display: flex; flex-direction: column; transition: height .22s ease; }
+.a-sheet.dragging { transition: none; }
+.a-grab { padding: 8px 0 2px; display: grid; place-items: center; touch-action: none; cursor: grab; }
+.a-grab span { width: 40px; height: 5px; border-radius: 3px; background: var(--line); }
+.a-head { padding: 0 16px; touch-action: none; }
+.a-hrow { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.a-big { font-family: var(--display); font-weight: 700; font-size: 26px; letter-spacing: -.01em; font-variant-numeric: tabular-nums; }
+.a-status { font-size: 14px; color: var(--muted); text-align: right; }
+.a-status.s-err { color: var(--err); }
+.a-status.s-ok { color: var(--fg); font-weight: 600; }
+.a-body { flex: 1; min-height: 0; overflow: auto; padding: 0 16px 16px; display: grid; align-content: start; gap: 10px; }
+.a-body.dim .row { opacity: .4; }
+.a-body > *, .b-list > *, .sheet-body > *, .page-body > * { min-width: 0; }
+.a-more { height: 44px; color: var(--ring); font-weight: 600; }
+.a-foot { font-size: 12px; color: var(--muted); padding-top: 4px; }
+.a-idle { padding: 4px 16px 16px; display: grid; gap: 12px; }
+.a-idle h2 { margin: 0; font-family: var(--display); font-size: 22px; font-weight: 700; }
+.a-fake { display: flex; align-items: center; gap: 8px; height: 46px; padding: 0 14px; border-radius: 12px; background: var(--surface-2); color: var(--muted); text-align: left; }
+.a-idle-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.a-card { padding: 4px 16px 16px; display: grid; gap: 8px; align-content: start; overflow: auto; }
+.a-card h3 { margin: 0; font-family: var(--display); font-size: 22px; font-weight: 700; }
+.a-back { justify-self: start; display: flex; align-items: center; gap: 2px; color: var(--ring); font-weight: 600; margin-left: -6px; }
+.a-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
+.page { position: absolute; inset: 0; background: var(--surface); z-index: 60; display: flex; flex-direction: column; }
+.page-head { display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-bottom: 1px solid var(--line); }
+.page-head h2 { flex: 1; margin: 0; font-size: 18px; }
+.page-body { flex: 1; min-height: 0; overflow: auto; padding: 8px 16px 24px; }
+.page-body h3 { font-size: 16px; margin: 18px 0 2px; }
+.page-body > p { margin: 0 0 6px; }
+.ico-btn { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; flex: none; }
+
+/* ---------- variant B: list first ---------- */
+.b { position: absolute; inset: 0; display: flex; flex-direction: column; background: var(--surface); }
+.b-head { flex: none; padding: 10px 16px 8px; display: grid; gap: 8px; border-bottom: 1px solid var(--line); position: relative; z-index: 12; background: var(--surface); }
+.b-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.b-logo { font-family: var(--display); font-weight: 700; font-size: 17px; letter-spacing: -.01em; }
+.b-set { display: flex; align-items: center; gap: 4px; font-size: 13px; padding: 6px 8px 6px 10px; border-radius: 10px; background: var(--surface-2); max-width: 62%; }
+.b-set span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.b-set svg { width: 16px; height: 16px; flex: none; transition: transform .2s; }
+.b-set.open svg { transform: rotate(180deg); }
+.b-panel { display: grid; gap: 6px; padding: 4px 0 6px; }
+.b-panel h4 { margin: 6px 0 0; font-size: 13px; color: var(--muted); font-weight: 500; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { height: 32px; padding: 0 12px; border-radius: 16px; border: 1px solid var(--line); font-size: 14px; display: inline-flex; align-items: center; gap: 6px; }
+.chip.on { background: var(--ring); border-color: var(--ring); color: #fff; }
+.chip select { border: 0; background: none; height: 100%; }
+.b-start { display: flex; gap: 8px; align-items: center; position: relative; }
+.b-startbtn { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; height: 42px; padding: 0 12px; border-radius: 12px; background: var(--surface-2); text-align: left; }
+.b-startbtn span { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.b-startbtn svg { color: var(--start); flex: none; }
+.b-res { position: absolute; top: 48px; left: 0; right: 0; background: var(--surface); box-shadow: var(--shadow); border-radius: 12px; padding: 0 12px; z-index: 30; max-height: 320px; overflow: auto; }
+.b-map { flex: none; height: 40%; position: relative; }
+.b-slider { position: absolute; left: 10px; right: 10px; bottom: 10px; z-index: 5; background: var(--surface); border-radius: 16px; box-shadow: var(--shadow); display: flex; align-items: center; gap: 4px; padding-left: 12px; }
+.b-slider .sl { flex: 1; }
+.b-slval { font-family: var(--display); font-weight: 700; font-size: 15px; min-width: 64px; font-variant-numeric: tabular-nums; }
+.b-list { flex: 1; min-height: 0; overflow: auto; padding: 10px 16px 20px; display: grid; gap: 10px; align-content: start; }
+.b-sum { font-size: 14px; color: var(--muted); }
+.b-sum b { color: var(--fg); }
+.b-banner { display: flex; gap: 8px; align-items: flex-start; padding: 10px 10px 10px 12px; border-radius: 12px; background: var(--warn-bg); color: var(--warn); font-size: 13px; }
+.b-banner span { flex: 1; }
+.b-banner button { flex: none; width: 24px; height: 24px; display: grid; place-items: center; }
+.b-banner svg { width: 16px; height: 16px; }
+.b-group { border: 1px solid var(--line); border-radius: 14px; padding: 4px 12px; }
+.b-ghead { display: flex; align-items: center; gap: 8px; padding: 8px 0 6px; }
+.b-ghead h4 { margin: 0; font-size: 16px; flex: 1; }
+.b-gcount { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.b-gnote { font-size: 12px; color: var(--warn); margin: -2px 0 4px; }
+.b-group .row:last-child { border-bottom: 0; }
+.b-more { height: 40px; color: var(--ring); font-weight: 600; font-size: 14px; }
+.b-detail { padding: 2px 0 12px; display: grid; gap: 8px; }
+
+/* ---------- variant C: phrase + carousel ---------- */
+.c-phrase { position: absolute; top: 12px; left: 12px; right: 12px; z-index: 10; background: var(--surface); border-radius: 18px; box-shadow: var(--shadow); padding: 12px 14px; font-size: 17px; line-height: 1.6; }
+.c-phrase p { margin: 0; text-wrap: balance; }
+.tok { display: inline; font-weight: 600; color: var(--ring); border-bottom: 2px dotted currentColor; padding: 0 1px; }
+.tok.static { color: var(--fg); border-bottom: 0; font-family: var(--display); font-size: 16px; }
+.tok.want { color: var(--start); animation: blink 1.2s ease-in-out infinite; }
+@keyframes blink { 50% { opacity: .45; } }
+.c-info { display: inline-grid; place-items: center; width: 26px; height: 26px; vertical-align: -6px; color: var(--muted); }
+.c-info svg { width: 20px; height: 20px; }
+.c-vs { position: absolute; right: 6px; top: 150px; bottom: 214px; width: 64px; z-index: 9; background: color-mix(in srgb, var(--surface) 88%, transparent); border-radius: 18px; box-shadow: var(--shadow); }
+.c-car { position: absolute; left: 0; right: 0; bottom: 12px; z-index: 10; display: flex; gap: 10px; overflow-x: auto; scroll-snap-type: x mandatory; padding: 4px 16px 6px; scrollbar-width: none; }
+.c-car::-webkit-scrollbar { display: none; }
+.c-card { flex: none; width: 76%; max-width: 300px; scroll-snap-align: center; background: var(--surface); border-radius: 18px; box-shadow: var(--shadow); padding: 14px; display: grid; gap: 6px; align-content: start; min-height: 150px; box-sizing: border-box; text-align: left; }
+.c-card.focus { outline: 2px solid var(--ring); }
+.c-card h3 { margin: 0; font-size: 19px; line-height: 1.2; }
+.c-card .big { font-family: var(--display); font-size: 30px; font-weight: 700; line-height: 1; }
+.c-card .acts { display: flex; gap: 8px; flex-wrap: wrap; margin-top: auto; }
+.c-pickbar { position: absolute; left: 12px; right: 12px; bottom: 16px; z-index: 30; background: var(--surface); border-radius: 18px; box-shadow: var(--shadow); padding: 12px; display: grid; gap: 10px; }
+.c-pickbar div { display: flex; gap: 8px; justify-content: flex-end; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; } }
+</style>
+
+<div id="root"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/htm@3.1.1/dist/htm.umd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<script src="data.js"></script>
+<script>
+const { useState, useEffect, useMemo, useRef, forwardRef, useImperativeHandle, useCallback } = React;
+const html = htm.bind(React.createElement);
+
+/* ============ data ============ */
+const D = window.RT_DATA, M = D.meta;
+const { W, H, RES, K, C, LON0, LAT1, MW, MH } = M;
+const SX = RES * K * C, SY = RES * K;
+const GRID = Uint8Array.from(atob(D.grid), ch => ch.charCodeAt(0));
+const COUNTRIES = D.countries;
+const IDX = {}; COUNTRIES.forEach((c, i) => { IDX[c.iso] = i + 1; });
+const EXTRA = { USA: 'США', CAN: 'Канада', SCH: 'Шенген' };
+const nameOf = iso => EXTRA[iso] || (COUNTRIES[IDX[iso] - 1] || {}).ru || iso;
+const CITIES = D.cities.map(([ru, latin, lat, lon, pop, c]) => ({ name: ru || latin, alt: ru ? latin : '', lat, lon, pop, c }));
+const toMap = (lon, lat) => [(lon - LON0) * K * C, (LAT1 - lat) * K];
+const toLonLat = (x, y) => [LON0 + x / (K * C), LAT1 - y / K];
+const cellOf = (lon, lat) => { const i = Math.floor((lon - LON0) / RES), j = Math.floor((LAT1 - lat) / RES); return (i < 0 || j < 0 || i >= W || j >= H) ? -1 : j * W + i; };
+function snapLand(idx, r) {
+  if (idx < 0) return -1; if (GRID[idx]) return idx;
+  const i0 = idx % W, j0 = (idx / W) | 0; let best = -1, bd = 1e9;
+  for (let dj = -r; dj <= r; dj++) for (let di = -r; di <= r; di++) {
+    const i = i0 + di, j = j0 + dj; if (i < 0 || j < 0 || i >= W || j >= H) continue;
+    const k = j * W + i, d = di * di + dj * dj; if (GRID[k] && d < bd) { bd = d; best = k; }
+  }
+  return best;
+}
+CITIES.forEach(c => { c.cell = snapLand(cellOf(c.lon, c.lat), 3); });
+function nearestCity(lon, lat, maxKm) {
+  let best = null, bd = maxKm * maxKm; const k = Math.cos(lat * Math.PI / 180);
+  for (let i = 0; i < CITIES.length; i++) { const c = CITIES[i]; const dx = (c.lon - lon) * 111 * k, dy = (c.lat - lat) * 111; const d = dx * dx + dy * dy; if (d < bd) { bd = d; best = i; } }
+  return best;
+}
+
+/* ============ fake visa rules (approximate, for the prototype only) ============ */
+const words = s => (Array.isArray(s) ? s : s.split(/\s+/)).filter(Boolean);
+const SCH_ISO = COUNTRIES.filter(c => c.sch).map(c => c.iso);
+const R = o => { const m = {}; for (const [st, list] of Object.entries(o)) for (const iso of words(list)) m[iso] = st; return m; };
+const RULES = {
+  RUS: R({ free: 'RUS BLR SRB MNE BIH TUR GEO ARM MDA KAZ ALB MAR TUN', voa: 'IRQ LBN', evisa: 'AZE IRN CYP', nodata: 'SYR' }),
+  BLR: R({ free: 'RUS BLR SRB MNE BIH TUR GEO ARM MDA KAZ ALB', voa: 'IRQ LBN', evisa: 'AZE IRN', nodata: 'SYR' }),
+  KAZ: R({ free: 'RUS BLR KAZ GEO ARM SRB MNE ALB MDA TUR UKR', voa: 'IRQ LBN', evisa: 'AZE IRN', nodata: 'SYR' }),
+  SRB: R({ free: [...SCH_ISO, ...words('SRB MNE BIH MKD ALB MDA TUR GEO ARM RUS BLR KAZ UKR TUN MAR CYP')], voa: 'IRQ LBN', evisa: 'AZE IRN', nodata: 'SYR XKX' }),
+  DEU: R({ free: [...SCH_ISO, ...words('IRL SRB MNE BIH MKD ALB XKX MDA UKR TUR GEO ARM BLR KAZ MAR TUN CYP')], evisa: 'GBR AZE IRN', voa: 'IRQ LBN', nodata: 'SYR' }),
+};
+const CIT_OPTIONS = ['RUS', 'BLR', 'KAZ', 'SRB', 'DEU'];
+const EXEMPT = { SCH: words('ALB XKX MKD MNE SRB BIH MDA CYP GEO TUR'), USA: words('ALB MKD MNE SRB BIH MDA GEO TUR'), GBR: words('ALB MKD MNE SRB MDA IRL GEO TUR'), CAN: words('MNE MDA GEO') };
+const VISA_MAIN = ['SCH', 'USA', 'GBR', 'CAN'];
+const VISA_OTHER = COUNTRIES.filter(c => !c.sch && c.iso !== 'GBR').map(c => c.iso).sort((a, b) => nameOf(a).localeCompare(nameOf(b), 'ru'));
+const RANK = { home: -1, free: 0, voa: 1, evisa: 2, visa: 3, nodata: 4 };
+function accessFor(cits, visas, startC) {
+  const out = [null];
+  COUNTRIES.forEach((c, i) => {
+    let best = 'nodata';
+    for (const ct of cits) { const st = ct === c.iso ? 'home' : (RULES[ct][c.iso] || 'visa'); if (RANK[st] < RANK[best]) best = st; }
+    let a = { open: RANK[best] <= 2, why: best };
+    if (!a.open) {
+      if (visas.includes('SCH') && c.sch) a = { open: true, why: 'held', via: 'SCH' };
+      else if (visas.includes(c.iso)) a = { open: true, why: 'held', via: c.iso };
+      else { const v = visas.find(v => (EXEMPT[v] || []).includes(c.iso)); if (v) a = { open: true, why: 'held', via: v }; }
+    }
+    if (!a.open && i + 1 === startC) a = { open: true, why: 'start' };
+    out.push(a);
+  });
+  return out;
+}
+function badgeFor(a) {
+  if (!a) return null;
+  if (a.why === 'evisa') return html`<span className="badge b-evisa" title="Электронная виза">оформить заранее</span>`;
+  if (a.why === 'voa') return html`<span className="badge b-plain">виза на границе</span>`;
+  if (a.why === 'held') return html`<span className="badge b-held">${a.via === 'SCH' ? 'по визе Шенгена' : 'по визе: ' + nameOf(a.via)}</span>`;
+  if (a.why === 'start') return html`<span className="badge b-plain">страна старта</span>`;
+  return null;
+}
+
+/* ============ fake ring engine: Dijkstra on a 0.2° grid ============ */
+function hash(i, j) { let h = (i * 374761393 + j * 668265263) | 0; h = Math.imul(h ^ (h >>> 13), 1274126177); return ((h ^ (h >>> 16)) >>> 0) / 4294967295; }
+function vnoise(x, y) { const i = Math.floor(x), j = Math.floor(y), u = (x - i) * (x - i) * (3 - 2 * (x - i)), v = (y - j) * (y - j) * (3 - 2 * (y - j)); const a = hash(i, j), b = hash(i + 1, j), c = hash(i, j + 1), d = hash(i + 1, j + 1); return a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v; }
+const SPEED = new Float32Array(W * H);
+for (let j = 0; j < H; j++) for (let i = 0; i < W; i++) SPEED[j * W + i] = 68 * (0.7 + 0.6 * (0.65 * vnoise(i / 9, j / 9) + 0.35 * vnoise(i / 3 + 50, j / 3 + 50)));
+const COSLAT = Float32Array.from({ length: H }, (_, j) => Math.cos((LAT1 - (j + .5) * RES) * Math.PI / 180));
+const CLOSED = new Set(['ARM-AZE', 'ARM-TUR', 'AZE-GEO', 'AZE-IRN', 'AZE-TUR', 'BLR-UKR', 'FIN-RUS', 'RUS-UKR', 'SYR-TUR', 'DZA-MAR']);
+const ONEWAY = new Set(['AZE>RUS']);
+const NOCTRL = new Set(['BLR-RUS', 'GBR-IRL']);
+const DIRS = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]];
+class Heap {
+  constructor() { this.t = []; this.k = []; }
+  get size() { return this.t.length; }
+  push(t, k) { const a = this.t, b = this.k; let i = a.length; a.push(t); b.push(k); while (i > 0) { const p = (i - 1) >> 1; if (a[p] <= t) break; a[i] = a[p]; b[i] = b[p]; i = p; } a[i] = t; b[i] = k; }
+  pop() { const a = this.t, b = this.k, t0 = a[0], k0 = b[0], t = a.pop(), k = b.pop(), n = a.length; if (n) { let i = 0; for (;;) { let l = 2 * i + 1; if (l >= n) break; if (l + 1 < n && a[l + 1] < a[l]) l++; if (a[l] >= t) break; a[i] = a[l]; b[i] = b[l]; i = l; } a[i] = t; b[i] = k; } return [t0, k0]; }
+}
+function travelTimes(startCell, acc) {
+  const T = new Float32Array(W * H).fill(Infinity), q = new Heap();
+  T[startCell] = 0; q.push(0, startCell);
+  while (q.size) {
+    const [t, k] = q.pop(); if (t > T[k]) continue; if (t > 12.6) break;
+    const i = k % W, j = (k / W) | 0, ca = GRID[k], kx = RES * 111.2 * COSLAT[j], ky = RES * 111.2;
+    for (const [di, dj] of DIRS) {
+      const ni = i + di, nj = j + dj; if (ni < 0 || nj < 0 || ni >= W || nj >= H) continue;
+      const nk = nj * W + ni, cb = GRID[nk]; if (!cb) continue;
+      let border = 0;
+      if (cb !== ca) {
+        if (!acc[cb].open) continue;
+        const A = COUNTRIES[ca - 1], B = COUNTRIES[cb - 1];
+        if (ONEWAY.has(B.iso + '>' + A.iso)) continue;
+        const p = A.iso < B.iso ? A.iso + '-' + B.iso : B.iso + '-' + A.iso;
+        if (!ONEWAY.has(A.iso + '>' + B.iso) && CLOSED.has(p)) continue;
+        border = (A.sch && B.sch) || NOCTRL.has(p) ? 0 : 1.5;
+      }
+      const nt = t + Math.hypot(di * kx, dj * ky) / ((SPEED[k] + SPEED[nk]) / 2) * 1.2 + border;
+      if (nt < T[nk]) { T[nk] = nt; q.push(nt, nk); }
+    }
+  }
+  return T;
+}
+const contourGen = d3.contours().size([W, H]).smooth(true);
+const ringPath = d3.geoPath(d3.geoTransform({ point(x, y) { this.stream.point(x * SX, y * SY); } }));
+function ringFor(T, h) {
+  const v = new Float64Array(W * H); let maxT = 0;
+  for (let k = 0; k < v.length; k++) { const t = T[k]; v[k] = t <= 13 ? -t : -99; if (t < 13 && t > maxT) maxT = t; }
+  let d = ringPath(contourGen.contour(v, -h)) || '';
+  if (h > 1) d += ringPath(contourGen.contour(v, -(h - 1))) || '';
+  const lo = h === 1 ? -1 : h - 1; // the first ring includes the start itself
+  let i0 = W, i1 = -1, j0 = H, j1 = -1, band = 0; const countries = new Set();
+  for (let k = 0; k < T.length; k++) {
+    const t = T[k]; if (!(t <= h)) continue;
+    const i = k % W, j = (k / W) | 0; if (i < i0) i0 = i; if (i > i1) i1 = i; if (j < j0) j0 = j; if (j > j1) j1 = j;
+    if (t > lo) { band++; countries.add(GRID[k]); }
+  }
+  const cities = [];
+  for (let n = 0; n < CITIES.length; n++) { const c = CITIES[n]; if (c.cell < 0) continue; const t = T[c.cell]; if (t > lo && t <= h) cities.push(n); }
+  return { d, cities, countries, empty: band === 0, maxT, bbox: [i0 * SX, j0 * SY, (i1 + 1) * SX, (j1 + 1) * SY] };
+}
+
+/* ============ text helpers ============ */
+const plural = (n, f) => { const a = n % 10, b = n % 100; return f[a === 1 && b !== 11 ? 0 : a >= 2 && a <= 4 && (b < 10 || b >= 20) ? 1 : 2]; };
+const hoursText = h => h === 1 ? 'до 1 ч' : `${h - 1}–${h} ч`;
+const hoursLong = h => h === 1 ? 'до 1 часа' : `${h - 1}–${h} ${h <= 4 ? 'часа' : 'часов'}`;
+const fmtPop = p => p >= 1e6 ? (p / 1e6).toFixed(1).replace('.', ',') + ' млн' : Math.round(p / 1000) + ' тыс.';
+const citiesWord = n => `${n} ${plural(n, ['город', 'города', 'городов'])}`;
+const citsShort = cits => cits.map(c => c === 'RUS' ? 'РФ' : nameOf(c)).join(' + ');
+const visasShort = v => v.length ? v.map(nameOf).join(', ') : 'нет';
+const gmaps = (s, c) => `https://www.google.com/maps/dir/?api=1&origin=${s.lat},${s.lon}&destination=${c.lat},${c.lon}&travelmode=driving`;
+const VISA_NOTE = 'Визовые правила — по данным Sherpa и нашей таблицы исключений. Они меняются: перед поездкой проверьте правила въезда.';
+const PLATES_NOTE = 'В страны ЕС не пускают машины с российскими номерами.';
+const GEO_POINT = { lon: 20.4573, lat: 44.8176, name: 'Белград', short: 'Белград', sub: 'по геолокации' };
+
+/* ============ app state (shared by all variants) ============ */
+function useRoadtrip() {
+  const [start, setStart] = useState(GEO_POINT);
+  const [hours, setHours] = useState(1);
+  const [cits, setCits] = useState(['RUS']);
+  const [visas, setVisas] = useState([]);
+  const [forced, setForcedRaw] = useState(null);
+  const [geoDenied, setGeoDenied] = useState(false);
+  const [retryN, setRetryN] = useState(0);
+  const [ring, setRing] = useState({ status: 'idle' });
+  const cache = useRef(new Map()), times = useRef(new Map());
+  const startCell = useMemo(() => start ? snapLand(cellOf(start.lon, start.lat), 6) : -1, [start]);
+  const startC = startCell >= 0 ? GRID[startCell] : 0;
+  const acc = useMemo(() => accessFor(cits, visas, startC), [cits, visas, startC]);
+  const closedKey = acc.map((a, i) => a && !a.open ? i : '').filter(String).join(',');
+  const baseKey = startCell + '|' + closedKey;
+  useEffect(() => {
+    if (startCell < 0) { setRing({ status: 'idle' }); return; }
+    const key = baseKey + '|' + hours;
+    const keep = r => { const p = r.data || r.prev; return p && p.startCell === startCell ? p : null; };
+    if (forced === 'loading' || forced === 'error') { setRing(r => ({ status: forced, prev: keep(r) })); return; }
+    const hit = cache.current.get(key);
+    if (hit) { setRing({ status: 'ready', data: hit }); return; }
+    if (forced === 'limit') { setRing(r => ({ status: 'limit', prev: keep(r) })); return; }
+    setRing(r => ({ status: 'loading', prev: keep(r) }));
+    const id = setTimeout(() => {
+      let T = times.current.get(baseKey);
+      if (!T) { T = travelTimes(startCell, acc); times.current.set(baseKey, T); }
+      const data = Object.assign(ringFor(T, hours), { key, hours, startCell });
+      cache.current.set(key, data); setRing({ status: 'ready', data });
+    }, 800 + Math.random() * 1400);
+    return () => clearTimeout(id);
+  }, [baseKey, hours, forced, retryN]);
+  const cachedHours = useMemo(() => { const s = new Set(); for (let h = 1; h <= 12; h++) if (cache.current.has(baseKey + '|' + h)) s.add(h); return s; }, [baseKey, ring]);
+  const data = ring.status === 'ready' ? ring.data : null;
+  const cities = data ? (forced === 'empty' ? [] : data.cities) : null;
+  const ringHasEU = !!data && [...data.countries].some(c => COUNTRIES[c - 1].sch);
+  const plates = cits.includes('RUS');
+  return {
+    start, hours, cits, visas, forced, geoDenied, ring, data, cities, acc, cachedHours, ringHasEU, plates,
+    setHours, setCits, setVisas,
+    locate() { if (geoDenied) return false; setStart(GEO_POINT); return true; },
+    pickPoint(lon, lat) {
+      const cell = snapLand(cellOf(lon, lat), 2); if (cell < 0) return false;
+      const nc = nearestCity(lon, lat, 30), country = COUNTRIES[GRID[cell] - 1].ru;
+      setStart({ lon, lat, name: 'Точка на карте', short: 'на карте', sub: nc != null ? `рядом ${CITIES[nc].name}, ${country}` : country });
+      return true;
+    },
+    pickCity(i) { const c = CITIES[i]; setStart({ lon: c.lon, lat: c.lat, name: c.name, short: c.name, sub: COUNTRIES[c.c - 1].ru }); },
+    setStart,
+    retry() { setForcedRaw(f => f === 'error' ? null : f); setRetryN(n => n + 1); },
+    setForced(f) {
+      if (f === 'nogeo') { setGeoDenied(true); setStart(null); setForcedRaw(null); return; }
+      setForcedRaw(f === 'normal' ? null : f);
+      if (f === 'normal') { setGeoDenied(false); if (!start) setStart(GEO_POINT); }
+    },
+  };
+}
+function statusOf(app) {
+  const st = app.ring.status;
+  if (st === 'idle' && !app.start) return { kind: 'idle', text: 'Точка старта не выбрана' };
+  if (st === 'loading' || st === 'idle') return { kind: 'busy', text: 'Считаем кольцо…' };
+  if (st === 'error') return { kind: 'err', text: 'Не получилось посчитать' };
+  if (st === 'limit') return { kind: 'err', text: 'Лимит расчётов исчерпан' };
+  if (app.data.empty) return { kind: 'empty', text: 'Сюда уже не доехать' };
+  if (!app.cities.length) return { kind: 'empty', text: 'Городов нет' };
+  return { kind: 'ok', text: citiesWord(app.cities.length) };
+}
+function groupByCountry(app) {
+  const g = new Map();
+  for (const i of app.cities) { const c = CITIES[i].c; if (!g.has(c)) g.set(c, []); g.get(c).push(i); }
+  const sc = app.data ? GRID[app.data.startCell] : 0;
+  return [...g.entries()].sort((a, b) => (b[0] === sc) - (a[0] === sc) || b[1].length - a[1].length);
+}
+
+/* ============ icons ============ */
+const svg = d => html`<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">${d}</svg>`;
+const I = {
+  search: svg(html`<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>`),
+  gear: svg(html`<path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/>`),
+  locate: svg(html`<circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>`),
+  close: svg(html`<path d="M6 6l12 12M18 6 6 18"/>`),
+  back: svg(html`<path d="M15 18l-6-6 6-6"/>`),
+  chev: svg(html`<path d="m6 9 6 6 6-6"/>`),
+  route: svg(html`<circle cx="6" cy="19" r="2"/><circle cx="18" cy="5" r="2"/><path d="M8 19h8.5a3.5 3.5 0 0 0 0-7h-9a3.5 3.5 0 0 1 0-7H16"/>`),
+  pin: svg(html`<path d="M12 21s-7-6.2-7-12a7 7 0 0 1 14 0c0 5.8-7 12-7 12z"/><circle cx="12" cy="9" r="2.5"/>`),
+  info: svg(html`<circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.01"/>`),
+  check: svg(html`<path d="m5 12 5 5 9-10"/>`),
+  warn: svg(html`<path d="M12 3 2 20h20L12 3z"/><path d="M12 10v4M12 17v.01"/>`),
+};
+
+/* ============ shared widgets ============ */
+function useSize(ref) {
+  const [s, setS] = useState({ w: 0, h: 0 });
+  useEffect(() => { const ro = new ResizeObserver(([e]) => setS({ w: e.contentRect.width, h: e.contentRect.height })); ro.observe(ref.current); return () => ro.disconnect(); }, []);
+  return s;
+}
+function useToast() {
+  const [msg, setMsg] = useState(null); const t = useRef();
+  const show = useCallback((m, ms = 2400) => { clearTimeout(t.current); setMsg(m); t.current = setTimeout(() => setMsg(null), ms); }, []);
+  return [msg, show, () => setMsg(null)];
+}
+function Slider({ value, onCommit, cached, vertical, disabled }) {
+  const [live, setLive] = useState(null); const track = useRef();
+  const v = live == null ? value : live, pos = (v - 1) / 11 * 100;
+  const at = e => { const r = track.current.getBoundingClientRect(); const f = vertical ? 1 - (e.clientY - r.top) / r.height : (e.clientX - r.left) / r.width; return 1 + Math.round(Math.max(0, Math.min(1, f)) * 11); };
+  const down = e => { e.stopPropagation(); e.currentTarget.setPointerCapture(e.pointerId); setLive(at(e)); };
+  const move = e => { if (live != null) setLive(at(e)); };
+  const up = e => { if (live == null) return; const nv = at(e); setLive(null); if (nv !== value) onCommit(nv); };
+  const key = e => { const d = { ArrowRight: 1, ArrowUp: 1, ArrowLeft: -1, ArrowDown: -1 }[e.key]; if (!d) return; e.preventDefault(); const nv = Math.max(1, Math.min(12, value + d)); if (nv !== value) onCommit(nv); };
+  return html`<div className=${'sl ' + (vertical ? 'sl-v' : 'sl-h') + (disabled ? ' sl-off' : '')} role="slider" tabIndex=${disabled ? -1 : 0}
+      aria-label="Время в пути" aria-valuemin="1" aria-valuemax="12" aria-valuenow=${v} aria-valuetext=${hoursText(v)}
+      onKeyDown=${key} onPointerDown=${down} onPointerMove=${move} onPointerUp=${up} onPointerCancel=${() => setLive(null)}>
+    <div className="sl-track" ref=${track}>
+      <div className="sl-fill" style=${vertical ? { height: pos + '%' } : { width: pos + '%' }}></div>
+      ${Array.from({ length: 12 }, (_, i) => html`<span key=${i} className=${'sl-tick' + (i + 1 <= v ? ' on' : '') + (cached && cached.has(i + 1) ? ' sl-cached' : '')}
+          style=${vertical ? { bottom: i / 11 * 100 + '%' } : { left: i / 11 * 100 + '%' }}><i></i>${i === 0 || (i + 1) % 3 === 0 ? html`<em>${i + 1}</em>` : null}</span>`)}
+      <div className="sl-thumb" style=${vertical ? { bottom: pos + '%' } : { left: pos + '%' }}>${live != null ? html`<b>${hoursText(v)}</b>` : null}</div>
+    </div>
+  </div>`;
+}
+function searchCities(q) {
+  q = q.trim().toLowerCase(); if (!q) return [];
+  const a = [], b = [];
+  for (let i = 0; i < CITIES.length && a.length < 8; i++) {
+    const n = CITIES[i].name.toLowerCase(), al = CITIES[i].alt.toLowerCase();
+    if (n.startsWith(q) || al.startsWith(q)) a.push(i); else if (b.length < 8 && (n.includes(q) || al.includes(q))) b.push(i);
+  }
+  return a.concat(b).slice(0, 8);
+}
+function CityResults({ q, onPick }) {
+  const res = useMemo(() => searchCities(q), [q]);
+  if (!q.trim()) return null;
+  if (!res.length) return html`<p className="muted small">Такого города нет в списке. В нём города от 15 000 жителей.</p>`;
+  return res.map(i => { const c = CITIES[i]; return html`<button key=${i} className="row" onClick=${() => onPick(i)}>
+    <span className="row-main"><span className="row-name">${c.name}</span>${c.alt ? html`<span className="row-alt">${c.alt}</span>` : null}
+    <div className="row-sub">${COUNTRIES[c.c - 1].ru} · ${fmtPop(c.pop)}</div></span></button>`; });
+}
+function MultiPick({ options, value, onChange, min = 0, sub, sections }) {
+  const toggle = o => { const on = value.includes(o); if (on && value.length <= min) return; onChange(on ? value.filter(x => x !== o) : [...value, o]); };
+  const item = o => html`<button key=${o} className=${'pick-item' + (value.includes(o) ? ' on' : '')} onClick=${() => toggle(o)} aria-pressed=${value.includes(o)}>
+    <span className="pick-box">${value.includes(o) ? I.check : null}</span>
+    <span className="row-main"><div>${nameOf(o)}</div>${sub && sub(o) ? html`<div className="pick-sub">${sub(o)}</div>` : null}</span></button>`;
+  if (sections) return html`<div className="pick">${sections.map(([title, list]) => html`<${React.Fragment} key=${title}><div className="pick-sep">${title}</div>${list.map(item)}<//>`)}</div>`;
+  return html`<div className="pick">${options.map(item)}</div>`;
+}
+const VISA_SUB = o => o === 'SCH' ? 'Открывает весь Шенген и ещё 10 стран, например Черногорию и Косово' : EXEMPT[o] ? `Открывает ещё ${EXEMPT[o].length} ${plural(EXEMPT[o].length, ['страну', 'страны', 'стран'])}` : null;
+const VISA_SECTIONS = [['Шенген и визы, которые открывают другие страны', VISA_MAIN], ['Виза одной страны', VISA_OTHER]];
+const CIT_SUB = o => o === 'RUS' ? 'по умолчанию' : null;
+function Sheet({ title, onClose, children }) {
+  return html`<${React.Fragment}><div className="scrim" onClick=${onClose}></div>
+    <div className="sheet" role="dialog" aria-label=${title}><div className="sheet-head"><h3>${title}</h3><button className="ico-btn" onClick=${onClose} aria-label="Закрыть">${I.close}</button></div>
+    <div className="sheet-body">${children}</div></div><//>`;
+}
+
+/* ============ map ============ */
+const MapView = forwardRef(function MapView(p, ref) {
+  const { app, pickMode = 'none', loadingStyle = 'dim', showClosed = true, labelCount = 8, highlight = null, onCityTap, onPick, pad = [70, 16, 200, 16], crosshair = false } = p;
+  const box = useRef(), g = useRef(), view = useRef({ s: 1, tx: 0, ty: 0 }), size = useRef({ w: 0, h: 0 }), anim = useRef(), padRef = useRef(pad);
+  padRef.current = pad;
+  const [scale, setScale] = useState(1); const [ripple, setRipple] = useState(null);
+  const apply = () => { const { s, tx, ty } = view.current; if (g.current) g.current.setAttribute('transform', `translate(${tx} ${ty}) scale(${s})`); };
+  const minS = () => Math.min(size.current.w / MW, size.current.h / MH) * 0.95;
+  const clampS = s => Math.max(minS(), Math.min(60, s));
+  const go = (target, animate = true) => {
+    cancelAnimationFrame(anim.current);
+    const { w, h } = size.current; if (!w) return;
+    const from = { ...view.current }, fc = [(w / 2 - from.tx) / from.s, (h / 2 - from.ty) / from.s], tc = [(w / 2 - target.tx) / target.s, (h / 2 - target.ty) / target.s];
+    if (!animate || matchMedia('(prefers-reduced-motion: reduce)').matches) { view.current = target; apply(); setScale(target.s); return; }
+    const t0 = performance.now();
+    const step = now => {
+      const k = Math.min(1, (now - t0) / 480), e = 1 - Math.pow(1 - k, 3), s = from.s * Math.pow(target.s / from.s, e);
+      const cx = fc[0] + (tc[0] - fc[0]) * e, cy = fc[1] + (tc[1] - fc[1]) * e;
+      view.current = { s, tx: w / 2 - cx * s, ty: h / 2 - cy * s }; apply();
+      if (k < 1) anim.current = requestAnimationFrame(step); else setScale(s);
+    };
+    anim.current = requestAnimationFrame(step);
+  };
+  const fit = (b, pd = padRef.current, animate = true, maxS = 40) => {
+    const [t, r, bt, l] = pd, { w, h } = size.current; if (!w) return;
+    const s = clampS(Math.min((w - l - r) / Math.max(b[2] - b[0], 1), (h - t - bt) / Math.max(b[3] - b[1], 1), maxS));
+    go({ s, tx: l + (w - l - r) / 2 - (b[0] + b[2]) / 2 * s, ty: t + (h - t - bt) / 2 - (b[1] + b[3]) / 2 * s }, animate);
+  };
+  const flyTo = (lon, lat, minScale = 0, pd = padRef.current) => {
+    const [t, r, bt, l] = pd, { w, h } = size.current, [x, y] = toMap(lon, lat), s = clampS(Math.max(view.current.s, minScale));
+    go({ s, tx: l + (w - l - r) / 2 - x * s, ty: t + (h - t - bt) / 2 - y * s });
+  };
+  const region = (animate) => fit([0, 0, MW, MH], padRef.current, animate);
+  useImperativeHandle(ref, () => ({ fit, flyTo, region, center() { const { s, tx, ty } = view.current, { w, h } = size.current; return toLonLat((w / 2 - tx) / s, (h / 2 - ty) / s); } }));
+  const fitCurrent = (animate) => {
+    const d = app.data;
+    if (d && d.bbox[2] > d.bbox[0]) fit(d.bbox, padRef.current, animate, 30);
+    else if (app.start) { const [x, y] = toMap(app.start.lon, app.start.lat); fit([x - 8, y - 8, x + 8, y + 8], padRef.current, animate); }
+    else region(animate);
+  };
+  useEffect(() => {
+    const ro = new ResizeObserver(([e]) => { const first = !size.current.w; size.current = { w: e.contentRect.width, h: e.contentRect.height }; if (first) fitCurrent(false); });
+    ro.observe(box.current); return () => ro.disconnect();
+  }, []);
+  useEffect(() => { if (app.ring.status === 'ready' && size.current.w) fitCurrent(true); }, [app.data && app.data.key]);
+  useEffect(() => { if (!app.start && size.current.w) region(true); }, [!app.start]);
+
+  // gestures
+  const ptrs = useRef(new Map()), gs = useRef(null), lp = useRef();
+  const local = e => { const r = box.current.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; };
+  const pickAt = (x, y) => { const { s, tx, ty } = view.current; const [lon, lat] = toLonLat((x - tx) / s, (y - ty) / s); setRipple({ x, y, k: Date.now() }); onPick && onPick(lon, lat); };
+  const tap = (x, y) => {
+    const { s, tx, ty } = view.current; let hit = null, bd = 18 * 18;
+    for (const i of (app.cities || []).slice(0, 250)) { const c = CITIES[i], [mx, my] = toMap(c.lon, c.lat), dx = mx * s + tx - x, dy = my * s + ty - y, d = dx * dx + dy * dy; if (d < bd) { bd = d; hit = i; } }
+    if (hit != null && onCityTap) return onCityTap(hit);
+    if (pickMode === 'tap') pickAt(x, y);
+  };
+  const onDown = e => {
+    box.current.setPointerCapture(e.pointerId); const pt = local(e); ptrs.current.set(e.pointerId, pt); cancelAnimationFrame(anim.current);
+    if (ptrs.current.size === 1) {
+      gs.current = { mode: 'pan', x: pt.x, y: pt.y, t: performance.now(), ...view.current, moved: false };
+      clearTimeout(lp.current);
+      if (pickMode === 'longpress') lp.current = setTimeout(() => { if (gs.current && !gs.current.moved) { gs.current.fired = true; pickAt(pt.x, pt.y); } }, 520);
+    } else if (ptrs.current.size === 2) {
+      clearTimeout(lp.current); const [a, b] = [...ptrs.current.values()];
+      gs.current = { mode: 'pinch', d: Math.hypot(a.x - b.x, a.y - b.y), mx: (a.x + b.x) / 2, my: (a.y + b.y) / 2, ...view.current, moved: true };
+    }
+  };
+  const onMove = e => {
+    if (!ptrs.current.has(e.pointerId)) return; const pt = local(e); ptrs.current.set(e.pointerId, pt); const st = gs.current; if (!st) return;
+    if (st.mode === 'pan') {
+      const dx = pt.x - st.x, dy = pt.y - st.y;
+      if (!st.moved && Math.hypot(dx, dy) > 6) { st.moved = true; clearTimeout(lp.current); }
+      if (st.moved) { view.current = { s: st.s, tx: st.tx + dx, ty: st.ty + dy }; apply(); }
+    } else if (ptrs.current.size >= 2) {
+      const [a, b] = [...ptrs.current.values()], s = clampS(st.s * Math.hypot(a.x - b.x, a.y - b.y) / st.d), m = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+      const mx = (st.mx - st.tx) / st.s, my = (st.my - st.ty) / st.s;
+      view.current = { s, tx: m.x - mx * s, ty: m.y - my * s }; apply();
+    }
+  };
+  const onUp = e => {
+    if (!ptrs.current.has(e.pointerId)) return; const pt = local(e); ptrs.current.delete(e.pointerId); clearTimeout(lp.current); const st = gs.current;
+    if (ptrs.current.size === 0) {
+      if (st && st.mode === 'pan' && !st.moved && !st.fired && e.type === 'pointerup' && performance.now() - st.t < 450) tap(pt.x, pt.y);
+      gs.current = null; setScale(view.current.s);
+    } else if (ptrs.current.size === 1) { const [r] = [...ptrs.current.values()]; gs.current = { mode: 'pan', x: r.x, y: r.y, ...view.current, moved: true }; }
+  };
+  useEffect(() => {
+    const el = box.current; let t;
+    const wheel = e => { e.preventDefault(); const pt = local(e), v = view.current, s = clampS(v.s * Math.exp(-e.deltaY * 0.0015)), mx = (pt.x - v.tx) / v.s, my = (pt.y - v.ty) / v.s; view.current = { s, tx: pt.x - mx * s, ty: pt.y - my * s }; apply(); clearTimeout(t); t = setTimeout(() => setScale(view.current.s), 120); };
+    el.addEventListener('wheel', wheel, { passive: false }); return () => el.removeEventListener('wheel', wheel);
+  }, []);
+
+  const st = app.ring.status, rd = app.data || app.ring.prev, loading = st === 'loading';
+  const showRing = rd && !(loading && loadingStyle === 'pulse');
+  const ringCls = st === 'ready' ? 'ring' : loading && loadingStyle === 'stripes' ? 'ring ring-stripes' : 'ring ring-dim';
+  const cities = app.cities || [];
+  const labels = useMemo(() => {
+    const out = [], boxes = [];
+    const tryAdd = (i, force) => { const c = CITIES[i], [x, y] = toMap(c.lon, c.lat), sx = x * scale, sy = y * scale, w = c.name.length * 7 + 10, b = [sx + 4, sy - 9, sx + 4 + w, sy + 9]; if (!force && boxes.some(o => !(b[2] < o[0] || b[0] > o[2] || b[3] < o[1] || b[1] > o[3]))) return; boxes.push(b); out.push(i); };
+    if (highlight != null) tryAdd(highlight, true);
+    for (const i of cities.slice(0, 120)) { if (out.length >= labelCount + (highlight != null)) break; if (i !== highlight) tryAdd(i); }
+    return out;
+  }, [cities, scale, labelCount, highlight]);
+  const k = 1 / scale, sp = app.start && toMap(app.start.lon, app.start.lat);
+  return html`<div className="map" ref=${box} onPointerDown=${onDown} onPointerMove=${onMove} onPointerUp=${onUp} onPointerCancel=${onUp} onContextMenu=${e => e.preventDefault()}>
+    <svg aria-label="Карта">
+      <defs>
+        <pattern id="hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform=${`rotate(45) scale(${k})`}><rect width="6" height="6" className="m-hatch-bg"/><path d="M0 0v6" className="m-hatch-line" strokeWidth="2"/></pattern>
+        <pattern id="stripes" width="10" height="10" patternUnits="userSpaceOnUse" patternTransform=${`rotate(45) scale(${k})`}><rect width="5" height="10" className="m-stripe"/><animateTransform attributeName="patternTransform" type="translate" from="0 0" to="10 0" dur=".8s" repeatCount="indefinite" additive="sum"/></pattern>
+      </defs>
+      <g ref=${g} transform=${`translate(${view.current.tx} ${view.current.ty}) scale(${view.current.s})`}>
+        ${COUNTRIES.map((c, i) => html`<path key=${c.iso} d=${c.d} className=${'m-land' + (showClosed && app.start && !app.acc[i + 1].open ? ' m-closed' : '')} strokeWidth=${0.7 * k}/>`)}
+        ${showRing ? html`<path d=${rd.d} className=${ringCls} strokeWidth=${1.6 * k}/>` : null}
+        ${loading && loadingStyle === 'pulse' && sp ? [0, 0.6].map(dl => html`<circle key=${dl} cx=${sp[0]} cy=${sp[1]} r="1" className="m-pulse" strokeWidth=${2 * k}>
+            <animate attributeName="r" from=${4 * k} to=${70 * k} dur="1.2s" begin=${dl + 's'} repeatCount="indefinite"/><animate attributeName="opacity" from="1" to="0" dur="1.2s" begin=${dl + 's'} repeatCount="indefinite"/></circle>`) : null}
+        ${COUNTRIES.map(c => c.label ? html`<text key=${c.iso} x=${c.label[0]} y=${c.label[1]} className="m-clabel" fontSize=${9.5 * k} textAnchor="middle">${c.ru.toUpperCase()}</text>` : null)}
+        ${cities.slice(0, 250).map(i => { const c = CITIES[i], [x, y] = toMap(c.lon, c.lat); return html`<circle key=${i} cx=${x} cy=${y} r=${(i === highlight ? 6 : 2.8) * k} className=${i === highlight ? 'm-city-hl' : 'm-city'} strokeWidth=${1.2 * k}/>`; })}
+        ${labels.map(i => { const c = CITIES[i], [x, y] = toMap(c.lon, c.lat); return html`<text key=${'l' + i} x=${x + 6 * k} y=${y + 4 * k} className="m-clab" fontSize=${(i === highlight ? 14 : 12) * k} strokeWidth=${3 * k}>${c.name}</text>`; })}
+        ${sp ? html`<circle cx=${sp[0]} cy=${sp[1]} r=${7 * k} className="m-start" strokeWidth=${2.5 * k}/>` : null}
+      </g>
+    </svg>
+    ${crosshair ? html`<div className="crosshair">${svg(html`<path d="M12 22s-7-6.4-7-12.2a7 7 0 0 1 14 0C19 15.6 12 22 12 22z"/><circle cx="12" cy="10" r="2.6" fill="#fff"/>`)}</div>` : null}
+    ${ripple ? html`<div key=${ripple.k} className="ripple" style=${{ left: ripple.x, top: ripple.y }}></div>` : null}
+  </div>`;
+});
+
+/* ============ variant A: «Шторка» — map first, bottom sheet with slider and list ============ */
+function VariantA({ app }) {
+  const root = useRef(), map = useRef(), { h: PH } = useSize(root);
+  const [snap, setSnap] = useState('peek'), [drag, setDrag] = useState(null), [overlay, setOverlay] = useState(null), [sel, setSel] = useState(null), [all, setAll] = useState(false), [q, setQ] = useState(''), [geoMsg, setGeoMsg] = useState(false);
+  const [toast, showToast] = useToast();
+  const idle = !app.start, st = statusOf(app);
+  const snaps = { peek: idle ? 250 : 172, half: Math.round(PH * .52), full: Math.round(PH * .86), card: 250 };
+  const mode = sel != null ? 'card' : snap, sheetH = drag ? drag.h : snaps[mode];
+  const pad = [112, 16, Math.min(snaps[mode] || 172, snaps.half || 300) + 16, 16];
+  useEffect(() => { setSel(null); setAll(false); }, [app.data && app.data.key]);
+  const locate = () => { if (!app.locate()) setGeoMsg(true); else { setOverlay(null); setGeoMsg(false); } };
+  const onPick = (lon, lat) => { if (!app.pickPoint(lon, lat)) showToast('Здесь нет дорог. Выберите точку на суше.'); else showToast('Новая точка старта'); };
+  const openCity = i => { setSel(i); const c = CITIES[i]; map.current.flyTo(c.lon, c.lat, 6, [112, 16, snaps.card + 16, 16]); };
+  const grabDown = e => { e.currentTarget.setPointerCapture(e.pointerId); setDrag({ y0: e.clientY, h0: sheetH, h: sheetH, moved: false }); };
+  const grabMove = e => { if (!drag) return; const h = Math.max(140, Math.min(snaps.full, drag.h0 - (e.clientY - drag.y0))); setDrag({ ...drag, h, moved: drag.moved || Math.abs(e.clientY - drag.y0) > 5 }); };
+  const grabUp = () => {
+    if (!drag) return;
+    if (!drag.moved) setSnap(s => sel != null ? s : s === 'peek' ? 'half' : s === 'half' ? 'full' : 'peek');
+    else { let best = 'peek'; for (const o of ['peek', 'half', 'full']) if (Math.abs(snaps[o] - drag.h) < Math.abs(snaps[best] - drag.h)) best = o; setSnap(best); if (best !== 'peek') setSel(null); }
+    setDrag(null);
+  };
+  const grab = { onPointerDown: grabDown, onPointerMove: grabMove, onPointerUp: grabUp, onPointerCancel: () => setDrag(null) };
+  const settingsDirty = app.visas.length > 0 || app.cits.join() !== 'RUS';
+  const list = app.cities || [];
+  const shown = all ? list : list.slice(0, 30);
+
+  let body;
+  if (st.kind === 'busy') body = html`<p className="muted small">Считаем кольцо ${hoursText(app.hours)}. Обычно это пара секунд.</p>`;
+  else if (app.ring.status === 'error') body = html`<div className="card-msg err"><h4>Не получилось посчитать кольцо</h4><p>Проверьте интернет и попробуйте ещё раз.</p><div><button className="btn" onClick=${app.retry}>Повторить</button></div></div>`;
+  else if (app.ring.status === 'limit') body = html`<div className="card-msg err"><h4>Новые расчёты на сегодня закончились</h4><p>Следующий можно будет сделать через 47 минут. Уже посчитанные часы отмечены зелёными точками на ползунке — их можно смотреть.</p></div>`;
+  else if (st.kind === 'empty' && app.data.empty) body = html`<div className="card-msg"><h4>Дальше ${Math.ceil(app.data.maxT)} ч отсюда не уехать</h4><p>Дальше море или закрытые страны. Уменьшите время в пути или добавьте свои визы в настройках.</p><div><button className="btn" onClick=${() => setOverlay('settings')}>Мои визы</button></div></div>`;
+  else if (st.kind === 'empty') body = html`<div className="card-msg"><h4>В кольце ${hoursText(app.hours)} нет городов</h4><p>Показываем только города больше 15 000 жителей. Попробуйте другое время в пути.</p></div>`;
+  else if (st.kind === 'ok') body = html`<${React.Fragment}>
+    ${app.plates && app.ringHasEU ? html`<div className="note">${I.warn}<span>${PLATES_NOTE} Страны ЕС в этом кольце есть.</span></div>` : null}
+    <div>${shown.map(i => { const c = CITIES[i]; return html`<button key=${i} className="row" onClick=${() => openCity(i)}>
+      <span className="row-main"><span className="row-name">${c.name}</span>${c.alt ? html`<span className="row-alt">${c.alt}</span>` : null}<div className="row-sub">${COUNTRIES[c.c - 1].ru} · ${fmtPop(c.pop)}</div></span>
+      ${badgeFor(app.acc[c.c])}</button>`; })}</div>
+    ${!all && list.length > 30 ? html`<button className="a-more" onClick=${() => { setAll(true); setSnap('full'); }}>Показать все ${citiesWord(list.length)}</button>` : null}
+    <p className="a-foot">${VISA_NOTE}</p><//>`;
+
+  const city = sel != null ? CITIES[sel] : null;
+  return html`<div ref=${root} style=${{ position: 'absolute', inset: 0 }}>
+    <${MapView} ref=${map} app=${app} pickMode="longpress" loadingStyle="dim" showClosed=${true} labelCount=${7} highlight=${sel} onPick=${onPick} onCityTap=${openCity} pad=${pad}/>
+    <div className="a-top">
+      <button className="a-search" onClick=${() => { setQ(''); setOverlay('search'); }}>${I.search}<span>${app.start ? html`<b>${app.start.name}</b><small>${app.start.sub}</small>` : html`<b className="muted">Откуда едем?</b>`}</span></button>
+      <button className="a-gear" onClick=${() => setOverlay('settings')} aria-label="Настройки">${I.gear}${settingsDirty ? html`<i></i>` : null}</button>
+    </div>
+    <button className="a-chip" onClick=${() => setOverlay('settings')}>Гражданство <b>${citsShort(app.cits)}</b> · Визы <b>${visasShort(app.visas)}</b></button>
+    <button className="a-fab" style=${{ bottom: sheetH + 12 }} onClick=${locate} aria-label="Где я">${I.locate}</button>
+    ${toast ? html`<div className="toast" style=${{ bottom: sheetH + 68 }}>${toast}</div>` : null}
+    <div className=${'a-sheet' + (drag ? ' dragging' : '')} style=${{ height: sheetH }}>
+      <div className="a-grab" ...${grab}><span></span></div>
+      ${idle ? html`<div className="a-idle">
+          <h2>Откуда едем?</h2>
+          <button className="a-fake" onClick=${() => { setQ(''); setOverlay('search'); }}>${I.search} Найти город</button>
+          <div className="a-idle-row"><button className="btn" onClick=${locate}>${I.locate} Где я</button><span className="muted small">или нажмите и подержите точку на карте</span></div>
+          ${geoMsg || app.geoDenied ? html`<p className="muted small" style=${{ margin: 0 }}>Браузер не дал доступ к геолокации. Найдите город или укажите точку на карте.</p>` : null}
+        </div>`
+      : city ? html`<div className="a-card">
+          <button className="a-back" onClick=${() => setSel(null)}>${I.back} Все города кольца</button>
+          <h3>${city.name}</h3>
+          <div className="muted">${city.alt ? city.alt + ' · ' : ''}${COUNTRIES[city.c - 1].ru} · ${fmtPop(city.pop)} жителей</div>
+          <div>${badgeFor(app.acc[city.c])}</div>
+          ${app.plates && COUNTRIES[city.c - 1].sch ? html`<div className="note">${I.warn}<span>${PLATES_NOTE}</span></div>` : null}
+          <div className="a-actions"><a className="btn primary" href=${gmaps(app.start, city)} target="_blank" rel="noopener">${I.route} Маршрут в Google Картах</a><button className="btn" onClick=${() => { app.pickCity(sel); setSel(null); }}>Ехать отсюда</button></div>
+        </div>`
+      : html`<${React.Fragment}>
+          <div className="a-head" ...${grab}>
+            <div className="a-hrow"><span className="a-big">${hoursText(app.hours)}</span><span className=${'a-status s-' + st.kind}>${st.kind === 'busy' ? html`<span className="spin"></span> ` : null}${st.text}</span></div>
+            <${Slider} value=${app.hours} onCommit=${app.setHours} cached=${app.cachedHours}/>
+            ${st.kind === 'busy' ? html`<div className="bar"><i></i></div>` : null}
+          </div>
+          <div className=${'a-body' + (st.kind === 'busy' ? ' dim' : '')}>${body}</div><//>`}
+    </div>
+    ${overlay === 'search' ? html`<div className="page">
+        <div className="page-head"><button className="ico-btn" onClick=${() => setOverlay(null)} aria-label="Назад">${I.back}</button>
+          <div className="search-in" style=${{ flex: 1 }}>${I.search}<input id="a-q" autoFocus placeholder="Город" value=${q} onInput=${e => setQ(e.target.value)}/></div></div>
+        <div className="page-body">
+          <button className="row" onClick=${locate}>${I.locate}<span className="row-main"><span className="row-name">Где я</span><div className="row-sub">${app.geoDenied ? 'Браузер не дал доступ к геолокации' : 'Определить по геолокации'}</div></span></button>
+          <div className="row muted small">${I.pin}<span className="row-main">Или закройте поиск, нажмите и подержите точку на карте</span></div>
+          <${CityResults} q=${q} onPick=${i => { app.pickCity(i); setOverlay(null); const c = CITIES[i]; map.current.flyTo(c.lon, c.lat, 8); }}/>
+        </div></div>` : null}
+    ${overlay === 'settings' ? html`<div className="page">
+        <div className="page-head"><h2>Кто едет</h2><button className="btn primary" onClick=${() => setOverlay(null)}>Готово</button></div>
+        <div className="page-body">
+          <h3>Гражданство</h3><p className="muted small">Можно несколько. Для каждой страны берём самый удобный вариант въезда.</p>
+          <${MultiPick} options=${CIT_OPTIONS} value=${app.cits} onChange=${app.setCits} min=${1} sub=${CIT_SUB}/>
+          <h3>Мои визы</h3><p className="muted small">Визы и ВНЖ, которые у вас уже есть. Виза страны открывает саму страну, а визы Шенгена, США, Великобритании и Канады — ещё несколько стран.</p>
+          <${MultiPick} value=${app.visas} onChange=${app.setVisas} sub=${VISA_SUB} sections=${VISA_SECTIONS}/>
+          <p className="muted small" style=${{ marginTop: 16 }}>Настройки сохраняются в этом браузере и в ссылке на страницу.</p>
+        </div></div>` : null}
+  </div>`;
+}
+
+/* ============ variant B: «Список под картой» — compact map on top, list grouped by country ============ */
+function VariantB({ app }) {
+  const map = useRef();
+  const [panel, setPanel] = useState(false), [searching, setSearching] = useState(false), [q, setQ] = useState(''), [open, setOpen] = useState(null), [groupsOpen, setGroupsOpen] = useState({}), [banner, setBanner] = useState(true), [undo, setUndo] = useState(null), [geoMsg, setGeoMsg] = useState(false);
+  const [toast, showToast, hideToast] = useToast();
+  const st = statusOf(app);
+  useEffect(() => { setOpen(null); setGroupsOpen({}); }, [app.data && app.data.key]);
+  const onPick = (lon, lat) => { const prev = app.start; if (!app.pickPoint(lon, lat)) return showToast('Здесь нет дорог. Выберите точку на суше.'); setUndo(prev); showToast('Старт перенесён', 4000); };
+  const locate = () => { if (!app.locate()) setGeoMsg(true); else setGeoMsg(false); };
+  const openCity = i => { setOpen(o => o === i ? null : i); const c = CITIES[i]; setGroupsOpen(g => ({ ...g, [c.c]: true })); map.current.flyTo(c.lon, c.lat, 0, [16, 16, 64, 16]); setTimeout(() => { const el = document.getElementById('b-c' + i); el && el.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }, 50); };
+  const toggleVisa = v => app.setVisas(app.visas.includes(v) ? app.visas.filter(x => x !== v) : [...app.visas, v]);
+  const toggleCit = c => { if (app.cits.includes(c)) { if (app.cits.length > 1) app.setCits(app.cits.filter(x => x !== c)); } else app.setCits([...app.cits, c]); };
+
+  let body;
+  if (!app.start) body = html`<div className="card-msg"><h4>Откуда едем?</h4><p>Тапните по карте, найдите город или определите, где вы.</p>
+      <div className="chips"><button className="btn" onClick=${() => setSearching(true)}>${I.search} Найти город</button><button className="btn" onClick=${locate}>${I.locate} Где я</button></div>
+      ${geoMsg || app.geoDenied ? html`<p>Браузер не дал доступ к геолокации.</p>` : null}</div>`;
+  else if (st.kind === 'busy') body = html`<${React.Fragment}><div className="b-sum">Считаем кольцо <b>${hoursText(app.hours)}</b>…</div>${[0, 1, 2, 3, 4].map(i => html`<div key=${i} className="skel"></div>`)}<//>`;
+  else if (app.ring.status === 'error') body = html`<div className="card-msg err"><h4>Не получилось посчитать кольцо</h4><p>Проверьте интернет и попробуйте ещё раз.</p><div><button className="btn" onClick=${app.retry}>Повторить</button></div></div>`;
+  else if (app.ring.status === 'limit') body = html`<div className="card-msg err"><h4>Лимит расчётов исчерпан</h4><p>Новые кольца можно будет посчитать через 47 минут. Уже посчитанные часы отмечены точками на ползунке.</p></div>`;
+  else if (st.kind === 'empty') body = html`<div className="card-msg"><h4>${app.data.empty ? `Дальше ${Math.ceil(app.data.maxT)} ч отсюда не уехать` : `В кольце ${hoursText(app.hours)} нет городов`}</h4><p>${app.data.empty ? 'Дальше море или закрытые страны. Попробуйте добавить свои визы.' : 'Показываем города больше 15 000 жителей. Попробуйте другое время в пути.'}</p></div>`;
+  else {
+    const groups = groupByCountry(app);
+    body = html`<${React.Fragment}>
+      <div className="b-sum">В кольце <b>${hoursText(app.hours)}</b> — <b>${citiesWord(app.cities.length)}</b> в ${groups.length} ${plural(groups.length, ['стране', 'странах', 'странах'])}</div>
+      ${banner ? html`<div className="b-banner">${I.info}<span>${VISA_NOTE}</span><button onClick=${() => setBanner(false)} aria-label="Скрыть">${I.close}</button></div>` : null}
+      ${groups.map(([c, list]) => { const co = COUNTRIES[c - 1], more = !groupsOpen[c] && list.length > 4; return html`<section key=${c} className="b-group">
+        <div className="b-ghead"><h4>${co.ru}</h4>${badgeFor(app.acc[c])}<span className="b-gcount">${list.length}</span></div>
+        ${app.plates && co.sch ? html`<div className="b-gnote">${PLATES_NOTE}</div>` : null}
+        ${(more ? list.slice(0, 4) : list).map(i => { const ci = CITIES[i]; return html`<div key=${i} id=${'b-c' + i}>
+          <button className="row" onClick=${() => openCity(i)} aria-expanded=${open === i}><span className="row-main"><span className="row-name">${ci.name}</span>${ci.alt ? html`<span className="row-alt">${ci.alt}</span>` : null}</span><span className="row-sub">${fmtPop(ci.pop)}</span></button>
+          ${open === i ? html`<div className="b-detail"><div className="chips"><a className="btn primary" href=${gmaps(app.start, ci)} target="_blank" rel="noopener">${I.route} Маршрут</a><button className="btn" onClick=${() => app.pickCity(i)}>Ехать отсюда</button></div></div>` : null}</div>`; })}
+        ${more ? html`<button className="b-more" onClick=${() => setGroupsOpen(g => ({ ...g, [c]: true }))}>Ещё ${citiesWord(list.length - 4)}</button>` : null}
+      </section>`; })}<//>`;
+  }
+  return html`<div className="b">
+    <header className="b-head">
+      <div className="b-top"><span className="b-logo">Куда доехать</span>
+        <button className=${'b-set' + (panel ? ' open' : '')} onClick=${() => setPanel(!panel)} aria-expanded=${panel}><span>${citsShort(app.cits)} · визы: ${visasShort(app.visas)}</span>${I.chev}</button></div>
+      ${panel ? html`<div className="b-panel">
+        <h4>Гражданство (можно несколько)</h4>
+        <div className="chips">${CIT_OPTIONS.map(c => html`<button key=${c} className=${'chip' + (app.cits.includes(c) ? ' on' : '')} onClick=${() => toggleCit(c)}>${nameOf(c)}</button>`)}</div>
+        <h4>Мои визы и ВНЖ</h4>
+        <div className="chips">${VISA_MAIN.map(v => html`<button key=${v} className=${'chip' + (app.visas.includes(v) ? ' on' : '')} onClick=${() => toggleVisa(v)}>${nameOf(v)}</button>`)}
+          ${app.visas.filter(v => !VISA_MAIN.includes(v)).map(v => html`<button key=${v} className="chip on" onClick=${() => toggleVisa(v)}>${nameOf(v)} ×</button>`)}
+          <label className="chip"><span>+ страна</span><select id="b-visa-add" value="" onChange=${e => e.target.value && toggleVisa(e.target.value)} aria-label="Добавить визу страны"><option value=""></option>${VISA_OTHER.filter(v => !app.visas.includes(v)).map(v => html`<option key=${v} value=${v}>${nameOf(v)}</option>`)}</select></label></div>
+        <p className="muted small" style=${{ margin: '4px 0 0' }}>Сохраняется в браузере и в ссылке.</p>
+      </div>` : null}
+      <div className="b-start">
+        ${searching ? html`<${React.Fragment}><div className="search-in" style=${{ flex: 1 }}>${I.search}<input id="b-q" autoFocus placeholder="Город старта" value=${q} onInput=${e => setQ(e.target.value)}/></div><button className="btn" onClick=${() => { setSearching(false); setQ(''); }}>Отмена</button>
+            ${q.trim() ? html`<div className="b-res"><${CityResults} q=${q} onPick=${i => { app.pickCity(i); setSearching(false); setQ(''); const c = CITIES[i]; map.current.flyTo(c.lon, c.lat, 8, [16, 16, 64, 16]); }}/></div>` : null}<//>`
+        : html`<${React.Fragment}><button className="b-startbtn" onClick=${() => setSearching(true)}>${I.pin}<span><b>${app.start ? app.start.name : 'Точка старта не выбрана'}</b>${app.start ? html` <span className="muted small">${app.start.sub}</span>` : null}</span></button>
+            <button className="btn" onClick=${locate} aria-label="Где я">${I.locate}</button><//>`}
+      </div>
+    </header>
+    <div className="b-map">
+      <${MapView} ref=${map} app=${app} pickMode="tap" loadingStyle="pulse" showClosed=${false} labelCount=${5} highlight=${open} onPick=${onPick} onCityTap=${openCity} pad=${[16, 16, 64, 16]}/>
+      ${app.start ? html`<div className="b-slider"><span className="b-slval">${hoursText(app.hours)}</span><${Slider} value=${app.hours} onCommit=${app.setHours} cached=${app.cachedHours}/></div>` : null}
+      ${toast ? html`<div className="toast" style=${{ top: 10 }}>${toast}${undo && toast === 'Старт перенесён' ? html`<button onClick=${() => { app.setStart(undo); setUndo(null); hideToast(); }}>Отменить</button>` : null}</div>` : null}
+    </div>
+    <div className="b-list">${body}</div>
+  </div>`;
+}
+
+/* ============ variant C: «Фраза» — settings live in a sentence, cities in a carousel ============ */
+function VariantC({ app }) {
+  const map = useRef(), car = useRef();
+  const [sheet, setSheet] = useState(null), [picking, setPicking] = useState(false), [focus, setFocus] = useState(null), [q, setQ] = useState(''), [geoMsg, setGeoMsg] = useState(false);
+  const [toast, showToast] = useToast();
+  const st = statusOf(app), list = app.cities || [], cards = list.slice(0, 12);
+  const pad = [130, 74, 200, 16];
+  useEffect(() => { setFocus(null); if (car.current) car.current.scrollLeft = 0; }, [app.data && app.data.key]);
+  const onScroll = useMemo(() => { let t; return () => { clearTimeout(t); t = setTimeout(() => {
+    const el = car.current; if (!el) return; const mid = el.scrollLeft + el.clientWidth / 2; let best = null, bd = 1e9;
+    for (const ch of el.children) { const d = Math.abs(ch.offsetLeft + ch.offsetWidth / 2 - mid); if (d < bd) { bd = d; best = ch; } }
+    const i = best && best.dataset.city ? +best.dataset.city : null; setFocus(i);
+    if (i != null) { const c = CITIES[i]; map.current.flyTo(c.lon, c.lat, 0, pad); }
+  }, 140); }; }, []);
+  const focusCity = i => { const el = car.current && car.current.querySelector(`[data-city="${i}"]`); if (el) el.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' }); else { setFocus(i); setSheet('all'); } };
+  const locate = () => { if (!app.locate()) setGeoMsg(true); else { setGeoMsg(false); setSheet(null); } };
+  const tok = (text, onClick, want) => html`<button className=${'tok' + (want ? ' want' : '')} onClick=${onClick}>${text}</button>`;
+
+  let first;
+  if (!app.start) first = html`<div className="c-card" data-first="1"><h3>Откуда едем?</h3><p className="muted small" style=${{ margin: 0 }}>${geoMsg || app.geoDenied ? 'Браузер не дал доступ к геолокации. ' : ''}Найдите город или укажите точку на карте.</p>
+      <div className="acts"><button className="btn primary" onClick=${() => setSheet('start')}>${I.search} Город</button><button className="btn" onClick=${() => setPicking(true)}>${I.pin} На карте</button><button className="btn" onClick=${locate} aria-label="Где я">${I.locate}</button></div></div>`;
+  else if (st.kind === 'busy') first = html`<div className="c-card"><span className="muted small">Кольцо ${hoursText(app.hours)}</span><h3><span className="spin"></span> Считаем…</h3><div className="bar"><i></i></div><p className="muted small" style=${{ margin: 0 }}>Обычно это пара секунд</p></div>`;
+  else if (app.ring.status === 'error') first = html`<div className="c-card"><h3 style=${{ color: 'var(--err)' }}>Не получилось посчитать</h3><p className="muted small" style=${{ margin: 0 }}>Проверьте интернет и попробуйте ещё раз.</p><div className="acts"><button className="btn primary" onClick=${app.retry}>Повторить</button></div></div>`;
+  else if (app.ring.status === 'limit') first = html`<div className="c-card"><h3 style=${{ color: 'var(--err)' }}>Лимит расчётов исчерпан</h3><p className="muted small" style=${{ margin: 0 }}>Новые кольца — через 47 минут. Посчитанные часы отмечены точками на ползунке справа.</p></div>`;
+  else if (st.kind === 'empty') first = html`<div className="c-card"><h3>${app.data.empty ? `Дальше ${Math.ceil(app.data.maxT)} ч не уехать` : 'Городов в кольце нет'}</h3><p className="muted small" style=${{ margin: 0 }}>${app.data.empty ? 'Дальше море или закрытые страны. Добавьте свои визы или уменьшите время.' : 'Показываем города больше 15 000 жителей.'}</p>${app.data.empty ? html`<div className="acts"><button className="btn" onClick=${() => setSheet('visas')}>Мои визы</button></div>` : null}</div>`;
+  else first = html`<div className="c-card"><span className="muted small">В кольце ${hoursText(app.hours)}</span><div className="big">${list.length}</div><div>${plural(list.length, ['город', 'города', 'городов'])} в ${new Set(list.map(i => CITIES[i].c)).size} ${plural(new Set(list.map(i => CITIES[i].c)).size, ['стране', 'странах', 'странах'])}</div><p className="muted small" style=${{ margin: 0 }}>Листайте → самые крупные</p></div>`;
+
+  return html`<div style=${{ position: 'absolute', inset: 0 }}>
+    <${MapView} ref=${map} app=${app} pickMode="none" crosshair=${picking} loadingStyle="stripes" showClosed=${true} labelCount=${12} highlight=${focus} onCityTap=${focusCity} pad=${pad}/>
+    <div className="c-phrase"><p>
+      Из точки ${tok(app.start ? app.start.short : 'выберите', () => setSheet('start'), !app.start)}, <span className="tok static">${hoursLong(app.hours)}${st.kind === 'busy' ? html` <span className="spin"></span>` : null}</span> в пути.
+      Гражданство ${tok(citsShort(app.cits), () => setSheet('cits'))}, мои визы: ${tok(visasShort(app.visas), () => setSheet('visas'))}
+      <button className="c-info" onClick=${() => setSheet('info')} aria-label="Что важно знать">${I.info}</button></p></div>
+    ${app.start && !picking ? html`<div className="c-vs"><${Slider} vertical value=${app.hours} onCommit=${app.setHours} cached=${app.cachedHours}/></div>` : null}
+    ${picking ? html`<div className="c-pickbar"><span>Двигайте карту, чтобы поставить точку под булавку</span><div><button className="btn" onClick=${() => setPicking(false)}>Отмена</button>
+        <button className="btn primary" onClick=${() => { const [lon, lat] = map.current.center(); if (app.pickPoint(lon, lat)) setPicking(false); else showToast('Здесь нет дорог. Выберите точку на суше.'); }}>Старт здесь</button></div></div>`
+    : html`<div className="c-car" ref=${car} onScroll=${onScroll}>
+        ${first}
+        ${st.kind === 'ok' ? cards.map(i => { const c = CITIES[i]; return html`<div key=${i} data-city=${i} className=${'c-card' + (focus === i ? ' focus' : '')}>
+          <h3>${c.name}</h3><div className="muted small">${c.alt ? c.alt + ' · ' : ''}${COUNTRIES[c.c - 1].ru} · ${fmtPop(c.pop)}</div>
+          <div>${badgeFor(app.acc[c.c])}</div>
+          ${app.plates && COUNTRIES[c.c - 1].sch ? html`<div className="small" style=${{ color: 'var(--warn)' }}>Российские номера не пустят</div>` : null}
+          <div className="acts"><a className="btn primary" href=${gmaps(app.start, c)} target="_blank" rel="noopener">${I.route} Маршрут</a></div></div>`; }) : null}
+        ${st.kind === 'ok' && list.length > cards.length ? html`<button className="c-card" onClick=${() => setSheet('all')}><span className="muted small">и ещё</span><div className="big">${list.length - cards.length}</div><div style=${{ color: 'var(--ring)', fontWeight: 600 }}>Все города →</div></button>` : null}
+      </div>`}
+    ${toast ? html`<div className="toast" style=${{ bottom: 120 }}>${toast}</div>` : null}
+    ${sheet === 'start' ? html`<${Sheet} title="Откуда едем" onClose=${() => setSheet(null)}>
+        <div className="search-in">${I.search}<input id="c-q" autoFocus placeholder="Город" value=${q} onInput=${e => setQ(e.target.value)}/></div>
+        <div className="chips" style=${{ margin: '10px 0' }}><button className="btn" onClick=${() => { setSheet(null); setPicking(true); }}>${I.pin} Указать на карте</button><button className="btn" onClick=${locate}>${I.locate} Где я</button></div>
+        ${geoMsg || app.geoDenied ? html`<p className="muted small">Браузер не дал доступ к геолокации.</p>` : null}
+        <${CityResults} q=${q} onPick=${i => { app.pickCity(i); setSheet(null); setQ(''); }}/><//>` : null}
+    ${sheet === 'cits' ? html`<${Sheet} title="Гражданство" onClose=${() => setSheet(null)}><p className="muted small" style=${{ marginTop: 0 }}>Можно несколько: для каждой страны берём самый удобный вариант въезда.</p><${MultiPick} options=${CIT_OPTIONS} value=${app.cits} onChange=${app.setCits} min=${1} sub=${CIT_SUB}/><//>` : null}
+    ${sheet === 'visas' ? html`<${Sheet} title="Мои визы" onClose=${() => setSheet(null)}><p className="muted small" style=${{ marginTop: 0 }}>Визы и ВНЖ, которые у вас уже есть.</p><${MultiPick} value=${app.visas} onChange=${app.setVisas} sub=${VISA_SUB} sections=${VISA_SECTIONS}/><//>` : null}
+    ${sheet === 'info' ? html`<${Sheet} title="Что важно знать" onClose=${() => setSheet(null)}><div style=${{ display: 'grid', gap: 10 }}><div className="note">${I.warn}<span>${PLATES_NOTE} Если едете на такой машине, страны ЕС в кольце вам не подходят.</span></div><div className="note">${I.info}<span>${VISA_NOTE}</span></div><p className="muted small" style=${{ margin: 0 }}>Время в пути — время за рулём ×1,2 и по 1,5 ч на каждой границе с паспортным контролем.</p></div><//>` : null}
+    ${sheet === 'all' ? html`<${Sheet} title=${`${citiesWord(list.length)} в кольце ${hoursText(app.hours)}`} onClose=${() => setSheet(null)}>
+        ${list.map(i => { const c = CITIES[i]; return html`<button key=${i} className="row" onClick=${() => { setSheet(null); setFocus(i); map.current.flyTo(c.lon, c.lat, 8, pad); }}><span className="row-main"><span className="row-name">${c.name}</span>${c.alt ? html`<span className="row-alt">${c.alt}</span>` : null}<div className="row-sub">${COUNTRIES[c.c - 1].ru} · ${fmtPop(c.pop)}</div></span>${badgeFor(app.acc[c.c])}</button>`; })}<//>` : null}
+  </div>`;
+}
+
+/* ============ prototype shell: variant switcher + state switcher ============ */
+const VARIANTS = [{ key: 'a', name: 'Шторка', C: VariantA }, { key: 'b', name: 'Список под картой', C: VariantB }, { key: 'c', name: 'Фраза и карусель', C: VariantC }];
+const STATES = [['normal', 'Обычное'], ['nogeo', 'Нет геолокации'], ['loading', 'Расчёт идёт'], ['error', 'Ошибка расчёта'], ['limit', 'Лимит исчерпан'], ['empty', 'Нет городов']];
+const STATUS_RU = { idle: 'нет старта', loading: 'считаем', ready: 'готово', error: 'ошибка', limit: 'лимит' };
+const fromHash = () => { const k = (location.hash || '').slice(1); return VARIANTS.some(v => v.key === k) ? k : 'a'; };
+function App() {
+  const app = useRoadtrip();
+  const [vk, setVk] = useState(fromHash);
+  const vi = VARIANTS.findIndex(v => v.key === vk), V = VARIANTS[vi];
+  const go = d => { const n = VARIANTS[(vi + d + VARIANTS.length) % VARIANTS.length].key; setVk(n); try { location.hash = n; } catch (e) {} };
+  useEffect(() => {
+    const h = () => setVk(fromHash());
+    const k = e => { if (e.target.closest && e.target.closest('input,textarea,select,[contenteditable],[role=slider]')) return; if (e.key === 'ArrowLeft') go(-1); if (e.key === 'ArrowRight') go(1); };
+    addEventListener('hashchange', h); addEventListener('keydown', k); return () => { removeEventListener('hashchange', h); removeEventListener('keydown', k); };
+  });
+  const stateVal = app.forced || (app.geoDenied && !app.start ? 'nogeo' : 'normal');
+  const n = app.cities ? app.cities.length : null;
+  return html`<div className="stage">
+    <main className="phone"><${V.C} key=${vk} app=${app}/></main>
+    <div className="dev" aria-label="Панель прототипа">
+      <div className="dev-row">
+        <button className="dev-arrow" onClick=${() => go(-1)} aria-label="Предыдущий вариант">‹</button>
+        <div className="dev-label"><b>${V.key}</b>${V.name}</div>
+        <button className="dev-arrow" onClick=${() => go(1)} aria-label="Следующий вариант">›</button>
+        <select id="dev-state" value=${stateVal} onChange=${e => app.setForced(e.target.value)} aria-label="Состояние">${STATES.map(([k, t]) => html`<option key=${k} value=${k}>${t}</option>`)}</select>
+      </div>
+      <div className="dev-state">Прототип, данные ненастоящие · ${app.start ? app.start.short : 'нет старта'} · ${hoursText(app.hours)} · ${citsShort(app.cits)} · визы: ${visasShort(app.visas)} · ${STATUS_RU[app.ring.status]}${n != null ? ' · ' + citiesWord(n) : ''}</div>
+    </div>
+  </div>`;
+}
+ReactDOM.createRoot(document.getElementById('root')).render(html`<${App}/>`);
+</script>

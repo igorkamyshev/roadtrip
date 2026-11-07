@@ -7,7 +7,8 @@
 	"scripts": {
 		"prepare": "git config core.hooksPath .githooks",
 		"lint": "node lint/agents-pointers.ts",
-		"test": "vitest run"
+		"test": "vitest run",
+		"prototype:screen": "node prototypes/screen/serve.mjs"
 	},
 	"devDependencies": {
 		"vitest": "^5.1.0"
