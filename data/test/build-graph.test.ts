@@ -99,7 +99,7 @@ describe('the graph', () => {
 		expect(edges(graph, (edge) => marked.has(edge))).toEqual(
 			[
 				['0.2,0.9 AAA', '0.2,1.1 BBB'],
-				['0.3,0.99 AAA', '0.3,1.1 BBB'],
+				['0.3,0.995 AAA', '0.3,1.1 BBB'],
 				['0.3,1.9 BBB', '0.3,2.1 CCC'],
 			]
 				.flatMap(([one, two]) => [`${one} → ${two}`, `${two} → ${one}`])
