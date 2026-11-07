@@ -22,8 +22,9 @@ export default {
 			return;
 		}
 
-		// Typed as the key in wrangler.jsonc, but .dev.vars may empty it for wrangler dev (README).
-		const token: string = env.POSTHOG_API_KEY;
+		// Empty in wrangler.jsonc until the Owner creates the PostHog project, and in
+		// .dev.vars for wrangler dev (README): then the events are only printed.
+		const token = env.POSTHOG_API_KEY;
 		if (token === '') {
 			logger.info('[error-tracking] POSTHOG_API_KEY is not set, not sending', JSON.stringify(exceptions));
 			return;
