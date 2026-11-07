@@ -11,6 +11,8 @@ Read a package's `AGENTS.md` before working in it:
 
 `rules` holds the tables edited by hand (the border table); it has no `AGENTS.md` yet.
 
+`error-tracking` is the Tail Worker that turns the Workers' errors into PostHog `$exception` events, and the home of the logger they write with (`import { logger } from 'error-tracking/logger'`). Its `README.md` says how a Worker attaches it and writes `logger.error`.
+
 ## Agent skills
 
 ### Issue tracker
