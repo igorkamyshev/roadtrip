@@ -1,5 +1,5 @@
 {
-	"run": 4,
+	"run": 5,
 	"graphRunId": "42419620571",
-	"instanceTypes": ["standard-1", "standard-2"]
+	"instanceTypes": ["standard-2"]
 }
