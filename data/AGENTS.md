@@ -17,6 +17,8 @@ The dataset build (spec «Набор данных»). So far: the builder that t
 
 `pnpm --filter data ring <extract | graph file | URL> --lat <degrees> --lon <degrees> --hours <N> [--closed <alpha-3,…>] [--out <file.geojson>]` is the one-command check of the ticket: it builds the graph of an extract (for example `https://download.geofabrik.de/europe/andorra-latest.osm.pbf`), computes the ring and writes GeoJSON. `build-graph <extract> <out.graph>` writes the graph file, which `ring` also reads. Both print the build report to stderr when they build. pnpm runs both in `data/`; they take a relative path from where pnpm started.
 
+`pnpm --filter data valhalla <work dir> [--report <file.md>] [--regions <id,…>] [--mirror <url>]` is the comparison with Valhalla on the full graph (#24; spec «Сверка с Valhalla»), a one-off check that CI does not run. The start points and their regions are in `src/valhalla/places.ts`. It needs osmium-tool, unzip and pyvalhalla's commands on PATH, a few GB of disk per region and ~10 GB of memory while Valhalla builds a region's tiles. Valhalla's results stay in the work directory, so after a change to the speeds a second run only recomputes ours. Its last report is `valhalla-report.md`, with conclusions written by hand; rerun it after a change to the speeds or the contour, and keep the conclusions.
+
 ## Tests
 
 The fixtures in `test/fixtures/` are hand-written OSM XML of a few countries and tens of nodes near the equator, where 0.1° is 11.1 km. Each one's header works out the expected values by hand; a new case extends a fixture's header or gets its own fixture.
@@ -25,3 +27,4 @@ The fixtures in `test/fixtures/` are hand-written OSM XML of a few countries and
 - `test/build-graph.test.ts`: the graph itself, the PBF reader against the XML, the graph file, the build report.
 - `test/border-table.test.ts` and `test/data-version.test.ts`: the border table's check and the data version, here because every package's tests run under `data`'s vitest and types.
 - `test/commands.test.ts`: the commands as processes.
+- `test/valhalla-metrics.test.ts`: the measures of the Valhalla comparison (ring area, the median time to cities, the tolerance); the comparison itself runs in no test.
