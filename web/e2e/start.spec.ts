@@ -33,6 +33,16 @@ test('without geolocation «выберите» blinks in the phrase and the firs
 	expect(ringApi.calls).toHaveLength(0);
 });
 
+test('the sheet «Откуда едем» says when the browser gave no position', async ({ page }) => {
+	await page.goto('/');
+	await phrase(page).getByRole('button', { name: 'выберите' }).click();
+
+	const sheet = page.getByRole('dialog', { name: 'Откуда едем' });
+	await expect(sheet.getByRole('button', { name: 'Указать на карте' })).toBeVisible();
+	await expect(sheet.getByRole('button', { name: 'Где я' })).toBeVisible();
+	await expect(sheet).toContainText('Браузер не дал доступ к геолокации.');
+});
+
 test('«Где я» sets the origin once the browser gives the position', async ({ page, context, ringApi }) => {
 	ringApi.respond((call) => squareRing(Number(call.lat), Number(call.lon), 0, 0.5));
 	await page.goto('/');

@@ -127,3 +127,24 @@ test('a calculation that takes over 5 s says it takes longer than usual', async 
 	await ringApi.answer(ringFor({ ...BELGRADE_CALL, hours: 1 }));
 	await expect(firstCard(page)).toContainText('В кольце до 1 ч');
 });
+
+test('an answer that comes after the person moved on is not shown, but is kept in memory', async ({ page, ringApi }) => {
+	ringApi.respond((call) => (call.hours === 1 ? ringFor(call) : undefined));
+	await page.goto('/');
+	await expect(firstCard(page)).toContainText('В кольце до 1 ч');
+	await slider(page).press('ArrowUp');
+	await expect(firstCard(page)).toContainText('Кольцо 1–2 ч');
+	await slider(page).press('ArrowUp');
+	await expect(firstCard(page)).toContainText('Кольцо 2–3 ч');
+
+	await ringApi.answer(ringFor({ ...BELGRADE_CALL, hours: 2 }), 2);
+
+	await expect.poll(() => dottedHours(page)).toEqual([1, 2]);
+	await expect(firstCard(page)).toContainText('Кольцо 2–3 ч');
+	await expect(firstCard(page)).toContainText('Считаем…');
+	expect(await ringOnMap(page)).toEqual([ringFor({ ...BELGRADE_CALL, hours: 1 }).ring]);
+	await slider(page).press('ArrowDown');
+	await expect(firstCard(page)).toContainText('В кольце 1–2 ч');
+	await expect.poll(() => ringOnMap(page)).toEqual([ringFor({ ...BELGRADE_CALL, hours: 2 }).ring]);
+	expect(ringApi.calls.map((call) => call.hours)).toEqual([1, 2, 3]);
+});
