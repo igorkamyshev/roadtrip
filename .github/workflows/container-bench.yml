@@ -214,11 +214,12 @@ jobs:
         if: always()
         working-directory: worker
         run: |
-          api() { curl -sS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/$1"; }
+          api() { curl -sS -X "${2:-GET}" -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/$1"; }
           for id in $(pnpm exec wrangler containers list --json | jq -r --arg name "$WORKER-enginecontainer" '.[] | select(.name == $name) | .id'); do
             pnpm exec wrangler containers delete "$id" || echo "::warning::could not delete the Container application $id"
           done
-          pnpm exec wrangler delete --name "$WORKER" --force || echo "::warning::could not delete the Worker $WORKER"
+          # By the API: `wrangler delete` deletes the Worker, then fails on listing KV namespaces, which the token may not.
+          api "workers/scripts/$WORKER?force=true" DELETE | jq -c '{ success, errors }'
           for image in $(pnpm exec wrangler containers images list --json | jq -r --arg name "$WORKER" '.[] | select(.name | startswith($name)) | .name as $repo | .tags[] | "\($repo):\(.)"'); do
             pnpm exec wrangler containers images delete "$image" --skip-confirmation || echo "::warning::could not delete the image $image"
           done
