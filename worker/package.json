@@ -17,6 +17,7 @@
 		"@cloudflare/containers": "^0.3.7",
 		"engine": "workspace:*",
 		"error-tracking": "workspace:*",
+		"pmtiles": "^4.5.0",
 		"rules": "workspace:*"
 	},
 	"devDependencies": {

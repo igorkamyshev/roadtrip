@@ -1,6 +1,6 @@
 // The Worker roadtrip (spec «Устройство»): routes a request by its path and builds the route's deps from env and
 // ctx. Static assets (#28) are served before the Worker runs, so only paths without a file reach it: GET /api/ring
-// and, with #29, the tiles. The class of the Container with the engine lives here too, because the runtime takes
+// and the basemap's tiles, GET /tiles/{z}/{x}/{y}. The class of the Container with the engine lives here too, because the runtime takes
 // it from the Worker's entry.
 import { Container, getContainer } from '@cloudflare/containers';
 import dataset from 'engine/dataset';
@@ -8,6 +8,7 @@ import { COLD_START_HEADER } from 'engine/protocol';
 import { logger } from 'error-tracking/logger';
 import { RING_PATH } from './api.ts';
 import { handleRing } from './ring.ts';
+import { createTilesHandler, TILES_PREFIX } from './tiles.ts';
 
 /**
  * How long the Container may take from its start to an open port, which the engine server opens once the graph is
@@ -47,6 +48,9 @@ export class EngineContainer extends Container<Env> {
 	}
 }
 
+/** The tiles route, with the archive's header and directories kept by the isolate between requests. */
+const handleTiles = createTilesHandler();
+
 export default {
 	async fetch(request, env, ctx) {
 		const { pathname } = new URL(request.url);
@@ -58,6 +62,17 @@ export default {
 				},
 				container: getContainer(env.ENGINE),
 				datasetVersion: dataset.version,
+				waitUntil: (promise) => {
+					ctx.waitUntil(promise);
+				},
+				logger,
+			});
+		}
+		if (pathname.startsWith(TILES_PREFIX)) {
+			return handleTiles(request, {
+				bucket: env.BASEMAP,
+				archive: env.BASEMAP_ARCHIVE,
+				cache: caches.default,
 				waitUntil: (promise) => {
 					ctx.waitUntil(promise);
 				},
