@@ -161,6 +161,27 @@ a {
 .small {
 	font-size: 13px;
 }
+.badge {
+	display: inline-block;
+	font-size: 12px;
+	font-weight: 500;
+	line-height: 1;
+	padding: 4px 7px;
+	border-radius: 6px;
+	white-space: nowrap;
+}
+.b-evisa {
+	background: var(--evisa-bg);
+	color: var(--evisa);
+}
+.b-held {
+	background: var(--held-bg);
+	color: var(--held);
+}
+.b-plain {
+	background: var(--surface-2);
+	color: var(--muted);
+}
 .note {
 	display: flex;
 	gap: 8px;
@@ -330,6 +351,47 @@ a {
 .pick-box svg {
 	width: 14px;
 	height: 14px;
+}
+/* ---------- the list of all cities (a virtual list: rows of a fixed height, placed by the list) ---------- */
+.city-list {
+	position: relative;
+}
+.row {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	border-bottom: 1px solid var(--line);
+	text-align: left;
+	width: 100%;
+}
+.city-row {
+	position: absolute;
+	top: 0;
+	left: 0;
+	height: 60px;
+	box-sizing: border-box;
+}
+.city-row.on .row-name {
+	color: var(--ring);
+}
+.city-row .row-main,
+.city-row .row-sub {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.row-name {
+	font-weight: 600;
+}
+.row-alt {
+	font-weight: 400;
+	color: var(--muted);
+	font-size: 13px;
+}
+.row-sub {
+	display: block;
+	font-size: 13px;
+	color: var(--muted);
 }
 .row-main {
 	flex: 1;
@@ -552,6 +614,22 @@ a {
 }
 .c-card p {
 	margin: 0;
+}
+.c-card .big {
+	font-family: var(--display);
+	font-size: 30px;
+	font-weight: 700;
+	line-height: 1;
+}
+.c-card.focus {
+	outline: 2px solid var(--ring);
+}
+.c-card .plates {
+	color: var(--warn);
+}
+.c-card .c-more {
+	color: var(--ring);
+	font-weight: 600;
 }
 .c-card .acts {
 	display: flex;

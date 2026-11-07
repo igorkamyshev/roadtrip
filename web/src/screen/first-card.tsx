@@ -2,13 +2,15 @@
 // состояниям»). The texts are the spec's table.
 import { useEffect, useState, type ReactNode } from 'react';
 import type { RingFailure } from '../ring/fetch-ring.ts';
-import { hoursShort } from './copy.ts';
+import { hoursShort, plural } from './copy.ts';
 import { LocateIcon, PinIcon } from './icons.tsx';
 
 export type FirstCardState =
 	| { readonly kind: 'no_origin'; readonly geolocationFailed: boolean }
 	| { readonly kind: 'calculating'; readonly hours: number; readonly request: string }
-	| { readonly kind: 'ring'; readonly hours: number }
+	/** `cities`: how many cities the ring holds and in how many countries; undefined until the cities file comes. */
+	| { readonly kind: 'ring'; readonly hours: number; readonly cities?: { readonly count: number; readonly countries: number } }
+	| { readonly kind: 'no_cities'; readonly hours: number }
 	| { readonly kind: 'empty'; readonly maxHours: number }
 	| { readonly kind: 'no_roads' }
 	| { readonly kind: 'no_ring' }
@@ -49,10 +51,28 @@ export function FirstCard({ state, actions }: { readonly state: FirstCardState; 
 			// Keyed by the request, so that the 5 s count from its start.
 			return <Calculating key={state.request} hours={state.hours} />;
 		case 'ring':
-			// #32: the number of cities, «в K странах» and «Листайте → самые крупные»; «Городов в кольце нет».
 			return (
 				<Card>
 					<span className="muted small">В кольце {hoursShort(state.hours)}</span>
+					{state.cities === undefined ? null : (
+						<>
+							<div className="big">{state.cities.count}</div>
+							<div>
+								{plural(state.cities.count, ['город', 'города', 'городов'])} в {state.cities.countries}{' '}
+								{plural(state.cities.countries, ['стране', 'странах', 'странах'])}
+							</div>
+							<p className="muted small">Листайте → самые крупные</p>
+						</>
+					)}
+				</Card>
+			);
+		case 'no_cities':
+			// The ring's hours too, as on the ring's card: it is the same ring, without cities.
+			return (
+				<Card>
+					<span className="muted small">В кольце {hoursShort(state.hours)}</span>
+					<h3>Городов в кольце нет</h3>
+					<p className="muted small">Показываем города больше 15 000 жителей.</p>
 				</Card>
 			);
 		case 'empty':

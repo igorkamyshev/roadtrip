@@ -1,10 +1,18 @@
 // The sheets the phrase opens (spec «Экран»): «Откуда едем», «Гражданство» and «Что важно знать». #31 «Мои визы»
-// and #32 the list of all cities are `Sheet`s too.
-import { useState, type ReactNode } from 'react';
+// and the list of all cities (src/cities/cities-sheet.tsx) are `Sheet`s too.
+import { useState, type ReactNode, type Ref } from 'react';
 import { CITIZENSHIP_CHOICES, countryName, DEFAULT_CITIZENSHIP } from './countries.ts';
 import { CheckIcon, CloseIcon, InfoIcon, LocateIcon, PinIcon, SearchIcon, WarnIcon } from './icons.tsx';
 
-export function Sheet({ title, onClose, children }: { readonly title: string; readonly onClose: () => void; readonly children: ReactNode }) {
+export interface SheetProps {
+	readonly title: string;
+	readonly onClose: () => void;
+	readonly children: ReactNode;
+	/** The sheet's body, which scrolls: for a virtual list inside it. */
+	readonly bodyRef?: Ref<HTMLDivElement>;
+}
+
+export function Sheet({ title, onClose, children, bodyRef }: SheetProps) {
 	return (
 		<>
 			<div className="scrim" onClick={onClose} />
@@ -15,7 +23,9 @@ export function Sheet({ title, onClose, children }: { readonly title: string; re
 						<CloseIcon />
 					</button>
 				</div>
-				<div className="sheet-body">{children}</div>
+				<div className="sheet-body" ref={bodyRef}>
+					{children}
+				</div>
 			</div>
 		</>
 	);

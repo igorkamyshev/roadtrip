@@ -3,7 +3,8 @@
 // through `page.clock`.
 import { defineConfig } from '@playwright/test';
 
-const PORT = 4173;
+// Another port for a second checkout's tests at the same time (agents' worktrees): E2E_PORT=4180 pnpm e2e.
+const PORT = Number(process.env.E2E_PORT ?? 4173);
 
 export default defineConfig({
 	testDir: 'e2e',

@@ -3,6 +3,10 @@
 import type { UseQueryResult } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { RingResponse } from 'worker/api';
+import { type City, useCities } from '../cities/cities.ts';
+import { CitiesSheet } from '../cities/cities-sheet.tsx';
+import { CityCard, MoreCard } from '../cities/city-card.tsx';
+import { citiesInRing } from '../cities/in-ring.ts';
 import { MapView, type MapHandle } from '../map/map-view.tsx';
 import { RingRequestError } from '../ring/fetch-ring.ts';
 import { ringKey, useCachedHours, useRing } from '../ring/use-ring.ts';
@@ -16,7 +20,10 @@ import { Phrase, PhraseToken, VisaRulesDate } from './phrase.tsx';
 import { CitizenshipSheet, InfoSheet, StartSheet } from './sheets.tsx';
 import { Slider } from './slider.tsx';
 
-type SheetName = 'start' | 'citizenships' | 'info';
+type SheetName = 'start' | 'citizenships' | 'info' | 'cities';
+
+/** The carousel's cards of cities: the biggest of the ring's. */
+const CAROUSEL_CITIES = 12;
 
 export function Screen() {
 	const { origin, hours, citizenships, setOrigin, setHours, setCitizenships } = useScreenState();
@@ -24,6 +31,7 @@ export function Screen() {
 	// #31: the held visas too.
 	const settings = useMemo(() => settingsOf({ citizenships: citizenshipsText.split(',') }), [citizenshipsText]);
 	const ring = useRing(origin, hours, settings);
+	const cities = useCities();
 	const cachedHours = useCachedHours(origin, settings);
 	const map = useRef<MapHandle>(null);
 	const [sheet, setSheet] = useState<SheetName>();
@@ -75,10 +83,17 @@ export function Screen() {
 
 	// The request the screen shows: what the 5 s of «Считаем…» and the camera's fit to a new ring follow.
 	const requestId = origin === undefined ? '' : JSON.stringify(ringKey(origin, hours, settings));
-	const card = firstCardState(origin, hours, ring, geolocationFailed, requestId);
 	const shownRing = ring.data?.outcome === 'ring' ? ring.data.ring : undefined;
-	// The visa rules of the answer shown: what is hatched, and how old they are.
+	// The visa rules of the answer shown: what is hatched, how old they are, and which cities are open.
 	const answer = ring.data?.outcome === 'visa_rules_missing' ? undefined : ring.data;
+	const access = answer?.access;
+	// The ring's cities, once the ring is this request's (not an old one standing in) and the cities have come.
+	const ringCities = useMemo(
+		() => (cities === undefined || shownRing === undefined || access === undefined ? undefined : citiesInRing(cities, shownRing, access)),
+		[cities, shownRing, access],
+	);
+	const shownCities = ring.isPlaceholderData ? undefined : ringCities;
+	const card = firstCardState(origin, hours, ring, geolocationFailed, requestId, shownCities);
 	const closed = answer === undefined ? [] : Object.keys(answer.access).filter((code) => answer.access[code].mode === 'closed');
 	const openCitizenships = () => {
 		setSheet('citizenships');
@@ -136,7 +151,6 @@ export function Screen() {
 					</div>
 				</div>
 			) : (
-				// #32: the cards of the cities after the first one, and «и ещё K / Все города →».
 				<div className="c-car">
 					<FirstCard
 						state={card}
@@ -149,6 +163,19 @@ export function Screen() {
 							onCitizenships: openCitizenships,
 						}}
 					/>
+					{origin !== undefined && access !== undefined
+						? shownCities
+								?.slice(0, CAROUSEL_CITIES)
+								.map((city) => <CityCard key={city.id} city={city} origin={origin} access={access} citizenships={citizenships} />)
+						: null}
+					{shownCities !== undefined && shownCities.length > CAROUSEL_CITIES ? (
+						<MoreCard
+							more={shownCities.length - CAROUSEL_CITIES}
+							onOpen={() => {
+								setSheet('cities');
+							}}
+						/>
+					) : null}
 				</div>
 			)}
 			{sheet === 'citizenships' ? (
@@ -165,6 +192,20 @@ export function Screen() {
 					geolocationFailed={geolocationFailed}
 					onPin={startPinning}
 					onLocate={locateHere}
+					onClose={() => {
+						setSheet(undefined);
+					}}
+				/>
+			) : null}
+			{sheet === 'cities' && shownCities !== undefined && access !== undefined ? (
+				<CitiesSheet
+					cities={shownCities}
+					hours={hours}
+					access={access}
+					chosen={undefined}
+					onPick={() => {
+						setSheet(undefined);
+					}}
 					onClose={() => {
 						setSheet(undefined);
 					}}
@@ -187,6 +228,7 @@ function firstCardState(
 	ring: UseQueryResult<RingResponse, RingRequestError>,
 	geolocationFailed: boolean,
 	request: string,
+	cities: readonly City[] | undefined,
 ): FirstCardState {
 	if (origin === undefined) {
 		return { kind: 'no_origin', geolocationFailed };
@@ -203,7 +245,12 @@ function firstCardState(
 	}
 	switch (answer.outcome) {
 		case 'ring':
-			return { kind: 'ring', hours };
+			if (cities === undefined) {
+				return { kind: 'ring', hours };
+			}
+			return cities.length === 0
+				? { kind: 'no_cities', hours }
+				: { kind: 'ring', hours, cities: { count: cities.length, countries: new Set(cities.map((city) => city.zone)).size } };
 		case 'empty':
 			return { kind: 'empty', maxHours: answer.maxHours };
 		case 'no_roads':
