@@ -15,10 +15,7 @@ export const slider = (page: Page) => page.getByRole('slider', { name: 'Врем
 export async function sourceData(page: Page, source: 'ring' | 'start'): Promise<FeatureCollection> {
 	return page.evaluate(async (id) => {
 		const map = (window as unknown as { __roadtripMap?: MapForTests }).__roadtripMap;
-		if (!map?.loaded()) {
-			return { type: 'FeatureCollection', features: [] };
-		}
-		const data = await map.getSource(id)?.getData();
+		const data = await map?.getSource(id)?.getData();
 		return data?.type === 'FeatureCollection' ? data : { type: 'FeatureCollection', features: data ? [data as Feature] : [] };
 	}, source);
 }
@@ -42,8 +39,9 @@ export async function ringIsStriped(page: Page): Promise<boolean> {
 	});
 }
 
-/** The map's visible bounds, [west, south, east, north]. */
+/** The map's visible bounds, [west, south, east, north], once the camera has stopped. */
 export async function mapBounds(page: Page): Promise<[number, number, number, number]> {
+	await mapAtRest(page);
 	return page.evaluate(() => {
 		const map = (window as unknown as { __roadtripMap: MapForTests }).__roadtripMap;
 		const bounds = map.getBounds();
@@ -51,17 +49,38 @@ export async function mapBounds(page: Page): Promise<[number, number, number, nu
 	});
 }
 
-/** The map's centre as { lat, lon }. */
+/** The map's centre as { lat, lon }, once the camera has stopped. */
 export async function mapCenter(page: Page): Promise<{ lat: number; lon: number }> {
+	await mapAtRest(page);
 	return page.evaluate(() => {
 		const center = (window as unknown as { __roadtripMap: MapForTests }).__roadtripMap.getCenter();
 		return { lat: center.lat, lon: center.lng };
 	});
 }
 
+/** Waits until the camera stops: no pan, zoom or easing under way. */
+export async function mapAtRest(page: Page): Promise<void> {
+	await page.waitForFunction(() => {
+		const map = (window as unknown as { __roadtripMap?: MapForTests }).__roadtripMap;
+		return map !== undefined && !map.isMoving();
+	});
+}
+
+/** Drags the map by (dx, dy) pixels from the middle of the screen, as a finger would. */
+export async function dragMap(page: Page, dx: number, dy: number): Promise<void> {
+	const viewport = page.viewportSize() ?? { width: 390, height: 844 };
+	const x = viewport.width / 2;
+	const y = viewport.height / 2;
+	await page.mouse.move(x, y);
+	await page.mouse.down();
+	await page.mouse.move(x + dx, y + dy, { steps: 12 });
+	await page.mouse.up();
+	await mapAtRest(page);
+}
+
 /** What the tests use of MapLibre's `Map`, without importing MapLibre into Node. */
 interface MapForTests {
-	loaded(): boolean;
+	isMoving(): boolean;
 	getSource(id: string): { getData(): Promise<GeoJSON> } | undefined;
 	getLayoutProperty(layer: string, name: string): unknown;
 	getBounds(): { getWest(): number; getSouth(): number; getEast(): number; getNorth(): number };
