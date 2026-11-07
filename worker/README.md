@@ -12,9 +12,9 @@ The Worker `roadtrip` on `roadtrip.kamyshev.me` (spec «Устройство», 
 
 ## GET /api/ring
 
-1. The query: `lat`, `lon`, `hours` (1–12), `cit` (Sherpa's passports, `SHERPA_PASSPORTS` in `rules`) and `visas` as sorted comma-separated codes. Anything else is 400 with `{ error }`.
+1. The query: `lat`, `lon`, `hours` (1–12), `cit` (Sherpa's passports, `SHERPA_PASSPORTS` in `rules`) and `visas` (`SCHENGEN` and the countries of those passports outside Schengen, `HELD_VISAS`) as sorted comma-separated codes. Anything else is 400 with `{ error }`.
 2. The visa rules of each citizenship (`src/visa-rules.ts`), from its copy in KV or from Sherpa (below). A citizenship without them ends the request: `{ outcome: "visa_rules_missing", missingCitizenship }`, the first such citizenship.
-3. Their reduction (`reduceVisaRules` in `src/access.ts`), a pure function: the entry mode of every country (`COUNTRIES` in `rules`: ISO 3166-1, `RKS`, `NX`) and closed territory, and the closed countries, those closed for everyone included. The held visas (#31) are its input, not yet applied.
+3. Their reduction (`reduceVisaRules` in `src/access.ts`), a pure function: the entry mode of every country (`COUNTRIES` in `rules`: ISO 3166-1, `RKS`, `NX`) and closed territory, and the closed countries, those closed for everyone included. Besides the citizenships' classes it applies the held visas: a country's own visa opens it, `SCHENGEN` the Schengen area (`SCHENGEN_AREA`), and a row of the visa exemptions' table (`VISA_EXEMPTIONS`, in `deps`) opens its country to a holder of its visa while it acts: up to its `until` by the date in UTC of `deps.now`, and for one of its `citizenships` (`actingExemptions` in `rules`, which the client's counters share). `access` names the visa (`visa`) of every country it opens.
 4. The key: `ring:<data version>:<lat>,<lon>:<N>:<SHA-256 of the closed countries>`, with the origin rounded to 0.001°. The data version is the dataset's version (`engine/dataset/dataset.json`), the border table's hash and `ENGINE_VERSION`. Citizenships and visas are not in it: those that close the same countries share their rings.
 5. A hit answers with `source: "cache"`. A miss posts the origin, N and the closed countries to the Container and answers `calculation`, or `joined` when the engine server joined it to a calculation of the same ring.
 6. The ring goes to KV for 40 days in the background, unless the Container calculated with another data version (a rollout), the JSON is over 25 MiB, or the request joined another's calculation, which caches it. Every outcome is cached: `ring`, `empty`, `no_roads`, `no_ring`.
@@ -105,7 +105,7 @@ pnpm typecheck   # the Worker against `wrangler types`, the tests against Node's
 pnpm cf-typegen  # after changing wrangler.jsonc
 ```
 
-The tests never import `src/index.ts`: Node cannot load `cloudflare:workers`. They call `handleRing` (`test/api.ts`) with doubles for both KV namespaces on one clock, a faked `fetch` for Sherpa (`SherpaDouble`, `sherpaMap` in Sherpa's shape) and the Container, and the engine server in-process on `data`'s fixture graphs: `src/ring.test.ts` covers the ring and its cache, `src/visa-rules.test.ts` the visa rules. And the tiles route with an R2 double holding a small archive that `test/pmtiles-archive.ts` writes, and a Cache API double.
+The tests never import `src/index.ts`: Node cannot load `cloudflare:workers`. They call `handleRing` (`test/api.ts`) with doubles for both KV namespaces on one clock, a faked `fetch` for Sherpa (`SherpaDouble`, `sherpaMap` in Sherpa's shape) and the Container, and the engine server in-process on `data`'s fixture graphs: `src/ring.test.ts` covers the ring and its cache, `src/visa-rules.test.ts` the visa rules, `src/held-visas.test.ts` the held visas with exemption rows of its own (so the table's monthly edits never touch it), and `src/visa-exemptions.test.ts` the shipped table's check. And the tiles route with an R2 double holding a small archive that `test/pmtiles-archive.ts` writes, and a Cache API double.
 
 ## Deploy
 
