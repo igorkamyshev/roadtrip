@@ -1,0 +1,339 @@
+name: Graph build probe
+
+# Throwaway probe for issue #14 «Где собирать граф дорог»: can a free
+# GitHub-hosted runner build the world road graph from Geofabrik extracts?
+# It lives only on the research/graph-build branch and is deleted when the
+# research is done.
+on:
+  workflow_dispatch:
+  push:
+    branches: [research/graph-build]
+    paths: [.github/workflows/graph-build-probe.yml]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: graph-build-probe
+  cancel-in-progress: true
+
+env:
+  # Geofabrik top-level regions. Together they cover the world.
+  PARTS: antarctica central-america
+  ROADS: motorway,motorway_link,trunk,trunk_link,primary,primary_link,secondary,secondary_link,tertiary,tertiary_link
+  GF: https://download.geofabrik.de
+  # Stop starting new downloads after this many seconds, to leave time for the merge.
+  BUDGET_S: '16200'
+  # Known road crossings between Geofabrik parts: name, min lon, min lat, max lon, max lat.
+  BOXES: |
+    upper-lars-ru-ge 44.55 42.66 44.70 42.80
+    sarp-tr-ge 41.52 41.49 41.60 41.55
+    narva-ee-ru 28.17 59.36 28.24 59.39
+    troitsk-ru-kz 61.45 53.90 61.95 54.20
+    kyakhta-ru-mn 106.35 50.20 106.55 50.40
+    taba-eg-il 34.86 29.46 34.93 29.52
+    ceuta-es-ma -5.36 35.85 -5.32 35.89
+    wutung-pg-id 140.90 -2.75 141.05 -2.55
+    tecun-uman-mx-gt -92.20 14.62 -92.10 14.72
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Machine before cleanup
+        run: |
+          date -u
+          echo "start=$(date +%s)" >> "$GITHUB_ENV"
+          nproc
+          free -h
+          lscpu | grep -E '^Model name|^CPU\(s\)'
+          df -h
+          lsblk || true
+
+      - name: Free disk space
+        run: |
+          t=$(date +%s)
+          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc /usr/local/.ghcup \
+            /opt/hostedtoolcache/CodeQL /usr/share/swift /usr/local/share/powershell \
+            /usr/local/share/chromium /usr/local/lib/node_modules /opt/microsoft /opt/google \
+            /usr/lib/jvm /opt/az
+          sudo docker image prune --all --force > /dev/null || true
+          echo "cleanup_s=$(( $(date +%s) - t ))" | tee -a "$GITHUB_ENV"
+          df -h
+
+      - name: Pick the work dir with most free space
+        run: |
+          best=$(df -B1 --output=avail,target / /mnt 2>/dev/null | tail -n +2 | sort -n | tail -1 | awk '{print $2}')
+          W="${best%/}/graph"
+          sudo mkdir -p "$W"
+          sudo chown "$(id -u):$(id -g)" "$W"
+          echo "W=$W" >> "$GITHUB_ENV"
+          df -h "$W"
+
+      - name: Install osmium
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq osmium-tool time python3-shapely jq > /dev/null
+          osmium --version | head -1
+
+      - name: Land not covered by any Geofabrik top-level region
+        continue-on-error: true
+        working-directory: ${{ env.W }}
+        run: |
+          curl -sS -L --fail -o index-v1.json "$GF/index-v1.json"
+          ne=https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson
+          curl -sS -L --fail -o land.geojson "$ne/ne_10m_land.geojson"
+          curl -sS -L --fail -o countries.geojson "$ne/ne_50m_admin_0_countries.geojson"
+          /usr/bin/python3 - <<'EOF' | tee gaps.txt
+          import json, math
+          from shapely import get_parts
+          from shapely.affinity import translate
+          from shapely.geometry import shape
+          from shapely.ops import unary_union
+          from shapely.validation import make_valid
+
+          def polys(g):
+              return [p for p in get_parts(g) if p.geom_type == 'Polygon' and not p.is_empty]
+
+          def km2(g):
+              return sum(p.area * 111.32 ** 2 * math.cos(math.radians(p.centroid.y)) for p in polys(g))
+
+          def wrap(g):
+              # Regions near the antimeridian may use longitudes beyond ±180.
+              minx, _, maxx, _ = g.bounds
+              out = [g]
+              if maxx > 180: out.append(translate(g, -360))
+              if minx < -180: out.append(translate(g, 360))
+              return unary_union(out)
+
+          idx = json.load(open('index-v1.json'))
+          top = {f['properties']['id']: wrap(make_valid(shape(f['geometry'])))
+                 for f in idx['features'] if not f['properties'].get('parent')}
+          print('top-level regions:', ' '.join(sorted(top)))
+          union = unary_union(list(top.values()))
+          land = [make_valid(shape(f['geometry'])) for f in json.load(open('land.geojson'))['features']]
+          gap = unary_union([l.difference(union) for l in land])
+          pieces = sorted(polys(gap), key=km2, reverse=True)
+          countries = [(f['properties'].get('NAME_EN') or f['properties'].get('NAME'), make_valid(shape(f['geometry'])))
+                       for f in json.load(open('countries.geojson'))['features']]
+          print(f'land outside every region: {len(pieces)} pieces, {km2(gap):.1f} km2 in total')
+          for p in pieces[:30]:
+              c = p.representative_point()
+              name = next((n for n, g in countries if g.intersects(p)), '-')
+              print(f'  {km2(p):10.2f} km2  lat {c.y:8.3f} lon {c.x:9.3f}  {name}')
+          ids = sorted(top)
+          for i, a in enumerate(ids):
+              for b in ids[i + 1:]:
+                  inter = top[a].intersection(top[b])
+                  if km2(inter) > 0:
+                      print(f'overlap {a} & {b}: {km2(inter):.0f} km2')
+          EOF
+
+      - name: Download and filter each part
+        working-directory: ${{ env.W }}
+        run: |
+          printf 'part\tsrc_MB\tdl_s\tdl_MBps\tfilter_s\tfilter_cpu\tfilter_rss_MB\tout_MB\tways\tnodes\tdata_ts\tfree_GB_min\n' > parts.tsv
+          for p in $PARTS; do
+            if (( $(date +%s) - start > BUDGET_S )); then
+              echo "::warning::time budget spent, skipping $p"
+              printf '%s\tskipped\n' "$p" >> parts.tsv
+              continue
+            fi
+            echo "::group::$p"
+            src="src-$p.osm.pbf"
+            if ! dl=$(curl -sS -L --fail --retry 3 --retry-delay 30 -o "$src" -w '%{size_download} %{time_total}' "$GF/$p-latest.osm.pbf"); then
+              echo "::error::download of $p failed"
+              printf '%s\tdownload failed\n' "$p" >> parts.tsv
+              rm -f "$src"; echo "::endgroup::"; continue
+            fi
+            read -r bytes secs <<< "$dl"
+            ts=$(osmium fileinfo -g header.option.osmosis_replication_timestamp "$src" || echo '?')
+            free1=$(df -B1G --output=avail . | tail -1 | tr -d ' ')
+            t0=$(date +%s.%N)
+            if ! /usr/bin/time -v -o "time-$p.txt" osmium tags-filter --overwrite -o "f-$p.osm.pbf" "$src" "w/highway=$ROADS" n/barrier=border_control; then
+              echo "::error::filter of $p failed"
+              cat "time-$p.txt" || true
+              printf '%s\tfilter failed\n' "$p" >> parts.tsv
+              rm -f "$src"; echo "::endgroup::"; continue
+            fi
+            t1=$(date +%s.%N)
+            free2=$(df -B1G --output=avail . | tail -1 | tr -d ' ')
+            read -r ways nodes < <(osmium fileinfo -e -j "f-$p.osm.pbf" | jq -r '"\(.data.count.ways) \(.data.count.nodes)"')
+            rm -f "$src"
+            awk -F'\t' -v OFS='\t' -v p="$p" -v b="$bytes" -v s="$secs" -v t0="$t0" -v t1="$t1" \
+                -v out="$(stat -c %s "f-$p.osm.pbf")" -v w="$ways" -v n="$nodes" -v ts="$ts" \
+                -v f1="$free1" -v f2="$free2" '
+              /Percent of CPU/ { cpu = $0; sub(/.*: /, "", cpu) }
+              /Maximum resident set size/ { rss = $0; sub(/.*: /, "", rss) }
+              END { print p, sprintf("%.0f", b/1e6), sprintf("%.0f", s), sprintf("%.1f", b/1e6/s),
+                          sprintf("%.0f", t1-t0), cpu, sprintf("%.0f", rss/1024), sprintf("%.1f", out/1e6),
+                          w, n, ts, (f1 < f2 ? f1 : f2) }' "time-$p.txt" >> parts.tsv
+            tail -1 parts.tsv
+            echo "::endgroup::"
+          done
+          cat parts.tsv
+
+      - name: Ways that are in more than one part
+        working-directory: ${{ env.W }}
+        run: |
+          for f in f-*.osm.pbf; do
+            p=${f#f-}; p=${p%.osm.pbf}
+            osmium cat -t way -f opl "$f" | awk -v p="$p" '{ print substr($1, 2), substr($2, 2), p }'
+          done | sort -S 3G --parallel=4 -k1,1n -k3,3 > wayparts.txt
+          wc -l < wayparts.txt
+          awk -v OFS='\t' '
+            function flush() { if (n > 1) { cnt[parts]++; if (vdiff) dv[parts]++; print "w" id, parts > "shared-ways.txt" } }
+            $1 != id { flush(); id = $1; parts = $3; v = $2; n = 1; vdiff = 0; next }
+            { parts = parts "+" $3; n++; if ($2 != v) vdiff = 1 }
+            END { flush(); for (k in cnt) print k, cnt[k], dv[k] + 0 }
+          ' wayparts.txt | sort > shared.tsv
+          touch shared-ways.txt
+          { printf 'parts\tshared_ways\tdifferent_versions\n'; cat shared.tsv; }
+
+      - name: Merge parts
+        working-directory: ${{ env.W }}
+        run: |
+          t0=$(date +%s.%N)
+          /usr/bin/time -v -o time-merge.txt osmium merge --overwrite -o merged.osm.pbf f-*.osm.pbf
+          echo "merge_s=$(awk -v a="$t0" -v b="$(date +%s.%N)" 'BEGIN { printf "%.0f", b - a }')" | tee -a "$GITHUB_ENV"
+          grep -E 'Maximum resident|Percent of CPU' time-merge.txt
+          ls -l f-*.osm.pbf merged.osm.pbf
+          osmium fileinfo -e -j merged.osm.pbf > merged.json
+          jq -c '{size: .file.size, data: {count: .data.count, multiple_versions: .data.multiple_versions, objects_ordered: .data.objects_ordered, bbox: .data.bbox, timestamp: .data.timestamp}}' merged.json
+          if [ "$(jq -r .data.multiple_versions merged.json)" = true ]; then
+            echo "::warning::several versions of one object; keeping only the newest with osmium time-filter"
+            osmium time-filter --overwrite -o latest.osm.pbf merged.osm.pbf
+            mv latest.osm.pbf merged.osm.pbf
+            osmium fileinfo -e -j merged.osm.pbf > merged.json
+          fi
+          set +e
+          t0=$(date +%s.%N)
+          osmium check-refs merged.osm.pbf 2>&1 | tee check-refs.txt
+          echo "check-refs exit ${PIPESTATUS[0]}, $(awk -v a="$t0" -v b="$(date +%s.%N)" 'BEGIN { printf "%.0f", b - a }') s"
+
+      - name: Add node locations to ways
+        working-directory: ${{ env.W }}
+        run: |
+          t0=$(date +%s.%N)
+          /usr/bin/time -v -o time-loc.txt osmium add-locations-to-ways --overwrite -o merged-loc.osm.pbf merged.osm.pbf
+          echo "loc_s=$(awk -v a="$t0" -v b="$(date +%s.%N)" 'BEGIN { printf "%.0f", b - a }')" | tee -a "$GITHUB_ENV"
+          grep -E 'Maximum resident|Percent of CPU' time-loc.txt
+          ls -l merged-loc.osm.pbf
+          df -h .
+
+      - name: Roads across part borders
+        working-directory: ${{ env.W }}
+        run: |
+          # Examples of ways that sit in two parts, with their first node location.
+          cut -f1 shared-ways.txt > shared-ids.txt
+          osmium getid --overwrite -i shared-ids.txt -f opl,locations_on_ways=true -o shared.opl merged-loc.osm.pbf || touch shared.opl
+          # Every way that has a node inside a known crossing box.
+          echo "$BOXES" | awk 'NF == 5 { printf "%s{\"output\": \"box-%s.opl\", \"output_format\": \"opl,locations_on_ways=true\", \"bbox\": [%s, %s, %s, %s]}", (n++ ? ", " : ""), $1, $2, $3, $4, $5 }
+            BEGIN { printf "{\"extracts\": [" } END { print "]}" }' > boxes.json
+          osmium extract --overwrite -s simple -c boxes.json merged-loc.osm.pbf
+          /usr/bin/python3 - <<'EOF' | tee crossings.txt
+          import glob, re
+          from collections import Counter, defaultdict
+
+          def parse(line):
+              f = line.split()
+              tags = next((x[1:] for x in f if x.startswith('T')), '')
+              nodes = next((x[1:] for x in f if x.startswith('N')), '')
+              kv = {}
+              for t in tags.split(','):
+                  if '=' in t:
+                      k, v = t.split('=', 1)
+                      kv[k] = re.sub(r'%([0-9a-f]+)%', lambda m: chr(int(m.group(1), 16)), v)
+              coords = re.findall(r'n(\d+)x(-?[\d.]+)y(-?[\d.]+)', nodes)
+              return f[0], kv, coords
+
+          def label(kv):
+              return ' '.join(x for x in (kv.get('highway', ''), kv.get('ref', ''), kv.get('name:en') or kv.get('name', '')) if x)
+
+          parts = {}
+          for line in open('shared-ways.txt'):
+              wid, p = line.split()
+              parts[wid] = p
+          by_pair = defaultdict(list)
+          for line in open('shared.opl'):
+              if line.startswith('w'):
+                  wid, kv, coords = parse(line)
+                  by_pair[parts.get(wid, '?')].append((wid, kv, coords))
+          print('== ways in two or more parts, examples')
+          for pair, ways in sorted(by_pair.items()):
+              print(f'{pair}: {len(ways)} ways')
+              for wid, kv, coords in ways[:5]:
+                  c = coords[0] if coords else ('', '?', '?')
+                  print(f'   {wid} {label(kv)} at {c[2]},{c[1]}')
+
+          boxes = {}
+          for path in sorted(glob.glob('box-*.opl')):
+              name = path[4:-4]
+              boxes[name] = [parse(l) for l in open(path) if l.startswith('w')]
+          want = {wid[1:] for ways in boxes.values() for wid, _, _ in ways}
+          wparts = defaultdict(list)
+          for line in open('wayparts.txt'):
+              wid, _, p = line.split()
+              if wid in want:
+                  wparts[wid].append(p)
+          print('== known crossings: ways with a node in the box, by the parts that hold them')
+          for name, ways in boxes.items():
+              split = Counter('+'.join(wparts[wid[1:]]) or '?' for wid, _, _ in ways)
+              # A seam is a node where a way held by one part only meets a way held by another part only.
+              node_parts = defaultdict(set)
+              for wid, _, coords in ways:
+                  if len(wparts[wid[1:]]) == 1:
+                      for nid, _, _ in coords:
+                          node_parts[nid].add(wparts[wid[1:]][0])
+              seams = sum(1 for s in node_parts.values() if len(s) > 1)
+              both = sum(1 for wid, _, _ in ways if len(wparts[wid[1:]]) > 1)
+              print(f'{name}: {len(ways)} ways (' + ', '.join(f'{k} {v}' for k, v in sorted(split.items())) + f'); in several parts: {both}; seams: {seams}')
+              shown = sorted(ways, key=lambda w: (-len(wparts[w[0][1:]]), w[1].get('highway', '')))[:8]
+              for wid, kv, _ in shown:
+                  print(f'   {wid} [{"+".join(wparts[wid[1:]])}] {label(kv)}')
+          EOF
+
+      - name: Summary
+        if: always()
+        working-directory: ${{ env.W }}
+        run: |
+          {
+            echo "## Graph build probe"
+            echo
+            echo "Total job time so far: $(( ($(date +%s) - start) / 60 )) min. Disk cleanup: ${cleanup_s:-?} s. Work dir: $W."
+            echo
+            echo "### Parts"
+            echo
+            if [ -f parts.tsv ]; then
+              head -1 parts.tsv | awk -F'\t' '{ s = "|"; t = "|"; for (i = 1; i <= NF; i++) { s = s " " $i " |"; t = t " --- |" } print s; print t }'
+              tail -n +2 parts.tsv | awk -F'\t' '{ s = "|"; for (i = 1; i <= NF; i++) s = s " " $i " |"; print s }'
+            fi
+            echo
+            echo "### Merge"
+            echo
+            echo "merge: ${merge_s:-?} s; add-locations-to-ways: ${loc_s:-?} s"
+            echo
+            echo '```'
+            ls -l merged.osm.pbf merged-loc.osm.pbf 2>/dev/null || true
+            jq -c '{size: .file.size, count: .data.count, multiple_versions: .data.multiple_versions}' merged.json 2>/dev/null || true
+            grep -E 'Maximum resident|Percent of CPU|Elapsed' time-merge.txt time-loc.txt 2>/dev/null || true
+            cat check-refs.txt 2>/dev/null || true
+            echo '```'
+            echo
+            echo "### Shared ways between parts"
+            echo
+            echo '```'
+            cat shared.tsv 2>/dev/null || true
+            echo '```'
+            echo
+            echo "### Crossings and gaps"
+            echo
+            echo '```'
+            cat crossings.txt gaps.txt 2>/dev/null || true
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          df -h
