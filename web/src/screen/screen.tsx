@@ -28,27 +28,36 @@ export function Screen() {
 	const [pinning, setPinning] = useState(false);
 	const [geolocationFailed, setGeolocationFailed] = useState(false);
 
+	const located = useCallback(
+		(position: Point) => {
+			setGeolocationFailed(false);
+			setSheet(undefined);
+			setOrigin(position);
+		},
+		[setOrigin],
+	);
+	const notLocated = useCallback(() => {
+		setGeolocationFailed(true);
+	}, []);
 	const locateHere = useCallback(() => {
-		locate().then(
-			(position) => {
-				setGeolocationFailed(false);
-				setSheet(undefined);
-				setOrigin(position);
-			},
-			() => {
-				setGeolocationFailed(true);
-			},
-		);
-	}, [setOrigin]);
+		locate().then(located, notLocated);
+	}, [located, notLocated]);
 
-	// The first visit, and any load whose link and saved state have no origin: where the person is.
+	// The first visit, and any load whose link and saved state have no origin: where the person is, unless they
+	// set an origin while the browser was asking.
+	const currentOrigin = useRef(origin);
+	currentOrigin.current = origin;
 	const locatedOnLoad = useRef(false);
 	useEffect(() => {
 		if (origin === undefined && !locatedOnLoad.current) {
 			locatedOnLoad.current = true;
-			locateHere();
+			locate().then((position) => {
+				if (currentOrigin.current === undefined) {
+					located(position);
+				}
+			}, notLocated);
 		}
-	}, [origin, locateHere]);
+	}, [origin, located, notLocated]);
 
 	const startPinning = () => {
 		setSheet(undefined);

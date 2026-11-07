@@ -88,9 +88,9 @@ export function runStripes(map: MapLibre): () => void {
 		frame = (frame + 1) % STRIPE_FRAMES;
 		map.setPaintProperty(RING_LAYERS.stripes, 'fill-pattern', stripeImage(frame));
 	}, STRIPE_FRAME_MS);
+	// Only the timer stops: the map may be gone by then, and the next stripes may start from any frame.
 	return () => {
 		clearInterval(timer);
-		map.setPaintProperty(RING_LAYERS.stripes, 'fill-pattern', stripeImage(0));
 	};
 }
 
