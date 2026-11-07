@@ -1,6 +1,6 @@
 // The commands as a person runs them: `ring` writes GeoJSON, `build-graph` a graph file `ring` reads.
 import { execFileSync, spawnSync } from 'node:child_process';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -55,5 +55,15 @@ describe('the build-graph command', () => {
 		expect(run.status).toBe(0);
 		expect(run.stderr).toContain('pairs with passport control and no border crossing on their roads');
 		expect(run.stderr).toContain('AAA–BBB (2 edges)');
+	});
+
+	it('writes the zone outlines with --outlines', () => {
+		const outlines = join(directory, 'zones.json');
+
+		command('build-graph', fixturePath('zones.osm'), join(directory, 'zones.graph'), '--outlines', outlines);
+
+		const written = JSON.parse(readFileSync(outlines, 'utf8')) as { type: string; features: { properties: { zone: string } }[] };
+		expect(written.type).toBe('FeatureCollection');
+		expect(written.features.map(({ properties }) => properties.zone)).toContain('NX');
 	});
 });

@@ -16,6 +16,8 @@ export interface BuildReport {
 	readonly edges: number;
 	/** The zones of the graph, by code. */
 	readonly zones: readonly string[];
+	/** The zones that are parts of countries (closed territories, Northern Cyprus), which win over their country. */
+	readonly parts: readonly string[];
 	/** Zones whose boundary the extract holds only in part: they are left out, their roads get no zone. */
 	readonly incompleteZones: readonly string[];
 	/** What the border table lacks for this graph. */
@@ -121,6 +123,7 @@ export function buildGraph(source: OsmSource, borderTable: BorderTable = shipped
 			nodes: graph.nodeLat.length,
 			edges: graph.edgeTarget.length,
 			zones: zones.slice(1),
+			parts: codes.filter((code) => parts.has(code)),
 			incompleteZones: [...incompleteZones].filter((code) => !ringsByZone.has(code)).sort(),
 			borders: borderReport(graph, borderTable),
 		},
