@@ -1,0 +1,84 @@
+// The metrics of the comparison with Valhalla (spec «Решения по тестам», «Сверка с Valhalla»).
+import { EARTH_RADIUS_M } from 'engine/geo';
+import type { MultiPolygon } from 'engine';
+
+const RADIANS = Math.PI / 180;
+
+/**
+ * The area of a GeoJSON MultiPolygon on the sphere, in km²: each polygon's outer ring less its holes, whatever
+ * way the rings run. Edges are straight in lon/lat, as the contours of both engines are drawn.
+ */
+export function areaKm2(multiPolygon: MultiPolygon): number {
+	let area = 0;
+	for (const [outer, ...holes] of multiPolygon.coordinates) {
+		area += Math.abs(ringArea(outer)) - holes.reduce((sum, hole) => sum + Math.abs(ringArea(hole)), 0);
+	}
+	return area;
+}
+
+/** The tolerance of the comparison (ADR 0001): ±10 % of Valhalla's value. */
+export const TOLERANCE = 0.1;
+
+export interface Verdict {
+	/** (ours − Valhalla's) / Valhalla's. */
+	readonly deviation: number;
+	readonly fits: boolean;
+}
+
+export function verdict(ours: number, valhalla: number): Verdict {
+	const deviation = ours === valhalla ? 0 : (ours - valhalla) / valhalla;
+	// The bounds fit: no float error may push 10 % out.
+	return { deviation, fits: Math.abs(deviation) <= TOLERANCE + 1e-9 };
+}
+
+/** A city's travel time from the origin by each engine, in hours; Infinity when the engine does not reach it. */
+export interface CityTimes {
+	readonly ours: number;
+	readonly valhalla: number;
+}
+
+export interface CityMedians {
+	/** How many cities either engine reaches within N hours. */
+	readonly cities: number;
+	/** The median of each engine's travel times to those cities, in hours. */
+	readonly ours: number;
+	readonly valhalla: number;
+}
+
+/**
+ * The median travel time to the cities either engine reaches within `hours`, by each engine. Taking the cities
+ * of both keeps the measure fair: an engine that is too slow loses cities to Infinity, one too fast gains them.
+ * Undefined when neither engine reaches a city.
+ */
+export function cityMedians(cities: readonly CityTimes[], hours: number): CityMedians | undefined {
+	const reached = cities.filter((city) => city.ours <= hours || city.valhalla <= hours);
+	if (reached.length === 0) {
+		return undefined;
+	}
+	return {
+		cities: reached.length,
+		ours: median(reached.map((city) => city.ours)),
+		valhalla: median(reached.map((city) => city.valhalla)),
+	};
+}
+
+function median(values: number[]): number {
+	const sorted = values.toSorted((one, two) => one - two);
+	const middle = Math.floor(sorted.length / 2);
+	return sorted.length % 2 === 1 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2;
+}
+
+/**
+ * Signed area of a closed lon/lat ring in km² (Chamberlain & Duquette, «Some algorithms for polygons on a
+ * sphere»): R²/2 × Σ (λ[i+1] − λ[i−1]) × sin φ[i]. Exact for rectangles of meridians and parallels.
+ */
+function ringArea(ring: readonly number[][]): number {
+	const count = ring.length - 1;
+	let sum = 0;
+	for (let index = 0; index < count; index++) {
+		const before = ring[(index + count - 1) % count];
+		const after = ring[(index + 1) % count];
+		sum += (after[0] - before[0]) * RADIANS * Math.sin(ring[index][1] * RADIANS);
+	}
+	return ((sum * EARTH_RADIUS_M * EARTH_RADIUS_M) / 2) * 1e-6;
+}
