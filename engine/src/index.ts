@@ -75,14 +75,15 @@ export function computeRing(graph: Graph, _borderTable: BorderTable, request: Ri
 
 	// The origin reaches the road in a straight line at 30 km/h of driving.
 	const accessSeconds = snap.meters * OFF_ROAD_SECONDS_PER_METER;
+	// Travel time along the origin's road, end to end, each way it may be driven.
+	const forward = travelSecondsBetween(graph, snap.a, snap.b);
+	const back = travelSecondsBetween(graph, snap.b, snap.a);
 	const seeds: Seed[] = [];
-	const forward = edgeSecondsBetween(graph, snap.a, snap.b);
-	if (forward >= 0) {
-		seeds.push({ node: snap.b, seconds: accessSeconds + (1 - snap.fraction) * forward * TRAVEL_PER_DRIVING });
+	if (forward !== undefined) {
+		seeds.push({ node: snap.b, seconds: accessSeconds + (1 - snap.fraction) * forward });
 	}
-	const back = edgeSecondsBetween(graph, snap.b, snap.a);
-	if (back >= 0) {
-		seeds.push({ node: snap.a, seconds: accessSeconds + snap.fraction * back * TRAVEL_PER_DRIVING });
+	if (back !== undefined) {
+		seeds.push({ node: snap.a, seconds: accessSeconds + snap.fraction * back });
 	}
 	const traversal = traverse(graph, seeds, request.hours * 3600);
 	const traversed = performance.now();
@@ -96,11 +97,16 @@ export function computeRing(graph: Graph, _borderTable: BorderTable, request: Ri
 	}
 	const ring = ringContour(
 		graph,
-		{ seconds: traversal.seconds, snap, accessSeconds, forwardSeconds: forward * TRAVEL_PER_DRIVING, backSeconds: back * TRAVEL_PER_DRIVING },
+		{ seconds: traversal.seconds, snap, accessSeconds, forwardSeconds: forward, backSeconds: back },
 		(request.hours - 1) * 3600,
 		request.hours * 3600,
 	);
 	return { outcome: 'ring', ring, startCountry, timings: since(started, traversed) };
+}
+
+function travelSecondsBetween(graph: Graph, from: number, to: number): number | undefined {
+	const seconds = edgeSecondsBetween(graph, from, to);
+	return seconds < 0 ? undefined : seconds * TRAVEL_PER_DRIVING;
 }
 
 function zoneCode(graph: Graph, zone: number): string | null {

@@ -20,13 +20,16 @@ export const OFF_ROAD_SECONDS_PER_METER = (3.6 / 30) * TRAVEL_PER_DRIVING;
 /** A raster larger than this gets coarser cells: ~120 MB of time and distance. */
 const MAX_CELLS = 16_000_000;
 
-/** What the traversal reached: the travel time to each node (Infinity when not reached) and to the origin's road. */
+/** What the traversal reached: the travel time to each node (Infinity when not reached), and the origin's road. */
 export interface Reached {
 	readonly seconds: Float64Array;
 	readonly snap: Snap;
+	/** Travel time from the origin to where it meets its road. */
 	readonly accessSeconds: number;
-	readonly forwardSeconds: number;
-	readonly backSeconds: number;
+	/** Travel time along the origin's road from `snap.a` to `snap.b`; undefined when it is one-way the other way. */
+	readonly forwardSeconds: number | undefined;
+	/** Travel time along the origin's road from `snap.b` to `snap.a`; undefined when it is one-way the other way. */
+	readonly backSeconds: number | undefined;
 }
 
 export function ringContour(graph: Graph, reached: Reached, lowerSeconds: number, upperSeconds: number): MultiPolygon {
@@ -117,10 +120,10 @@ function paintRoads(graph: Graph, reached: Reached, upperSeconds: number): Grid 
 		}
 	};
 	// The origin's road, from the point the origin meets it.
-	if (reached.forwardSeconds >= 0) {
+	if (reached.forwardSeconds !== undefined) {
 		paint(originLat, originLon, nodeLat[snap.b], nodeLon[snap.b], reached.accessSeconds, (1 - snap.fraction) * reached.forwardSeconds);
 	}
-	if (reached.backSeconds >= 0) {
+	if (reached.backSeconds !== undefined) {
 		paint(originLat, originLon, nodeLat[snap.a], nodeLon[snap.a], reached.accessSeconds, snap.fraction * reached.backSeconds);
 	}
 	for (let node = 0; node < seconds.length; node++) {
