@@ -13,13 +13,16 @@ const ORIGINS = {
 	Munich: { lat: 48.1372, lon: 11.5756 },
 	Prague: { lat: 50.0755, lon: 14.4378 },
 } as const;
-const COLD_STARTS = 3;
 /**
- * The pause between stopping the Container and the next calculation. A start right after `destroy()` waited 6–27 s
- * longer each time in the first runs: Cloudflare was still releasing the instance. After a pause it is a start
- * after sleep, as a user meets it.
+ * Cold starts: a calculation after the Container stopped and a minute passed, as after its sleep, then right after it
+ * stopped, the worst case with `max_instances: 1`: Cloudflare is still releasing the old instance.
  */
-const PAUSE_BEFORE_COLD_START_MS = 60_000;
+const COLD_STARTS = [
+	{ label: 'cold start after a minute', pauseMs: 60_000 },
+	{ label: 'cold start after a minute', pauseMs: 60_000 },
+	{ label: 'cold start right after a stop', pauseMs: 0 },
+	{ label: 'cold start right after a stop', pauseMs: 0 },
+];
 const REPEATS = 2;
 /** How long a new deploy may take before its first calculation: Cloudflare places the Container application. */
 const PROVISIONING_MS = 20 * 60_000;
@@ -87,7 +90,7 @@ if (mode === 'worker') {
 		}
 		await sleep(10_000);
 	}
-	for (let start = 1; start <= COLD_STARTS; start++) {
+	for (const { label, pauseMs } of COLD_STARTS) {
 		await call('POST', '/destroy');
 		for (let poll = 0; poll < 30; poll++) {
 			const state = (await call('GET', '/state')) as { status?: string } | undefined;
@@ -96,8 +99,8 @@ if (mode === 'worker') {
 			}
 			await sleep(2000);
 		}
-		await sleep(PAUSE_BEFORE_COLD_START_MS);
-		samples.push(await ring(`cold start ${start}`, ORIGINS.Frankfurt, 1));
+		await sleep(pauseMs);
+		samples.push(await ring(label, ORIGINS.Frankfurt, 1));
 	}
 }
 for (const hours of [1, 2, 3, 6]) {
