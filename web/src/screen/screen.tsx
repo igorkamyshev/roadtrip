@@ -2,6 +2,7 @@
 // slider at its right edge, the carousel at the bottom, and the sheets.
 import type { UseQueryResult } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { utcDate } from 'rules/held-visas';
 import type { RingResponse } from 'worker/api';
 import { MapView, type MapHandle } from '../map/map-view.tsx';
 import { RingRequestError } from '../ring/fetch-ring.ts';
@@ -10,19 +11,22 @@ import type { Point } from '../state/point.ts';
 import { settingsOf } from '../state/settings.ts';
 import { useScreenState } from '../state/use-screen-state.ts';
 import { locate } from '../start/geolocation.ts';
-import { citizenshipsLabel } from './countries.ts';
+import { citizenshipsLabel, visasLabel } from './countries.ts';
 import { FirstCard, type FirstCardState } from './first-card.tsx';
 import { Phrase, PhraseToken, VisaRulesDate } from './phrase.tsx';
-import { CitizenshipSheet, InfoSheet, StartSheet } from './sheets.tsx';
+import { CitizenshipSheet, InfoSheet, StartSheet, VisasSheet } from './sheets.tsx';
 import { Slider } from './slider.tsx';
 
-type SheetName = 'start' | 'citizenships' | 'info';
+type SheetName = 'start' | 'citizenships' | 'visas' | 'info';
 
 export function Screen() {
-	const { origin, hours, citizenships, setOrigin, setHours, setCitizenships } = useScreenState();
+	const { origin, hours, citizenships, visas, setOrigin, setHours, setCitizenships, setVisas } = useScreenState();
 	const citizenshipsText = citizenships.join(',');
-	// #31: the held visas too.
-	const settings = useMemo(() => settingsOf({ citizenships: citizenshipsText.split(',') }), [citizenshipsText]);
+	const visasText = visas.join(',');
+	const settings = useMemo(
+		() => settingsOf({ citizenships: citizenshipsText.split(','), visas: visasText === '' ? [] : visasText.split(',') }),
+		[citizenshipsText, visasText],
+	);
 	const ring = useRing(origin, hours, settings);
 	const cachedHours = useCachedHours(origin, settings);
 	const map = useRef<MapHandle>(null);
@@ -83,6 +87,9 @@ export function Screen() {
 	const openCitizenships = () => {
 		setSheet('citizenships');
 	};
+	const openVisas = () => {
+		setSheet('visas');
+	};
 
 	return (
 		<div className="screen">
@@ -107,7 +114,8 @@ export function Screen() {
 				}}
 				settings={
 					<>
-						Гражданство <PhraseToken onClick={openCitizenships}>{citizenshipsLabel(citizenships)}</PhraseToken>
+						Гражданство <PhraseToken onClick={openCitizenships}>{citizenshipsLabel(citizenships)}</PhraseToken>, мои визы:{' '}
+						<PhraseToken onClick={openVisas}>{visasLabel(visas)}</PhraseToken>
 					</>
 				}
 				footer={<VisaRulesDate loadedAt={answer?.visaRulesLoadedAt} now={Date.now()} />}
@@ -155,6 +163,17 @@ export function Screen() {
 				<CitizenshipSheet
 					citizenships={citizenships}
 					onChange={setCitizenships}
+					onClose={() => {
+						setSheet(undefined);
+					}}
+				/>
+			) : null}
+			{sheet === 'visas' ? (
+				<VisasSheet
+					visas={visas}
+					citizenships={citizenships}
+					today={utcDate(Date.now())}
+					onChange={setVisas}
 					onClose={() => {
 						setSheet(undefined);
 					}}

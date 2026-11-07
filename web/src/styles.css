@@ -300,9 +300,21 @@ a {
 	color: var(--fg);
 }
 
-/* ---------- multiple choice (the sheet «Гражданство») ---------- */
+/* ---------- multiple choice (the sheets «Гражданство» and «Мои визы») ---------- */
 .pick {
 	display: grid;
+}
+.pick-sep {
+	margin: 0;
+	font-size: 12px;
+	font-weight: 400;
+	color: var(--muted);
+	text-transform: uppercase;
+	letter-spacing: 0.08em;
+	padding: 14px 2px 4px;
+}
+.pick .search-in {
+	margin: 4px 0 2px;
 }
 .pick-item {
 	display: flex;
