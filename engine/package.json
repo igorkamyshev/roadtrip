@@ -7,11 +7,14 @@
 	"exports": {
 		".": "./src/index.ts",
 		"./borders": "./src/borders.ts",
+		"./contour": "./src/contour.ts",
 		"./geo": "./src/geo.ts",
 		"./graph": "./src/graph.ts",
 		"./protocol": "./src/protocol.ts",
 		"./server": "./server/engine-server.ts",
-		"./dataset": "./dataset/dataset.json"
+		"./dataset": "./dataset/dataset.json",
+		"./snap": "./src/snap.ts",
+		"./traverse": "./src/traverse.ts"
 	},
 	"scripts": {
 		"start": "node server/main.ts",
