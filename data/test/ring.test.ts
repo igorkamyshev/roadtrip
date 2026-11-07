@@ -259,6 +259,30 @@ describe('a closed territory', () => {
 	});
 });
 
+describe('the zones of #13', () => {
+	const zones = fixtureGraph('zones.osm');
+
+	it.each([
+		['Kosovo', 0.5, 'no_ring', 'RKS'],
+		['Northern Cyprus', 2.5, 'no_roads', 'NX'],
+		['Cyprus outside Northern Cyprus', 3.5, 'no_roads', 'CYP'],
+		['Akrotiri and Dhekelia', 4.5, 'no_roads', 'CYP'],
+		['Transnistria', 7.5, 'no_roads', 'MDA'],
+		['Russia outside Ukraine', 9.5, 'no_roads', 'RUS'],
+		['Crimea', 10.3, 'no_ring', 'CRIMEA'],
+		['Sevastopol', 10.7, 'no_ring', 'CRIMEA'],
+		['Abkhazia', 13.5, 'no_ring', 'ABKHAZIA'],
+		['South Ossetia', 14.5, 'no_ring', 'SOUTH_OSSETIA'],
+		['Georgia outside them', 13.9, 'no_roads', 'GEO'],
+		['the Gaza Strip', 16.5, 'no_ring', 'GAZA'],
+		['Morocco north of Western Sahara', 18.5, 'no_roads', 'MAR'],
+		['Western Sahara west of the wall', 19.5, 'no_ring', 'WESTERN_SAHARA'],
+		['Western Sahara east of the wall', 20.5, 'no_ring', 'WESTERN_SAHARA'],
+	])('put an origin in %s at %s°E in its zone: %s, start country %s', (_, lon, outcome, startCountry) => {
+		expect(computeRing(zones, borderTable, request(0.5, lon, 2))).toMatchObject({ outcome, startCountry });
+	});
+});
+
 describe('a ring past the end of the roads', () => {
 	it('is empty, with the longest travel time rounded up: driving time × 1.2', () => {
 		// The whole road: 3.71 h at the wheel, 4.45 h of travel.
