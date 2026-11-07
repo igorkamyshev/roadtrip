@@ -4,6 +4,9 @@
 	"private": true,
 	"type": "module",
 	"description": "The Worker roadtrip: GET /api/ring from the ring cache in KV or from the Container with the engine.",
+	"exports": {
+		"./api": "./src/api.ts"
+	},
 	"scripts": {
 		"dev": "wrangler dev",
 		"test": "vitest run",
