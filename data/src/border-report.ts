@@ -10,7 +10,10 @@ export interface BorderReport {
 	 * pair's crossings to the table. With the number of edges across the border.
 	 */
 	readonly pairsWithoutCrossings: readonly { readonly pair: string; readonly edges: number }[];
-	/** The table's crossings near no road across their pair's border, of the pairs whose border the graph has. */
+	/**
+	 * The table's open crossings near no road across their pair's border, of the pairs whose border the graph has:
+	 * wrong coordinates, or a crossing OSM has no car road at. A closed one there closes nothing, which is fine.
+	 */
 	readonly crossingsNotFound: readonly string[];
 }
 
@@ -31,7 +34,7 @@ export function borderReport(graph: Graph, table: BorderTable): BorderReport {
 	return {
 		pairsWithoutCrossings: pairsWithoutCrossings.sort((one, two) => one.pair.localeCompare(two.pair)),
 		crossingsNotFound: table.crossings
-			.filter((crossing) => byPair.has(crossing.pair.join('–')) && !found.has(crossing.id))
+			.filter((crossing) => crossing.status === 'open' && byPair.has(crossing.pair.join('–')) && !found.has(crossing.id))
 			.map((crossing) => crossing.id),
 	};
 }

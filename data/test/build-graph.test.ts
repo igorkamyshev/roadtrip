@@ -125,8 +125,10 @@ describe('the build report', () => {
 		expect(report('chains.osm', table).pairsWithoutCrossings).toEqual([]);
 	});
 
-	it('lists the crossings of the table near no road across their border', () => {
-		const table = rules({ crossings: [crossing('road', 0, 1, 'open'), crossing('nowhere', 0.5, 1, 'open')] });
+	it('lists the open crossings of the table near no road across their border', () => {
+		const table = rules({
+			crossings: [crossing('road', 0, 1, 'open'), crossing('nowhere', 0.5, 1, 'open'), crossing('footpath', 0.6, 1, 'pedestrian_only')],
+		});
 
 		expect(report('chains.osm', table).crossingsNotFound).toEqual(['nowhere']);
 	});

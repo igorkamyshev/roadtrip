@@ -59,7 +59,7 @@ export function loadGraph(path: string): { graph: Graph; report?: BuildReport } 
 		);
 	}
 	if (crossingsNotFound.length > 0) {
-		log(`crossings of the border table near no road across their border: ${crossingsNotFound.join(', ')}`);
+		log(`open crossings of the border table near no road across their border: ${crossingsNotFound.join(', ')}`);
 	}
 	return { graph, report };
 }
