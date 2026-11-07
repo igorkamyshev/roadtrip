@@ -4,6 +4,9 @@
 	"private": true,
 	"type": "module",
 	"description": "The dataset build: the road graph from an OSM extract, and the command that computes a ring from an extract.",
+	"exports": {
+		"./fixture-graph": "./test/fixture-graph.ts"
+	},
 	"scripts": {
 		"build-graph": "node src/cli/build-graph.ts",
 		"ring": "node src/cli/ring.ts",
