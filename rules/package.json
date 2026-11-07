@@ -3,10 +3,11 @@
 	"version": "0.0.0",
 	"private": true,
 	"type": "module",
-	"description": "Tables edited by hand: the border table with its schema and check, the countries as zones and Sherpa's passports. The visa exemptions and the EU come with their tickets.",
+	"description": "Tables edited by hand: the border table with its schema and check, the countries as zones, Sherpa's passports and the EU. The visa exemptions come with their ticket.",
 	"exports": {
 		".": "./src/index.ts",
 		"./countries": "./src/countries.ts",
+		"./eu": "./src/eu.ts",
 		"./passports": "./src/passports.ts"
 	},
 	"scripts": {
