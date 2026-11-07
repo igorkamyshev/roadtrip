@@ -14,6 +14,12 @@ const ORIGINS = {
 	Prague: { lat: 50.0755, lon: 14.4378 },
 } as const;
 const COLD_STARTS = 3;
+/**
+ * The pause between stopping the Container and the next calculation. A start right after `destroy()` waited 6–27 s
+ * longer each time in the first runs: Cloudflare was still releasing the instance. After a pause it is a start
+ * after sleep, as a user meets it.
+ */
+const PAUSE_BEFORE_COLD_START_MS = 60_000;
 const REPEATS = 2;
 /** How long a new deploy may take before its first calculation: Cloudflare places the Container application. */
 const PROVISIONING_MS = 20 * 60_000;
@@ -90,6 +96,7 @@ if (mode === 'worker') {
 			}
 			await sleep(2000);
 		}
+		await sleep(PAUSE_BEFORE_COLD_START_MS);
 		samples.push(await ring(`cold start ${start}`, ORIGINS.Frankfurt, 1));
 	}
 }
