@@ -54,7 +54,7 @@ test('«Где я» sets the origin once the browser gives the position', async 
 	const [call] = await ringApi.waitForCalls(1);
 	expect(call).toMatchObject({ lat: '44.81760', lon: '20.45730', hours: 1 });
 	await expect(phrase(page)).toContainText('Из точки на карте, до 1 часа в пути.');
-	await expect(page).toHaveURL(/#\/\?p=44\.81760,20\.45730&h=1$/u);
+	await expect(page).toHaveURL(/#\/\?p=44\.81760,20\.45730&h=1&cit=RUS$/u);
 });
 
 test('the pin puts the origin under it, where the person moved the map, and the marker stays there', async ({ page, ringApi }) => {
@@ -74,7 +74,7 @@ test('the pin puts the origin under it, where the person moved the map, and the 
 	const lon = center.lon.toFixed(5);
 	const [call] = await ringApi.waitForCalls(1);
 	expect(call).toMatchObject({ lat, lon, hours: 1 });
-	await expect(page).toHaveURL(new RegExp(`#/\\?p=${lat},${lon}&h=1$`, 'u'));
+	await expect(page).toHaveURL(new RegExp(`#/\\?p=${lat},${lon}&h=1&cit=RUS$`, 'u'));
 	await expect(phrase(page)).toContainText('Из точки на карте, до 1 часа в пути.');
 	await expect(page.getByText('Двигайте карту, чтобы поставить точку под булавку')).toHaveCount(0);
 	await expect(firstCard(page)).toContainText('В кольце до 1 ч');
@@ -95,7 +95,7 @@ test('«Отмена» leaves the pin mode and the origin as they were', async (
 
 	await expect(slider(page)).toBeVisible();
 	await expect(firstCard(page)).toContainText('В кольце до 1 ч');
-	await expect(page).toHaveURL(/#\/\?p=44\.81760,20\.45730&h=1$/u);
+	await expect(page).toHaveURL(/#\/\?p=44\.81760,20\.45730&h=1&cit=RUS$/u);
 	expect(await startOnMap(page)).toEqual([BELGRADE.lon, BELGRADE.lat]);
 	expect(ringApi.calls).toHaveLength(1);
 });

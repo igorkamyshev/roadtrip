@@ -65,6 +65,27 @@ export async function ringIsStriped(page: Page): Promise<boolean> {
 	});
 }
 
+/** The zones the hatching covers: those its layer's filter lets through, sorted. */
+export async function hatchedZones(page: Page): Promise<string[]> {
+	const filter = await page.evaluate(() => {
+		const map = (window as unknown as { __roadtripMap?: MapForTests }).__roadtripMap;
+		// Until the map has loaded, it has no layers.
+		return map?.getLayer('closed-hatch') === undefined ? undefined : map.getFilter('closed-hatch');
+	});
+	// ['in', ['get', 'zone'], ['literal', [codes]]]
+	const codes = Array.isArray(filter) && Array.isArray(filter[2]) ? (filter[2] as unknown[])[1] : undefined;
+	return Array.isArray(codes) ? (codes as string[]).toSorted() : [];
+}
+
+/** The zones whose outlines the map holds (the source `zones`), in its order. */
+export async function outlinesOnMap(page: Page): Promise<string[]> {
+	const data = await page.evaluate(async () => {
+		const map = (window as unknown as { __roadtripMap?: MapForTests }).__roadtripMap;
+		return map?.getSource('zones')?.getData();
+	});
+	return data?.type === 'FeatureCollection' ? data.features.map((feature) => String(feature.properties?.zone)) : [];
+}
+
 /** The map's visible bounds, [west, south, east, north], once the camera has stopped. */
 export async function mapBounds(page: Page): Promise<[number, number, number, number]> {
 	await mapAtRest(page);
@@ -109,6 +130,8 @@ interface MapForTests {
 	isMoving(): boolean;
 	getSource(id: string): { getData(): Promise<GeoJSON> } | undefined;
 	getLayoutProperty(layer: string, name: string): unknown;
+	getLayer(layer: string): unknown;
+	getFilter(layer: string): unknown;
 	getBounds(): { getWest(): number; getSouth(): number; getEast(): number; getNorth(): number };
 	getCenter(): { lat: number; lng: number };
 }

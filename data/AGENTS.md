@@ -13,9 +13,18 @@ The dataset build (spec «Набор данных»). So far: the builder that t
 - The build checks the border table first, and its report (`src/border-report.ts`) lists the pairs with passport control whose roads cross nowhere at a border crossing, and the table's open crossings near no road across their border. Both mean a crossing to add to or fix in the table.
 - Sized for a part of the world: node ids sit in a hash table and the ways, nodes and segments in typed arrays (`src/node-ids.ts`), outside the JS heap. Europe, ~95 M road nodes, builds on a GitHub runner (`docs/container-bench.md`); the world (~330 M) has not been tried.
 
+## Zone outlines
+
+`zoneOutlines(graph, report.parts)` in `src/outlines.ts` turns the graph's zone polygons into the GeoJSON the screen hatches the closed countries and territories with (#30): a `FeatureCollection` with one `MultiPolygon` feature per zone, its code in `properties.zone`, [lon, lat] to 0.001°.
+
+- Each ring is simplified by Douglas–Peucker to 2 km, and a ring smaller than 2 × 2 km after that (a small island) is left out.
+- An outline is the zone as the graph's `ZoneLocator` sees it: the zone's rings by the even-odd rule (`polygon-clipping`'s `xor`), and the parts of countries (`report.parts`: closed territories, Northern Cyprus) cut out of the countries around them, since a part wins. So Northern Cyprus, open for Russians, is not hatched with Cyprus. Countries that overlap in OSM overlap here too.
+- OSM's country boundaries run along the territorial waters, so coasts are smooth: Greece with its islands is 14 KB (3 KB in brotli), Cyprus with Northern Cyprus 3 KB; the world should be about 1 MB in brotli.
+- The Worker serves the file as a static asset at `/data/zones.json`: `build-graph --outlines` writes it into `web/public/data/` (gitignored), which the client's build copies into `web/dist`.
+
 ## Commands
 
-`pnpm --filter data ring <extract | graph file | URL> --lat <degrees> --lon <degrees> --hours <N> [--closed <alpha-3,…>] [--out <file.geojson>]` is the one-command check of the ticket: it builds the graph of an extract (for example `https://download.geofabrik.de/europe/andorra-latest.osm.pbf`), computes the ring and writes GeoJSON. `build-graph <extract> <out.graph>` writes the graph file, which `ring` also reads. Both print the build report to stderr when they build. pnpm runs both in `data/`; they take a relative path from where pnpm started.
+`pnpm --filter data ring <extract | graph file | URL> --lat <degrees> --lon <degrees> --hours <N> [--closed <alpha-3,…>] [--out <file.geojson>]` is the one-command check of the ticket: it builds the graph of an extract (for example `https://download.geofabrik.de/europe/andorra-latest.osm.pbf`), computes the ring and writes GeoJSON. `build-graph <extract> <out.graph> [--outlines <zones.json>]` writes the graph file, which `ring` also reads, and with `--outlines` the zone outlines, printing their size raw and in brotli. Both print the build report to stderr when they build. pnpm runs both in `data/`; they take a relative path from where pnpm started.
 
 ## Tests
 
@@ -23,5 +32,6 @@ The fixtures in `test/fixtures/` are hand-written OSM XML of a few countries and
 
 - `test/ring.test.ts`: the engine's seam (spec «Решения по тестам», seam 1), borders included. Its border tests build their own small tables with `test/rules.ts`; the closed territories and the zones of #13 use the shipped table.
 - `test/build-graph.test.ts`: the graph itself, the PBF reader against the XML, the graph file, the build report.
+- `test/outlines.test.ts`: the zone outlines against the graph's `ZoneLocator` on `zones.osm`, and the simplification.
 - `test/border-table.test.ts` and `test/data-version.test.ts`: the border table's check and the data version, here because every package's tests run under `data`'s vitest and types.
 - `test/commands.test.ts`: the commands as processes.

@@ -1,10 +1,10 @@
 // The external boundaries of the screen, doubled for its tests: `GET /api/ring` (a scripted double that records
-// every request and answers or holds it), the basemap's tiles (`GET /tiles/{z}/{x}/{y}`, each one empty), and
-// every other host, which is cut off in every test so that none reaches the network. The basemap's fonts and
-// sprites are the client's own static assets. Geolocation and time come from Playwright itself (context
-// permissions, `page.clock`).
+// every request and answers or holds it), the basemap's tiles (`GET /tiles/{z}/{x}/{y}`, each one empty), the
+// dataset's zone outlines (`/data/zones.json`, `ZONE_OUTLINES`), and every other host, which is cut off in every test
+// so that none reaches the network. The basemap's fonts and sprites are the client's own static assets. Geolocation
+// and time come from Playwright itself (context permissions, `page.clock`).
 import { test as base, expect, type BrowserContext, type Route } from '@playwright/test';
-import type { RingResponse } from 'worker/api';
+import type { Access, RingResponse } from 'worker/api';
 
 export { expect };
 
@@ -79,6 +79,34 @@ async function fulfil(route: Route, reply: RingReply): Promise<void> {
 	}
 }
 
+/** A square of `size` degrees with its south-west corner at (lon, lat), as a zone's outline. */
+function squareZone(zone: string, lon: number, lat: number, size = 1) {
+	const ring = [
+		[lon, lat],
+		[lon + size, lat],
+		[lon + size, lat + size],
+		[lon, lat + size],
+		[lon, lat],
+	];
+	return { type: 'Feature' as const, properties: { zone }, geometry: { type: 'MultiPolygon' as const, coordinates: [[ring]] } };
+}
+
+/**
+ * The zone outlines the Worker serves at `/data/zones.json` (data's `zoneOutlines`), as squares around Belgrade:
+ * a few countries and a closed territory, enough to hatch.
+ */
+export const ZONE_OUTLINES = {
+	type: 'FeatureCollection' as const,
+	features: [
+		squareZone('ALB', 19.5, 40.5),
+		squareZone('BIH', 17.5, 43.5),
+		squareZone('CRIMEA', 33.5, 44.5),
+		squareZone('HUN', 19.5, 46.5),
+		squareZone('SRB', 20, 44),
+		squareZone('UKR', 30, 48, 3),
+	],
+};
+
 /** What the page asked of the network: the basemap's tiles it got, and the requests to other hosts, cut off. */
 export class Network {
 	readonly tiles: URL[] = [];
@@ -92,6 +120,9 @@ async function cutOffTheNetwork(context: BrowserContext, network: Network): Prom
 		// An empty vector tile: a basemap with nothing on it.
 		await route.fulfill({ status: 200, contentType: 'application/x-protobuf', body: Buffer.alloc(0) });
 	});
+	await context.route('**/data/zones.json', (route) =>
+		route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(ZONE_OUTLINES) }),
+	);
 	await context.route('**/*', async (route) => {
 		const { hostname } = new URL(route.request().url());
 		if (hostname === 'localhost') {
@@ -125,6 +156,14 @@ export async function allowGeolocation(context: BrowserContext, at: { readonly l
 	await context.grantPermissions(['geolocation']);
 }
 
+/**
+ * What the visa rules add to an answer: `access` (by default a Russian's in Serbia, the start country) and when they
+ * came from Sherpa (by default just now).
+ */
+export function visaRules(access: Access = { SRB: { mode: 'visa_free', citizenship: 'RUS' } }, loadedAt = new Date().toISOString()) {
+	return { access, visaRulesLoadedAt: loadedAt };
+}
+
 type Position = [lon: number, lat: number];
 
 /**
@@ -140,5 +179,5 @@ export function squareRing(lat: number, lon: number, inner: number, outer: numbe
 		[lon - d, lat - d],
 	];
 	const polygon = inner === 0 ? [square(outer)] : [square(outer), square(inner).reverse()];
-	return { outcome: 'ring', ring: { type: 'MultiPolygon', coordinates: [polygon] }, startCountry: 'SRB', source: 'calculation' };
+	return { outcome: 'ring', ring: { type: 'MultiPolygon', coordinates: [polygon] }, startCountry: 'SRB', source: 'calculation', ...visaRules() };
 }

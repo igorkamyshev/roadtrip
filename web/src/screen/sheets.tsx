@@ -1,7 +1,8 @@
-// The sheets the phrase opens (spec «Экран»). #28: «Откуда едем» and «Что важно знать»; #30 «Гражданство», #31
-// «Мои визы» and #32 the list of all cities are `Sheet`s too.
-import type { ReactNode } from 'react';
-import { CloseIcon, InfoIcon, LocateIcon, PinIcon, WarnIcon } from './icons.tsx';
+// The sheets the phrase opens (spec «Экран»): «Откуда едем», «Гражданство» and «Что важно знать». #31 «Мои визы»
+// and #32 the list of all cities are `Sheet`s too.
+import { useState, type ReactNode } from 'react';
+import { CITIZENSHIP_CHOICES, countryName, DEFAULT_CITIZENSHIP } from './countries.ts';
+import { CheckIcon, CloseIcon, InfoIcon, LocateIcon, PinIcon, SearchIcon, WarnIcon } from './icons.tsx';
 
 export function Sheet({ title, onClose, children }: { readonly title: string; readonly onClose: () => void; readonly children: ReactNode }) {
 	return (
@@ -42,6 +43,81 @@ export function StartSheet({ geolocationFailed, onPin, onLocate, onClose }: Star
 			{geolocationFailed ? <p className="muted small">Браузер не дал доступ к геолокации.</p> : null}
 		</Sheet>
 	);
+}
+
+export interface CitizenshipSheetProps {
+	/** Sorted, at least one. */
+	readonly citizenships: readonly string[];
+	/** With the new citizenships, sorted; never with none. */
+	readonly onChange: (citizenships: readonly string[]) => void;
+	readonly onClose: () => void;
+}
+
+/**
+ * «Гражданство»: Sherpa's passports by name, Russian first «по умолчанию», with a filter by name. Several may be
+ * chosen and at least one is: the last one chosen stays. Each change asks for its ring at once.
+ */
+export function CitizenshipSheet({ citizenships, onChange, onClose }: CitizenshipSheetProps) {
+	const [filter, setFilter] = useState('');
+	const wanted = searchable(filter.trim());
+	const shown = CITIZENSHIP_CHOICES.filter((code) => searchable(countryName(code)).includes(wanted));
+	const toggle = (code: string) => {
+		if (!citizenships.includes(code)) {
+			onChange([...citizenships, code].sort());
+		} else if (citizenships.length > 1) {
+			onChange(citizenships.filter((chosen) => chosen !== code));
+		}
+	};
+	return (
+		<Sheet title="Гражданство" onClose={onClose}>
+			<p className="muted small sheet-note">Можно несколько: для каждой страны берём самый удобный вариант въезда.</p>
+			<label className="search-in">
+				<SearchIcon />
+				<input
+					type="search"
+					placeholder="Страна"
+					aria-label="Найти гражданство"
+					value={filter}
+					onChange={(event) => {
+						setFilter(event.target.value);
+					}}
+				/>
+			</label>
+			<div className="pick">
+				{shown.map((code) => {
+					const chosen = citizenships.includes(code);
+					return (
+						<button
+							key={code}
+							type="button"
+							className={chosen ? 'pick-item on' : 'pick-item'}
+							aria-pressed={chosen}
+							onClick={() => {
+								toggle(code);
+							}}
+						>
+							<span className="pick-box">{chosen ? <CheckIcon /> : null}</span>
+							<span className="row-main">
+								<span className="pick-name">{countryName(code)}</span>
+								{code === DEFAULT_CITIZENSHIP ? (
+									<>
+										{' '}
+										<span className="pick-sub">по умолчанию</span>
+									</>
+								) : null}
+							</span>
+						</button>
+					);
+				})}
+			</div>
+			{shown.length === 0 ? <p className="muted small">Такого гражданства нет в списке.</p> : null}
+		</Sheet>
+	);
+}
+
+/** A name or a filter as the filter compares them: lowercase, ё as е. */
+function searchable(text: string): string {
+	return text.toLowerCase().replaceAll('ё', 'е');
 }
 
 /** ⓘ «Что важно знать»: the spec's list. */

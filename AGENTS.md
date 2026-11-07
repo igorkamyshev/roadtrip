@@ -7,13 +7,13 @@
 Read a package's `AGENTS.md` before working in it:
 
 - `engine/AGENTS.md`: the ring engine, keeping it portable, when to bump the engine version, where its tests live; the engine server of the Container and its image.
-- `data/AGENTS.md`: the graph builder, the `ring` command, the OSM fixtures.
+- `data/AGENTS.md`: the graph builder, the zone outlines, the `ring` command, the OSM fixtures.
 
-`rules` holds the tables edited by hand (the border table); it has no `AGENTS.md` yet.
+`rules` holds the tables edited by hand: the border table, the countries as zones (`COUNTRIES`) and Sherpa's 199 passports (`SHERPA_PASSPORTS`); it has no `AGENTS.md` yet.
 
 `error-tracking` is the Tail Worker that turns the Workers' errors into PostHog `$exception` events, and the home of the logger they write with (`import { logger } from 'error-tracking/logger'`). Its `README.md` says how a Worker attaches it and writes `logger.error`.
 
-`worker` is the Worker `roadtrip`: `GET /api/ring` from the ring cache in KV or the Container with the engine, the `EngineContainer` class and the wrangler config. Its `README.md` says how a request goes, where the routes and `deps` are built, and how to run it locally with the Container.
+`worker` is the Worker `roadtrip`: `GET /api/ring` from the ring cache in KV or the Container with the engine, the visa rules from Sherpa with their copies in KV and their reduction, the `EngineContainer` class and the wrangler config. Its `README.md` says how a request goes, how the visa rules are loaded and kept, where the routes and `deps` are built, and how to run it locally with the Container.
 
 `web` is the client, the one screen, built into the Worker's static assets. Its `README.md` says where the state, the ring requests, the map's layers and the phrase's slots are, and how the screen tests run (`pnpm e2e`, Playwright).
 

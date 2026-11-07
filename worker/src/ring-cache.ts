@@ -31,8 +31,9 @@ export function workerDataVersion(datasetVersion: string): Promise<string> {
 }
 
 /**
- * `ring:<data version>:<lat>,<lon>:<N>:<SHA-256 of the closed countries joined by commas, hex>`. The hash keeps
- * the key within KV's 512 bytes, whatever the number of closed countries.
+ * `ring:<data version>:<lat>,<lon>:<N>:<SHA-256 of the closed countries, sorted, once each, joined by commas, hex>`.
+ * The hash keeps the key within KV's 512 bytes, whatever the number of closed countries; the order and repeats of
+ * the set given do not change it.
  */
 export async function ringKey(
 	version: string,
@@ -40,7 +41,8 @@ export async function ringKey(
 	hours: number,
 	closedCountries: readonly string[],
 ): Promise<string> {
-	const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(closedCountries.join(',')));
+	const set = [...new Set(closedCountries)].sort();
+	const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(set.join(',')));
 	const closed = Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('');
 	return `ring:${version}:${origin.lat.toFixed(3)},${origin.lon.toFixed(3)}:${hours}:${closed}`;
 }

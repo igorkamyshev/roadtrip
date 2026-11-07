@@ -9,6 +9,8 @@ import { writeSaved } from './startup.ts';
 export interface ScreenStateControls extends ScreenState {
 	readonly setOrigin: (origin: Point) => void;
 	readonly setHours: (hours: number) => void;
+	/** Sorted, at least one. */
+	readonly setCitizenships: (citizenships: readonly string[]) => void;
 }
 
 export function useScreenState(): ScreenStateControls {
@@ -35,6 +37,9 @@ export function useScreenState(): ScreenStateControls {
 	const setHours = useCallback((hours: number) => {
 		change({ hours });
 	}, [change]);
+	const setCitizenships = useCallback((citizenships: readonly string[]) => {
+		change({ citizenships });
+	}, [change]);
 
-	return { ...state, setOrigin, setHours };
+	return { ...state, setOrigin, setHours, setCitizenships };
 }

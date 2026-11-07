@@ -8,17 +8,29 @@ The Worker `roadtrip` on `roadtrip.kamyshev.me` (spec «Устройство», 
 
 - `GET /api/ring` (`src/ring.ts`): the ring, from the ring cache in KV or calculated in the Container. The query and the answer are typed in `src/api.ts` (`RingQuery`, `RingResponse`, `RingError`), which the client imports as `worker/api`.
 - `GET /tiles/{z}/{x}/{y}` (`src/tiles.ts`): the basemap's vector tiles from the world's PMTiles archive in R2.
-- The client's static assets, `web/dist` (`"assets"` in `wrangler.jsonc`), with the basemap's fonts and sprites, are served before the Worker runs, so only paths without a file reach it.
+- The client's static assets, `web/dist` (`"assets"` in `wrangler.jsonc`), with the basemap's fonts and sprites and the dataset's zone outlines for the hatching (`/data/zones.json`, `data/AGENTS.md`), are served before the Worker runs, so only paths without a file reach it.
 
 ## GET /api/ring
 
-1. The query: `lat`, `lon`, `hours` (1–12), `cit` and `visas` as sorted comma-separated codes. Anything else is 400 with `{ error }`.
-2. The closed countries (`src/closed-countries.ts`): until the visa rules (#30), the countries the border table closes for everyone, whatever the citizenships and visas.
-3. The key: `ring:<data version>:<lat>,<lon>:<N>:<SHA-256 of the closed countries>`, with the origin rounded to 0.001°. The data version is the dataset's version (`engine/dataset/dataset.json`), the border table's hash and `ENGINE_VERSION`.
-4. A hit answers with `source: "cache"`. A miss posts the origin, N and the closed countries to the Container and answers `calculation`, or `joined` when the engine server joined it to a calculation of the same ring.
-5. The ring goes to KV for 40 days in the background, unless the Container calculated with another data version (a rollout), the JSON is over 25 MiB, or the request joined another's calculation, which caches it. Every outcome is cached: `ring`, `empty`, `no_roads`, `no_ring`.
+1. The query: `lat`, `lon`, `hours` (1–12), `cit` (Sherpa's passports, `SHERPA_PASSPORTS` in `rules`) and `visas` as sorted comma-separated codes. Anything else is 400 with `{ error }`.
+2. The visa rules of each citizenship (`src/visa-rules.ts`), from its copy in KV or from Sherpa (below). A citizenship without them ends the request: `{ outcome: "visa_rules_missing", missingCitizenship }`, the first such citizenship.
+3. Their reduction (`reduceVisaRules` in `src/access.ts`), a pure function: the entry mode of every country (`COUNTRIES` in `rules`: ISO 3166-1, `RKS`, `NX`) and closed territory, and the closed countries, those closed for everyone included. The held visas (#31) are its input, not yet applied.
+4. The key: `ring:<data version>:<lat>,<lon>:<N>:<SHA-256 of the closed countries>`, with the origin rounded to 0.001°. The data version is the dataset's version (`engine/dataset/dataset.json`), the border table's hash and `ENGINE_VERSION`. Citizenships and visas are not in it: those that close the same countries share their rings.
+5. A hit answers with `source: "cache"`. A miss posts the origin, N and the closed countries to the Container and answers `calculation`, or `joined` when the engine server joined it to a calculation of the same ring.
+6. The ring goes to KV for 40 days in the background, unless the Container calculated with another data version (a rollout), the JSON is over 25 MiB, or the request joined another's calculation, which caches it. Every outcome is cached: `ring`, `empty`, `no_roads`, `no_ring`.
+7. The answer adds `access` (the start country, closed by the visa rules but not for everyone, becomes `start`: `withStartCountry`) and `visaRulesLoadedAt`, when the oldest of the citizenships' copies came from Sherpa.
 
 A Container failure answers 502: its 500 `{ name, message, stack }` is rebuilt into an `Error` for `logger.error`, as is anything else it answers (`ContainerError`) or a start that failed. The context holds the browser's PostHog ids from `X-POSTHOG-*` and N, never the origin.
+
+## Visa rules
+
+`src/sherpa.ts` asks Sherpa's undocumented `POST https://requirements-api.joinsherpa.com/v3/maps` for one passport, with the secret `SHERPA_API_KEY` in `x-api-key` (research/sherpa-api, #11). The whole request has 10 s; the answer must pass the schema (`data.attributes.series[]` of the 7 known groups, each `data[]` of `{ id }`) and list at least 200 countries, or it is `bad_response`.
+
+`src/visa-rules.ts` keeps a copy per citizenship in the KV namespace `roadtrip-visa-rules` (binding `VISA_RULES`): `visa-rules:<alpha-3>` → `{ loadedAt, classes }`, Sherpa's countries by group, with no expiry.
+
+- A copy is fresh for a day. A stale copy is served at once and refreshed through `waitUntil`; without a copy the request waits for Sherpa.
+- A failure never overwrites or deletes a copy. It writes `visa-rules-failed:<alpha-3>` for 15 min (KV's TTL), and while that mark is there Sherpa is not asked for that citizenship: a stale copy is served as it is, and without one the answer is `visa_rules_missing`.
+- Every failure goes to `logger.error` as a `SherpaError`, with `reason` (the HTTP status, `network`, `timeout` or `bad_response`), `citizenship`, `served` (`stale` or `error`) and `problem`, the detail. `load` in `src/visa-rules.ts` marks where #34's `sherpa fetched` goes.
 
 ## GET /tiles/{z}/{x}/{y}
 
@@ -56,10 +68,11 @@ cd worker
 pnpm dev   # wrangler dev: builds the image, then http://localhost:8787
 
 curl 'http://localhost:8787/api/ring?lat=42.5063&lon=1.5218&hours=1&cit=RUS'   # source: calculation, after the cold start
-curl 'http://localhost:8787/api/ring?lat=42.5063&lon=1.5218&hours=1&cit=TUR'   # source: cache
+curl 'http://localhost:8787/api/ring?lat=42.5063&lon=1.5218&hours=1&cit=RUS'   # source: cache
 ```
 
 - KV is local (`.wrangler/state`). The rings stay cached under the version in `dataset.json` (`local`): after building another graph, delete `.wrangler/state` or the next answers come from the cache of the old one.
+- Sherpa needs a key: put `SHERPA_API_KEY=<key>` in `worker/.dev.vars` (gitignored). Without one Sherpa answers 401, every ring is `visa_rules_missing`, and the next try for that citizenship waits 15 min (or delete `.wrangler/state`).
 - The Tail Worker shows as «not connected»; errors are only printed.
 - The engine server's own line (`engine listening on port 8080: data version …, graph … loaded in … ms`) is in the Container's log: `docker logs <container>`.
 - If Docker Hub answers 429 to the pull of `node:22-alpine`, pull it from a mirror and tag it: `docker pull mirror.gcr.io/library/node:22-alpine && docker tag mirror.gcr.io/library/node:22-alpine node:22-alpine`.
@@ -92,8 +105,8 @@ pnpm typecheck   # the Worker against `wrangler types`, the tests against Node's
 pnpm cf-typegen  # after changing wrangler.jsonc
 ```
 
-The tests never import `src/index.ts`: Node cannot load `cloudflare:workers`. They call `handleRing` with doubles for KV and the Container, and the engine server in-process on `data`'s fixture graphs; and the tiles route with an R2 double holding a small archive that `test/pmtiles-archive.ts` writes, and a Cache API double.
+The tests never import `src/index.ts`: Node cannot load `cloudflare:workers`. They call `handleRing` (`test/api.ts`) with doubles for both KV namespaces on one clock, a faked `fetch` for Sherpa (`SherpaDouble`, `sherpaMap` in Sherpa's shape) and the Container, and the engine server in-process on `data`'s fixture graphs: `src/ring.test.ts` covers the ring and its cache, `src/visa-rules.test.ts` the visa rules. And the tiles route with an R2 double holding a small archive that `test/pmtiles-archive.ts` writes, and a Cache API double.
 
 ## Deploy
 
-Not yet: the deploy through Workers Builds and its `deploy` script come with #36. Deploy `roadtrip-error-tracking` before this Worker, which names it in `tail_consumers`. The archive named by `BASEMAP_ARCHIVE` must be in `roadtrip-basemap` before the deploy, or every tile answers 500.
+Not yet: the deploy through Workers Builds and its `deploy` script come with #36. Deploy `roadtrip-error-tracking` before this Worker, which names it in `tail_consumers`. The archive named by `BASEMAP_ARCHIVE` must be in `roadtrip-basemap` before the deploy, or every tile answers 500. The Owner sets the secret `SHERPA_API_KEY` (`wrangler secret put SHERPA_API_KEY`); its type is declared by hand in `src/env.d.ts`, since `wrangler types` does not see secrets.
