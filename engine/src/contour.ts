@@ -13,10 +13,11 @@ import type { ZoneLocator } from './zones.ts';
 const CELL_METERS = 500;
 const SIMPLIFY_METERS = 500;
 /**
- * Land up to this far from a reached road is in the ring when its time is; land further away is not. A guess to
- * tune against Valhalla (#24) with the speeds: it decides how much of the land between roads the ring covers.
+ * Land up to this far from a reached road is in the ring when its time is; land further away is not. Tuned
+ * against Valhalla with the speeds (#24, `data/valhalla-report.md`): Valhalla paints only the cells its roads
+ * cross, and 1 km fits its rings best, where 3 km made the rings of 1 h a third too large.
  */
-const NEAR_ROAD_METERS = 3000;
+const NEAR_ROAD_METERS = 1000;
 /** Off-road travel to and from a road, in seconds of travel per metre: 30 km/h of driving (spec «Привязка»). */
 export const OFF_ROAD_SECONDS_PER_METER = (3.6 / 30) * TRAVEL_PER_DRIVING;
 /** A raster larger than this gets coarser cells: ~120 MB of time and distance. */

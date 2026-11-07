@@ -28,7 +28,7 @@ test('letting the slider go asks for one ring, for the hours where it stopped', 
 	await expect(firstCard(page)).toContainText('В кольце 4–5 ч');
 	await expect(phrase(page)).toContainText('4–5 часов в пути.');
 	expect(ringApi.calls.map((call) => call.hours)).toEqual([1, 5]);
-	await expect(page).toHaveURL(/#\/\?p=44\.81760,20\.45730&h=5$/u);
+	await expect(page).toHaveURL(/#\/\?p=44\.81760,20\.45730&h=5&cit=RUS$/u);
 });
 
 test('a key moves N by an hour and asks at once', async ({ page, ringApi }) => {
@@ -86,15 +86,15 @@ test('a new ring is shown whole', async ({ page, ringApi }) => {
 	await page.goto('/');
 	await expect(firstCard(page)).toContainText('В кольце до 1 ч');
 
+	// The overview before the map has loaded holds the ring too, so the camera is awaited until it shows the ring
+	// whole and not lost in the world: not much wider than the ring with the room for the phrase and cards.
 	await expect
 		.poll(async () => {
 			const [west, south, east, north] = await mapBounds(page);
-			return west <= BELGRADE.lon - 2 && east >= BELGRADE.lon + 2 && south <= BELGRADE.lat - 2 && north >= BELGRADE.lat + 2;
+			const whole = west <= BELGRADE.lon - 2 && east >= BELGRADE.lon + 2 && south <= BELGRADE.lat - 2 && north >= BELGRADE.lat + 2;
+			return whole && east - west < 8;
 		})
 		.toBe(true);
-	// Whole, not lost in the world: the map is not much wider than the ring with the room for the phrase and cards.
-	const [west, , east] = await mapBounds(page);
-	expect(east - west).toBeLessThan(8);
 });
 
 test('the ring of another origin is not kept while the new origin’s ring is calculated', async ({ page, ringApi }) => {

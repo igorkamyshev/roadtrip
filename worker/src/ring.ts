@@ -2,10 +2,11 @@
 // in the Container. Side effects come through `deps`, built at the entry (index.ts).
 import type { LogContext, Logger } from 'error-tracking/logger';
 import { type Calculation, type CalculationFailure, CALCULATION_PATH, type CalculationRequest, type RingOutcome } from 'engine/protocol';
+import { reduceVisaRules, withStartCountry } from './access.ts';
 import type { RingError, RingResponse } from './api.ts';
-import { closedCountries } from './closed-countries.ts';
 import { parseRingQuery } from './query.ts';
 import { MAX_CACHED_BYTES, RING_TTL_SECONDS, ringKey, roundOrigin, workerDataVersion } from './ring-cache.ts';
+import { citizenshipsRules, type VisaRulesStore } from './visa-rules.ts';
 
 /** The ring cache: Workers KV. */
 export interface RingCache {
@@ -20,14 +21,22 @@ export interface Container {
 
 export interface RingDeps {
 	readonly rings: RingCache;
+	/** Sherpa's copies, by citizenship (visa-rules.ts). */
+	readonly visaRules: VisaRulesStore;
 	readonly container: Container;
 	/** The version of the dataset the Worker was deployed with (engine/dataset/dataset.json). */
 	readonly datasetVersion: string;
+	/** For Sherpa: the global fetch. */
+	readonly fetch: (request: Request) => Promise<Response>;
+	/** The secret `SHERPA_API_KEY`. */
+	readonly sherpaApiKey: string;
+	/** Milliseconds since the epoch. */
+	readonly now: () => number;
 	readonly waitUntil: (promise: Promise<unknown>) => void;
 	readonly logger: Pick<Logger, 'error' | 'info'>;
 }
 
-/** The steps of «Порядок работы Worker'а» (spec «API кольца»), with the visa rules still to come (#30). */
+/** The steps of «Порядок работы Worker'а» (spec «API кольца»). */
 export async function handleRing(request: Request, deps: RingDeps): Promise<Response> {
 	if (request.method !== 'GET') {
 		return new Response(null, { status: 405, headers: { allow: 'GET' } });
@@ -39,16 +48,29 @@ export async function handleRing(request: Request, deps: RingDeps): Promise<Resp
 	}
 	// What logger.error gets with an error. Never the origin: it must not reach PostHog.
 	const context = { ...browserIds(request), hours: query.hours };
-	// Steps 2–3, the visa rules and their reduction: for now only the closed countries, the same for everyone. The
-	// visa rules (#30) replace them here, and may end the request with `visa_rules_missing`.
-	const closed = closedCountries();
+	// Step 2: the citizenships' visa rules, or `visa_rules_missing` for the first without any.
+	const rules = await citizenshipsRules(query.citizenships, deps, context);
+	if ('missing' in rules) {
+		return json(200, { outcome: 'visa_rules_missing', missingCitizenship: rules.missing } satisfies RingResponse);
+	}
+	// Step 3: their reduction, with the held visas (#31), into the entry modes and the closed countries.
+	const { access, closed } = reduceVisaRules({
+		citizenships: query.citizenships,
+		sherpa: new Map([...rules.copies].map(([citizenship, copy]) => [citizenship, copy.classes])),
+		heldVisas: query.visas,
+	});
+	const visaRulesLoadedAt = [...rules.copies.values()].map((copy) => copy.loadedAt).sort()[0];
+	// What the answer adds to the engine's outcome, the start country open in `access` (step 7).
+	const visa = (outcome: RingOutcome) => ({ access: withStartCountry(access, outcome.startCountry), visaRulesLoadedAt });
+
 	// Steps 4–5: the key, from the fields the calculation gets and the data version.
 	const calculation: CalculationRequest = { origin: roundOrigin(query.origin), hours: query.hours, closedCountries: closed };
 	const version = await workerDataVersion(deps.datasetVersion);
 	const key = await ringKey(version, calculation.origin, calculation.hours, calculation.closedCountries);
 	const cached = await deps.rings.get(key);
 	if (cached !== null) {
-		return json(200, { ...(JSON.parse(cached) as RingOutcome), source: 'cache' } satisfies RingResponse);
+		const outcome = JSON.parse(cached) as RingOutcome;
+		return json(200, { ...outcome, ...visa(outcome), source: 'cache' } satisfies RingResponse);
 	}
 
 	// Step 6: the Container.
@@ -59,14 +81,14 @@ export async function handleRing(request: Request, deps: RingDeps): Promise<Resp
 		deps.logger.error('[ring] the Container failed', error, context);
 		return json(502, { error: 'The engine failed' } satisfies RingError);
 	}
-	// Step 7: cache and answer. The visa rules (#30) apply the start country to `access` here.
+	// Step 7: cache and answer, the start country open in `access`.
 	const { dataVersion: calculatedWith, joined, timings: _timings, ...outcome } = calculated;
 	// A joined request got the result of another request's calculation, which caches it: a second write of the key
 	// at the same moment would only meet KV's limit of one write a second per key.
 	if (!joined) {
 		cache(key, outcome, { version, calculatedWith }, context, deps);
 	}
-	return json(200, { ...outcome, source: joined ? 'joined' : 'calculation' } satisfies RingResponse);
+	return json(200, { ...outcome, ...visa(outcome), source: joined ? 'joined' : 'calculation' } satisfies RingResponse);
 }
 
 /** A failure of the Container other than the engine's own error: it could not start, or answered something else. */

@@ -12,12 +12,16 @@ export type FirstCardState =
 	| { readonly kind: 'empty'; readonly maxHours: number }
 	| { readonly kind: 'no_roads' }
 	| { readonly kind: 'no_ring' }
+	/** `citizenship` as the phrase says it: «РФ», «Сербия». */
+	| { readonly kind: 'visa_rules_missing'; readonly citizenship: string }
 	| { readonly kind: RingFailure };
 
 export interface FirstCardActions {
 	readonly onPin: () => void;
 	readonly onLocate: () => void;
 	readonly onRetry: () => void;
+	/** Opens the sheet «Гражданство». */
+	readonly onCitizenships: () => void;
 }
 
 /** How long «Считаем…» waits before it says the calculation takes longer than usual. */
@@ -76,6 +80,18 @@ export function FirstCard({ state, actions }: { readonly state: FirstCardState; 
 					<p className="muted small">Отсюда посчитать не можем: эта страна или территория закрыта для всех.</p>
 					<div className="acts">
 						<PinButton onPin={actions.onPin} />
+					</div>
+				</Card>
+			);
+		case 'visa_rules_missing':
+			return (
+				<Card>
+					<h3 className="err">Не удалось загрузить визовые правила для гражданства {state.citizenship}.</h3>
+					<p className="muted small">Попробуйте позже или уберите это гражданство</p>
+					<div className="acts">
+						<button type="button" className="btn primary" onClick={actions.onCitizenships}>
+							Гражданство
+						</button>
 					</div>
 				</Card>
 			);

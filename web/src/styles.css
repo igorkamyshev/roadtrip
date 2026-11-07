@@ -12,6 +12,9 @@
 	--ring: #1b5fd6;
 	--ring-fill: rgba(27, 95, 214, 0.24);
 	--start: #e2412c;
+	/* The hatching of closed countries over the basemap: lines on a veil. */
+	--hatch: rgba(84, 95, 90, 0.55);
+	--hatch-veil: rgba(220, 223, 216, 0.35);
 	--evisa: #7f4b00;
 	--evisa-bg: #ffecc7;
 	--held: #54309e;
@@ -39,6 +42,8 @@
 		--ring: #6aa3ff;
 		--ring-fill: rgba(106, 163, 255, 0.24);
 		--start: #ff6a52;
+		--hatch: rgba(150, 162, 157, 0.5);
+		--hatch-veil: rgba(27, 33, 32, 0.4);
 		--evisa: #ffcf7d;
 		--evisa-bg: #3a2b0e;
 		--held: #cbb3ff;
@@ -266,6 +271,78 @@ a {
 	place-items: center;
 	flex: none;
 }
+.sheet-note {
+	margin: 0 0 10px;
+}
+.search-in {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	height: 44px;
+	padding: 0 12px;
+	border-radius: 12px;
+	background: var(--surface-2);
+	color: var(--muted);
+}
+.search-in svg {
+	flex: none;
+	width: 18px;
+	height: 18px;
+}
+.search-in input {
+	flex: 1;
+	min-width: 0;
+	border: 0;
+	background: none;
+	outline: none;
+	font: inherit;
+	font-size: 16px;
+	color: var(--fg);
+}
+
+/* ---------- multiple choice (the sheet «Гражданство») ---------- */
+.pick {
+	display: grid;
+}
+.pick-item {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	padding: 11px 2px;
+	border-bottom: 1px solid var(--line);
+	text-align: left;
+}
+.pick-box {
+	width: 22px;
+	height: 22px;
+	border-radius: 6px;
+	border: 2px solid var(--borderline);
+	display: grid;
+	place-items: center;
+	flex: none;
+	box-sizing: border-box;
+}
+.pick-item.on .pick-box {
+	background: var(--ring);
+	border-color: var(--ring);
+	color: #fff;
+}
+.pick-box svg {
+	width: 14px;
+	height: 14px;
+}
+.row-main {
+	flex: 1;
+	min-width: 0;
+}
+.pick-name,
+.pick-sub {
+	display: block;
+}
+.pick-sub {
+	font-size: 12px;
+	color: var(--muted);
+}
 
 /* ---------- slider ---------- */
 .sl {
@@ -376,6 +453,13 @@ a {
 .c-phrase p {
 	margin: 0;
 	text-wrap: balance;
+}
+/* «визовые правила от <дата>» under the phrase. */
+.c-phrase p.c-rules-date {
+	margin-top: 2px;
+	font-size: 13px;
+	line-height: 1.4;
+	color: var(--warn);
 }
 .tok {
 	display: inline;
