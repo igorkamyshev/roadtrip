@@ -3,9 +3,10 @@
 // The graph is built without zones, so every country is open and no border costs time (the ticket compares roads
 // and speeds only): the origin snaps to the nearest road of any country, as an origin at sea does.
 import { computeRing, type MultiPolygon } from 'engine';
-import { LocalProjection } from 'engine/geo';
-import type { Graph } from 'engine/graph';
+import { passage } from 'engine/borders';
 import { OFF_ROAD_SECONDS_PER_METER, ringContour } from 'engine/contour';
+import { LocalProjection } from 'engine/geo';
+import { type Graph, ZoneLocator } from 'engine/graph';
 import { edgeSecondsBetween, snapToRoad } from 'engine/snap';
 import { type Seed, TRAVEL_PER_DRIVING, traverse } from 'engine/traverse';
 import { borderTable } from 'rules';
@@ -13,12 +14,13 @@ import { buildGraph } from '../build-graph.ts';
 import { openOsm } from '../osm/open.ts';
 import type { LatLon } from './valhalla.ts';
 
-/** The graph of an extract, without zones. */
+/** The graph of an extract, without zones: no road crosses a border, so no edge is at a border crossing either. */
 export function graphWithoutZones(path: string): Graph {
 	const { graph } = buildGraph(openOsm(path));
 	return {
 		...graph,
 		nodeZone: new Uint8Array(graph.nodeLat.length),
+		borderControlEdges: new Uint32Array(0),
 		zones: [''],
 		zoneRings: { zone: new Uint8Array(0), start: Uint32Array.of(0), lat: new Int32Array(0), lon: new Int32Array(0) },
 	};
@@ -61,12 +63,15 @@ export function ourReach(graph: Graph, index: RoadIndex, origin: LatLon, limitHo
 	if (backSeconds !== undefined) {
 		seeds.push({ node: snap.a, seconds: accessSeconds + snap.fraction * backSeconds });
 	}
-	const { seconds } = traverse(graph, seeds, limitHours * 3600);
+	// Every zone open, as computeRing has it with no country closed: the graph has only zone 0.
+	const open = passage(graph, borderTable, [], 0);
+	const { seconds } = traverse(graph, open, seeds, limitHours * 3600);
+	const locator = new ZoneLocator(graph.zoneRings);
 	return {
 		isochrone(hours) {
 			// Only what is reached within the hours, as a traversal up to them gives: the raster spans just that.
 			const within = seconds.map((time) => (time <= hours * 3600 ? time : Infinity));
-			return ringContour(graph, { seconds: within, snap, accessSeconds, forwardSeconds, backSeconds }, -1, hours * 3600);
+			return ringContour(graph, open, locator, { seconds: within, snap, accessSeconds, forwardSeconds, backSeconds }, -1, hours * 3600);
 		},
 		travelHours(targets) {
 			return targets.map((target) => {

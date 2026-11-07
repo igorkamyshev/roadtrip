@@ -14,7 +14,8 @@ export interface Snap {
 
 /**
  * The nearest point of a road to the origin (1e-7 degrees), on a road with both ends in `zone`, or on any road
- * when `zone` is undefined. Undefined when there is none within MAX_SNAP_METERS.
+ * with both ends in one zone when `zone` is undefined: never on the road across a border, which would start the
+ * origin in two countries. Undefined when there is none within MAX_SNAP_METERS.
  */
 export function snapToRoad(graph: Graph, lat: number, lon: number, zone: number | undefined): Snap | undefined {
 	const { nodeLat, nodeLon, nodeZone, firstEdge, edgeTarget } = graph;
@@ -31,7 +32,7 @@ export function snapToRoad(graph: Graph, lat: number, lon: number, zone: number 
 		const lonA = nodeLon[a];
 		for (let edge = firstEdge[a]; edge < firstEdge[a + 1]; edge++) {
 			const b = edgeTarget[edge];
-			if (zone !== undefined && nodeZone[b] !== zone) {
+			if (nodeZone[b] !== nodeZone[a]) {
 				continue;
 			}
 			const latB = nodeLat[b];

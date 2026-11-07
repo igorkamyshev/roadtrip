@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  A closed territory inside an open country: Georgia (relation 28699, GEO) from 0° to 2°E and from the equator to
+  1°N, and inside it Abkhazia (relation 1152720, admin_level=3, no ISO code) from 1°E to 1.4°E and from 0.2°N
+  to 0.8°N. The builder makes Abkhazia the zone ABKHAZIA, which the shipped border table closes for everyone.
+
+  One secondary road (60 km/h) along 0.5°N from 0.2°E to 1.8°E, through Abkhazia, with a checkpoint
+  (barrier=border_control) on each side of it:
+
+    0.2°E – 0.99°E (barrier) – 1.01°E – 1.39°E – 1.41°E (barrier) – 1.8°E
+
+  0.1° of longitude is 11.12 km here, 667.1 s at the wheel. In whole seconds at the wheel: 0.2–0.99 5270,
+  0.99–1.01 133, 1.01–1.39 2535, 1.39–1.41 133, 1.41–1.8 2602.
+
+    From the west end, the last node before Abkhazia, 0.99°E, is at 6324 s: 1.757 h of travel, maxHours 2. Were
+    Abkhazia open, the whole road would take 10673 s, 3.558 h, and 6.558 h with two borders: maxHours 7.
+    The 2 h ring holds the land near the road from 0.65°E to 0.99°E and up to 3 km from 0.99°E: 2.3 km from it
+    is 0.09 h more. That takes in Abkhazia's edge, as far as 1.017°E, but the ring stays out of it.
+
+       1°N +-----------------------------------------------+
+           |   GEO        +-----------+                    |
+    0.5°N  |     .--------b-.  ABKHAZIA .-b-----------.    |
+           |              +-----------+                    |
+        0° +-----------------------------------------------+
+          0°   0.2°E     1°E         1.4°E       1.8°E    2°E
+-->
+<osm version="0.6" generator="hand">
+	<node id="1" lat="0.5" lon="0.2"/>
+	<node id="2" lat="0.5" lon="0.99">
+		<tag k="barrier" v="border_control"/>
+	</node>
+	<node id="3" lat="0.5" lon="1.01"/>
+	<node id="4" lat="0.5" lon="1.39"/>
+	<node id="5" lat="0.5" lon="1.41">
+		<tag k="barrier" v="border_control"/>
+	</node>
+	<node id="6" lat="0.5" lon="1.8"/>
+	<way id="1">
+		<nd ref="1"/><nd ref="2"/><nd ref="3"/><nd ref="4"/><nd ref="5"/><nd ref="6"/>
+		<tag k="highway" v="secondary"/>
+	</way>
+
+	<node id="101" lat="0" lon="0"/>
+	<node id="102" lat="0" lon="2"/>
+	<node id="103" lat="1" lon="2"/>
+	<node id="104" lat="1" lon="0"/>
+	<way id="100">
+		<nd ref="101"/><nd ref="102"/><nd ref="103"/><nd ref="104"/><nd ref="101"/>
+		<tag k="boundary" v="administrative"/>
+		<tag k="admin_level" v="2"/>
+	</way>
+	<relation id="28699">
+		<member type="way" ref="100" role="outer"/>
+		<tag k="type" v="boundary"/>
+		<tag k="boundary" v="administrative"/>
+		<tag k="admin_level" v="2"/>
+		<tag k="ISO3166-1:alpha3" v="GEO"/>
+	</relation>
+
+	<node id="111" lat="0.2" lon="1"/>
+	<node id="112" lat="0.2" lon="1.4"/>
+	<node id="113" lat="0.8" lon="1.4"/>
+	<node id="114" lat="0.8" lon="1"/>
+	<way id="110">
+		<nd ref="111"/><nd ref="112"/><nd ref="113"/><nd ref="114"/><nd ref="111"/>
+		<tag k="boundary" v="administrative"/>
+		<tag k="admin_level" v="3"/>
+	</way>
+	<relation id="1152720">
+		<member type="way" ref="110" role="outer"/>
+		<tag k="type" v="boundary"/>
+		<tag k="boundary" v="administrative"/>
+		<tag k="admin_level" v="3"/>
+		<tag k="ISO3166-2" v="GE-AB"/>
+		<tag k="name:en" v="Abkhazia"/>
+	</relation>
+</osm>

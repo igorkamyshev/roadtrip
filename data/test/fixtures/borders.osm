@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Three countries side by side: AAA from 0° to 1°E, BBB from 1°E to 2°E, CCC from 2°E to 3°E, all from the equator
+  to 1°N. Four secondary roads (60 km/h) run east and west, 11 km apart, and do not meet:
+
+    road 1, along 0.1°N: 0.5°E – 0.9°E – 1.1°E – 1.5°E                      crosses AAA–BBB at 1°E, no barrier
+    road 2, along 0.2°N: 0.5°E – 0.9°E (barrier=border_control) – 1.1°E – 1.5°E                at a checkpoint
+    road 3, along 0.3°N: 0.5°E – 0.99°E (barrier) – 1.1°E – 1.5°E – 1.9°E (barrier) – 2.1°E – 2.5°E
+                         across AAA, BBB and CCC, and a spur from 1.5°E north to 0.35°N, so 1.5°E is a junction
+    road 4, along 0.4°N: 0.5°E – 0.1°E – 0.1°W – 0.5°W                 leaves AAA for no zone at 0°, no barrier
+
+  Each edge across a border is the one segment that crosses it, so a checkpoint at its end is on it. A table
+  crossing at (0.1°N, 1°E) is on road 1 and 11 km from road 2.
+
+  0.1° of longitude is 11.12 km here, 667 s at the wheel and 0.2224 h of travel. In whole seconds at the wheel:
+
+    roads 1, 2 and 4: 0.5–0.9 2669, 0.9–1.1 1334, 1.1–1.5 2669: 6672 s, 2.224 h of travel end to end.
+      From the west end:   1.5 h at the border: 3.724 h, maxHours 4.     0 h: 2.224 h, maxHours 3.
+                           2 h at the border: 4.224 h, maxHours 5.       3 h: 5.224 h, maxHours 6.
+                           Not crossed: the last node before it, 0.9°E (0.1°E on road 4), at 0.890 h: maxHours 1.
+    road 3: 0.5–0.99 3269, 0.99–1.1 734, 1.1–1.5 2669, 1.5–1.9 2669, 1.9–2.1 1334, 2.1–2.5 2669: 13344 s,
+            4.448 h of travel; the spur 0.05° (5.56 km): 334 s.
+      From the west end:   two borders at 1.5 h: 7.448 h, maxHours 8.
+                           BBB closed: the last node in AAA, 0.99°E, at 1.090 h: maxHours 2.
+      From 1.3°E, half way along 1.1–1.5, 1334.5 s from either end:
+                           to the east end 8006.5 s, 2.669 h, 4.169 h with the border: maxHours 5;
+                           to the west end 5337.5 s, 1.779 h, 3.279 h with the border.
+                           Only BBB: 1.9°E is the latest, at 4003.5 s, 1.334 h: maxHours 2.
+                           Were BBB closed past the origin's own road: into AAA only, maxHours 4.
+
+       1°N +-----------------------+-----------------------+-----------------------+
+           |          AAA          |          BBB          |          CCC          |
+    0.4°N <|-.--------.            |                       |                       |   road 4, on to 0.1°W and 0.5°W
+    0.3°N  |          .---------b--+--.-------+-------b----+--.---------.          |   road 3 and spur
+    0.2°N  |          .---------b--+--.---------.          |                       |   road 2
+    0.1°N  |          .---------.--+--.---------.          |                       |   road 1
+        0° +-----------------------+-----------------------+-----------------------+
+          0°        0.5°E         1°E                     2°E                     3°E
+-->
+<osm version="0.6" generator="hand">
+	<node id="11" lat="0.1" lon="0.5"/>
+	<node id="12" lat="0.1" lon="0.9"/>
+	<node id="13" lat="0.1" lon="1.1"/>
+	<node id="14" lat="0.1" lon="1.5"/>
+	<way id="1">
+		<nd ref="11"/><nd ref="12"/><nd ref="13"/><nd ref="14"/>
+		<tag k="highway" v="secondary"/>
+	</way>
+
+	<node id="21" lat="0.2" lon="0.5"/>
+	<node id="22" lat="0.2" lon="0.9">
+		<tag k="barrier" v="border_control"/>
+	</node>
+	<node id="23" lat="0.2" lon="1.1"/>
+	<node id="24" lat="0.2" lon="1.5"/>
+	<way id="2">
+		<nd ref="21"/><nd ref="22"/><nd ref="23"/><nd ref="24"/>
+		<tag k="highway" v="secondary"/>
+	</way>
+
+	<node id="31" lat="0.3" lon="0.5"/>
+	<node id="32" lat="0.3" lon="0.99">
+		<tag k="barrier" v="border_control"/>
+	</node>
+	<node id="33" lat="0.3" lon="1.1"/>
+	<node id="37" lat="0.3" lon="1.5"/>
+	<node id="34" lat="0.3" lon="1.9">
+		<tag k="barrier" v="border_control"/>
+	</node>
+	<node id="35" lat="0.3" lon="2.1"/>
+	<node id="36" lat="0.3" lon="2.5"/>
+	<way id="3">
+		<nd ref="31"/><nd ref="32"/><nd ref="33"/><nd ref="37"/><nd ref="34"/><nd ref="35"/><nd ref="36"/>
+		<tag k="highway" v="secondary"/>
+	</way>
+	<node id="51" lat="0.35" lon="1.5"/>
+	<way id="5">
+		<nd ref="37"/><nd ref="51"/>
+		<tag k="highway" v="secondary"/>
+	</way>
+
+	<node id="41" lat="0.4" lon="0.5"/>
+	<node id="42" lat="0.4" lon="0.1"/>
+	<node id="43" lat="0.4" lon="-0.1"/>
+	<node id="44" lat="0.4" lon="-0.5"/>
+	<way id="4">
+		<nd ref="41"/><nd ref="42"/><nd ref="43"/><nd ref="44"/>
+		<tag k="highway" v="secondary"/>
+	</way>
+
+	<node id="201" lat="0" lon="1"/>
+	<node id="202" lat="1" lon="1"/>
+	<node id="203" lat="0" lon="2"/>
+	<node id="204" lat="1" lon="2"/>
+	<node id="211" lat="0" lon="0"/>
+	<node id="212" lat="1" lon="0"/>
+	<node id="221" lat="0" lon="3"/>
+	<node id="222" lat="1" lon="3"/>
+	<!-- The border between AAA and BBB, and between BBB and CCC, south to north. -->
+	<way id="200">
+		<nd ref="201"/><nd ref="202"/>
+		<tag k="boundary" v="administrative"/>
+		<tag k="admin_level" v="2"/>
+	</way>
+	<way id="300">
+		<nd ref="203"/><nd ref="204"/>
+		<tag k="boundary" v="administrative"/>
+		<tag k="admin_level" v="2"/>
+	</way>
+	<!-- AAA's coast, BBB's two coasts, CCC's coast. -->
+	<way id="210">
+		<nd ref="201"/><nd ref="211"/><nd ref="212"/><nd ref="202"/>
+		<tag k="boundary" v="administrative"/>
+		<tag k="admin_level" v="2"/>
+	</way>
+	<way id="230">
+		<nd ref="201"/><nd ref="203"/>
+		<tag k="boundary" v="administrative"/>
+		<tag k="admin_level" v="2"/>
+	</way>
+	<way id="240">
+		<nd ref="202"/><nd ref="204"/>
+		<tag k="boundary" v="administrative"/>
+		<tag k="admin_level" v="2"/>
+	</way>
+	<way id="220">
+		<nd ref="203"/><nd ref="221"/><nd ref="222"/><nd ref="204"/>
+		<tag k="boundary" v="administrative"/>
+		<tag k="admin_level" v="2"/>
+	</way>
+
+	<relation id="1000">
+		<member type="way" ref="210" role="outer"/>
+		<member type="way" ref="200" role="outer"/>
+		<tag k="type" v="boundary"/>
+		<tag k="boundary" v="administrative"/>
+		<tag k="admin_level" v="2"/>
+		<tag k="ISO3166-1:alpha3" v="AAA"/>
+	</relation>
+	<relation id="2000">
+		<member type="way" ref="200" role="outer"/>
+		<member type="way" ref="230" role="outer"/>
+		<member type="way" ref="300" role="outer"/>
+		<member type="way" ref="240" role="outer"/>
+		<tag k="type" v="boundary"/>
+		<tag k="boundary" v="administrative"/>
+		<tag k="admin_level" v="2"/>
+		<tag k="ISO3166-1:alpha3" v="BBB"/>
+	</relation>
+	<relation id="3000">
+		<member type="way" ref="300" role="outer"/>
+		<member type="way" ref="220" role="outer"/>
+		<tag k="type" v="boundary"/>
+		<tag k="boundary" v="administrative"/>
+		<tag k="admin_level" v="2"/>
+		<tag k="ISO3166-1:alpha3" v="CCC"/>
+	</relation>
+</osm>

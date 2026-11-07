@@ -36,8 +36,15 @@ export interface Graph {
 	/** Driving time of each edge, in whole seconds (without the ×1.2 of travel time). */
 	readonly edgeSeconds: Uint16Array;
 	/**
-	 * The zone codes: a country's ISO 3166-1 alpha-3, as Sherpa has it. Index 0 is '', no zone: the sea, or a
-	 * country whose polygon the extract does not hold.
+	 * The edges between two zones that pass within BORDER_CROSSING_METERS of a `barrier=border_control` node of
+	 * OSM: the edges across a border at a border crossing, unless the border table says otherwise. Ascending.
+	 */
+	readonly borderControlEdges: Uint32Array;
+	/**
+	 * The zone codes: a country's ISO 3166-1 alpha-3 as Sherpa has it (`RKS` for Kosovo, `NX` for Northern
+	 * Cyprus), or a closed territory's code (rules' `closedTerritories`). Index 0 is '', no zone: the sea, a gap
+	 * between polygons, or a country whose polygon the extract does not hold. Where polygons overlap, as a
+	 * territory inside its country, a point is in the zone listed first, so the parts of countries come first.
 	 */
 	readonly zones: readonly string[];
 	readonly zoneRings: ZoneRings;
@@ -49,11 +56,20 @@ export const MAX_EDGE_SECONDS = 0xffff;
 /** A node's zone is a byte, and zone 0 is no zone. */
 export const MAX_ZONES = 0xff;
 
+/**
+ * A road across a border is at a border crossing when it passes this close to one: a `barrier=border_control`
+ * node of OSM, which often sits on the road a few hundred metres back from the border line, or a crossing of the
+ * border table.
+ */
+export const BORDER_CROSSING_METERS = 2000;
+
 /** The edges of a graph in any order: edge i goes from `from[i]` to `to[i]`. */
 export interface EdgeList {
 	readonly from: Uint32Array;
 	readonly to: Uint32Array;
 	readonly seconds: Uint16Array;
+	/** 1 for an edge between two zones that passes a `barrier=border_control` (`Graph.borderControlEdges`). */
+	readonly borderControl: Uint8Array;
 }
 
 export interface GraphParts {
@@ -69,11 +85,22 @@ export interface GraphParts {
  * The version of the graph file. Bump it when the arrays or their meaning change, so an engine never reads a
  * file of another layout.
  */
-export const GRAPH_FORMAT_VERSION = 1;
+export const GRAPH_FORMAT_VERSION = 2;
 
 const MAGIC = 'RTGRAPH\n';
 
-type ArrayName = 'nodeLat' | 'nodeLon' | 'nodeZone' | 'firstEdge' | 'edgeTarget' | 'edgeSeconds' | 'ringZone' | 'ringStart' | 'ringLat' | 'ringLon';
+type ArrayName =
+	| 'nodeLat'
+	| 'nodeLon'
+	| 'nodeZone'
+	| 'firstEdge'
+	| 'edgeTarget'
+	| 'edgeSeconds'
+	| 'borderControlEdges'
+	| 'ringZone'
+	| 'ringStart'
+	| 'ringLat'
+	| 'ringLon';
 
 const ARRAY_TYPES = {
 	nodeLat: Int32Array,
@@ -82,6 +109,7 @@ const ARRAY_TYPES = {
 	firstEdge: Uint32Array,
 	edgeTarget: Uint32Array,
 	edgeSeconds: Uint16Array,
+	borderControlEdges: Uint32Array,
 	ringZone: Uint8Array,
 	ringStart: Uint32Array,
 	ringLat: Int32Array,
@@ -108,6 +136,7 @@ export function encodeGraph(graph: Graph): Uint8Array {
 		firstEdge: graph.firstEdge,
 		edgeTarget: graph.edgeTarget,
 		edgeSeconds: graph.edgeSeconds,
+		borderControlEdges: graph.borderControlEdges,
 		ringZone: graph.zoneRings.zone,
 		ringStart: graph.zoneRings.start,
 		ringLat: graph.zoneRings.lat,
@@ -161,6 +190,7 @@ export function decodeGraph(bytes: Uint8Array): Graph {
 		firstEdge: array('firstEdge'),
 		edgeTarget: array('edgeTarget'),
 		edgeSeconds: array('edgeSeconds'),
+		borderControlEdges: array('borderControlEdges'),
 		zones: header.zones,
 		zoneRings: { zone: array('ringZone'), start: array('ringStart'), lat: array('ringLat'), lon: array('ringLon') },
 	};
@@ -176,7 +206,7 @@ export function createGraph(parts: GraphParts): Graph {
 	if (parts.zones.length > MAX_ZONES + 1 || parts.zones[0] !== '') {
 		throw new RangeError(`zones must start with '' and hold at most ${MAX_ZONES} more`);
 	}
-	const { from, to, seconds } = parts.edges;
+	const { from, to, seconds, borderControl } = parts.edges;
 	const firstEdge = new Uint32Array(nodeCount + 1);
 	for (const node of from) {
 		firstEdge[node + 1]++;
@@ -187,10 +217,14 @@ export function createGraph(parts: GraphParts): Graph {
 	const next = firstEdge.slice(0, nodeCount);
 	const edgeTarget = new Uint32Array(from.length);
 	const edgeSeconds = new Uint16Array(from.length);
+	const borderControlSlots: number[] = [];
 	for (let edge = 0; edge < from.length; edge++) {
 		const slot = next[from[edge]]++;
 		edgeTarget[slot] = to[edge];
 		edgeSeconds[slot] = seconds[edge];
+		if (borderControl[edge]) {
+			borderControlSlots.push(slot);
+		}
 	}
 	return {
 		nodeLat: parts.nodeLat,
@@ -199,6 +233,7 @@ export function createGraph(parts: GraphParts): Graph {
 		firstEdge,
 		edgeTarget,
 		edgeSeconds,
+		borderControlEdges: Uint32Array.from(borderControlSlots).sort(),
 		zones: parts.zones,
 		zoneRings: parts.zoneRings,
 	};

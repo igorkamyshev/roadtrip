@@ -1,3 +1,4 @@
+import type { Passage } from './borders.ts';
 import type { Graph } from './graph.ts';
 import { NodeHeap } from './heap.ts';
 import { edgeSecondsBetween } from './snap.ts';
@@ -18,9 +19,22 @@ export interface Traversal {
 	readonly exhausted: boolean;
 }
 
-/** Dijkstra by travel time from the seeds, up to `limitSeconds` of travel. */
-export function traverse(graph: Graph, seeds: readonly Seed[], limitSeconds: number): Traversal {
-	const { firstEdge, edgeTarget, edgeSeconds } = graph;
+/**
+ * Travel time over `edge`, which leaves `from`, in seconds: its driving time × 1.2 and any border delay; Infinity
+ * where the passage does not let a car go.
+ */
+export function edgeTravelSeconds(graph: Graph, passage: Passage, from: number, edge: number): number {
+	const zone = graph.nodeZone[graph.edgeTarget[edge]];
+	if (!passage.open[zone]) {
+		return Infinity;
+	}
+	const seconds = graph.edgeSeconds[edge] * TRAVEL_PER_DRIVING;
+	return zone === graph.nodeZone[from] ? seconds : seconds + (passage.borderSeconds.get(edge) ?? 0);
+}
+
+/** Dijkstra by travel time from the seeds, up to `limitSeconds` of travel, where the passage lets it go. */
+export function traverse(graph: Graph, passage: Passage, seeds: readonly Seed[], limitSeconds: number): Traversal {
+	const { firstEdge, edgeTarget } = graph;
 	const seconds = new Float64Array(graph.nodeLat.length).fill(Infinity);
 	const heap = new NodeHeap();
 	for (const seed of seeds) {
@@ -41,7 +55,7 @@ export function traverse(graph: Graph, seeds: readonly Seed[], limitSeconds: num
 		}
 		for (let edge = firstEdge[node]; edge < firstEdge[node + 1]; edge++) {
 			const target = edgeTarget[edge];
-			const arrival = key + edgeSeconds[edge] * TRAVEL_PER_DRIVING;
+			const arrival = key + edgeTravelSeconds(graph, passage, node, edge);
 			if (arrival < seconds[target]) {
 				seconds[target] = arrival;
 				heap.push(target, arrival);
@@ -73,6 +87,10 @@ export function latestArrival(graph: Graph, traversal: Traversal): number {
 		latest = Math.max(latest, fromSeconds);
 		for (let edge = firstEdge[from]; edge < firstEdge[from + 1]; edge++) {
 			const to = edgeTarget[edge];
+			if (seconds[to] === Infinity) {
+				// The traversal was exhausted, so the edge leads where a car may not go.
+				continue;
+			}
 			const forward = edgeSeconds[edge] * TRAVEL_PER_DRIVING;
 			const back = edgeSecondsBetween(graph, to, from) * TRAVEL_PER_DRIVING;
 			if (back < 0) {
