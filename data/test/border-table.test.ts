@@ -21,6 +21,19 @@ describe('the border table', () => {
 		expect(borderTable.defaultBorderHours).toBe(1.5);
 	});
 
+	it('as shipped crosses a border that differs by citizenship as a citizen of Russia does (#13), and Narva only on foot', () => {
+		const shippedPair = (one: string, two: string) => borderTable.pairs.find(({ pair: [a, b] }) => a === one && b === two);
+		const shippedCrossing = (id: string) => borderTable.crossings.find((row) => row.id === id);
+
+		expect(shippedPair('BLR', 'RUS')).toMatchObject({ status: 'no_control' });
+		expect(shippedPair('BLR', 'RUS')?.borderHours).toBeUndefined();
+		expect(shippedPair('SYR', 'TUR')).toMatchObject({ status: 'closed' });
+		expect(shippedCrossing('kayragach')).toMatchObject({ pair: ['KGZ', 'TJK'], status: 'closed' });
+		expect(shippedPair('IND', 'NPL')).toBeUndefined(); // passport control, the default 1.5 h
+		expect(shippedPair('EST', 'RUS')).toMatchObject({ status: 'crossings_only' });
+		expect(shippedCrossing('narva')).toMatchObject({ pair: ['EST', 'RUS'], status: 'pedestrian_only' });
+	});
+
 	it.each<[string, BorderTable, string]>([
 		['a pair out of order', rules({ pairs: [{ ...pair('closed'), pair: ['BBB', 'AAA'] }] }), 'alphabetical order'],
 		['a pair twice', rules({ pairs: [pair('closed'), pair('no_crossing')] }), 'two rows'],
