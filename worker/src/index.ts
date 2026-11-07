@@ -56,8 +56,15 @@ export default {
 					get: (key) => env.RINGS.get(key, 'text'),
 					put: (key, value, options) => env.RINGS.put(key, value, options),
 				},
+				visaRules: {
+					get: (key) => env.VISA_RULES.get(key, 'text'),
+					put: (key, value, options) => env.VISA_RULES.put(key, value, options),
+				},
 				container: getContainer(env.ENGINE),
 				datasetVersion: dataset.version,
+				fetch: (sherpaRequest) => fetch(sherpaRequest),
+				sherpaApiKey: env.SHERPA_API_KEY,
+				now: () => Date.now(),
 				waitUntil: (promise) => {
 					ctx.waitUntil(promise);
 				},

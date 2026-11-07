@@ -10,7 +10,7 @@ export const RING_PATH = '/api/ring';
  * - `lat`, `lon`: the origin in degrees, as the person set it (the Worker rounds it for the calculation and the
  *   cache);
  * - `hours`: N, a whole number from 1 to 12;
- * - `cit`: the citizenships, alpha-3, at least one;
+ * - `cit`: the citizenships, at least one, each one of Sherpa's passports (rules' `SHERPA_PASSPORTS`);
  * - `visas`: the held visas, `SCHENGEN` and alpha-3 of countries outside Schengen; may be empty or left out.
  *
  * For example `/api/ring?lat=44.8125&lon=20.4612&hours=3&cit=RUS,SRB&visas=SCHENGEN`.
@@ -26,7 +26,31 @@ export interface RingQuery {
 export type RingSource = 'cache' | 'calculation' | 'joined';
 
 /**
- * The answer 200, by `outcome` (spec «API кольца»):
+ * How a country lets the person in (spec «Визовые правила и сведение»), best first: without a visa, by a held visa
+ * (#31), a visa on arrival, an e-visa; `start` is the start country, open although the visa rules close it;
+ * `closed` is never entered.
+ */
+export type EntryMode = 'visa_free' | 'held_visa' | 'visa_on_arrival' | 'evisa' | 'start' | 'closed';
+
+/** A country's entry mode and where it came from. */
+export interface CountryAccess {
+	readonly mode: EntryMode;
+	/** The citizenship whose visa rules give the mode, or whose own country this is. */
+	readonly citizenship?: string;
+	/** The held visa that gives it (#31): `SCHENGEN` or an alpha-3. */
+	readonly visa?: string;
+	/** Closed for everyone, whatever the citizenships and visas (#13): such a country is always `closed`. */
+	readonly closedForEveryone?: true;
+}
+
+/**
+ * The entry mode of every country (rules' `COUNTRIES`: alpha-3, `RKS`, `NX`) and every closed territory (its code),
+ * by code.
+ */
+export type Access = Readonly<Record<string, CountryAccess>>;
+
+/**
+ * The answer 200 with a ring or the engine's reason for none, by `outcome` (spec «API кольца»):
  *
  * - `ring`: `ring` is the ring, a GeoJSON MultiPolygon with holes, in [lon, lat];
  * - `empty`: the ring N is empty, nothing is reached after N − 1 hours; `maxHours` is the longest travel time to
@@ -35,10 +59,24 @@ export type RingSource = 'cache' | 'calculation' | 'joined';
  * - `no_ring`: the origin is in a country or territory closed for everyone.
  *
  * `startCountry` is the zone of the origin (alpha-3, `NX` for Northern Cyprus, or a closed territory's code), null
- * for an origin at sea with no road near. The visa rules (#30) add `access`, `visaRulesLoadedAt` and the outcome
- * `visa_rules_missing` with `missingCitizenship`.
+ * for an origin at sea with no road near. `access` is the entry mode of every country for the citizenships and
+ * visas, the start country's included; `visaRulesLoadedAt` is when the oldest of the citizenships' visa rules came
+ * from Sherpa (ISO 8601).
  */
-export type RingResponse = RingOutcome & { readonly source: RingSource };
+export type RingAnswer = RingOutcome & {
+	readonly source: RingSource;
+	readonly access: Access;
+	readonly visaRulesLoadedAt: string;
+};
+
+/** The answer 200 when Sherpa's visa rules of a citizenship could not be had: no ring is calculated. */
+export interface VisaRulesMissing {
+	readonly outcome: 'visa_rules_missing';
+	/** The first of the query's citizenships without visa rules. */
+	readonly missingCitizenship: string;
+}
+
+export type RingResponse = RingAnswer | VisaRulesMissing;
 
 /** The answer 400 to a query that is not a `RingQuery`, and 5xx when the Container or the Worker failed. */
 export interface RingError {

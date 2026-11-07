@@ -1,7 +1,7 @@
 // The first card by state (spec «Экран», «Первая карточка, по состояниям»; stories 7, 9, 21, 47, 48): the
 // engine's outcomes without a ring, the WAF's block and failures, with the spec's texts and buttons.
 import type { RingResponse } from 'worker/api';
-import { allowGeolocation, expect, squareRing, test, type RingReply } from './fixtures.ts';
+import { allowGeolocation, expect, squareRing, test, visaRules, type RingReply } from './fixtures.ts';
 import { firstCard, ringOnMap } from './screen.ts';
 
 const BELGRADE = { lat: 44.8176, lon: 20.4573 };
@@ -11,19 +11,19 @@ const LINK = '/#/?p=44.81760,20.45730&h=5';
 const outcomes: readonly { outcome: string; answer: RingResponse; texts: readonly string[]; buttons: readonly string[] }[] = [
 	{
 		outcome: 'empty',
-		answer: { outcome: 'empty', maxHours: 3, startCountry: 'SRB', source: 'calculation' },
+		answer: { outcome: 'empty', maxHours: 3, startCountry: 'SRB', source: 'calculation', ...visaRules() },
 		texts: ['Дальше 3 ч не уехать', 'Дальше море или закрытые страны. Добавьте свои визы или уменьшите время.'],
 		buttons: [],
 	},
 	{
 		outcome: 'no_roads',
-		answer: { outcome: 'no_roads', startCountry: 'SRB', source: 'cache' },
+		answer: { outcome: 'no_roads', startCountry: 'SRB', source: 'cache', ...visaRules() },
 		texts: ['Рядом нет дорог', 'Точка дальше 50 км от дороги. Выберите другую.'],
 		buttons: ['На карте'],
 	},
 	{
 		outcome: 'no_ring',
-		answer: { outcome: 'no_ring', startCountry: 'UKR', source: 'cache' },
+		answer: { outcome: 'no_ring', startCountry: 'UKR', source: 'cache', ...visaRules() },
 		texts: ['Кольца нет', 'Отсюда посчитать не можем: эта страна или территория закрыта для всех.'],
 		buttons: ['На карте'],
 	},
@@ -43,7 +43,7 @@ for (const { outcome, answer, texts, buttons } of outcomes) {
 }
 
 test('«На карте» of a card without a ring turns the pin mode on', async ({ page, ringApi }) => {
-	ringApi.respond(() => ({ outcome: 'no_roads', startCountry: 'SRB', source: 'cache' }));
+	ringApi.respond(() => ({ outcome: 'no_roads', startCountry: 'SRB', source: 'cache', ...visaRules() }));
 	await page.goto(LINK);
 
 	await firstCard(page).getByRole('button', { name: 'На карте' }).click();

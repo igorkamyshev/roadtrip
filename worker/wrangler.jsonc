@@ -38,8 +38,12 @@
 	},
 	// Append, never rewrite.
 	"migrations": [{ "tag": "v1", "new_sqlite_classes": ["EngineContainer"] }],
-	// The ring cache (#22 created the namespace).
-	"kv_namespaces": [{ "binding": "RINGS", "id": "7f24cf863de04086a01b780aa7be2c80" }],
+	// The ring cache and Sherpa's copies of the visa rules by citizenship (#22 created both namespaces). The secret
+	// SHERPA_API_KEY (src/env.d.ts) is set by the Owner.
+	"kv_namespaces": [
+		{ "binding": "RINGS", "id": "7f24cf863de04086a01b780aa7be2c80" },
+		{ "binding": "VISA_RULES", "id": "42ebf94cdf864c509ad586fa8b9e8132" },
+	],
 	// Errors and failed runs go to PostHog through the Tail Worker, deployed before this one (error-tracking/README.md).
 	"tail_consumers": [{ "service": "roadtrip-error-tracking" }],
 }

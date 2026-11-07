@@ -184,5 +184,8 @@ function firstCardState(
 		case 'no_roads':
 		case 'no_ring':
 			return { kind: answer.outcome };
+		case 'visa_rules_missing':
+			// The card of its own comes with the citizenship's sheet.
+			return { kind: 'error' };
 	}
 }

@@ -1,73 +1,15 @@
-// The ring API (spec «Решения по тестам», seam 2): the Worker's handler of GET /api/ring with its dependencies
-// through `deps`. The Container is the engine server with the real engine in this process, on a graph the builder
-// makes of an OSM fixture (data/test/fixtures, values worked out in each header); a failure, the queue and
-// `joined` come from a double. KV is a double in memory whose entries expire by a clock the test moves. The
-// border rules are the engine's seam, not repeated here.
+// The ring API (spec «Решения по тестам», seam 2): the handler of GET /api/ring with its dependencies through
+// `deps` (test/api.ts). Sherpa answers every country visa-free here unless a test says otherwise; the visa rules
+// themselves are in visa-rules.test.ts. The border rules are the engine's seam, not repeated here.
 import { fixtureGraph } from 'data/fixture-graph';
 import { computeRing, dataVersion, type RingRequest } from 'engine';
 import type { Graph } from 'engine/graph';
-import { createEngineServer } from 'engine/server';
 import { borderTable } from 'rules';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { type Container, handleRing, type RingDeps } from './ring.ts';
+import { answering, api, counted, DATASET, DAY, engineContainer, MemoryKv, recorded, SherpaDouble, sherpaMap, START } from '../test/api.ts';
+import { handleRing } from './ring.ts';
 
-const DATASET = '2026-11-01';
-const DAY = 24 * 60 * 60 * 1000;
 const straightRoad = fixtureGraph('straight-road.osm');
-
-/** The Container: the engine server in this process, calculating with the engine on `graph`. */
-async function engineContainer(graph: Graph, dataset = DATASET): Promise<Container> {
-	const server = createEngineServer({
-		calculate: async (request) => computeRing(graph, borderTable, request),
-		dataVersion: await dataVersion(dataset, borderTable),
-	});
-	return { fetch: (request) => server.fetch(request) };
-}
-
-/** Workers KV in memory: an entry is gone `expirationTtl` seconds after it was put, by `clock`. */
-class MemoryKv {
-	private readonly entries = new Map<string, { value: string; expiresAt: number }>();
-
-	readonly clock = { now: Date.UTC(2026, 10, 7) };
-
-	async get(key: string): Promise<string | null> {
-		const entry = this.entries.get(key);
-		return entry !== undefined && this.clock.now < entry.expiresAt ? entry.value : null;
-	}
-
-	async put(key: string, value: string, { expirationTtl }: { expirationTtl: number }): Promise<void> {
-		this.entries.set(key, { value, expiresAt: this.clock.now + expirationTtl * 1000 });
-	}
-}
-
-/**
- * The handler with its deps, a KV of its own unless given one; `get` sends GET /api/ring with `query` and waits for
- * the handler's background work too.
- */
-function api({ container, datasetVersion = DATASET, kv = new MemoryKv() }: { container: Container; datasetVersion?: string; kv?: MemoryKv }) {
-	const errors: unknown[][] = [];
-	const background: Promise<unknown>[] = [];
-	const deps: RingDeps = {
-		rings: kv,
-		container,
-		datasetVersion,
-		waitUntil: (promise) => {
-			background.push(promise);
-		},
-		logger: {
-			error: (...args) => {
-				errors.push(args);
-			},
-			info: () => {},
-		},
-	};
-	const get = async (query: string, headers: Record<string, string> = {}) => {
-		const response = await handleRing(new Request(`https://roadtrip.kamyshev.me/api/ring?${query}`, { headers }), deps);
-		await Promise.all(background.splice(0));
-		return { status: response.status, body: (await response.json()) as Record<string, unknown> };
-	};
-	return { get, clock: kv.clock, kv, errors, deps };
-}
 
 /** The engine's own result for a request from the rounded origin, for comparing with what the API passes on. */
 function engineResult(graph: Graph, request: RingRequest) {
@@ -84,6 +26,8 @@ describe('GET /api/ring', () => {
 		expect(status).toBe(200);
 		expect(body).toEqual({
 			...engineResult(straightRoad, { origin: { lat: 0, lon: 0 }, hours: 2, closedCountries: [] }),
+			access: expect.any(Object),
+			visaRulesLoadedAt: '2026-11-07T00:00:00.000Z',
 			source: 'calculation',
 		});
 		expect(body).toMatchObject({ outcome: 'ring', startCountry: 'AAA', ring: { type: 'MultiPolygon' } });
@@ -124,20 +68,38 @@ describe('the ring cache', () => {
 		expect(container.calls).toBe(2);
 	});
 
-	it('gives one ring to citizenships and visas with the same closed countries', async () => {
+	it('gives one ring to citizenships with the same closed countries, and another to other closed countries', async () => {
 		const container = counted(await engineContainer(straightRoad));
-		const { get } = api({ container });
+		const sherpa = new SherpaDouble();
+		// Serbs and Montenegrins need a visa only for Croatia (and each other's country is open): the same closed
+		// countries. Turks need none.
+		sherpa.answer((passport) => ({
+			body: sherpaMap(passport, { groups: passport === 'TUR' ? {} : { HRV: 'PAPER_OR_EMBASSY_VISA_REQUIRED' } }),
+		}));
+		const { get } = api({ container, sherpa });
+		const ringOf = ({ body: { outcome, ring, startCountry, source } }: { body: Record<string, unknown> }) => ({ outcome, ring, startCountry, source });
 
-		const russian = await get('lat=0&lon=0&hours=2&cit=RUS');
-		const others = await get('lat=0&lon=0&hours=2&cit=DEU,TUR&visas=GBR,SCHENGEN,USA');
+		const serbian = await get('lat=0&lon=0&hours=2&cit=SRB');
+		const montenegrin = await get('lat=0&lon=0&hours=2&cit=MNE');
+		const both = await get('lat=0&lon=0&hours=2&cit=MNE,SRB');
+		const turkish = await get('lat=0&lon=0&hours=2&cit=TUR');
 
-		expect(others).toEqual({ status: 200, body: { ...russian.body, source: 'cache' } });
-		expect(container.calls).toBe(1);
+		expect(ringOf(serbian)).toMatchObject({ outcome: 'ring', source: 'calculation' });
+		expect(ringOf(montenegrin)).toEqual({ ...ringOf(serbian), source: 'cache' });
+		expect(ringOf(both)).toEqual({ ...ringOf(serbian), source: 'cache' });
+		expect(turkish.body.source).toBe('calculation');
+		expect(container.calls).toBe(2);
 	});
 
 	it('misses for a new data version', async () => {
 		const november = api({ container: await engineContainer(straightRoad, '2026-11-01') });
-		const december = api({ container: await engineContainer(straightRoad, '2026-12-01'), datasetVersion: '2026-12-01', kv: november.kv });
+		const december = api({
+			container: await engineContainer(straightRoad, '2026-12-01'),
+			datasetVersion: '2026-12-01',
+			clock: november.clock,
+			rings: november.rings,
+			visaRules: november.visaRules,
+		});
 
 		await november.get('lat=0&lon=0&hours=2&cit=RUS');
 
@@ -147,10 +109,10 @@ describe('the ring cache', () => {
 	});
 
 	it('that fails to take a ring logs it, and the ring is served', async () => {
-		const kv = new MemoryKv();
+		const rings = new MemoryKv({ now: START });
 		const refused = new Error('KV PUT failed: 429 Too Many Requests');
-		kv.put = () => Promise.reject(refused);
-		const { get, errors } = api({ container: await engineContainer(straightRoad), kv });
+		rings.put = () => Promise.reject(refused);
+		const { get, errors } = api({ container: await engineContainer(straightRoad), rings });
 
 		expect(await get('lat=0&lon=0&hours=2&cit=RUS')).toMatchObject({ status: 200, body: { outcome: 'ring', source: 'calculation' } });
 		expect(errors).toEqual([['[ring] the ring cache did not take the ring', refused, { hours: 2 }]]);
@@ -211,7 +173,7 @@ describe('the Container', () => {
 
 		expect(await get('lat=0&lon=0&hours=6&cit=RUS')).toEqual({
 			status: 200,
-			body: { outcome: 'empty', maxHours: 5, startCountry: 'AAA', source: 'joined' },
+			body: { outcome: 'empty', maxHours: 5, startCountry: 'AAA', access: expect.any(Object), visaRulesLoadedAt: expect.any(String), source: 'joined' },
 		});
 		expect((await get('lat=0&lon=0&hours=6&cit=RUS')).body.source).toBe('joined');
 		expect(container.calls).toBe(2);
@@ -364,41 +326,3 @@ describe('the origin', () => {
 		expect(container.calls).toBe(3);
 	});
 });
-
-/**
- * A Container that answers every request with `status` and `body`; a 200's body is completed into a calculation of
- * the Worker's data version that did not wait.
- */
-async function answering(status: number, body: object, dataset = DATASET): Promise<Container> {
-	const calculation = {
-		dataVersion: await dataVersion(dataset, borderTable),
-		joined: false,
-		timings: { queueMs: 0, traversalMs: 1200, contourMs: 300 },
-		...body,
-	};
-	return { fetch: async () => Response.json(status === 200 ? calculation : body, { status }) };
-}
-
-/** `container`, keeping the body of each request it gets. */
-function recorded(container: Container): Container & { bodies: unknown[] } {
-	const bodies: unknown[] = [];
-	return {
-		bodies,
-		fetch: async (request) => {
-			bodies.push(await request.clone().json());
-			return container.fetch(request);
-		},
-	};
-}
-
-/** `container`, counting the requests it gets. */
-function counted(container: Container): Container & { calls: number } {
-	const result = {
-		calls: 0,
-		fetch: (request: Request) => {
-			result.calls++;
-			return container.fetch(request);
-		},
-	};
-	return result;
-}

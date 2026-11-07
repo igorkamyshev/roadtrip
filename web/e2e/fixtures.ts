@@ -3,7 +3,7 @@
 // test never reaches the network. Geolocation and time come from Playwright itself (context permissions,
 // `page.clock`).
 import { test as base, expect, type BrowserContext, type Route } from '@playwright/test';
-import type { RingResponse } from 'worker/api';
+import type { Access, RingResponse } from 'worker/api';
 
 export { expect };
 
@@ -105,6 +105,14 @@ export async function allowGeolocation(context: BrowserContext, at: { readonly l
 	await context.grantPermissions(['geolocation']);
 }
 
+/**
+ * What the visa rules add to an answer: `access` (by default a Russian's in Serbia, the start country) and when they
+ * came from Sherpa (by default just now).
+ */
+export function visaRules(access: Access = { SRB: { mode: 'visa_free', citizenship: 'RUS' } }, loadedAt = new Date().toISOString()) {
+	return { access, visaRulesLoadedAt: loadedAt };
+}
+
 type Position = [lon: number, lat: number];
 
 /**
@@ -120,5 +128,5 @@ export function squareRing(lat: number, lon: number, inner: number, outer: numbe
 		[lon - d, lat - d],
 	];
 	const polygon = inner === 0 ? [square(outer)] : [square(outer), square(inner).reverse()];
-	return { outcome: 'ring', ring: { type: 'MultiPolygon', coordinates: [polygon] }, startCountry: 'SRB', source: 'calculation' };
+	return { outcome: 'ring', ring: { type: 'MultiPolygon', coordinates: [polygon] }, startCountry: 'SRB', source: 'calculation', ...visaRules() };
 }
