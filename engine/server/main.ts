@@ -29,10 +29,12 @@ console.log(
 		`ready ${performance.now().toFixed(0)} ms after the process started`,
 );
 
-// Without the engine's thread nothing can be calculated: stop, and the next request starts a new Container.
+// Without the engine's thread nothing can be calculated: stop taking requests, give the 500s of those it had a
+// second to go out, and exit; the next request starts a new Container.
 void calculator.died.then((error) => {
 	console.error('the engine’s thread died', error);
-	process.exit(1);
+	server.close();
+	setTimeout(() => process.exit(1), 1000);
 });
 
 // The Container stops the process with SIGTERM: after `sleepAfter` without requests, or for a new image.
