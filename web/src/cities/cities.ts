@@ -1,7 +1,7 @@
 // The cities file (data's `build-cities`, spec «Файл городов»): GeoNames' cities from 15 000 people, a static asset
 // of the Worker. Fetched once, when the screen first needs it, and kept for the session in TanStack Query.
 import { useQuery } from '@tanstack/react-query';
-import { CITIES_FORMAT, CITIES_PATH, type CitiesFile } from 'data/cities-file';
+import { CITIES_FORMAT, CITIES_PATH, decodeCities, type CitiesFile } from 'data/cities-file';
 
 /** A city, a point of interest of the carousel (GLOSSARY «Точка интереса»). */
 export interface City {
@@ -28,7 +28,7 @@ async function loadCities(): Promise<readonly City[]> {
 	if (file.format !== CITIES_FORMAT) {
 		throw new Error(`${CITIES_PATH}: format ${String(file.format)}, not ${CITIES_FORMAT}`);
 	}
-	return file.cities.map(([id, ru, local, lat, lon, population, zone]) => ({
+	return decodeCities(file).map(([id, ru, local, lat, lon, population, zone]) => ({
 		id,
 		name: ru === '' ? local : ru,
 		local: ru === '' || ru === local ? undefined : local,

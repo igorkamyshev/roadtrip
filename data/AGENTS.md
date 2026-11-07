@@ -24,9 +24,9 @@ The dataset build (spec «Набор данных»). So far: the builder that t
 
 ## Cities file
 
-`buildCities` in `src/cities.ts` makes the cities file the screen picks the cities in the ring from (#32, spec «Файл городов», research in #6): JSON in the format of `src/cities-file.ts` (exported as `data/cities-file`, which the client reads), `{ format: 1, cities: [[id, ru, local, lat, lon, population, zone], …] }`, biggest first.
+`buildCities` in `src/cities.ts` makes the cities file the screen picks the cities in the ring from (#32, spec «Файл городов», research in #6): JSON in the format of `src/cities-file.ts` (exported as `data/cities-file`, which the client reads), `{ format: 1, cities: [[id, ru, local, lat, lon, population, zone], …] }`. `encodeCities` writes the rows in order of id, each id as its difference from the row before's, which takes the world's file from 0.69 MB to 0.58 MB in brotli; `decodeCities` reads them back biggest first.
 
-- The cities are GeoNames' `cities1000` from 15 000 people, without PPLX (sections of cities) and PPLH, PPLQ, PPLW (historical, abandoned, destroyed): about 31 800 in the world, 0.6 MB in brotli.
+- The cities are GeoNames' `cities1000` from 15 000 people, without PPLX (sections of cities) and PPLH, PPLQ, PPLW (historical, abandoned, destroyed): 31 795 in the world on 2026-11-07, built in 26 s without Wikidata.
 - `ru` is GeoNames' Russian name (from `alternateNamesV2`: in use, non-colloquial, Cyrillic, preferred, short, shortest, in that order), else Wikidata's Russian label of the item with that GeoNames id (P1566, `src/wikidata.ts`: 400 ids a query, one query at a time, waiting as long as a 429 says), else empty. `local` is GeoNames' `name`.
 - `zone` is the graph's: the zone polygon the city is in, as `ZoneLocator` sees it, so Kyrenia is `NX` and Sukhumi `ABKHAZIA` though GeoNames puts them in CY and GE. A city outside every polygon (the West Bank has none in OSM) gets its GeoNames country as alpha-3 (`rules/countries`), and one whose country is no zone is left out and reported.
 - The Worker serves the file as a static asset at `/data/cities.json`: `build-cities` writes it into `web/public/data/` (gitignored) for `vite dev` and local builds, like the zone outlines.

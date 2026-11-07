@@ -3,7 +3,7 @@
 // (CC0), and the zone by the graph's polygons. The format is `cities-file.ts`.
 import { type Graph, ZoneLocator } from 'engine/graph';
 import { COUNTRIES } from 'rules/countries';
-import { CITIES_FORMAT, type CitiesFile, type CityRow } from './cities-file.ts';
+import type { CityRow } from './cities-file.ts';
 
 export const MIN_POPULATION = 15_000;
 
@@ -53,7 +53,8 @@ interface Place {
 	readonly country: string;
 }
 
-export async function buildCities(sources: CitiesSources): Promise<{ file: CitiesFile; report: CitiesReport }> {
+/** The cities of the file (`encodeCities` writes it), biggest first, and what the build did. */
+export async function buildCities(sources: CitiesSources): Promise<{ cities: CityRow[]; report: CitiesReport }> {
 	const { places, read } = await readPlaces(sources.cities);
 	const locator = new ZoneLocator(sources.graph.zoneRings);
 	const zoned: (Place & { readonly zone: string })[] = [];
@@ -79,7 +80,7 @@ export async function buildCities(sources: CitiesSources): Promise<{ file: Citie
 	});
 	const withoutRussian = rows.filter(([, russian]) => russian === '').length;
 	return {
-		file: { format: CITIES_FORMAT, cities: rows },
+		cities: rows,
 		report: {
 			read,
 			cities: rows.length,

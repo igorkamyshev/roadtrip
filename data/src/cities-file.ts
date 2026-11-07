@@ -10,7 +10,7 @@ export const CITIES_FORMAT = 1;
 export const CITIES_PATH = '/data/cities.json';
 
 /**
- * A city, as a row:
+ * A city, as a row (in the file, `id` is the difference from the row before's: `CitiesFile`):
  *
  * - `id`: GeoNames' id (`geonameid`);
  * - `ru`: the Russian name, from GeoNames, else Wikidata's Russian label by P1566; empty when neither has one;
@@ -22,8 +22,35 @@ export const CITIES_PATH = '/data/cities.json';
  */
 export type CityRow = readonly [id: number, ru: string, local: string, lat: number, lon: number, population: number, zone: string];
 
+/**
+ * The file: the cities in order of id, each row's id written as its difference from the row before's. GeoNames'
+ * ids so are short and alike, and the world's file is 0.58 MB in brotli instead of 0.69 (`decodeCities` reads it).
+ */
 export interface CitiesFile {
 	readonly format: typeof CITIES_FORMAT;
-	/** Biggest first: by population, then by id. */
 	readonly cities: readonly CityRow[];
+}
+
+/** The file of the cities. */
+export function encodeCities(cities: readonly CityRow[]): CitiesFile {
+	let previous = 0;
+	const rows = [...cities]
+		.sort((one, two) => one[0] - two[0])
+		.map(([id, ...rest]): CityRow => {
+			const row: CityRow = [id - previous, ...rest];
+			previous = id;
+			return row;
+		});
+	return { format: CITIES_FORMAT, cities: rows };
+}
+
+/** The cities of the file with their ids, biggest first: by population, then by id. */
+export function decodeCities(file: CitiesFile): CityRow[] {
+	let id = 0;
+	return file.cities
+		.map(([difference, ...rest]): CityRow => {
+			id += difference;
+			return [id, ...rest];
+		})
+		.sort((one, two) => two[5] - one[5] || one[0] - two[0]);
 }

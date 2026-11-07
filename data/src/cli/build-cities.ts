@@ -12,6 +12,7 @@ import { writeFileSync } from 'node:fs';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { parseArgs } from 'node:util';
 import { brotliCompressSync } from 'node:zlib';
+import { encodeCities } from '../cities-file.ts';
 import { buildCities } from '../cities.ts';
 import { wikidataRussianLabels } from '../wikidata.ts';
 import { fileLines, loadGraph, log, seconds, userPath, withLocalFile } from './input.ts';
@@ -41,7 +42,7 @@ const names =
 
 const { graph } = await withLocalFile(graphFile, loadGraph);
 const started = performance.now();
-const { file, report } = await buildCities({
+const { cities, report } = await buildCities({
 	cities: ofCountries(fileLines(values.cities)),
 	alternateNames: concat(names.map((name) => () => fileLines(name))),
 	wikidataLabels: values['no-wikidata']
@@ -52,7 +53,7 @@ const { file, report } = await buildCities({
 			},
 	graph,
 });
-const json = JSON.stringify(file);
+const json = JSON.stringify(encodeCities(cities));
 writeFileSync(userPath(out), json);
 
 log(`${report.cities} cities of ${report.read} lines of ${values.cities}${countries === undefined ? '' : ` in ${[...countries].join(', ')}`}, in ${seconds(started)}`);

@@ -5,7 +5,7 @@
 // network. The basemap's fonts and sprites are the client's own static assets. Geolocation
 // and time come from Playwright itself (context permissions, `page.clock`).
 import { test as base, expect, type BrowserContext, type Page, type Route } from '@playwright/test';
-import type { CitiesFile } from 'data/cities-file';
+import { encodeCities, type CityRow } from 'data/cities-file';
 import type { Access, RingResponse } from 'worker/api';
 
 export { expect };
@@ -110,40 +110,38 @@ export const ZONE_OUTLINES = {
 };
 
 /**
- * The cities file the Worker serves at `/data/cities.json` (data's `build-cities`): real cities of GeoNames around
- * Belgrade, biggest first, as [id, ru, local, lat, lon, population, zone]. Ilidža has no Russian name here.
+ * The cities of the file the Worker serves at `/data/cities.json` (data's `build-cities`, `encodeCities`): real
+ * cities of GeoNames around Belgrade, biggest first, as [id, ru, local, lat, lon, population, zone]. Ilidža has no
+ * Russian name here.
  */
-export const CITIES: CitiesFile = {
-	format: 1,
-	cities: [
-		[3054643, 'Будапешт', 'Budapest', 47.498, 19.04, 1_741_041, 'HUN'],
-		[792680, 'Белград', 'Belgrade', 44.804, 20.465, 1_273_651, 'SRB'],
-		[3191281, 'Сараево', 'Sarajevo', 43.849, 18.356, 696_731, 'BIH'],
-		[786714, 'Приштина', 'Pristina', 42.673, 21.167, 550_000, 'RKS'],
-		[665087, 'Тимишоара', 'Timişoara', 45.754, 21.226, 250_849, 'ROU'],
-		[787657, 'Ниш', 'Niš', 43.325, 21.903, 250_000, 'SRB'],
-		[3193044, 'Подгорица', 'Podgorica', 42.441, 19.263, 236_852, 'MNE'],
-		[3194360, 'Нови-Сад', 'Novi Sad', 45.252, 19.837, 215_400, 'SRB'],
-		[721472, 'Дебрецен', 'Debrecen', 47.532, 21.624, 202_402, 'HUN'],
-		[686254, 'Арад', 'Arad', 46.183, 21.317, 169_065, 'ROU'],
-		[715429, 'Сегед', 'Szeged', 46.253, 20.148, 160_766, 'HUN'],
-		[789128, 'Крагуевац', 'Kragujevac', 44.017, 20.917, 147_473, 'SRB'],
-		[3046526, 'Печ', 'Pécs', 46.076, 18.228, 145_347, 'HUN'],
-		[3188582, 'Тузла', 'Tuzla', 44.538, 18.667, 142_486, 'BIH'],
-		[3050434, 'Кечкемет', 'Kecskemét', 46.906, 19.691, 109_847, 'HUN'],
-		[3194828, 'Мостар', 'Mostar', 43.343, 17.808, 104_518, 'BIH'],
-		[3189595, 'Суботица', 'Subotica', 46.1, 19.667, 100_000, 'SRB'],
-		[668954, 'Решица', 'Reşiţa', 45.301, 21.889, 81_228, 'ROU'],
-		[678817, 'Дробета-Турну-Северин', 'Drobeta-Turnu Severin', 44.627, 22.653, 79_865, 'ROU'],
-		[783814, 'Зренянин', 'Zrenjanin', 45.384, 20.382, 79_773, 'SRB'],
-		[787237, 'Панчево', 'Pančevo', 44.872, 20.642, 76_654, 'SRB'],
-		[3193935, 'Осиек', 'Osijek', 45.551, 18.694, 75_535, 'HRV'],
-		[3199145, '', 'Ilidža', 43.831, 18.307, 71_277, 'BIH'],
-		[785756, 'Смедерево', 'Smederevo', 44.664, 20.928, 62_000, 'SRB'],
-		[3188402, 'Валево', 'Valjevo', 44.275, 19.898, 61_035, 'SRB'],
-		[3191376, 'Шабац', 'Šabac', 44.747, 19.69, 55_114, 'SRB'],
-	],
-};
+export const CITIES: readonly CityRow[] = [
+	[3054643, 'Будапешт', 'Budapest', 47.498, 19.04, 1_741_041, 'HUN'],
+	[792680, 'Белград', 'Belgrade', 44.804, 20.465, 1_273_651, 'SRB'],
+	[3191281, 'Сараево', 'Sarajevo', 43.849, 18.356, 696_731, 'BIH'],
+	[786714, 'Приштина', 'Pristina', 42.673, 21.167, 550_000, 'RKS'],
+	[665087, 'Тимишоара', 'Timişoara', 45.754, 21.226, 250_849, 'ROU'],
+	[787657, 'Ниш', 'Niš', 43.325, 21.903, 250_000, 'SRB'],
+	[3193044, 'Подгорица', 'Podgorica', 42.441, 19.263, 236_852, 'MNE'],
+	[3194360, 'Нови-Сад', 'Novi Sad', 45.252, 19.837, 215_400, 'SRB'],
+	[721472, 'Дебрецен', 'Debrecen', 47.532, 21.624, 202_402, 'HUN'],
+	[686254, 'Арад', 'Arad', 46.183, 21.317, 169_065, 'ROU'],
+	[715429, 'Сегед', 'Szeged', 46.253, 20.148, 160_766, 'HUN'],
+	[789128, 'Крагуевац', 'Kragujevac', 44.017, 20.917, 147_473, 'SRB'],
+	[3046526, 'Печ', 'Pécs', 46.076, 18.228, 145_347, 'HUN'],
+	[3188582, 'Тузла', 'Tuzla', 44.538, 18.667, 142_486, 'BIH'],
+	[3050434, 'Кечкемет', 'Kecskemét', 46.906, 19.691, 109_847, 'HUN'],
+	[3194828, 'Мостар', 'Mostar', 43.343, 17.808, 104_518, 'BIH'],
+	[3189595, 'Суботица', 'Subotica', 46.1, 19.667, 100_000, 'SRB'],
+	[668954, 'Решица', 'Reşiţa', 45.301, 21.889, 81_228, 'ROU'],
+	[678817, 'Дробета-Турну-Северин', 'Drobeta-Turnu Severin', 44.627, 22.653, 79_865, 'ROU'],
+	[783814, 'Зренянин', 'Zrenjanin', 45.384, 20.382, 79_773, 'SRB'],
+	[787237, 'Панчево', 'Pančevo', 44.872, 20.642, 76_654, 'SRB'],
+	[3193935, 'Осиек', 'Osijek', 45.551, 18.694, 75_535, 'HRV'],
+	[3199145, '', 'Ilidža', 43.831, 18.307, 71_277, 'BIH'],
+	[785756, 'Смедерево', 'Smederevo', 44.664, 20.928, 62_000, 'SRB'],
+	[3188402, 'Валево', 'Valjevo', 44.275, 19.898, 61_035, 'SRB'],
+	[3191376, 'Шабац', 'Šabac', 44.747, 19.69, 55_114, 'SRB'],
+];
 
 /** What the page asked of the network: the basemap's tiles it got, and the requests to other hosts, cut off. */
 export class Network {
@@ -161,7 +159,9 @@ async function cutOffTheNetwork(context: BrowserContext, network: Network): Prom
 	await context.route('**/data/zones.json', (route) =>
 		route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(ZONE_OUTLINES) }),
 	);
-	await context.route('**/data/cities.json', (route) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(CITIES) }));
+	await context.route('**/data/cities.json', (route) =>
+		route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(encodeCities(CITIES)) }),
+	);
 	await context.route('**/*', async (route) => {
 		const { hostname } = new URL(route.request().url());
 		if (hostname === 'localhost') {
@@ -190,9 +190,10 @@ export const test = base.extend<{ network: Network; ringApi: RingApi }>({
 });
 
 /** Serves the page `cities` as the cities file instead of `CITIES`. */
-export async function serveCities(page: Page, cities: CitiesFile['cities']): Promise<void> {
-	const file: CitiesFile = { format: 1, cities };
-	await page.route('**/data/cities.json', (route) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(file) }));
+export async function serveCities(page: Page, cities: readonly CityRow[]): Promise<void> {
+	await page.route('**/data/cities.json', (route) =>
+		route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(encodeCities(cities)) }),
+	);
 }
 
 /** Lets the page read the position `at`, as a person who allowed geolocation. */

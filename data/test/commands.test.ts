@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterAll, describe, expect, it } from 'vitest';
+import { decodeCities } from '../src/cities-file.ts';
 import { fixturePath } from './fixture-graph.ts';
 
 const command = (name: string, ...args: string[]) =>
@@ -93,17 +94,14 @@ describe('the build-cities command', () => {
 
 		expect(run.status).toBe(0);
 		// The fixtures' cities in the squares of zones.osm: Kyrenia and Famagusta in Northern Cyprus.
-		expect(JSON.parse(readFileSync(out, 'utf8'))).toEqual({
-			format: 1,
-			cities: [
-				[146268, 'Никосия', 'Nicosia', 0.5, 3.5, 200_452, 'CYP'],
-				[786714, 'Приштина', 'Pristina', 0.5, 0.5, 161_751, 'RKS'],
-				[617239, 'Тирасполь', 'Tiraspol', 0.5, 7.5, 157_000, 'MDA'],
-				[146384, 'Лимасол', 'Limassol', 0.3, 3.2, 154_000, 'CYP'],
-				[146617, '', 'Famagusta', 0.7, 2.7, 42_526, 'NX'],
-				[146412, 'Кирения', 'Kyrenia', 0.5, 2.5, 26_701, 'NX'],
-			],
-		});
+		expect(decodeCities(JSON.parse(readFileSync(out, 'utf8')))).toEqual([
+			[146268, 'Никосия', 'Nicosia', 0.5, 3.5, 200_452, 'CYP'],
+			[786714, 'Приштина', 'Pristina', 0.5, 0.5, 161_751, 'RKS'],
+			[617239, 'Тирасполь', 'Tiraspol', 0.5, 7.5, 157_000, 'MDA'],
+			[146384, 'Лимасол', 'Limassol', 0.3, 3.2, 154_000, 'CYP'],
+			[146617, '', 'Famagusta', 0.7, 2.7, 42_526, 'NX'],
+			[146412, 'Кирения', 'Kyrenia', 0.5, 2.5, 26_701, 'NX'],
+		]);
 		expect(run.stderr).toContain('6 cities of 8 lines');
 		expect(run.stderr).toContain('Russian names: 5 from GeoNames, 0 from Wikidata, 1 without');
 		expect(run.stderr).toMatch(/MB in brotli/u);
@@ -114,7 +112,6 @@ describe('the build-cities command', () => {
 
 		command('build-cities', fixturePath('zones.osm'), out, '--cities', geonames('cities1000.txt'), '--names', geonames('alternateNamesV2.txt'), '--countries', 'CY', '--no-wikidata');
 
-		const written = JSON.parse(readFileSync(out, 'utf8')) as { cities: [number, string, string][] };
-		expect(written.cities.map(([, , local]) => local)).toEqual(['Nicosia', 'Limassol', 'Famagusta', 'Kyrenia']);
+		expect(decodeCities(JSON.parse(readFileSync(out, 'utf8'))).map(([, , local]) => local)).toEqual(['Nicosia', 'Limassol', 'Famagusta', 'Kyrenia']);
 	});
 });
