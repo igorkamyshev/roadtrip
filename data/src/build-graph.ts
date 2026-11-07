@@ -3,9 +3,10 @@
 // (`osmium add-locations-to-ways`) or else from its nodes.
 import { createGraph, type Graph, MAX_EDGE_SECONDS, MAX_ZONES, ZoneLocator } from 'engine/graph';
 import { haversineMeters } from 'engine/geo';
+import { BorderControls, isBorderControl } from './border-controls.ts';
 import type { OsmSource, OsmWay } from './osm/source.ts';
 import { type Road, roadOf } from './roads.ts';
-import { type BoundaryWay, joinRings, zoneCodeOf, zoneRings } from './zones.ts';
+import { type BoundaryWay, joinRings, zoneOf, zoneRings } from './zones.ts';
 
 export interface BuildReport {
 	readonly roadWays: number;
@@ -40,15 +41,17 @@ export function buildGraph(source: OsmSource): { graph: Graph; report: BuildRepo
 		},
 	});
 	const nodeCoordinates = new Map<number, [number, number]>();
-	if (missing.size > 0) {
-		source.read({
-			node(node) {
-				if (missing.has(node.id)) {
-					nodeCoordinates.set(node.id, [node.lat, node.lon]);
-				}
-			},
-		});
-	}
+	const borderControls = new BorderControls();
+	source.read({
+		node(node) {
+			if (missing.has(node.id)) {
+				nodeCoordinates.set(node.id, [node.lat, node.lon]);
+			}
+			if (isBorderControl(node.tags)) {
+				borderControls.add(node.lat, node.lon);
+			}
+		},
+	});
 	const coordinates = (way: OsmWay, index: number): [number, number] | undefined =>
 		way.locations === undefined ? nodeCoordinates.get(way.refs[index]) : [way.locations.lat[index], way.locations.lon[index]];
 
@@ -72,7 +75,10 @@ export function buildGraph(source: OsmSource): { graph: Graph; report: BuildRepo
 			ringsByZone.set(relation.code, [...(ringsByZone.get(relation.code) ?? []), ...rings]);
 		}
 	}
-	const zones = ['', ...[...ringsByZone.keys()].sort()];
+	// Parts of countries first, so they win over the country around them.
+	const parts = new Set(zoneRelations.filter((relation) => relation.part).map((relation) => relation.code));
+	const codes = [...ringsByZone.keys()].sort();
+	const zones = ['', ...codes.filter((code) => parts.has(code)), ...codes.filter((code) => !parts.has(code))];
 	if (zones.length > MAX_ZONES + 1) {
 		throw new RangeError(`${zones.length - 1} zones, more than a node's zone byte holds`);
 	}
@@ -95,7 +101,7 @@ export function buildGraph(source: OsmSource): { graph: Graph; report: BuildRepo
 			previous = node;
 		}
 	}
-	const graph = collapse(nodes, segments, zones, rings);
+	const graph = collapse(nodes, segments, zones, rings, borderControls);
 	return {
 		graph,
 		report: {
@@ -108,13 +114,13 @@ export function buildGraph(source: OsmSource): { graph: Graph; report: BuildRepo
 	};
 }
 
-function readZoneRelations(source: OsmSource): { code: string; wayIds: number[] }[] {
-	const relations: { code: string; wayIds: number[] }[] = [];
+function readZoneRelations(source: OsmSource): { code: string; part: boolean; wayIds: number[] }[] {
+	const relations: { code: string; part: boolean; wayIds: number[] }[] = [];
 	source.read({
 		relation(relation) {
-			const code = zoneCodeOf(relation);
-			if (code !== undefined) {
-				relations.push({ code, wayIds: relation.members.filter((member) => member.type === 'way').map((member) => member.ref) });
+			const zone = zoneOf(relation);
+			if (zone !== undefined) {
+				relations.push({ ...zone, wayIds: relation.members.filter((member) => member.type === 'way').map((member) => member.ref) });
 			}
 		},
 	});
@@ -172,9 +178,16 @@ class Segments {
 /**
  * The graph of the road segments with every chain of degree-2 nodes collapsed into one edge. A node stays when
  * its degree is not 2, when a neighbour lies in another zone (so an edge across a border is the one segment that
- * crosses it), when the two roads through it differ in direction, and where a chain would outgrow an edge.
+ * crosses it), when the two roads through it differ in direction, and where a chain would outgrow an edge. An edge
+ * across a border is marked when it passes one of `borderControls`.
  */
-function collapse(nodes: RoadNodes, segments: Segments, zones: readonly string[], zoneRings: Graph['zoneRings']): Graph {
+function collapse(
+	nodes: RoadNodes,
+	segments: Segments,
+	zones: readonly string[],
+	zoneRings: Graph['zoneRings'],
+	borderControls: BorderControls,
+): Graph {
 	const nodeCount = nodes.count;
 	const segmentCount = segments.a.length;
 	const incidentStart = new Uint32Array(nodeCount + 1);
@@ -223,10 +236,13 @@ function collapse(nodes: RoadNodes, segments: Segments, zones: readonly string[]
 	const edgeFrom: number[] = [];
 	const edgeTo: number[] = [];
 	const edgeSeconds: number[] = [];
+	const edgeBorderControl: number[] = [];
 	const emit = (from: number, to: number, forward: number, backward: number) => {
 		if (from === to) {
 			return;
 		}
+		const borderControl =
+			nodes.zone[from] !== nodes.zone[to] && borderControls.near(nodes.lat[from], nodes.lon[from], nodes.lat[to], nodes.lon[to]) ? 1 : 0;
 		for (const [source, target, time] of [
 			[from, to, forward],
 			[to, from, backward],
@@ -235,6 +251,7 @@ function collapse(nodes: RoadNodes, segments: Segments, zones: readonly string[]
 				edgeFrom.push(indexOf(source));
 				edgeTo.push(indexOf(target));
 				edgeSeconds.push(Math.min(MAX_EDGE_SECONDS, Math.round(time)));
+				edgeBorderControl.push(borderControl);
 			}
 		}
 	};
@@ -285,7 +302,12 @@ function collapse(nodes: RoadNodes, segments: Segments, zones: readonly string[]
 		nodeLat: Int32Array.from(graphNodes, (node) => nodes.lat[node]),
 		nodeLon: Int32Array.from(graphNodes, (node) => nodes.lon[node]),
 		nodeZone: Uint8Array.from(graphNodes, (node) => nodes.zone[node]),
-		edges: { from: Uint32Array.from(edgeFrom), to: Uint32Array.from(edgeTo), seconds: Uint16Array.from(edgeSeconds) },
+		edges: {
+			from: Uint32Array.from(edgeFrom),
+			to: Uint32Array.from(edgeTo),
+			seconds: Uint16Array.from(edgeSeconds),
+			borderControl: Uint8Array.from(edgeBorderControl),
+		},
 		zones,
 		zoneRings,
 	});

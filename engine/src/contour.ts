@@ -1,12 +1,14 @@
 // The ring's contour (spec «Движок», «Кольцо»): the reached roads are painted into a raster of ~500 m cells with
 // their travel times, the land near them gets a road's time plus the drive off-road to it at 30 km/h, and
-// marching squares trace the cells whose time is in (N − 1, N], as Valhalla does. The contour is then
-// simplified to ~500 m.
+// marching squares trace the cells whose time is in (N − 1, N], as Valhalla does, leaving out the cells in
+// closed countries and territories. The contour is then simplified to ~500 m.
+import type { Passage } from './borders.ts';
 import { E7, LocalProjection } from './geo.ts';
 import type { Graph } from './graph.ts';
 import type { MultiPolygon } from './index.ts';
 import type { Snap } from './snap.ts';
-import { TRAVEL_PER_DRIVING } from './traverse.ts';
+import { edgeTravelSeconds, TRAVEL_PER_DRIVING } from './traverse.ts';
+import type { ZoneLocator } from './zones.ts';
 
 const CELL_METERS = 500;
 const SIMPLIFY_METERS = 500;
@@ -32,12 +34,27 @@ export interface Reached {
 	readonly backSeconds: number | undefined;
 }
 
-export function ringContour(graph: Graph, reached: Reached, lowerSeconds: number, upperSeconds: number): MultiPolygon {
-	const grid = paintRoads(graph, reached, upperSeconds);
+export function ringContour(
+	graph: Graph,
+	passage: Passage,
+	locator: ZoneLocator,
+	reached: Reached,
+	lowerSeconds: number,
+	upperSeconds: number,
+): MultiPolygon {
+	const grid = paintRoads(graph, passage, reached, upperSeconds);
 	spreadOffRoad(grid);
 	const inRing = new Uint8Array(grid.time.length);
 	for (let cell = 0; cell < inRing.length; cell++) {
 		inRing[cell] = grid.time[cell] > lowerSeconds && grid.time[cell] <= upperSeconds ? 1 : 0;
+	}
+	if (passage.open.includes(0)) {
+		const zones = locator.zonesOfCells(grid.minLat, grid.minLon, grid.cellLat, grid.cellLon, grid.columns, grid.rows);
+		for (let cell = 0; cell < inRing.length; cell++) {
+			if (!passage.open[zones[cell]]) {
+				inRing[cell] = 0;
+			}
+		}
 	}
 	const rings = traceRings(inRing, grid.columns, grid.rows);
 	return { type: 'MultiPolygon', coordinates: polygons(rings, grid) };
@@ -58,7 +75,7 @@ interface Grid {
 	readonly time: Float32Array;
 }
 
-function paintRoads(graph: Graph, reached: Reached, upperSeconds: number): Grid {
+function paintRoads(graph: Graph, passage: Passage, reached: Reached, upperSeconds: number): Grid {
 	const { nodeLat, nodeLon, firstEdge, edgeTarget, edgeSeconds } = graph;
 	const { seconds, snap } = reached;
 	const originLat = nodeLat[snap.a] + snap.fraction * (nodeLat[snap.b] - nodeLat[snap.a]);
@@ -133,8 +150,21 @@ function paintRoads(graph: Graph, reached: Reached, upperSeconds: number): Grid 
 		}
 		paint(nodeLat[node], nodeLon[node], nodeLat[node], nodeLon[node], start, 0);
 		for (let edge = firstEdge[node]; edge < firstEdge[node + 1]; edge++) {
+			const travel = edgeTravelSeconds(graph, passage, node, edge);
+			if (travel === Infinity) {
+				continue;
+			}
 			const target = edgeTarget[edge];
-			paint(nodeLat[node], nodeLon[node], nodeLat[target], nodeLon[target], start, edgeSeconds[edge] * TRAVEL_PER_DRIVING);
+			const driving = edgeSeconds[edge] * TRAVEL_PER_DRIVING;
+			if (travel === driving) {
+				paint(nodeLat[node], nodeLon[node], nodeLat[target], nodeLon[target], start, driving);
+			} else {
+				// Across a border: the border delay at its middle, where the border line most likely is.
+				const midLat = (nodeLat[node] + nodeLat[target]) / 2;
+				const midLon = (nodeLon[node] + nodeLon[target]) / 2;
+				paint(nodeLat[node], nodeLon[node], midLat, midLon, start, driving / 2);
+				paint(midLat, midLon, nodeLat[target], nodeLon[target], start + travel - driving / 2, driving / 2);
+			}
 		}
 	}
 	return grid;

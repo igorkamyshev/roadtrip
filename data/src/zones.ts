@@ -1,15 +1,49 @@
-// The zones of the graph: countries by their admin_level=2 polygons (spec «Набор данных», «Зоны»). The special
-// cases of #13 (Kosovo, Northern Cyprus, closed territories) come with the borders ticket (#23).
+// The zones of the graph (spec «Набор данных», «Зоны»): countries by their admin_level=2 polygons, and the special
+// cases of #13 by relation id.
 import type { ZoneRings } from 'engine/graph';
 import type { OsmRelation, Tags } from './osm/source.ts';
 
-/** The zone code of a relation, or undefined when the relation is no zone's polygon. */
-export function zoneCodeOf(relation: OsmRelation): string | undefined {
+/**
+ * The relations that make a zone other than by their own tags (#13), checked in OSM on 2026-11-07. The world
+ * build's `osmium tags-filter` keeps these as well as the admin_level=2 relations. Transnistria needs no line:
+ * it is admin_level=4 (r2607033) inside Moldova (r58974), so part of MDA.
+ */
+export const SPECIAL_ZONES: ReadonlyMap<number, string> = new Map([
+	// Kosovo: admin_level=2 with ISO3166-1:alpha3=XKK; Sherpa's code is RKS.
+	[2088990, 'RKS'],
+	// Northern Cyprus: admin_level=3 inside Cyprus (r307787); Sherpa's code is NX.
+	[2514541, 'NX'],
+	// Akrotiri and Dhekelia: admin_level=2 without an ISO code, part of Cyprus.
+	[3263728, 'CYP'],
+	// Crimea, closed: the Autonomous Republic and Sevastopol, admin_level=4 of Ukraine (r60199), both also inside
+	// Russia (r60189).
+	[72639, 'CRIMEA'],
+	[1574364, 'CRIMEA'],
+	// Abkhazia and South Ossetia, closed: admin_level=3 inside Georgia (r28699).
+	[1152720, 'ABKHAZIA'],
+	[1152717, 'SOUTH_OSSETIA'],
+	// The Gaza Strip, closed: admin_level=4, in no country's polygon.
+	[1473938, 'GAZA'],
+	// All of Western Sahara, closed: no admin_level, over Morocco (r3630439) west of the wall and r5441968 east.
+	[2559126, 'WESTERN_SAHARA'],
+]);
+
+/**
+ * The zone a relation makes, or undefined when it makes none. `part` is true for a part of a country (a relation
+ * below admin_level 2): the graph lists such zones before the countries, so where one lies inside its country's
+ * polygon, a point there is in the part (ZoneLocator takes the first zone that holds a point).
+ */
+export function zoneOf(relation: OsmRelation): { code: string; part: boolean } | undefined {
 	const tags: Tags = relation.tags;
-	if (tags.boundary !== 'administrative' || tags.admin_level !== '2') {
+	const special = SPECIAL_ZONES.get(relation.id);
+	if (special !== undefined) {
+		return { code: special, part: tags.admin_level !== '2' };
+	}
+	const code = tags['ISO3166-1:alpha3'];
+	if (tags.boundary !== 'administrative' || tags.admin_level !== '2' || code === undefined) {
 		return undefined;
 	}
-	return tags['ISO3166-1:alpha3'];
+	return { code, part: false };
 }
 
 /** A way of a zone's boundary: its node ids and their coordinates (1e-7 degrees). */

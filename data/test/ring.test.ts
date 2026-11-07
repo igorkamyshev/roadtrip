@@ -2,7 +2,7 @@
 // the result out. The graphs are built from the OSM files in fixtures/ by the same builder as the world's, so
 // these tests check the builder too. Expected values are worked out by hand in each fixture's header.
 import { computeRing, type RingRequest } from 'engine';
-import { borderTable } from 'rules';
+import { type BorderCrossing, type BorderPair, type BorderTable, borderTable, type CrossingStatus, type PairStatus } from 'rules';
 import { describe, expect, it } from 'vitest';
 import { fixtureGraph } from './fixture-graph.ts';
 import { ringContains } from './ring-contains.ts';
@@ -116,6 +116,146 @@ describe('a calculation', () => {
 			traversalMs: expect.any(Number),
 			contourMs: expect.any(Number),
 		});
+	});
+});
+
+/** A border table with the rules given and no others: passport control and 1.5 h on every border. */
+function rules(given: Partial<BorderTable> = {}): BorderTable {
+	return { defaultBorderHours: 1.5, pairs: [], crossings: [], closedForEveryone: [], closedTerritories: [], schengen: [], ...given };
+}
+
+describe('a border', () => {
+	const borders = fixtureGraph('borders.osm');
+	/** maxHours of the empty 12 h ring from the west end of road `road` of borders.osm. */
+	const maxHoursOf = (road: number, table: BorderTable, closedCountries: string[] = []) => {
+		const result = computeRing(borders, table, { ...request(road / 10, 0.5, 12), closedCountries });
+		return result.outcome === 'empty' ? result.maxHours : result.outcome;
+	};
+
+	it('with passport control takes 1.5 h, crossed at a border crossing', () => {
+		expect(maxHoursOf(2, rules())).toBe(4);
+	});
+
+	it('with passport control is not crossed where there is no border crossing', () => {
+		expect(maxHoursOf(1, rules())).toBe(1);
+	});
+
+	it('with passport control is crossed at an open crossing of the table', () => {
+		expect(maxHoursOf(1, rules({ crossings: [crossingOn(1, 'open')] }))).toBe(4);
+	});
+
+	it('inside Schengen takes 0 h, on any road', () => {
+		expect(maxHoursOf(1, rules({ schengen: ['AAA', 'BBB'] }))).toBe(3);
+		expect(maxHoursOf(2, rules({ schengen: ['AAA', 'BBB'] }))).toBe(3);
+	});
+
+	it('of a pair without passport control takes 0 h, on any road', () => {
+		expect(maxHoursOf(1, rules({ pairs: [pair('no_control')] }))).toBe(3);
+	});
+
+	it('of a pair takes the pair’s own time', () => {
+		expect(maxHoursOf(1, rules({ pairs: [pair('no_control', { borderHours: 2 })] }))).toBe(5);
+		expect(maxHoursOf(2, rules({ pairs: [pair('crossings_only', { borderHours: 3 })], crossings: [crossingOn(2, 'open')] }))).toBe(6);
+	});
+
+	it('of a crossings_only pair is crossed only at its open crossings', () => {
+		const table = rules({ pairs: [pair('crossings_only')], crossings: [crossingOn(1, 'open')] });
+
+		expect(maxHoursOf(1, table)).toBe(4);
+		expect(maxHoursOf(2, table)).toBe(1); // a checkpoint in OSM, but not in the table
+	});
+
+	it.each(['closed', 'pedestrian_only'] as const)('is not crossed at a crossing that is %s, though OSM has a checkpoint there', (status) => {
+		expect(maxHoursOf(2, rules({ crossings: [crossingOn(2, status)] }))).toBe(1);
+		expect(maxHoursOf(2, rules({ schengen: ['AAA', 'BBB'], crossings: [crossingOn(2, status)] }))).toBe(1);
+	});
+
+	it.each(['closed', 'no_crossing', 'pedestrian_only'] as const)('of a %s pair is not crossed, though OSM has a checkpoint', (status) => {
+		expect(maxHoursOf(2, rules({ pairs: [pair(status)] }))).toBe(1);
+	});
+
+	it('is not where a road leaves every zone’s polygon: a neighbour the extract does not hold, or a gap', () => {
+		expect(maxHoursOf(4, rules())).toBe(3);
+	});
+
+	it('is not crossed by an origin at sea snapping to the road across it', () => {
+		// 13.3 km south of road 1's segment across AAA–BBB, 14.5 km from its first node in BBB, 1.1°E: 0.578 h of
+		// travel to it, 1.245 h to 1.4°E.
+		const result = computeRing(borders, rules(), request(-0.02, 1.05, 2));
+
+		expect(result).toMatchObject({ outcome: 'ring', startCountry: 'BBB' });
+		const inRing = (lat: number, lon: number) => result.outcome === 'ring' && ringContains(result.ring, lat, lon);
+		expect(inRing(0.11, 1.4)).toBe(true);
+		expect(inRing(0.11, 0.6)).toBe(false); // AAA, across the border without a crossing
+	});
+});
+
+describe('a closed country', () => {
+	const borders = fixtureGraph('borders.osm');
+
+	it('lets no one through to the open country beyond it', () => {
+		const from = (closedCountries: string[]) => computeRing(borders, rules(), { ...request(0.3, 0.5, 12), closedCountries });
+
+		expect(from([])).toMatchObject({ outcome: 'empty', maxHours: 8 });
+		expect(from(['BBB'])).toMatchObject({ outcome: 'empty', maxHours: 2 });
+	});
+
+	it('is open when it is the start country', () => {
+		// On road 3 in BBB, west of the junction at 1.5°E.
+		const from = (closedCountries: string[]) => computeRing(borders, rules(), { ...request(0.3, 1.3, 12), closedCountries });
+
+		expect(from(['BBB'])).toMatchObject({ outcome: 'empty', maxHours: 5, startCountry: 'BBB' });
+		expect(from(['AAA', 'BBB', 'CCC'])).toMatchObject({ outcome: 'empty', maxHours: 2, startCountry: 'BBB' });
+	});
+
+	it('stays out of the ring, though the land next to a reached road is in it', () => {
+		// Road 3 reaches 0.99°E in AAA at 1.09 h, 1.1 km before BBB.
+		const result = computeRing(borders, rules(), { ...request(0.3, 0.5, 2), closedCountries: ['BBB'] });
+
+		const inRing = (lat: number, lon: number) => result.outcome === 'ring' && ringContains(result.ring, lat, lon);
+		expect(inRing(0.31, 0.99)).toBe(true); // in AAA, 1.1 km from 0.99°E
+		expect(inRing(0.31, 1.008)).toBe(false); // in BBB, 2.3 km from it
+	});
+
+	it('for everyone is closed though not among the closed countries', () => {
+		expect(computeRing(borders, rules({ closedForEveryone: ['BBB'] }), request(0.3, 0.5, 12))).toMatchObject({ outcome: 'empty', maxHours: 2 });
+	});
+
+	it('for everyone gives no ring from inside it', () => {
+		expect(computeRing(borders, rules({ closedForEveryone: ['BBB'] }), request(0.3, 1.3, 12))).toMatchObject({
+			outcome: 'no_ring',
+			startCountry: 'BBB',
+		});
+	});
+});
+
+/** A row of the border table for AAA–BBB. */
+function pair(status: PairStatus, extra: Partial<BorderPair> = {}): BorderPair {
+	return { pair: ['AAA', 'BBB'], status, checked: '2026-11-07', sources: [], ...extra };
+}
+
+/** A crossing of AAA–BBB where road `road` of borders.osm crosses it, at 1°E. */
+function crossingOn(road: number, status: CrossingStatus): BorderCrossing {
+	return { id: `road${road}`, pair: ['AAA', 'BBB'], name: `road ${road}`, lat: road / 10, lon: 1, status, checked: '2026-11-07', sources: [] };
+}
+
+describe('a closed territory', () => {
+	const territory = fixtureGraph('closed-territory.osm');
+
+	it('is not crossed, though its country is open', () => {
+		expect(computeRing(territory, borderTable, request(0.5, 0.2, 12))).toMatchObject({ outcome: 'empty', maxHours: 2, startCountry: 'GEO' });
+	});
+
+	it('stays out of the ring, though the land next to a reached road is in it', () => {
+		const result = computeRing(territory, borderTable, request(0.5, 0.2, 2));
+
+		const inRing = (lat: number, lon: number) => result.outcome === 'ring' && ringContains(result.ring, lat, lon);
+		expect(inRing(0.51, 0.99)).toBe(true); // in Georgia, 1.1 km from the last node before Abkhazia
+		expect(inRing(0.51, 1.008)).toBe(false); // in Abkhazia, 2.3 km from it
+	});
+
+	it('gives no ring from inside it', () => {
+		expect(computeRing(territory, borderTable, request(0.5, 1.2, 2))).toMatchObject({ outcome: 'no_ring', startCountry: 'ABKHAZIA' });
 	});
 });
 
