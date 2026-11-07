@@ -4,7 +4,12 @@
 
 ## Packages
 
-Read a package's `AGENTS.md` before working in it. None yet: the first package with its own `AGENTS.md` adds a line here, the path in backticks and what it covers.
+Read a package's `AGENTS.md` before working in it:
+
+- `engine/AGENTS.md`: the ring engine, keeping it portable, when to bump the engine version, where its tests live.
+- `data/AGENTS.md`: the graph builder, the `ring` command, the OSM fixtures.
+
+`rules` holds the tables edited by hand (the border table); it has no `AGENTS.md` yet.
 
 ## Agent skills
 

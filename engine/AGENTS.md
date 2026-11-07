@@ -1,0 +1,24 @@
+# engine
+
+The ring engine (spec «Движок», ADR 0001): `computeRing` in `src/index.ts`, and the graph format it shares with the builder in `data` (`src/graph.ts`).
+
+## Portable
+
+The engine runs in a Container under Node today and may move to a Worker or a browser. Code in `src/` uses ECMAScript, typed arrays and the globals declared in `src/portable-globals.d.ts`. The tsconfig has no Node or DOM types, so `pnpm typecheck` fails on a Node API there. Node-only code (reading the graph file, the Container's HTTP server) goes in its own entry file outside `src/`, with its own tsconfig.
+
+## Engine version
+
+`ENGINE_VERSION` in `src/index.ts` is part of the data version in the ring cache key (spec «Кэш колец»): an old ring stays cached under the old version. Bump it by one in the same change whenever the same input would give another result:
+
+- a speed in `data/src/roads.ts`, or which ways are roads;
+- the ×1.2, the 30 km/h off-road, the 50 km snapping limit;
+- the contour: cell size, near-road radius, simplification, marching squares;
+- the border rules;
+- the result's format;
+- `GRAPH_FORMAT_VERSION` in `src/graph.ts`, which itself goes up when the graph file's arrays or their meaning change.
+
+A refactor that keeps every result keeps the version.
+
+## Tests
+
+The engine's seam tests are in `data/test/ring.test.ts`, not here: their fixtures are OSM files the builder in `data` turns into graphs, and `data` depends on `engine`, not the other way round. Each fixture's header works out the expected values by hand.
