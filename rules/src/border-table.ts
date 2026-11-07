@@ -13,6 +13,7 @@
 // The coordinates of the crossings are where the road crosses the border in OSM, and `osm` that road, found
 // with the OSM API on 2026-11-07.
 import type { BorderTable } from './index.ts';
+import { SCHENGEN_AREA } from './schengen.ts';
 
 const CHECKED = '2026-11-07';
 
@@ -28,13 +29,8 @@ export const borderTable: BorderTable = {
 		{ code: 'SOUTH_OSSETIA', name: 'Южная Осетия' },
 		{ code: 'WESTERN_SAHARA', name: 'Западная Сахара' },
 	],
-	// The 29 states of https://home-affairs.ec.europa.eu/policies/schengen/schengen-area_en, then the four
-	// without border control with them.
-	schengen: [
-		'AUT', 'BEL', 'BGR', 'CHE', 'CZE', 'DEU', 'DNK', 'ESP', 'EST', 'FIN', 'FRA', 'GRC', 'HRV', 'HUN', 'ISL', 'ITA', 'LIE',
-		'LTU', 'LUX', 'LVA', 'MLT', 'NLD', 'NOR', 'POL', 'PRT', 'ROU', 'SVK', 'SVN', 'SWE',
-		'GIB', 'MCO', 'SMR', 'VAT',
-	],
+	// The 29 states and the four without border control with them, in their own file for the held visas.
+	schengen: SCHENGEN_AREA,
 	pairs: [
 		// Europe and the former USSR.
 		{

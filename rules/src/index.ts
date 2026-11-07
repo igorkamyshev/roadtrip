@@ -6,9 +6,11 @@
  */
 export { borderTable } from './border-table.ts';
 export { borderTableProblems } from './check.ts';
-// The client imports these two by their own paths (`rules/countries`, `rules/passports`), without the border table.
+// The client imports these by their own paths (`rules/countries`, `rules/passports`, `rules/schengen`), without the
+// border table.
 export { COUNTRIES } from './countries.ts';
 export { SHERPA_PASSPORTS } from './passports.ts';
+export { SCHENGEN_AREA } from './schengen.ts';
 
 /**
  * - `closed`: the border is closed.
