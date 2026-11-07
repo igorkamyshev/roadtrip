@@ -1,8 +1,14 @@
 // The builder's output: the graph format the engine reads (engine/src/graph.ts). What the engine makes of it is
 // in ring.test.ts; here, what the graph holds.
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import type { Graph } from 'engine/graph';
-import { describe, expect, it } from 'vitest';
-import { fixtureGraph } from './fixture-graph.ts';
+import { afterAll, describe, expect, it } from 'vitest';
+import { buildGraph } from '../src/build-graph.ts';
+import { openOsm } from '../src/osm/open.ts';
+import { fixtureGraph, fixturePath } from './fixture-graph.ts';
+import { writePbf } from './write-pbf.ts';
 
 /** Each edge as "from → to", a node by its "lat,lon zone". */
 function edges(graph: Graph): string[] {
@@ -15,6 +21,25 @@ function edges(graph: Graph): string[] {
 	}
 	return result.sort();
 }
+
+describe('a PBF extract', () => {
+	const directory = mkdtempSync(join(tmpdir(), 'roadtrip-pbf-'));
+	afterAll(() => rmSync(directory, { recursive: true }));
+
+	it.each(['straight-road.osm', 'two-countries.osm', 'roads.osm', 'chains.osm'])('gives the graph its OSM XML gives: %s', (name) => {
+		const pbf = join(directory, `${name}.pbf`);
+		writePbf(openOsm(fixturePath(name)), pbf, { locationsOnWays: false });
+
+		expect(buildGraph(openOsm(pbf)).graph).toEqual(fixtureGraph(name));
+	});
+
+	it.each(['straight-road.osm', 'two-countries.osm'])('with the locations on its ways and no untagged nodes gives the same graph: %s', (name) => {
+		const pbf = join(directory, `${name}.locations.pbf`);
+		writePbf(openOsm(fixturePath(name)), pbf, { locationsOnWays: true });
+
+		expect(buildGraph(openOsm(pbf)).graph).toEqual(fixtureGraph(name));
+	});
+});
 
 describe('the graph', () => {
 	it('collapses a chain of degree-2 nodes into one edge each way, with its driving time', () => {
