@@ -16,6 +16,21 @@ import { latestArrival, type Seed, traverse, TRAVEL_PER_DRIVING } from './traver
  */
 export const ENGINE_VERSION = 2;
 
+/** SHA-256 of the border table as JSON, in hex: any change to the table, a note included, changes it. */
+export async function borderTableHash(table: BorderTable): Promise<string> {
+	const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify(table)));
+	return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('');
+}
+
+/**
+ * The data version of the ring cache key (spec «Кэш колец»): the dataset's version, the first 16 hex digits of the
+ * border table's hash and ENGINE_VERSION, as `2026-11-01.3f2a9c0d1e4b5a67.2`. A change to any of them puts rings
+ * under new keys.
+ */
+export async function dataVersion(dataset: string, table: BorderTable): Promise<string> {
+	return `${dataset}.${(await borderTableHash(table)).slice(0, 16)}.${ENGINE_VERSION}`;
+}
+
 export interface RingRequest {
 	/** The origin in degrees, already rounded by the caller. */
 	readonly origin: { readonly lat: number; readonly lon: number };

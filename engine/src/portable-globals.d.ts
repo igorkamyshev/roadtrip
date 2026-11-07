@@ -7,3 +7,6 @@ declare class TextEncoder {
 declare class TextDecoder {
 	decode(input?: Uint8Array): string;
 }
+declare const crypto: {
+	readonly subtle: { digest(algorithm: 'SHA-256', data: Uint8Array): Promise<ArrayBuffer> };
+};
