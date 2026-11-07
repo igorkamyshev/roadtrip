@@ -6,8 +6,11 @@
 	"description": "The ring engine, a portable module without Node APIs (ADR 0001), and the graph format it shares with the builder in data.",
 	"exports": {
 		".": "./src/index.ts",
+		"./contour": "./src/contour.ts",
 		"./geo": "./src/geo.ts",
-		"./graph": "./src/graph.ts"
+		"./graph": "./src/graph.ts",
+		"./snap": "./src/snap.ts",
+		"./traverse": "./src/traverse.ts"
 	},
 	"scripts": {
 		"typecheck": "tsc --noEmit"
