@@ -4,6 +4,8 @@
 import { createGraph, type Graph, MAX_EDGE_SECONDS, MAX_ZONES, ZoneLocator } from 'engine/graph';
 import { haversineMeters } from 'engine/geo';
 import { BorderControls, isBorderControl } from './border-controls.ts';
+import { borderTable as shippedBorderTable, type BorderTable, borderTableProblems } from 'rules';
+import { type BorderReport, borderReport } from './border-report.ts';
 import type { OsmSource, OsmWay } from './osm/source.ts';
 import { type Road, roadOf } from './roads.ts';
 import { type BoundaryWay, joinRings, zoneOf, zoneRings } from './zones.ts';
@@ -16,9 +18,19 @@ export interface BuildReport {
 	readonly zones: readonly string[];
 	/** Zones whose boundary the extract holds only in part: they are left out, their roads get no zone. */
 	readonly incompleteZones: readonly string[];
+	/** What the border table lacks for this graph. */
+	readonly borders: BorderReport;
 }
 
-export function buildGraph(source: OsmSource): { graph: Graph; report: BuildReport } {
+/**
+ * The graph of an OSM extract, and the report of its build. The border table is checked first, and only feeds the
+ * report: the graph does not depend on it.
+ */
+export function buildGraph(source: OsmSource, borderTable: BorderTable = shippedBorderTable): { graph: Graph; report: BuildReport } {
+	const problems = borderTableProblems(borderTable);
+	if (problems.length > 0) {
+		throw new Error(`The border table has problems:\n${problems.join('\n')}`);
+	}
 	const zoneRelations = readZoneRelations(source);
 	const boundaryWayIds = new Set(zoneRelations.flatMap((relation) => relation.wayIds));
 	const roads: { way: OsmWay; road: Road }[] = [];
@@ -110,6 +122,7 @@ export function buildGraph(source: OsmSource): { graph: Graph; report: BuildRepo
 			edges: graph.edgeTarget.length,
 			zones: zones.slice(1),
 			incompleteZones: [...incompleteZones].filter((code) => !ringsByZone.has(code)).sort(),
+			borders: borderReport(graph, borderTable),
 		},
 	};
 }

@@ -2,10 +2,11 @@
 // the result out. The graphs are built from the OSM files in fixtures/ by the same builder as the world's, so
 // these tests check the builder too. Expected values are worked out by hand in each fixture's header.
 import { computeRing, type RingRequest } from 'engine';
-import { type BorderCrossing, type BorderPair, type BorderTable, borderTable, type CrossingStatus, type PairStatus } from 'rules';
+import { type BorderCrossing, type BorderTable, borderTable, type CrossingStatus } from 'rules';
 import { describe, expect, it } from 'vitest';
 import { fixtureGraph } from './fixture-graph.ts';
 import { ringContains } from './ring-contains.ts';
+import { crossing, pair, rules } from './rules.ts';
 
 const straightRoad = fixtureGraph('straight-road.osm');
 const twoCountries = fixtureGraph('two-countries.osm');
@@ -119,11 +120,6 @@ describe('a calculation', () => {
 	});
 });
 
-/** A border table with the rules given and no others: passport control and 1.5 h on every border. */
-function rules(given: Partial<BorderTable> = {}): BorderTable {
-	return { defaultBorderHours: 1.5, pairs: [], crossings: [], closedForEveryone: [], closedTerritories: [], schengen: [], ...given };
-}
-
 describe('a border', () => {
 	const borders = fixtureGraph('borders.osm');
 	/** maxHours of the empty 12 h ring from the west end of road `road` of borders.osm. */
@@ -229,14 +225,9 @@ describe('a closed country', () => {
 	});
 });
 
-/** A row of the border table for AAA–BBB. */
-function pair(status: PairStatus, extra: Partial<BorderPair> = {}): BorderPair {
-	return { pair: ['AAA', 'BBB'], status, checked: '2026-11-07', sources: [], ...extra };
-}
-
 /** A crossing of AAA–BBB where road `road` of borders.osm crosses it, at 1°E. */
 function crossingOn(road: number, status: CrossingStatus): BorderCrossing {
-	return { id: `road${road}`, pair: ['AAA', 'BBB'], name: `road ${road}`, lat: road / 10, lon: 1, status, checked: '2026-11-07', sources: [] };
+	return crossing(`road${road}`, road / 10, 1, status);
 }
 
 describe('a closed territory', () => {

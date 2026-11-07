@@ -4,10 +4,12 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { decodeGraph, encodeGraph, type Graph } from 'engine/graph';
+import type { BorderTable } from 'rules';
 import { afterAll, describe, expect, it } from 'vitest';
 import { buildGraph } from '../src/build-graph.ts';
 import { openOsm } from '../src/osm/open.ts';
 import { fixtureGraph, fixturePath } from './fixture-graph.ts';
+import { crossing, pair, rules } from './rules.ts';
 import { writePbf } from './write-pbf.ts';
 
 /** Each edge as "from → to", a node by its "lat,lon zone"; only those `keep` keeps, by edge index. */
@@ -103,5 +105,39 @@ describe('the graph', () => {
 				.flatMap(([one, two]) => [`${one} → ${two}`, `${two} → ${one}`])
 				.sort(),
 		);
+	});
+});
+
+describe('the build report', () => {
+	const report = (name: string, table: BorderTable) => buildGraph(openOsm(fixturePath(name)), table).report.borders;
+
+	it('lists the pairs with passport control whose roads cross nowhere at a border crossing', () => {
+		// chains.osm: one road across AAA–BBB, no checkpoint.
+		expect(report('chains.osm', rules())).toEqual({ pairsWithoutCrossings: [{ pair: 'AAA–BBB', edges: 2 }], crossingsNotFound: [] });
+	});
+
+	it.each([
+		['an open crossing of the table is on the road', rules({ crossings: [crossing('road', 0, 1, 'open')] })],
+		['the pair is crossed freely', rules({ schengen: ['AAA', 'BBB'] })],
+		['the pair is closed', rules({ pairs: [pair('closed')] })],
+		['a country is closed for everyone', rules({ closedForEveryone: ['BBB'] })],
+	])('lists no pair when %s', (_, table) => {
+		expect(report('chains.osm', table).pairsWithoutCrossings).toEqual([]);
+	});
+
+	it('lists the crossings of the table near no road across their border', () => {
+		const table = rules({ crossings: [crossing('road', 0, 1, 'open'), crossing('nowhere', 0.5, 1, 'open')] });
+
+		expect(report('chains.osm', table).crossingsNotFound).toEqual(['nowhere']);
+	});
+
+	it('lists no crossing of a border the graph does not have', () => {
+		const table = rules({ crossings: [{ ...crossing('elsewhere', 0, 1, 'open'), pair: ['CCC', 'DDD'] }] });
+
+		expect(report('chains.osm', table).crossingsNotFound).toEqual([]);
+	});
+
+	it('is not made with a border table that has problems', () => {
+		expect(() => report('chains.osm', rules({ pairs: [{ ...pair('closed'), pair: ['BBB', 'AAA'] }] }))).toThrow('alphabetical order');
 	});
 });
