@@ -32,7 +32,7 @@ describe('a ring', () => {
 		const result = computeRing(straightRoad, borderTable, request(0, 0, 2));
 
 		const inRing = (lat: number, lon: number) => result.outcome === 'ring' && ringContains(result.ring, lat, lon);
-		expect(inRing(0.01, 0.7)).toBe(true); // 1.1 km north of the road
+		expect(inRing(0.005, 0.7)).toBe(true); // 0.6 km north of the road
 		expect(inRing(0.1, 0.7)).toBe(false); // 11 km north of it
 	});
 });
@@ -205,12 +205,12 @@ describe('a closed country', () => {
 	});
 
 	it('stays out of the ring, though the land next to a reached road is in it', () => {
-		// Road 3 reaches 0.99°E in AAA at 1.09 h, 1.1 km before BBB.
+		// Road 3 reaches 0.995°E in AAA at 1.10 h, 0.56 km before BBB.
 		const result = computeRing(borders, rules(), { ...request(0.3, 0.5, 2), closedCountries: ['BBB'] });
 
 		const inRing = (lat: number, lon: number) => result.outcome === 'ring' && ringContains(result.ring, lat, lon);
-		expect(inRing(0.31, 0.99)).toBe(true); // in AAA, 1.1 km from 0.99°E
-		expect(inRing(0.31, 1.008)).toBe(false); // in BBB, 2.3 km from it
+		expect(inRing(0.304, 0.99)).toBe(true); // in AAA, 0.7 km from 0.995°E
+		expect(inRing(0.301, 1.001)).toBe(false); // in BBB, 0.7 km from it
 	});
 
 	it('for everyone is closed though not among the closed countries', () => {
@@ -241,8 +241,8 @@ describe('a closed territory', () => {
 		const result = computeRing(territory, borderTable, request(0.5, 0.2, 2));
 
 		const inRing = (lat: number, lon: number) => result.outcome === 'ring' && ringContains(result.ring, lat, lon);
-		expect(inRing(0.51, 0.99)).toBe(true); // in Georgia, 1.1 km from the last node before Abkhazia
-		expect(inRing(0.51, 1.008)).toBe(false); // in Abkhazia, 2.3 km from it
+		expect(inRing(0.504, 0.99)).toBe(true); // in Georgia, 0.7 km from the last node before Abkhazia
+		expect(inRing(0.501, 1.001)).toBe(false); // in Abkhazia, 0.7 km from it
 	});
 
 	it('gives no ring from inside it', () => {

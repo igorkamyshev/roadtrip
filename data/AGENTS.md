@@ -37,6 +37,8 @@ The dataset build (spec «Набор данных»). So far: the builder that t
 
 `build-cities <graph file | extract | URL> <out.json> [--cities <cities1000.zip | .txt | URL>] [--names <alternateNamesV2.zip | .txt | URL>,…] [--countries <alpha-2>,…] [--no-wikidata]` writes the cities file with the zones of the graph's polygons and prints how many cities, names and zones it got, and the size raw and in brotli. By default it downloads GeoNames' `cities1000.zip` and `alternateNamesV2.zip` (205 MB, streamed through `unzip -p`): that is the world build's call with the world graph. `--countries` keeps the cities of those GeoNames countries and takes their own files of alternate names (`alternatenames/<alpha-2>.zip`), for a region: `build-cities georgia.graph ../web/public/data/cities.json --countries GE,AM,AZ,TR` takes 5 s, Wikidata included. `--no-wikidata` skips Wikidata.
 
+`pnpm --filter data valhalla <work dir> [--report <file.md>] [--regions <id,…>] [--mirror <url>]` is the comparison with Valhalla on the full graph (#24; spec «Сверка с Valhalla»), a one-off check that CI does not run. The start points and their regions are in `src/valhalla/places.ts`. It needs osmium-tool, unzip and pyvalhalla's commands on PATH, a few GB of disk per region and ~10 GB of memory while Valhalla builds a region's tiles. Valhalla's results stay in the work directory, so after a change to the speeds a second run only recomputes ours. Its last report is `valhalla-report.md`, with conclusions written by hand; rerun it after a change to the speeds or the contour, and keep the conclusions.
+
 ## Tests
 
 The fixtures in `test/fixtures/` are hand-written OSM XML of a few countries and tens of nodes near the equator, where 0.1° is 11.1 km. Each one's header works out the expected values by hand; a new case extends a fixture's header or gets its own fixture.
@@ -47,3 +49,4 @@ The fixtures in `test/fixtures/` are hand-written OSM XML of a few countries and
 - `test/border-table.test.ts` and `test/data-version.test.ts`: the border table's check and the data version, here because every package's tests run under `data`'s vitest and types.
 - `test/cities.test.ts`: the cities file from lines in GeoNames' formats, a double of Wikidata and the zones of `zones.osm`; `test/wikidata.test.ts`: the Wikidata client against a double of the Query Service.
 - `test/commands.test.ts`: the commands as processes; `build-cities` reads the small GeoNames files in `test/fixtures/geonames/`.
+- `test/valhalla-metrics.test.ts`: the measures of the Valhalla comparison (ring area, the median time to cities, the tolerance); the comparison itself runs in no test.

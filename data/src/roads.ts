@@ -2,12 +2,13 @@
 import type { Tags } from './osm/source.ts';
 
 /**
- * Speed by road class, km/h: the spec's starting speeds, to be tuned against Valhalla (#24). A change here
- * changes the engine's results: bump ENGINE_VERSION (engine/AGENTS.md).
+ * Speed by road class, km/h: the spec's starting speeds, with motorway (110) and trunk (90) raised against
+ * Valhalla in #24 (`data/valhalla-report.md`), where a road's `maxspeed` above them is common. A change here
+ * changes the engine's results: bump ENGINE_VERSION (engine/AGENTS.md) and rerun the comparison.
  */
 export const CLASS_SPEED_KMH: Readonly<Record<string, number>> = {
-	motorway: 110,
-	trunk: 90,
+	motorway: 130,
+	trunk: 100,
 	primary: 70,
 	secondary: 60,
 	tertiary: 50,

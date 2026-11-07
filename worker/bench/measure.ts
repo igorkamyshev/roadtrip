@@ -65,10 +65,16 @@ if (mode === 'worker') {
 	// A new deploy: wait until Cloudflare has placed the application and a calculation goes through.
 	const deployed = performance.now();
 	for (;;) {
-		const sample = await ring('first after deploy', ORIGINS.Frankfurt, 1);
-		if (sample.status === 200) {
+		const sample = await ring('first after deploy (wall: since the deploy)', ORIGINS.Frankfurt, 1).catch((error: unknown) => {
+			console.log(JSON.stringify({ error: String(error) }));
+			return undefined;
+		});
+		if (sample?.status === 200) {
 			samples.push({ ...sample, wallMs: performance.now() - deployed });
 			break;
+		}
+		if (sample?.status === 403) {
+			throw new Error('The bench Worker refuses the token');
 		}
 		if (performance.now() - deployed > PROVISIONING_MS) {
 			throw new Error(`No calculation went through within ${PROVISIONING_MS / 60_000} min of the deploy`);
