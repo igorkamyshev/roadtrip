@@ -16,6 +16,16 @@ export function areaKm2(multiPolygon: MultiPolygon): number {
 	return area;
 }
 
+/**
+ * The area within a contour's outer rings, its holes filled, in km²: how far the contour reaches. A ring of N
+ * hours is compared by the envelopes of N and N − 1 hours, as research/cloudflare-routing measured Valhalla's
+ * isochrones when it set the tolerance. Valhalla paints only the ~500 m cells its roads cross, so the holes of
+ * its contours are the cells between roads, a matter of road density and cell size rather than of reach.
+ */
+export function envelopeKm2(multiPolygon: MultiPolygon): number {
+	return multiPolygon.coordinates.reduce((sum, [outer]) => sum + Math.abs(ringArea(outer)), 0);
+}
+
 /** The tolerance of the comparison (ADR 0001): ±10 % of Valhalla's value. */
 export const TOLERANCE = 0.1;
 
@@ -29,6 +39,27 @@ export function verdict(ours: number, valhalla: number): Verdict {
 	const deviation = ours === valhalla ? 0 : (ours - valhalla) / valhalla;
 	// The bounds fit: no float error may push 10 % out.
 	return { deviation, fits: Math.abs(deviation) <= TOLERANCE + 1e-9 };
+}
+
+/** A ring's area and the envelope of its N hours, km². */
+export interface RingArea {
+	readonly ringKm2: number;
+	readonly envelopeKm2: number;
+}
+
+/**
+ * Below this share of the envelope of N hours a ring is the edge of the extract, not a ring: everything the
+ * extract holds is reached before N − 1 hours. An uncut ring of 12 h holds some 16 % of its envelope.
+ */
+const EMPTY_SHARE = 0.02;
+
+/** The verdict on a ring's area; a ring empty in both engines fits, and has no deviation to speak of. */
+export function ringVerdict(ours: RingArea, valhalla: RingArea): Verdict & { readonly empty: boolean } {
+	const empty = (ring: RingArea) => ring.ringKm2 < EMPTY_SHARE * ring.envelopeKm2;
+	if (empty(ours) && empty(valhalla)) {
+		return { empty: true, deviation: 0, fits: true };
+	}
+	return { empty: false, ...verdict(ours.ringKm2, valhalla.ringKm2) };
 }
 
 /** A city's travel time from the origin by each engine, in hours; Infinity when the engine does not reach it. */

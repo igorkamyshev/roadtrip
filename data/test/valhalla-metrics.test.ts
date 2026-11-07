@@ -2,7 +2,7 @@
 // median travel time to cities, and the ±10 % tolerance. A lat/lon rectangle's area on the sphere is
 // R² × Δλ × (sin φ2 − sin φ1), with R = 6371.0088 km; the expected areas below come from that formula.
 import { describe, expect, it } from 'vitest';
-import { areaKm2, cityMedians, verdict } from '../src/valhalla/metrics.ts';
+import { areaKm2, cityMedians, envelopeKm2, ringVerdict, verdict } from '../src/valhalla/metrics.ts';
 
 /** A closed counter-clockwise lon/lat rectangle. */
 function rectangle(west: number, south: number, east: number, north: number): number[][] {
@@ -25,6 +25,18 @@ describe('the area of a ring', () => {
 		const hole = rectangle(0.25, 0.25, 0.75, 0.75).reverse();
 
 		expect(areaKm2({ type: 'MultiPolygon', coordinates: [[rectangle(0, 0, 1, 1), hole]] })).toBeCloseTo(9_272.76, 1);
+	});
+});
+
+describe('the envelope of a contour', () => {
+	it('is the area within its outer rings, holes filled, of every polygon', () => {
+		// 12 363.72 km² with its hole filled, and 12 176.84 km² of two degrees by one at 60–61° N.
+		const contour = {
+			type: 'MultiPolygon' as const,
+			coordinates: [[rectangle(0, 0, 1, 1), rectangle(0.25, 0.25, 0.75, 0.75).reverse()], [rectangle(10, 60, 12, 61)]],
+		};
+
+		expect(envelopeKm2(contour)).toBeCloseTo(24_540.55, 1);
 	});
 });
 
@@ -62,5 +74,21 @@ describe('the verdict', () => {
 		expect(verdict(90, 100)).toEqual({ deviation: -0.1, fits: true });
 		expect(verdict(89, 100)).toEqual({ deviation: -0.11, fits: false });
 		expect(verdict(Infinity, 3)).toEqual({ deviation: Infinity, fits: false });
+	});
+});
+
+describe('the verdict on a ring area', () => {
+	it('takes a ring under 2 % of its envelope in both engines as empty: the extract ends before N − 1 hours', () => {
+		const ours = { ringKm2: 237, envelopeKm2: 120_151 };
+		const valhalla = { ringKm2: 10, envelopeKm2: 120_266 };
+
+		expect(ringVerdict(ours, valhalla)).toEqual({ empty: true, deviation: 0, fits: true });
+	});
+
+	it('compares a ring empty in one engine only', () => {
+		const ours = { ringKm2: 100, envelopeKm2: 100_000 };
+		const valhalla = { ringKm2: 8000, envelopeKm2: 100_000 };
+
+		expect(ringVerdict(ours, valhalla)).toEqual({ empty: false, deviation: -0.9875, fits: false });
 	});
 });
