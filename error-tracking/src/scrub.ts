@@ -4,11 +4,9 @@
 const REDACTED = '[redacted]';
 
 const PATTERNS: RegExp[] = [
-	// Telegram bot token, also inside https://api.telegram.org/bot<token>/...
-	/\d{6,}:[A-Za-z0-9_-]{30,}/gu,
 	// PostHog project and personal keys
 	/\bph[cxs]_[A-Za-z0-9]{20,}/gu,
-	// Anthropic, OpenRouter and other sk-... keys
+	// sk-... API keys of many services
 	/\bsk-[A-Za-z0-9_-]{20,}/gu,
 	// JWTs and other bearer tokens
 	/\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/gu,

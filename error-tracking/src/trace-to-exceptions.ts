@@ -364,8 +364,8 @@ function describeTrigger(event: TraceItem['event']): string | undefined {
 	return undefined;
 }
 
-// Only the path: the query string and the host are not sent, a bot token in
-// the path (/bot<token>/…) is removed
+// Only the path: the host and the query string, which holds the start point of
+// a ring request, are not sent; a secret in the path is removed
 function pathOf(url: string): string {
 	try {
 		return cleanText(new URL(url).pathname);

@@ -3,7 +3,6 @@ import { describe, expect, test, vi } from 'vitest';
 import { logger } from './logger';
 import { traceToExceptions, type ExceptionEvent } from './trace-to-exceptions';
 
-const BOT_TOKEN = '1234567890:AAHkKf83jspq02mfDs83hfk39fkKsl39fk3';
 const T0 = Date.parse('2026-11-04T10:00:00.000Z');
 // posthog-js ids, as the browser sends them in X-POSTHOG-DISTINCT-ID and X-POSTHOG-SESSION-ID (UUIDv7)
 const BROWSER_ID = '019a5d2c-7f3e-7b1a-9c4d-2e6f8a0b1c3d';
@@ -376,41 +375,36 @@ describe('traceToExceptions', () => {
 		expect(firstException(event).mechanism?.handled).toBe(false);
 	});
 
-	test('the bot token is removed from the message and the path, the query string is not sent', () => {
-		const event = onlyEvent(
-			traceToExceptions(
-				traceItem({
-					event: fetchEvent('GET', `https://api.example/bot${BOT_TOKEN}/getFile?secret=hook-secret`),
-					logs: [errorLog([`getFile failed for bot${BOT_TOKEN}`])],
-				}),
-			),
-		);
+	test('only the path of a request is sent: the start point in its query string never reaches PostHog', () => {
+		const event = onlyEvent(traceToExceptions(traceItem({ logs: [errorLog(['[ring] the engine failed'])] })));
 
+		expect(event.properties.trigger).toBe('GET /api/ring');
 		const serialized = JSON.stringify(event);
-		expect(serialized).not.toContain(BOT_TOKEN);
-		expect(serialized).not.toContain('hook-secret');
-		expect(event.properties.trigger).toBe('GET /bot[redacted]/getFile');
+		expect(serialized).not.toContain('44.8125');
+		expect(serialized).not.toContain('20.4612');
+		expect(serialized).not.toContain('roadtrip.kamyshev.me');
 	});
 
 	test('keys are removed from messages, stacks and context', () => {
 		const secrets = {
-			anthropic: 'sk-ant-api03-Zx8Qm2Lp9Vr4Ty7Wn1Bh6Cf0Ds5Ae3Gk',
-			openRouter: 'sk-or-v1-4f9a2c7e1b8d3f6a0c5e9b2d7f1a4c8e',
+			posthogPersonal: 'phx_Zx8Qm2Lp9Vr4Ty7Wn1Bh6Cf0Ds5Ae3Gk',
+			apiKey: 'sk-or-v1-4f9a2c7e1b8d3f6a0c5e9b2d7f1a4c8e',
 			posthog: 'phc_k3J9xQ2mZpL8vR4tY7wN1bH6cF0dS5aE',
+			urlKey: 'AIzaSyD3x9Lk2Qw8Er5Ty7Ui1Op4As6Df8Gh0J',
 			r2Secret: '9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08',
 			jwt: 'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.c2lnbmF0dXJl',
 			password: 'hunter2-hunter2',
 		};
-		const leakyStack = `    at fetch (https://api.example/bot${BOT_TOKEN}/send:1:1)`;
+		const leakyStack = `    at fetch (https://api.example/v3/trips?key=${secrets.urlKey}:1:1)`;
 		const events = traceToExceptions(
 			traceItem({
 				outcome: 'exception',
-				exceptions: [{ timestamp: T0, name: 'Error', message: `401 invalid x-api-key ${secrets.anthropic}`, stack: leakyStack }],
+				exceptions: [{ timestamp: T0, name: 'Error', message: `401 invalid personal key ${secrets.posthogPersonal}`, stack: leakyStack }],
 				logs: [
 					errorLog(
 						[
-							`model call failed, Authorization: Bearer ${secrets.jwt}`,
-							{ reason: `key ${secrets.openRouter}`, password: secrets.password },
+							`request failed, Authorization: Bearer ${secrets.jwt}`,
+							{ reason: `key ${secrets.apiKey}`, password: secrets.password },
 							'Error: x',
 						],
 						[null, null, { name: 'S3Error', message: `bad secret ${secrets.r2Secret} for ${secrets.posthog}`, stack: leakyStack }],
@@ -421,7 +415,6 @@ describe('traceToExceptions', () => {
 
 		expect(events).toHaveLength(2);
 		const serialized = JSON.stringify(events);
-		expect(serialized).not.toContain(BOT_TOKEN);
 		for (const secret of Object.values(secrets)) {
 			expect(serialized).not.toContain(secret);
 		}
