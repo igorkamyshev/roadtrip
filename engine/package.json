@@ -1,0 +1,21 @@
+{
+	"name": "engine",
+	"version": "0.0.0",
+	"private": true,
+	"type": "module",
+	"description": "The ring engine, a portable module without Node APIs (ADR 0001), and the graph format it shares with the builder in data.",
+	"exports": {
+		".": "./src/index.ts",
+		"./geo": "./src/geo.ts",
+		"./graph": "./src/graph.ts"
+	},
+	"scripts": {
+		"typecheck": "tsc --noEmit"
+	},
+	"dependencies": {
+		"rules": "workspace:*"
+	},
+	"devDependencies": {
+		"typescript": "^5.9.3"
+	}
+}

@@ -28,4 +28,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       # The root AGENTS.md names every nested AGENTS.md.
       - run: pnpm lint
+      # Every workspace package's typecheck script.
+      - run: pnpm typecheck
+      # Every package's tests, in one vitest run from the root.
       - run: pnpm test

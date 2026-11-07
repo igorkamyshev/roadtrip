@@ -7,6 +7,7 @@
 	"scripts": {
 		"prepare": "git config core.hooksPath .githooks",
 		"lint": "node lint/agents-pointers.ts",
+		"typecheck": "pnpm --recursive --if-present run typecheck",
 		"test": "vitest run"
 	},
 	"devDependencies": {

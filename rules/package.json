@@ -1,0 +1,16 @@
+{
+	"name": "rules",
+	"version": "0.0.0",
+	"private": true,
+	"type": "module",
+	"description": "Tables edited by hand. For now the border table's shape; its rows, the visa exemptions, Schengen, the EU and Sherpa's passports come with their tickets.",
+	"exports": {
+		".": "./src/index.ts"
+	},
+	"scripts": {
+		"typecheck": "tsc --noEmit"
+	},
+	"devDependencies": {
+		"typescript": "^5.9.3"
+	}
+}
