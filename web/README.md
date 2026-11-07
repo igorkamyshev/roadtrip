@@ -9,21 +9,30 @@ The client: the one screen of the site (spec «Экран», «Состояни�
 - `src/state/`: the state in the link and its defaults (`search.ts`), the origin as a point to 5 decimals (`point.ts`), the saved snapshot (`startup.ts`), the changes, each a `navigate` with `replace: true` plus the snapshot (`use-screen-state.ts`), and the citizenships and held visas (`settings.ts`, the defaults until #30 and #31 make them state).
 - `src/ring/`: `fetch-ring.ts` is the one place a ring request starts and ends; `use-ring.ts` holds the rings in TanStack Query (infinite `staleTime` and `gcTime`, no retries, the previous ring of the same origin as `placeholderData`) and the hours in memory for the slider's dots.
 - `src/start/geolocation.ts`: the browser's position and why it failed.
-- `src/map/`: `map-view.tsx` (the MapLibre map, the camera, the pin), `overlay.ts` (the sources and layers over the basemap, in the order the screen draws them), `basemap.ts` (the temporary basemap).
+- `src/map/`: `map-view.tsx` (the MapLibre map, the camera, the pin), `overlay.ts` (the sources and layers over the basemap, in the order the screen draws them), `basemap.ts` (the basemap's style).
+- `public/basemap/`: Protomaps' fonts and sprites, served as they are (below, «Basemap»).
 - `src/screen/`: `screen.tsx` puts the screen together; `phrase.tsx`, `slider.tsx`, `first-card.tsx` (the spec's table of states), `sheets.tsx`, `copy.ts` (hours and plurals), `icons.tsx`.
 - `src/styles.css`: the prototype's CSS for variant C, its tokens on `:root` with the dark scheme.
 
 ## For the next tickets
 
-- **Basemap (#29).** `src/map/basemap.ts` is OpenStreetMap's raster tiles for now; replace the file's style with Protomaps from `/tiles/{z}/{x}/{y}` and our fonts and sprites. The overlay goes on any style, and the tests answer `https://tile.openstreetmap.org/**` in `e2e/fixtures.ts`: route `/tiles/**` there instead.
 - **Map layers (#30, #32).** `src/map/overlay.ts` says where each goes: the hatching under `ring-fill`, the cities' labels under `start`. Add sources and layers in `addOverlay`, and a `show…` function the map view calls with props.
 - **The phrase (#30, #31, #33).** `Phrase` takes `settings` (the words after «в пути.», each a `PhraseToken` that opens its sheet), `footer` (the line «визовые правила от <дата>» under it) and `startLabel` (now «на карте» for any origin; #33: the city). Their sheets are `Sheet`s (`src/screen/sheets.tsx`). Add `cit` and `visas` to `ScreenSearch`, `STATE_PARAMS` and `ScreenState`, and pass them as `Settings` to `useRing`.
 - **The carousel (#32).** `screen.tsx` renders `.c-car` with the first card only; the cities' cards go after it. The ring's first card says «В кольце …» and leaves the count to #32.
 - **Analytics (#34).** A request starts and ends in `fetchRing`; every change of what the screen asks for, an answer from memory included, goes through `useRing`; `startup()` says where the opening state came from and whether something was saved (`link opened`); `locate()` rejects with the reason of `geolocation failed`.
 
+## Basemap
+
+`src/map/basemap.ts` (spec «Экран» → «Карта»): the style of `@protomaps/basemaps` over the vector tiles of `GET /tiles/{z}/{x}/{y}`, which the Worker serves from the world's PMTiles archive (`worker/README.md`), credited «Protomaps © OpenStreetMap».
+
+- The flavor is `light`, or `dark` when the page is in the dark scheme, read once when the map is made.
+- Labels: Protomaps' `lang: 'ru'` writes the Russian name, else the English one, with the local name on a second line. Every label that shows a name gets `coalesce(name:ru, name)` instead: Russian, else local, on one line, countries too. The regions keep their abbreviation below z6; house numbers and road shields keep their text.
+- Fonts and sprites are ours, in `public/basemap/`, from `protomaps/basemaps-assets` at `028c18f`: the v4 sprites of `light` and `dark`, and of the three fontstacks the style uses (`Noto Sans Regular`, `Medium`, `Italic`) only the glyph ranges of Latin, Greek, Cyrillic, Armenian, Georgian and punctuation: `0-255`, `256-511`, `512-767`, `768-1023`, `1024-1279`, `1280-1535`, `4096-4351`, `8192-8447` (2.2 MB; every range is 13.5 MB). MapLibre draws a character of any other range with the browser's own font, and the scripts that need shaping (Devanagari, Thai and the like) and Chinese, Japanese and Korean always. `fonts/OFL.txt` is the fonts' licence; the sprites derive from the MIT-licensed `tangrams/icons`.
+- Another range or flavor: copy it from `https://raw.githubusercontent.com/protomaps/basemaps-assets/028c18f/fonts/<fontstack>/<range>.pbf` (or `sprites/v4/<flavor>{,@2x}.{json,png}`) into the same path under `public/basemap/`.
+
 ## Tests
 
-The screen's seam (spec «Решения по тестам», 3) is Playwright on the built client: `e2e/*.spec.ts`. `/api/ring` is a scripted double that records each request and answers or holds it, the tiles get an empty image, and every other host is cut off (`e2e/fixtures.ts`); geolocation comes from the context's permissions, time from `page.clock`. The tests read the screen by role and text and the map by its sources and layers, through `window.__roadtripMap` (`e2e/screen.ts`), never by pixels.
+The screen's seam (spec «Решения по тестам», 3) is Playwright on the built client: `e2e/*.spec.ts`. `/api/ring` is a scripted double that records each request and answers or holds it, the tiles of `/tiles/` are empty vector tiles, and every other host is cut off in every test (`e2e/fixtures.ts`, the `network` fixture, which records both); geolocation comes from the context's permissions, time from `page.clock`. The tests read the screen by role and text and the map by its sources and layers, through `window.__roadtripMap` (`e2e/screen.ts`), never by pixels.
 
 ```bash
 pnpm e2e                                  # at the root: builds the client, serves it with `vite preview` on :4173, runs Chromium

@@ -1,13 +1,14 @@
 # roadtrip
 
-The Worker `roadtrip` on `roadtrip.kamyshev.me` (spec «Устройство», «API кольца», «Кэш колец», «Container и очередь»). Only on its own domain: `workers_dev` and preview URLs are off, so the zone's WAF rate limit on `/api/ring` always applies.
+The Worker `roadtrip` on `roadtrip.kamyshev.me` (spec «Устройство», «API кольца», «Кэш колец», «Container и очередь», «Экран» → «Карта»). Only on its own domain: `workers_dev` and preview URLs are off, so the zone's WAF rate limit on `/api/ring` always applies.
 
 ## Routes
 
 `src/index.ts` routes by path and builds each route's `deps` from `env` and `ctx`; the handlers take their side effects only from `deps`.
 
 - `GET /api/ring` (`src/ring.ts`): the ring, from the ring cache in KV or calculated in the Container. The query and the answer are typed in `src/api.ts` (`RingQuery`, `RingResponse`, `RingError`), which the client imports as `worker/api`.
-- The client's static assets, `web/dist` (`"assets"` in `wrangler.jsonc`), are served before the Worker runs, so only paths without a file reach it; the tiles (#29) come as another route.
+- `GET /tiles/{z}/{x}/{y}` (`src/tiles.ts`): the basemap's vector tiles from the world's PMTiles archive in R2.
+- The client's static assets, `web/dist` (`"assets"` in `wrangler.jsonc`), with the basemap's fonts and sprites, are served before the Worker runs, so only paths without a file reach it.
 
 ## GET /api/ring
 
@@ -18,6 +19,16 @@ The Worker `roadtrip` on `roadtrip.kamyshev.me` (spec «Устройство», 
 5. The ring goes to KV for 40 days in the background, unless the Container calculated with another data version (a rollout), the JSON is over 25 MiB, or the request joined another's calculation, which caches it. Every outcome is cached: `ring`, `empty`, `no_roads`, `no_ring`.
 
 A Container failure answers 502: its 500 `{ name, message, stack }` is rebuilt into an `Error` for `logger.error`, as is anything else it answers (`ContainerError`) or a start that failed. The context holds the browser's PostHog ids from `X-POSTHOG-*` and N, never the origin.
+
+## GET /tiles/{z}/{x}/{y}
+
+The port of Protomaps' PMTiles Worker for Cloudflare (`serverless/cloudflare` in `protomaps/PMTiles`), for one archive and without CORS, since the client is on the same domain:
+
+- The archive is the R2 bucket `roadtrip-basemap` (binding `BASEMAP`) under the key in the var `BASEMAP_ARCHIVE`, now `20261107.pmtiles`, the Protomaps build of 2026-11-07 (basemap 4.15.2, z0–15) that the Owner uploaded (#22). A manual update uploads a new build under a new key and changes the var.
+- `pmtiles` reads the archive's header and directories by ranges and keeps them in the isolate; the tile comes back unzipped, `application/x-protobuf`.
+- 200 with the tile, 204 where the archive has none (MapLibre draws an empty tile), 404 at a zoom the archive lacks, for a path that is no tile and for x or y outside the zoom's grid; anything but GET is 405.
+- Every answer from the archive has `Cache-Control: public, max-age=604800` and goes to the Cache API of the data centre, whose key names the archive: a new key misses the old tiles at once, while browsers may keep the old ones for that week.
+- An archive missing from the bucket answers 500, uncached, with `logger.error`: the var names a key the Owner has not uploaded.
 
 ## The Container
 
@@ -32,7 +43,7 @@ The dataset's version is in `engine/dataset/dataset.json`: the Worker bundles it
 
 ## Run it locally
 
-`wrangler dev` builds the image with Docker and runs the Container. It needs a graph and a Docker daemon.
+`wrangler dev` builds the image with Docker and runs the Container. It needs a graph and a Docker daemon. For the basemap alone, see «The basemap locally» below.
 
 ```bash
 # At the root: the graph of one region, into the image's dataset directory
@@ -54,6 +65,25 @@ curl 'http://localhost:8787/api/ring?lat=42.5063&lon=1.5218&hours=1&cit=TUR'   #
 - If Docker Hub answers 429 to the pull of `node:22-alpine`, pull it from a mirror and tag it: `docker pull mirror.gcr.io/library/node:22-alpine && docker tag mirror.gcr.io/library/node:22-alpine node:22-alpine`.
 - The engine server runs without Docker too: `DATASET_DIR=engine/dataset PORT=8080 node engine/server/main.ts`, then `curl -X POST localhost:8080/ring -d '{"origin":{"lat":42.506,"lon":1.522},"hours":1,"closedCountries":[]}'`.
 
+### The basemap locally
+
+The tiles come from the local R2 of `wrangler dev` (`.wrangler/state`), which holds a region cut out of the world's build with the `pmtiles` CLI (`go-pmtiles`: a release binary, or `go install github.com/protomaps/go-pmtiles@latest`). Montenegro at every zoom is 113 MB; `wrangler r2 object put` takes files up to 300 MiB.
+
+```bash
+# The region, read by ranges from the build: no need to download the world
+go-pmtiles extract https://build.protomaps.com/20261107.pmtiles /tmp/mne.pmtiles --bbox=18.43,41.85,20.36,43.56
+
+pnpm --filter web build      # the client with the fonts and sprites
+
+cd worker
+pnpm exec wrangler r2 object put roadtrip-basemap/20261107.pmtiles --file=/tmp/mne.pmtiles --local
+pnpm exec wrangler dev --enable-containers=false   # no Docker; /api/ring answers 502
+
+curl -sI http://localhost:8787/tiles/10/566/378    # Podgorica: 200, application/x-protobuf, max-age=604800
+```
+
+Open `http://localhost:8787/#/?p=42.44100,19.26300&h=3`: the labels are Russian where OSM has `name:ru` (Черногория, Подгорица, Будва), local where it has none (Velje Brdo, Piperi). Delete the extract and `.wrangler/state` afterwards. The asset server redirects `light@2x.json` to `light%402x.json` (307), which MapLibre follows.
+
 ## Checks
 
 ```bash
@@ -62,8 +92,8 @@ pnpm typecheck   # the Worker against `wrangler types`, the tests against Node's
 pnpm cf-typegen  # after changing wrangler.jsonc
 ```
 
-The tests never import `src/index.ts`: Node cannot load `cloudflare:workers`. They call `handleRing` with doubles for KV and the Container, and the engine server in-process on `data`'s fixture graphs.
+The tests never import `src/index.ts`: Node cannot load `cloudflare:workers`. They call `handleRing` with doubles for KV and the Container, and the engine server in-process on `data`'s fixture graphs; and the tiles route with an R2 double holding a small archive that `test/pmtiles-archive.ts` writes, and a Cache API double.
 
 ## Deploy
 
-Not yet: the deploy through Workers Builds and its `deploy` script come with #36. Deploy `roadtrip-error-tracking` before this Worker, which names it in `tail_consumers`.
+Not yet: the deploy through Workers Builds and its `deploy` script come with #36. Deploy `roadtrip-error-tracking` before this Worker, which names it in `tail_consumers`. The archive named by `BASEMAP_ARCHIVE` must be in `roadtrip-basemap` before the deploy, or every tile answers 500.
