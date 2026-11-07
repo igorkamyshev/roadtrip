@@ -6,7 +6,7 @@ import { useEffect, useImperativeHandle, useRef, useState, type Ref } from 'reac
 import { point, pointText, type Point } from '../state/point.ts';
 import { DropPin } from '../screen/icons.tsx';
 import { basemapStyle } from './basemap.ts';
-import { addOverlay, runStripes, showRing, showStart, type RingGeometry } from './overlay.ts';
+import { addOverlay, loadOutlines, runStripes, showClosed, showOutlines, showRing, showStart, type RingGeometry } from './overlay.ts';
 
 declare global {
 	interface Window {
@@ -37,10 +37,12 @@ export interface MapViewProps {
 	readonly fit: string | undefined;
 	/** The pin mode: the pin in the middle of the map. */
 	readonly pinning: boolean;
+	/** The zones to hatch: the countries and closed territories `access` closes. */
+	readonly closed: readonly string[];
 	readonly ref?: Ref<MapHandle>;
 }
 
-export function MapView({ origin, ring, striped, fit, pinning, ref }: MapViewProps) {
+export function MapView({ origin, ring, striped, fit, pinning, closed, ref }: MapViewProps) {
 	const container = useRef<HTMLDivElement>(null);
 	const [map, setMap] = useState<MapLibre>();
 	const initialOrigin = useRef(origin);
@@ -57,11 +59,18 @@ export function MapView({ origin, ring, striped, fit, pinning, ref }: MapViewPro
 			attributionControl: { compact: true },
 		});
 		window.__roadtripMap = created;
+		let removed = false;
 		created.once('load', () => {
 			addOverlay(created);
 			setMap(created);
+			void loadOutlines().then((outlines) => {
+				if (!removed) {
+					showOutlines(created, outlines);
+				}
+			});
 		});
 		return () => {
+			removed = true;
 			created.remove();
 			setMap(undefined);
 		};
@@ -97,6 +106,14 @@ export function MapView({ origin, ring, striped, fit, pinning, ref }: MapViewPro
 	}, [map, ring, striped]);
 
 	useEffect(() => (map !== undefined && striped ? runStripes(map) : undefined), [map, striped]);
+
+	const closedText = closed.join(',');
+	useEffect(() => {
+		if (map !== undefined) {
+			showClosed(map, closedText === '' ? [] : closedText.split(','));
+		}
+		// Keyed by the codes' text: a new array of the same codes changes nothing.
+	}, [map, closedText]);
 
 	useEffect(() => {
 		if (map === undefined || fit === undefined || ring === undefined) {

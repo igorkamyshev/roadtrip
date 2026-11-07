@@ -1,6 +1,6 @@
 // The external boundaries of the screen, doubled for its tests: `GET /api/ring` (a scripted double that records
-// every request and answers or holds it), the basemap's tiles, and every other host, which is cut off so that a
-// test never reaches the network. Geolocation and time come from Playwright itself (context permissions,
+// every request and answers or holds it), the basemap's tiles, the zone outlines of the dataset, and every other
+// host, which is cut off so that a test never reaches the network. Geolocation and time come from Playwright itself (context permissions,
 // `page.clock`).
 import { test as base, expect, type BrowserContext, type Route } from '@playwright/test';
 import type { Access, RingResponse } from 'worker/api';
@@ -78,6 +78,34 @@ async function fulfil(route: Route, reply: RingReply): Promise<void> {
 	}
 }
 
+/** A square of `size` degrees with its south-west corner at (lon, lat), as a zone's outline. */
+function squareZone(zone: string, lon: number, lat: number, size = 1) {
+	const ring = [
+		[lon, lat],
+		[lon + size, lat],
+		[lon + size, lat + size],
+		[lon, lat + size],
+		[lon, lat],
+	];
+	return { type: 'Feature' as const, properties: { zone }, geometry: { type: 'MultiPolygon' as const, coordinates: [[ring]] } };
+}
+
+/**
+ * The zone outlines the Worker serves at `/data/zones.json` (data's `zoneOutlines`), as squares around Belgrade:
+ * a few countries and a closed territory, enough to hatch.
+ */
+export const ZONE_OUTLINES = {
+	type: 'FeatureCollection' as const,
+	features: [
+		squareZone('ALB', 19.5, 40.5),
+		squareZone('BIH', 17.5, 43.5),
+		squareZone('CRIMEA', 33.5, 44.5),
+		squareZone('HUN', 19.5, 46.5),
+		squareZone('SRB', 20, 44),
+		squareZone('UKR', 30, 48, 3),
+	],
+};
+
 /** A transparent 1×1 PNG: every raster tile of the temporary basemap. */
 const EMPTY_TILE = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR4nGNgAAIAAAUAAXpeqz8AAAAASUVORK5CYII=', 'base64');
 
@@ -88,6 +116,7 @@ async function cutOffTheNetwork(context: BrowserContext, ringApi: RingApi): Prom
 		await (hostname === 'localhost' ? route.fallback() : route.abort('blockedbyclient'));
 	});
 	await context.route('https://tile.openstreetmap.org/**', (route) => route.fulfill({ status: 200, contentType: 'image/png', body: EMPTY_TILE }));
+	await context.route('**/data/zones.json', (route) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(ZONE_OUTLINES) }));
 	await context.route('**/api/ring?*', (route) => ringApi.handle(route));
 }
 

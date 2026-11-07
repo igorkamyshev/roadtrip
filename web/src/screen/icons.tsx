@@ -46,6 +46,19 @@ export const InfoIcon = () => (
 	</Icon>
 );
 
+export const SearchIcon = () => (
+	<Icon>
+		<circle cx="11" cy="11" r="7" />
+		<path d="m20 20-3.5-3.5" />
+	</Icon>
+);
+
+export const CheckIcon = () => (
+	<Icon>
+		<path d="m5 12 5 5 9-10" />
+	</Icon>
+);
+
 export const WarnIcon = () => (
 	<Icon>
 		<path d="M12 3 2 20h20L12 3z" />

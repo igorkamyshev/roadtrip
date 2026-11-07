@@ -1,26 +1,28 @@
 // The one screen (spec «Экран», variant C of the prototype): the map under everything, the phrase over it, the
 // slider at its right edge, the carousel at the bottom, and the sheets.
 import type { UseQueryResult } from '@tanstack/react-query';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { RingResponse } from 'worker/api';
 import { MapView, type MapHandle } from '../map/map-view.tsx';
 import { RingRequestError } from '../ring/fetch-ring.ts';
 import { ringKey, useCachedHours, useRing } from '../ring/use-ring.ts';
 import type { Point } from '../state/point.ts';
-import { DEFAULT_SETTINGS } from '../state/settings.ts';
+import { settingsOf } from '../state/settings.ts';
 import { useScreenState } from '../state/use-screen-state.ts';
 import { locate } from '../start/geolocation.ts';
+import { citizenshipsLabel } from './countries.ts';
 import { FirstCard, type FirstCardState } from './first-card.tsx';
-import { Phrase } from './phrase.tsx';
-import { InfoSheet, StartSheet } from './sheets.tsx';
+import { Phrase, PhraseToken, VisaRulesDate } from './phrase.tsx';
+import { CitizenshipSheet, InfoSheet, StartSheet } from './sheets.tsx';
 import { Slider } from './slider.tsx';
 
-type SheetName = 'start' | 'info';
+type SheetName = 'start' | 'citizenships' | 'info';
 
 export function Screen() {
-	const { origin, hours, setOrigin, setHours } = useScreenState();
-	// #30, #31: the person's citizenships and held visas.
-	const settings = DEFAULT_SETTINGS;
+	const { origin, hours, citizenships, setOrigin, setHours, setCitizenships } = useScreenState();
+	const citizenshipsText = citizenships.join(',');
+	// #31: the held visas too.
+	const settings = useMemo(() => settingsOf({ citizenships: citizenshipsText.split(',') }), [citizenshipsText]);
 	const ring = useRing(origin, hours, settings);
 	const cachedHours = useCachedHours(origin, settings);
 	const map = useRef<MapHandle>(null);
@@ -75,6 +77,12 @@ export function Screen() {
 	const requestId = origin === undefined ? '' : JSON.stringify(ringKey(origin, hours, settings));
 	const card = firstCardState(origin, hours, ring, geolocationFailed, requestId);
 	const shownRing = ring.data?.outcome === 'ring' ? ring.data.ring : undefined;
+	// The visa rules of the answer shown: what is hatched, and how old they are.
+	const answer = ring.data?.outcome === 'visa_rules_missing' ? undefined : ring.data;
+	const closed = answer === undefined ? [] : Object.keys(answer.access).filter((code) => answer.access[code].mode === 'closed');
+	const openCitizenships = () => {
+		setSheet('citizenships');
+	};
 
 	return (
 		<div className="screen">
@@ -85,6 +93,7 @@ export function Screen() {
 				striped={ring.isPlaceholderData}
 				fit={ring.isPlaceholderData || shownRing === undefined ? undefined : requestId}
 				pinning={pinning}
+				closed={closed}
 			/>
 			<Phrase
 				startLabel={origin === undefined ? undefined : 'на карте'}
@@ -96,6 +105,12 @@ export function Screen() {
 				onInfo={() => {
 					setSheet('info');
 				}}
+				settings={
+					<>
+						Гражданство <PhraseToken onClick={openCitizenships}>{citizenshipsLabel(citizenships)}</PhraseToken>
+					</>
+				}
+				footer={<VisaRulesDate loadedAt={answer?.visaRulesLoadedAt} now={Date.now()} />}
 			/>
 			{origin !== undefined && !pinning ? (
 				<div className="c-vs">
@@ -131,10 +146,20 @@ export function Screen() {
 							onRetry: () => {
 								void ring.refetch();
 							},
+							onCitizenships: openCitizenships,
 						}}
 					/>
 				</div>
 			)}
+			{sheet === 'citizenships' ? (
+				<CitizenshipSheet
+					citizenships={citizenships}
+					onChange={setCitizenships}
+					onClose={() => {
+						setSheet(undefined);
+					}}
+				/>
+			) : null}
 			{sheet === 'start' ? (
 				<StartSheet
 					geolocationFailed={geolocationFailed}
@@ -185,7 +210,6 @@ function firstCardState(
 		case 'no_ring':
 			return { kind: answer.outcome };
 		case 'visa_rules_missing':
-			// The card of its own comes with the citizenship's sheet.
-			return { kind: 'error' };
+			return { kind: 'visa_rules_missing', citizenship: citizenshipsLabel([answer.missingCitizenship]) };
 	}
 }

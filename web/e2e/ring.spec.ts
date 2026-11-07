@@ -28,7 +28,7 @@ test('letting the slider go asks for one ring, for the hours where it stopped', 
 	await expect(firstCard(page)).toContainText('В кольце 4–5 ч');
 	await expect(phrase(page)).toContainText('4–5 часов в пути.');
 	expect(ringApi.calls.map((call) => call.hours)).toEqual([1, 5]);
-	await expect(page).toHaveURL(/#\/\?p=44\.81760,20\.45730&h=5$/u);
+	await expect(page).toHaveURL(/#\/\?p=44\.81760,20\.45730&h=5&cit=RUS$/u);
 });
 
 test('a key moves N by an hour and asks at once', async ({ page, ringApi }) => {
