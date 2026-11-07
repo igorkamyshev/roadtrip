@@ -19,7 +19,7 @@ concurrency:
 
 env:
   # Geofabrik top-level regions. Together they cover the world.
-  PARTS: antarctica central-america
+  PARTS: europe north-america asia africa russia south-america australia-oceania central-america antarctica
   ROADS: motorway,motorway_link,trunk,trunk_link,primary,primary_link,secondary,secondary_link,tertiary,tertiary_link
   GF: https://download.geofabrik.de
   # Stop starting new downloads after this many seconds, to leave time for the merge.
@@ -131,7 +131,25 @@ jobs:
                   inter = top[a].intersection(top[b])
                   if km2(inter) > 0:
                       print(f'overlap {a} & {b}: {km2(inter):.0f} km2')
+          landu = unary_union(land)
+          for r in ids:
+              others = unary_union([top[o] for o in ids if o != r])
+              print(f'land covered by {r} only: {km2(landu.intersection(top[r]).difference(others)):.0f} km2')
           EOF
+
+      - name: Planet mirrors, speed of the first 1 GB
+        continue-on-error: true
+        working-directory: ${{ env.W }}
+        run: |
+          for u in \
+            https://planet.openstreetmap.org/pbf/planet-latest.osm.pbf \
+            https://ftp5.gwdg.de/pub/misc/openstreetmap/planet.openstreetmap.org/pbf/planet-latest.osm.pbf \
+            https://ftpmirror.your.org/pub/openstreetmap/pbf/planet-latest.osm.pbf \
+            https://osm-pds.s3.amazonaws.com/planet-latest.osm.pbf; do
+            size=$(curl -sSIL --max-time 30 "$u" | tr -d '\r' | awk 'tolower($1) == "content-length:" { v = $2 } END { print v + 0 }' || echo 0)
+            r=$(curl -sS -L --max-time 300 -r 0-999999999 -o /dev/null -w '%{size_download} %{time_total} %{http_code}' "$u" || echo "0 0 error")
+            echo "$u $size $r" | awk '{ printf "%s size_GB=%.1f got_MB=%.0f s=%.0f http=%s MBps=%.1f\n", $1, $2/1e9, $3/1e6, $4, $5, ($4 > 0 ? $3/1e6/$4 : 0) }' | tee -a planet-mirrors.txt
+          done
 
       - name: Download and filter each part
         working-directory: ${{ env.W }}
@@ -333,7 +351,7 @@ jobs:
             echo "### Crossings and gaps"
             echo
             echo '```'
-            cat crossings.txt gaps.txt 2>/dev/null || true
+            cat crossings.txt gaps.txt planet-mirrors.txt 2>/dev/null || true
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
           df -h
