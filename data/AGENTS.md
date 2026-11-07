@@ -7,15 +7,24 @@ The dataset build (spec «Набор данных»). So far: the builder that t
 `buildGraph` in `src/build-graph.ts` reads an OSM file (`src/osm/`: XML for the test fixtures, PBF for extracts) and returns the graph in the format of `engine/src/graph.ts`.
 
 - It picks the roads by their tags (`src/roads.ts`), so a raw Geofabrik extract works as well as one filtered by `osmium tags-filter`. A change to the speeds or to which ways are roads bumps `ENGINE_VERSION` (`engine/AGENTS.md`).
-- Coordinates come from the ways when the file carries them (`osmium add-locations-to-ways`), otherwise from the file's nodes.
+- Coordinates come from the ways when the file carries them (`osmium add-locations-to-ways`), otherwise from the file's nodes. An extract lacks nodes its ways refer to past its edge, so `add-locations-to-ways` runs with `--ignore-missing-nodes`: a road loses its segments to such a node, and a boundary with one is incomplete.
 - A zone is a relation with `boundary=administrative`, `admin_level=2` and `ISO3166-1:alpha3`, or one of `SPECIAL_ZONES` in `src/zones.ts`, the cases of #13 by relation id (the world build's `osmium tags-filter` keeps those too). A part of a country (a closed territory, Northern Cyprus) comes before the countries in the graph's zones, so it wins where it lies inside its country's polygon. A relation whose boundary the extract holds only in part (a neighbour at the edge of a country's extract) is left out and reported: its roads get no zone.
 - An edge across a border is marked when it passes within 2 km of a `barrier=border_control` node (`src/border-controls.ts`). That mark is all the graph holds of borders: the engine applies the border table in `rules` on every calculation, so a change to the table needs no new graph.
 - The build checks the border table first, and its report (`src/border-report.ts`) lists the pairs with passport control whose roads cross nowhere at a border crossing, and the table's open crossings near no road across their border. Both mean a crossing to add to or fix in the table.
-- Sized for a country: node ids sit in a JS `Map` and every road segment in JS arrays. The world (~330 M nodes) needs another layout for these before #35 runs it.
+- Sized for a part of the world: node ids sit in a hash table and the ways, nodes and segments in typed arrays (`src/node-ids.ts`), outside the JS heap. Europe, ~95 M road nodes, builds on a GitHub runner (`docs/container-bench.md`); the world (~330 M) has not been tried.
+
+## Zone outlines
+
+`zoneOutlines(graph, report.parts)` in `src/outlines.ts` turns the graph's zone polygons into the GeoJSON the screen hatches the closed countries and territories with (#30): a `FeatureCollection` with one `MultiPolygon` feature per zone, its code in `properties.zone`, [lon, lat] to 0.001°.
+
+- Each ring is simplified by Douglas–Peucker to 2 km, and a ring smaller than 2 × 2 km after that (a small island) is left out.
+- An outline is the zone as the graph's `ZoneLocator` sees it: the zone's rings by the even-odd rule (`polygon-clipping`'s `xor`), and the parts of countries (`report.parts`: closed territories, Northern Cyprus) cut out of the countries around them, since a part wins. So Northern Cyprus, open for Russians, is not hatched with Cyprus. Countries that overlap in OSM overlap here too.
+- OSM's country boundaries run along the territorial waters, so coasts are smooth: Greece with its islands is 14 KB (3 KB in brotli), Cyprus with Northern Cyprus 3 KB; the world should be about 1 MB in brotli.
+- The Worker serves the file as a static asset at `/data/zones.json`: `build-graph --outlines` writes it into `web/public/data/` (gitignored), which the client's build copies into `web/dist`.
 
 ## Commands
 
-`pnpm --filter data ring <extract | graph file | URL> --lat <degrees> --lon <degrees> --hours <N> [--closed <alpha-3,…>] [--out <file.geojson>]` is the one-command check of the ticket: it builds the graph of an extract (for example `https://download.geofabrik.de/europe/andorra-latest.osm.pbf`), computes the ring and writes GeoJSON. `build-graph <extract> <out.graph>` writes the graph file, which `ring` also reads. Both print the build report to stderr when they build. pnpm runs both in `data/`; they take a relative path from where pnpm started.
+`pnpm --filter data ring <extract | graph file | URL> --lat <degrees> --lon <degrees> --hours <N> [--closed <alpha-3,…>] [--out <file.geojson>]` is the one-command check of the ticket: it builds the graph of an extract (for example `https://download.geofabrik.de/europe/andorra-latest.osm.pbf`), computes the ring and writes GeoJSON. `build-graph <extract> <out.graph> [--outlines <zones.json>]` writes the graph file, which `ring` also reads, and with `--outlines` the zone outlines, printing their size raw and in brotli. Both print the build report to stderr when they build. pnpm runs both in `data/`; they take a relative path from where pnpm started.
 
 `pnpm --filter data valhalla <work dir> [--report <file.md>] [--regions <id,…>] [--mirror <url>]` is the comparison with Valhalla on the full graph (#24; spec «Сверка с Valhalla»), a one-off check that CI does not run. The start points and their regions are in `src/valhalla/places.ts`. It needs osmium-tool, unzip and pyvalhalla's commands on PATH, a few GB of disk per region and ~10 GB of memory while Valhalla builds a region's tiles. Valhalla's results stay in the work directory, so after a change to the speeds a second run only recomputes ours. Its last report is `valhalla-report.md`, with conclusions written by hand; rerun it after a change to the speeds or the contour, and keep the conclusions.
 
@@ -25,6 +34,7 @@ The fixtures in `test/fixtures/` are hand-written OSM XML of a few countries and
 
 - `test/ring.test.ts`: the engine's seam (spec «Решения по тестам», seam 1), borders included. Its border tests build their own small tables with `test/rules.ts`; the closed territories and the zones of #13 use the shipped table.
 - `test/build-graph.test.ts`: the graph itself, the PBF reader against the XML, the graph file, the build report.
+- `test/outlines.test.ts`: the zone outlines against the graph's `ZoneLocator` on `zones.osm`, and the simplification.
 - `test/border-table.test.ts` and `test/data-version.test.ts`: the border table's check and the data version, here because every package's tests run under `data`'s vitest and types.
 - `test/commands.test.ts`: the commands as processes.
 - `test/valhalla-metrics.test.ts`: the measures of the Valhalla comparison (ring area, the median time to cities, the tolerance); the comparison itself runs in no test.

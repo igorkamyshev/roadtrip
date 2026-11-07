@@ -1,0 +1,3 @@
+# The graph goes into the Container's image but not into git: build it locally (worker/README.md) or, on deploy,
+# take the dataset's from R2. dataset.json stays: the Worker bundles its version and the image copies it.
+*.graph

@@ -1,0 +1,30 @@
+{
+	"name": "worker",
+	"version": "0.0.0",
+	"private": true,
+	"type": "module",
+	"description": "The Worker roadtrip: GET /api/ring from the ring cache in KV or from the Container with the engine, and the basemap's tiles from R2.",
+	"exports": {
+		"./api": "./src/api.ts"
+	},
+	"scripts": {
+		"dev": "wrangler dev",
+		"test": "vitest run",
+		"typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.test.json",
+		"cf-typegen": "wrangler types --strict-vars=false"
+	},
+	"dependencies": {
+		"@cloudflare/containers": "^0.3.7",
+		"engine": "workspace:*",
+		"error-tracking": "workspace:*",
+		"pmtiles": "^4.5.0",
+		"rules": "workspace:*"
+	},
+	"devDependencies": {
+		"@types/node": "^22.20.5",
+		"data": "workspace:*",
+		"typescript": "^5.9.3",
+		"vitest": "^5.1.0",
+		"wrangler": "^4.158.0"
+	}
+}

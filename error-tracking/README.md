@@ -48,9 +48,9 @@ Stack frames are parsed with `@posthog/core`; frames outside `node_modules` coun
    ```ts
    import { logger } from 'error-tracking/logger';
 
-   // The Container answered 500 with { error: { name, message, stack } }
-   const { error } = await response.json<{ error: { name: string; message: string; stack: string } }>();
-   logger.error('[ring] the engine failed', Object.assign(new Error(error.message), { name: error.name, stack: error.stack }), {
+   // The Container answered 500 with { name, message, stack } (engine/protocol, worker/src/ring.ts)
+   const error = await response.json<{ name: string; message: string; stack: string }>();
+   logger.error('[ring] the Container failed', Object.assign(new Error(error.message), { name: error.name, stack: error.stack }), {
    	distinct_id: request.headers.get('X-POSTHOG-DISTINCT-ID') ?? undefined,
    	session_id: request.headers.get('X-POSTHOG-SESSION-ID') ?? undefined,
    	hours,

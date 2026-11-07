@@ -1,0 +1,53 @@
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "roadtrip",
+	"main": "src/index.ts",
+	"compatibility_date": "2026-10-01",
+	// No nodejs_compat: the Worker needs none, and posthog-node's workerd build (#34) goes without it (spec).
+	// Only on its own domain: the WAF rate limit of the zone covers /api/ring there, and not on workers.dev (#15).
+	"workers_dev": false,
+	"preview_urls": false,
+	// In config, so every deploy keeps the domain.
+	"routes": [{ "pattern": "roadtrip.kamyshev.me", "custom_domain": true }],
+	// The client (web), built by `pnpm --filter web build`, with the basemap's fonts and sprites. Assets are served
+	// before the Worker runs: a path with no file, such as /api/ring and /tiles/…, reaches the Worker. The screen
+	// keeps its state after `#`, so every page is index.html and nothing needs a fallback.
+	"assets": { "directory": "../web/dist" },
+	// The basemap (#29): the world's PMTiles archive, which the Owner uploads (#22) and GET /tiles/{z}/{x}/{y}
+	// serves. A manual update uploads the new build under a new key and changes the var.
+	"r2_buckets": [{ "binding": "BASEMAP", "bucket_name": "roadtrip-basemap" }],
+	"vars": { "BASEMAP_ARCHIVE": "20261107.pmtiles" },
+	"observability": {
+		"enabled": true,
+	},
+	"containers": [
+		{
+			// The engine server and its image (engine/Dockerfile): the graph and the border table load at start.
+			"class_name": "EngineContainer",
+			"image": "../engine/Dockerfile",
+			// The image copies rules/ and engine/ from the repository's root.
+			"image_build_context": "..",
+			// ½ vCPU, 4 GiB, 8 GB: the world's graph (~0.7 GB) in memory (ADR 0001). Explicit: the default is lite.
+			"instance_type": "standard-1",
+			// One Container for everyone: the ceiling on what calculations cost (#15). Rings queue in it.
+			"max_instances": 1,
+			// The only policy with max_instances and the Container class. Cloudflare marks it deprecated in favour
+			// of durable_object (public beta, no max_instances, no Container class); the policy cannot change on a
+			// deployed application, so moving means a new class and application.
+			"scheduling_policy": "default",
+		},
+	],
+	"durable_objects": {
+		"bindings": [{ "name": "ENGINE", "class_name": "EngineContainer" }],
+	},
+	// Append, never rewrite.
+	"migrations": [{ "tag": "v1", "new_sqlite_classes": ["EngineContainer"] }],
+	// The ring cache and Sherpa's copies of the visa rules by citizenship (#22 created both namespaces). The secret
+	// SHERPA_API_KEY (src/env.d.ts) is set by the Owner.
+	"kv_namespaces": [
+		{ "binding": "RINGS", "id": "7f24cf863de04086a01b780aa7be2c80" },
+		{ "binding": "VISA_RULES", "id": "42ebf94cdf864c509ad586fa8b9e8132" },
+	],
+	// Errors and failed runs go to PostHog through the Tail Worker, deployed before this one (error-tracking/README.md).
+	"tail_consumers": [{ "service": "roadtrip-error-tracking" }],
+}

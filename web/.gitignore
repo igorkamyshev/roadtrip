@@ -1,0 +1,5 @@
+dist
+test-results
+playwright-report
+# The dataset's zone outlines for `vite dev` and local builds: data's build-graph --outlines writes them here.
+public/data

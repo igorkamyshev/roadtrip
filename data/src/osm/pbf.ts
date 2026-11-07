@@ -9,6 +9,11 @@ import type { OsmMember, OsmSource, OsmVisitor, Tags } from './source.ts';
 const SUPPORTED_FEATURES = new Set(['OsmSchema-V0.6', 'DenseNodes']);
 const MEMBER_TYPES: readonly OsmMember['type'][] = ['node', 'way', 'relation'];
 const NO_TAGS: Tags = Object.freeze({});
+/**
+ * The coordinate libosmium writes for an undefined location, in 1e-7 degrees (INT32_MAX): what
+ * `osmium add-locations-to-ways --ignore-missing-nodes` puts on a way for a node the extract lacks.
+ */
+const UNDEFINED_COORDINATE = 2_147_483_647;
 
 export function openOsmPbf(path: string): OsmSource {
 	return {
@@ -112,6 +117,10 @@ function readPrimitiveBlock(bytes: Uint8Array, visitor: OsmVisitor): void {
 	// Coordinates in 1e-7 degrees: the file's are in units of `granularity` nanodegrees past the offset.
 	const lat = (value: number) => Math.round((block.latOffset + block.granularity * value) / 100);
 	const lon = (value: number) => Math.round((block.lonOffset + block.granularity * value) / 100);
+	const located = (coordinate: (value: number) => number) => (value: number) => {
+		const e7 = coordinate(value);
+		return e7 === UNDEFINED_COORDINATE ? Number.NaN : e7;
+	};
 	const tags = (keys: number[], values: number[]): Tags =>
 		keys.length === 0 ? NO_TAGS : Object.fromEntries(keys.map((key, index) => [block.strings[key], block.strings[values[index]]]));
 
@@ -130,7 +139,8 @@ function readPrimitiveBlock(bytes: Uint8Array, visitor: OsmVisitor): void {
 						id: way.id,
 						refs: undelta(way.refs),
 						tags: tags(way.keys, way.values),
-						locations: way.lat.length === 0 ? undefined : { lat: undelta(way.lat).map(lat), lon: undelta(way.lon).map(lon) },
+						locations:
+							way.lat.length === 0 ? undefined : { lat: undelta(way.lat).map(located(lat)), lon: undelta(way.lon).map(located(lon)) },
 					});
 				} else if (tag === 4 && visitor.relation) {
 					const relation = reader.readMessage(readRelationField, { id: 0, keys: [], values: [], roles: [], members: [], types: [] });

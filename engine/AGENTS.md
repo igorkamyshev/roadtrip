@@ -19,6 +19,18 @@ The engine runs in a Container under Node today and may move to a Worker or a br
 
 A refactor that keeps every result keeps the version.
 
+## The Container's server and image
+
+`server/` is the engine server the Container runs (spec «Container и очередь»), Node-only with its own tsconfig:
+
+- `main.ts` reads `dataset/dataset.json` (the dataset's version) and starts `compute-thread.ts`, a worker thread that loads `dataset/graph.graph` and the border table and runs `computeRing`, so the server's own thread keeps taking requests during a calculation. It listens on `PORT` only once both are loaded: the port being open is what the Container waits for.
+- `engine-server.ts` is the server itself, on web-standard Request and Response (`http.ts` serves it with `node:http`): `POST /ring` with the fields of the cache key, one calculation at a time in order, no timeout, a request for a ring that is queued or running gets its result with `joined`, a failure answers 500 with `{ name, message, stack }`. The Worker's tests run it in-process.
+- `src/protocol.ts` (`engine/protocol`) types what the Worker and the server say to each other. The Worker and the Container move to a new version at different times in a rollout, so a change to it says what each side does with the other's old version; a change to the result's format bumps `ENGINE_VERSION`.
+
+`Dockerfile` builds the image from the repository's root: these sources, `rules`, and `dataset/`, run by Node's type stripping without npm packages. `dataset/graph.graph` is not in git (`worker/README.md` says how to build one); `dataset/dataset.json` is, and the Worker bundles the same file, so both name the dataset they were built with.
+
 ## Tests
 
 The engine's seam tests are in `data/test/ring.test.ts`, not here: their fixtures are OSM files the builder in `data` turns into graphs, and `data` depends on `engine`, not the other way round. Each fixture's header works out the expected values by hand.
+
+The server's tests are here, through its HTTP interface: `server/engine-server.test.ts` with a double for the calculations, which end when the test says, on a clock it moves; `server/main.test.ts` runs `node server/main.ts` on a small graph file, as the image does.

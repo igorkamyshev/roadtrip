@@ -1,0 +1,6 @@
+# The image is built from the repository's root; this file goes with engine/Dockerfile.
+**/node_modules
+**/*.test.ts
+**/.wrangler
+.git
+.claude

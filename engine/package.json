@@ -3,23 +3,29 @@
 	"version": "0.0.0",
 	"private": true,
 	"type": "module",
-	"description": "The ring engine, a portable module without Node APIs (ADR 0001), and the graph format it shares with the builder in data.",
+	"description": "The ring engine, a portable module without Node APIs (ADR 0001), and the graph format it shares with the builder in data. Also the engine server of the Container and its image.",
 	"exports": {
 		".": "./src/index.ts",
 		"./borders": "./src/borders.ts",
 		"./contour": "./src/contour.ts",
 		"./geo": "./src/geo.ts",
 		"./graph": "./src/graph.ts",
+		"./protocol": "./src/protocol.ts",
+		"./server": "./server/engine-server.ts",
+		"./dataset": "./dataset/dataset.json",
 		"./snap": "./src/snap.ts",
 		"./traverse": "./src/traverse.ts"
 	},
 	"scripts": {
-		"typecheck": "tsc --noEmit"
+		"start": "node server/main.ts",
+		"typecheck": "tsc --noEmit && tsc --noEmit -p server"
 	},
 	"dependencies": {
 		"rules": "workspace:*"
 	},
 	"devDependencies": {
-		"typescript": "^5.9.3"
+		"@types/node": "^22.20.5",
+		"typescript": "^5.9.3",
+		"vitest": "^5.1.0"
 	}
 }
