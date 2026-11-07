@@ -11,7 +11,7 @@ The dataset build (spec «Набор данных»). So far: the builder that t
 - A zone is a relation with `boundary=administrative`, `admin_level=2` and `ISO3166-1:alpha3`, or one of `SPECIAL_ZONES` in `src/zones.ts`, the cases of #13 by relation id (the world build's `osmium tags-filter` keeps those too). A part of a country (a closed territory, Northern Cyprus) comes before the countries in the graph's zones, so it wins where it lies inside its country's polygon. A relation whose boundary the extract holds only in part (a neighbour at the edge of a country's extract) is left out and reported: its roads get no zone.
 - An edge across a border is marked when it passes within 2 km of a `barrier=border_control` node (`src/border-controls.ts`). That mark is all the graph holds of borders: the engine applies the border table in `rules` on every calculation, so a change to the table needs no new graph.
 - The build checks the border table first, and its report (`src/border-report.ts`) lists the pairs with passport control whose roads cross nowhere at a border crossing, and the table's open crossings near no road across their border. Both mean a crossing to add to or fix in the table.
-- Sized for a country: node ids sit in a JS `Map` and every road segment in JS arrays. The world (~330 M nodes) needs another layout for these before #35 runs it.
+- Sized for a part of the world: node ids sit in a hash table and the ways, nodes and segments in typed arrays (`src/node-ids.ts`), outside the JS heap. Europe, ~95 M road nodes, builds on a GitHub runner (`docs/container-bench.md`); the world (~330 M) has not been tried.
 
 ## Commands
 

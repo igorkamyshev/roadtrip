@@ -8,6 +8,7 @@ import type { BorderTable } from 'rules';
 import { afterAll, describe, expect, it } from 'vitest';
 import { buildGraph } from '../src/build-graph.ts';
 import { openOsm } from '../src/osm/open.ts';
+import type { OsmSource } from '../src/osm/source.ts';
 import { fixtureGraph, fixturePath } from './fixture-graph.ts';
 import { crossing, pair, rules } from './rules.ts';
 import { writePbf } from './write-pbf.ts';
@@ -105,6 +106,37 @@ describe('the graph', () => {
 				.flatMap(([one, two]) => [`${one} → ${two}`, `${two} → ${one}`])
 				.sort(),
 		);
+	});
+});
+
+describe('an extract the size of a part of the world', () => {
+	/**
+	 * One road along the equator from 0° east, a node every 1e-7° (1.1 cm), 17 M nodes in all: more than a JS Map
+	 * holds (2^24). Its ways of 1 001 nodes each share their ends, as `osmium add-locations-to-ways` writes them,
+	 * and the node ids are past 2^32, as OSM's are.
+	 */
+	const longRoad: OsmSource = {
+		read(visitor) {
+			const nodesPerWay = 1000;
+			for (let way = 0; way < 17_000; way++) {
+				const first = way * nodesPerWay;
+				const lon = Array.from({ length: nodesPerWay + 1 }, (_, index) => first + index);
+				visitor.way?.({
+					id: way + 1,
+					refs: lon.map((offset) => 10_000_000_000 + offset),
+					tags: { highway: 'secondary' },
+					locations: { lat: lon.map(() => 0), lon },
+				});
+			}
+		},
+	};
+
+	it('collapses a road of more nodes than a JS Map holds', { timeout: 120_000 }, () => {
+		const graph = buildGraph(longRoad).graph;
+
+		expect(edges(graph)).toEqual(['0,0  → 0,1.7 ', '0,1.7  → 0,0 ']);
+		// 189.0 km at 60 km/h.
+		expect([...graph.edgeSeconds]).toEqual([11342, 11342]);
 	});
 });
 
