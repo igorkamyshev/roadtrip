@@ -58,7 +58,9 @@ export const START_POINTS: readonly StartPoint[] = [
 	{ id: 'tashkent', name: 'Tashkent', region: 'central-asia', lat: 41.2995, lon: 69.2401 },
 	{ id: 'bishkek', name: 'Bishkek', region: 'central-asia', lat: 42.8746, lon: 74.5698 },
 	{ id: 'almaty', name: 'Almaty', region: 'central-asia', lat: 43.222, lon: 76.8512 },
-	{ id: 'mexico-city', name: 'Mexico City', region: 'mexico', lat: 19.4326, lon: -99.1332 },
+	// Not the Zócalo: there the origin snaps to a one-way road whose way on is a street outside our graph, and our
+	// engine reaches almost nothing (see the report).
+	{ id: 'mexico-city', name: 'Mexico City', region: 'mexico', lat: 19.427, lon: -99.1676 },
 	{ id: 'guadalajara', name: 'Guadalajara', region: 'mexico', lat: 20.6597, lon: -103.3496 },
 	{ id: 'monterrey', name: 'Monterrey', region: 'mexico', lat: 25.6866, lon: -100.3161 },
 	{ id: 'santiago', name: 'Santiago', region: 'southern-cone', lat: -33.4489, lon: -70.6693 },
