@@ -11,6 +11,32 @@ export const firstCard = (page: Page) => page.getByTestId('first-card');
 
 export const slider = (page: Page) => page.getByRole('slider', { name: 'Время в пути' });
 
+/**
+ * Drags the slider's thumb from its value to `hours`, passing every hour between, and calls `meanwhile` before it
+ * lets go. Pointer events, as a finger's.
+ */
+export async function dragSlider(page: Page, hours: number, meanwhile?: () => Promise<void>): Promise<void> {
+	const box = await page.locator('.sl-track').boundingBox();
+	if (box === null) {
+		throw new Error('the slider is not on the screen');
+	}
+	const yOf = (value: number) => box.y + box.height * (1 - (value - 1) / 11);
+	const x = box.x + box.width / 2;
+	const from = Number(await slider(page).getAttribute('aria-valuenow'));
+	await page.mouse.move(x, yOf(from));
+	await page.mouse.down();
+	await page.mouse.move(x, yOf(hours), { steps: 4 * Math.abs(hours - from) + 1 });
+	await meanwhile?.();
+	await page.mouse.up();
+}
+
+/** The hours the slider marks with a dot: their rings are in memory. */
+export async function dottedHours(page: Page): Promise<number[]> {
+	return (await slider(page).locator('[data-cached]').evaluateAll((ticks) => ticks.map((tick) => Number(tick.getAttribute('data-hours'))))).sort(
+		(a, b) => a - b,
+	);
+}
+
 /** The GeoJSON of a map source: `ring` (the ring) or `start` (the origin's marker). */
 export async function sourceData(page: Page, source: 'ring' | 'start'): Promise<FeatureCollection> {
 	return page.evaluate(async (id) => {
