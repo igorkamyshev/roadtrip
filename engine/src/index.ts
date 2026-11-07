@@ -2,6 +2,7 @@
 // in; the outcome, the ring, maxHours, the start country and the timings out. Portable: no Node APIs, so it
 // can move to a Worker or a browser.
 import type { BorderTable } from 'rules';
+import { OFF_ROAD_SECONDS_PER_METER, ringContour } from './contour.ts';
 import { E7 } from './geo.ts';
 import type { Graph } from './graph.ts';
 import { ZoneLocator } from './zones.ts';
@@ -13,9 +14,6 @@ import { latestArrival, type Seed, traverse, TRAVEL_PER_DRIVING } from './traver
  * so bump it by hand whenever the same input would give another result: see engine/AGENTS.md.
  */
 export const ENGINE_VERSION = 1;
-
-/** The origin reaches the road in a straight line at 30 km/h of driving (spec «Движок», «Привязка»). */
-const ACCESS_METERS_PER_SECOND = 30 / 3.6;
 
 export interface RingRequest {
 	/** The origin in degrees, already rounded by the caller. */
@@ -75,7 +73,8 @@ export function computeRing(graph: Graph, _borderTable: BorderTable, request: Ri
 	}
 	const startZone = originZone !== 0 ? originZone : graph.nodeZone[snap.fraction < 0.5 ? snap.a : snap.b];
 
-	const accessSeconds = (snap.meters / ACCESS_METERS_PER_SECOND) * TRAVEL_PER_DRIVING;
+	// The origin reaches the road in a straight line at 30 km/h of driving.
+	const accessSeconds = snap.meters * OFF_ROAD_SECONDS_PER_METER;
 	const seeds: Seed[] = [];
 	const forward = edgeSecondsBetween(graph, snap.a, snap.b);
 	if (forward >= 0) {
@@ -95,7 +94,13 @@ export function computeRing(graph: Graph, _borderTable: BorderTable, request: Ri
 			return { outcome: 'empty', maxHours: Math.ceil(latestHours - 1e-9), startCountry, timings: since(started, traversed) };
 		}
 	}
-	return { outcome: 'ring', ring: { type: 'MultiPolygon', coordinates: [] }, startCountry, timings: since(started, traversed) };
+	const ring = ringContour(
+		graph,
+		{ seconds: traversal.seconds, snap, accessSeconds, forwardSeconds: forward * TRAVEL_PER_DRIVING, backSeconds: back * TRAVEL_PER_DRIVING },
+		(request.hours - 1) * 3600,
+		request.hours * 3600,
+	);
+	return { outcome: 'ring', ring, startCountry, timings: since(started, traversed) };
 }
 
 function zoneCode(graph: Graph, zone: number): string | null {
