@@ -1,6 +1,6 @@
 # engine
 
-The ring engine (spec «Движок», ADR 0001): `computeRing` in `src/index.ts`, and the graph format it shares with the builder in `data` (`src/graph.ts`).
+The ring engine (spec «Движок», ADR 0001): `computeRing` in `src/index.ts`, the border rules it applies from the border table in `rules` (`src/borders.ts`), and the graph format it shares with the builder in `data` (`src/graph.ts`).
 
 ## Portable
 
@@ -8,12 +8,12 @@ The engine runs in a Container under Node today and may move to a Worker or a br
 
 ## Engine version
 
-`ENGINE_VERSION` in `src/index.ts` is part of the data version in the ring cache key (spec «Кэш колец»): an old ring stays cached under the old version. Bump it by one in the same change whenever the same input would give another result:
+`ENGINE_VERSION` in `src/index.ts` is part of the data version in the ring cache key (spec «Кэш колец»; `dataVersion` there, with the dataset's version and the border table's hash): an old ring stays cached under the old version. Bump it by one in the same change whenever the same input would give another result:
 
 - a speed in `data/src/roads.ts`, or which ways are roads;
 - the ×1.2, the 30 km/h off-road, the 50 km snapping limit;
 - the contour: cell size, near-road radius, simplification, marching squares;
-- the border rules;
+- how the engine reads the border table (`src/borders.ts`), or the zones the builder makes (`data/src/zones.ts`). A change to the table's rows needs no bump: its hash is in the data version;
 - the result's format;
 - `GRAPH_FORMAT_VERSION` in `src/graph.ts`, which itself goes up when the graph file's arrays or their meaning change.
 
