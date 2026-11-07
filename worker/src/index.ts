@@ -11,11 +11,18 @@ import { handleRing } from './ring.ts';
 import { createTilesHandler, TILES_PREFIX } from './tiles.ts';
 
 /**
- * How long the Container may take from its start to an open port, which the engine server opens once the graph is
- * loaded (the library's default is 20 s). A placeholder: #25 measures the cold start with the world's graph and
- * sets it.
+ * How long a start may wait for Cloudflare to give the Container an instance (the library's default is 8 s). With
+ * `max_instances: 1`, a start right after the Container stopped waits until the old instance is released: 5–27 s in
+ * the bench of #25 (docs/container-bench.md), and it failed after the default 8 s.
  */
-const PORT_READY_TIMEOUT_MS = 120_000;
+const INSTANCE_GET_TIMEOUT_MS = 30_000;
+
+/**
+ * How long a start may take in all, to the open port (the library's default is 20 s): the instance above, then the
+ * engine server, which opens its port once the graph is loaded. Europe's graph took 0.8–1.6 s from the process's
+ * start to the open port, and the slowest whole start 27 s (#25, docs/container-bench.md).
+ */
+const PORT_READY_TIMEOUT_MS = 60_000;
 
 /** The Container with the engine server (engine/server/main.ts). `sleepAfter` stays the default, 10 min (#15). */
 export class EngineContainer extends Container<Env> {
@@ -35,15 +42,18 @@ export class EngineContainer extends Container<Env> {
 	}
 
 	/**
-	 * Starts the Container unless it is up, and waits for its port with the raised timeout: the library's own
-	 * start in `containerFetch` would wait only 20 s. Resolves with the wait in ms, or undefined when it was up.
+	 * Starts the Container unless it is up, and waits for an instance and its port with the raised timeouts: the
+	 * library's own start in `containerFetch` would wait only 8 s and 20 s. Resolves with the wait in ms, or undefined
+	 * when it was up.
 	 */
 	private async startWithGraph(signal: AbortSignal): Promise<number | undefined> {
 		if ((await this.getState()).status === 'healthy') {
 			return undefined;
 		}
 		const started = Date.now();
-		await this.startAndWaitForPorts({ cancellationOptions: { portReadyTimeoutMS: PORT_READY_TIMEOUT_MS, abort: signal } });
+		await this.startAndWaitForPorts({
+			cancellationOptions: { instanceGetTimeoutMS: INSTANCE_GET_TIMEOUT_MS, portReadyTimeoutMS: PORT_READY_TIMEOUT_MS, abort: signal },
+		});
 		return Date.now() - started;
 	}
 }
