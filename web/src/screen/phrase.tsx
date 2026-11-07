@@ -25,10 +25,13 @@ export function Phrase({ startLabel, hours, busy, onStart, onInfo, settings, foo
 		<div className="c-phrase" data-testid="phrase">
 			<p>
 				Из точки{' '}
-				<PhraseToken onClick={onStart} wanted={startLabel === undefined}>
-					{startLabel ?? 'выберите'}
-				</PhraseToken>
-				,{' '}
+				{/* The comma stays on the token's line. */}
+				<span className="nowrap">
+					<PhraseToken onClick={onStart} wanted={startLabel === undefined}>
+						{startLabel ?? 'выберите'}
+					</PhraseToken>
+					,
+				</span>{' '}
 				<span className="tok static">
 					{hoursLong(hours)}
 					{busy ? (

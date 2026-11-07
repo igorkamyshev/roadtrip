@@ -79,7 +79,7 @@ async function fulfil(route: Route, reply: RingReply): Promise<void> {
 }
 
 /** A transparent 1×1 PNG: every raster tile of the temporary basemap. */
-const EMPTY_TILE = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==', 'base64');
+const EMPTY_TILE = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR4nGNgAAIAAAUAAXpeqz8AAAAASUVORK5CYII=', 'base64');
 
 async function cutOffTheNetwork(context: BrowserContext, ringApi: RingApi): Promise<void> {
 	// Routes run newest first: the catch-all goes first, so the tiles and the API take precedence over it.
