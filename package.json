@@ -8,7 +8,8 @@
 		"prepare": "git config core.hooksPath .githooks",
 		"lint": "node lint/agents-pointers.ts",
 		"typecheck": "pnpm --recursive --if-present run typecheck",
-		"test": "vitest run"
+		"test": "vitest run",
+		"e2e": "pnpm --filter web e2e"
 	},
 	"devDependencies": {
 		"vitest": "^5.1.0"
