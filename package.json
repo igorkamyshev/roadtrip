@@ -1,0 +1,15 @@
+{
+	"name": "roadtrip",
+	"version": "0.0.0",
+	"private": true,
+	"type": "module",
+	"packageManager": "pnpm@10.11.0",
+	"scripts": {
+		"prepare": "git config core.hooksPath .githooks",
+		"lint": "node lint/agents-pointers.ts",
+		"test": "vitest run"
+	},
+	"devDependencies": {
+		"vitest": "^5.1.0"
+	}
+}

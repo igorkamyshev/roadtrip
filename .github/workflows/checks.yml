@@ -1,0 +1,31 @@
+name: Checks
+
+# Push only, on every branch: a branch is checked before its PR is opened, and
+# the PR shows the checks of its head commit.
+on:
+  push:
+
+# A new push to a branch stops the run of its previous commit, which nobody
+# reads any more. On the default branch every run finishes.
+concurrency:
+  group: checks-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != format('refs/heads/{0}', github.event.repository.default_branch) }}
+
+jobs:
+  code:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: pnpm
+      # Every AGENTS.md has a sibling CLAUDE.md symlinked to it.
+      - run: node scripts/agents-symlinks.ts --check
+      - run: pnpm install --frozen-lockfile
+      # The root AGENTS.md names every nested AGENTS.md.
+      - run: pnpm lint
+      - run: pnpm test

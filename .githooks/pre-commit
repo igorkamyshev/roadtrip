@@ -1,0 +1,6 @@
+#!/bin/sh
+# Installed by `pnpm install` (the root "prepare" script sets core.hooksPath),
+# and in cloud sessions by .claude/hooks/session-start.sh.
+set -e
+node scripts/agents-symlinks.ts --stage
+node lint/agents-pointers.ts
