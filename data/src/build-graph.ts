@@ -4,7 +4,7 @@
 import { createGraph, type Graph, MAX_EDGE_SECONDS, MAX_ZONES, ZoneLocator } from 'engine/graph';
 import { haversineMeters } from 'engine/geo';
 import type { OsmSource, OsmWay } from './osm/source.ts';
-import { roadOf } from './roads.ts';
+import { type Road, roadOf } from './roads.ts';
 import { type BoundaryWay, joinRings, zoneCodeOf, zoneRings } from './zones.ts';
 
 export interface BuildReport {
@@ -20,14 +20,14 @@ export interface BuildReport {
 export function buildGraph(source: OsmSource): { graph: Graph; report: BuildReport } {
 	const zoneRelations = readZoneRelations(source);
 	const boundaryWayIds = new Set(zoneRelations.flatMap((relation) => relation.wayIds));
-	const roads: { way: OsmWay; kmh: number }[] = [];
+	const roads: { way: OsmWay; road: Road }[] = [];
 	const boundaryWays = new Map<number, OsmWay>();
 	const missing = new Set<number>();
 	source.read({
 		way(way) {
 			const road = roadOf(way.tags);
 			if (road !== undefined) {
-				roads.push({ way, kmh: road.kmh });
+				roads.push({ way, road });
 			}
 			if (boundaryWayIds.has(way.id)) {
 				boundaryWays.set(way.id, way);
@@ -82,15 +82,15 @@ export function buildGraph(source: OsmSource): { graph: Graph; report: BuildRepo
 	// Road nodes and the segments between them.
 	const nodes = new RoadNodes(locator);
 	const segments = new Segments();
-	for (const { way, kmh } of roads) {
-		const metersPerSecond = kmh / 3.6;
+	for (const { way, road } of roads) {
+		const metersPerSecond = road.kmh / 3.6;
 		let previous: number | undefined;
 		for (let index = 0; index < way.refs.length; index++) {
 			const point = coordinates(way, index);
 			const node = point === undefined ? undefined : nodes.add(way.refs[index], point[0], point[1]);
 			if (node !== undefined && previous !== undefined && node !== previous) {
 				const seconds = nodes.meters(previous, node) / metersPerSecond;
-				segments.add(previous, node, seconds, seconds);
+				segments.add(previous, node, road.forward ? seconds : -1, road.backward ? seconds : -1);
 			}
 			previous = node;
 		}

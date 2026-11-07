@@ -79,6 +79,30 @@ describe('an origin off the road', () => {
 	});
 });
 
+describe('the roads of the graph', () => {
+	const roads = fixtureGraph('roads.osm');
+	const maxHoursFrom = (lat: number, lon: number) => {
+		const result = computeRing(roads, borderTable, request(lat, lon, 12));
+		return result.outcome === 'empty' ? result.maxHours : result.outcome;
+	};
+
+	it('are driven at maxspeed where it is below the speed of their class', () => {
+		expect(maxHoursFrom(0, 0)).toBe(2); // primary at maxspeed=30
+		expect(maxHoursFrom(0.5, 0)).toBe(2); // secondary with maxspeed=100, still at 60 km/h
+		expect(maxHoursFrom(1, 0)).toBe(2); // tertiary at 20 mph
+	});
+
+	it('are motorway to tertiary, without ferries or roads closed to cars', () => {
+		expect(maxHoursFrom(1.5, 0)).toBe(1); // not on to a residential road or a ferry
+		expect(maxHoursFrom(3, 0)).toBe(1); // not on to a road with access=no
+	});
+
+	it('are driven one way when they are one-way, and motorways are', () => {
+		expect(maxHoursFrom(2, 0.7)).toBe(1);
+		expect(maxHoursFrom(2.5, 1.1)).toBe(1);
+	});
+});
+
 describe('a ring past the end of the roads', () => {
 	it('is empty, with the longest travel time rounded up: driving time × 1.2', () => {
 		// The whole road: 3.71 h at the wheel, 4.45 h of travel.
