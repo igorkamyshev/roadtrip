@@ -1,7 +1,8 @@
 // The external boundaries of the screen, doubled for its tests: `GET /api/ring` (a scripted double that records
-// every request and answers or holds it), the basemap's tiles, and every other host, which is cut off so that a
-// test never reaches the network. Geolocation and time come from Playwright itself (context permissions,
-// `page.clock`).
+// every request and answers or holds it), the basemap's tiles (`GET /tiles/{z}/{x}/{y}`, each one empty), and
+// every other host, which is cut off in every test so that none reaches the network. The basemap's fonts and
+// sprites are the client's own static assets. Geolocation and time come from Playwright itself (context
+// permissions, `page.clock`).
 import { test as base, expect, type BrowserContext, type Route } from '@playwright/test';
 import type { RingResponse } from 'worker/api';
 
@@ -78,23 +79,42 @@ async function fulfil(route: Route, reply: RingReply): Promise<void> {
 	}
 }
 
-/** A transparent 1×1 PNG: every raster tile of the temporary basemap. */
-const EMPTY_TILE = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR4nGNgAAIAAAUAAXpeqz8AAAAASUVORK5CYII=', 'base64');
-
-async function cutOffTheNetwork(context: BrowserContext, ringApi: RingApi): Promise<void> {
-	// Routes run newest first: the catch-all goes first, so the tiles and the API take precedence over it.
-	await context.route('**/*', async (route) => {
-		const { hostname } = new URL(route.request().url());
-		await (hostname === 'localhost' ? route.fallback() : route.abort('blockedbyclient'));
-	});
-	await context.route('https://tile.openstreetmap.org/**', (route) => route.fulfill({ status: 200, contentType: 'image/png', body: EMPTY_TILE }));
-	await context.route('**/api/ring?*', (route) => ringApi.handle(route));
+/** What the page asked of the network: the basemap's tiles it got, and the requests to other hosts, cut off. */
+export class Network {
+	readonly tiles: URL[] = [];
+	readonly blocked: string[] = [];
 }
 
-export const test = base.extend<{ ringApi: RingApi }>({
+async function cutOffTheNetwork(context: BrowserContext, network: Network): Promise<void> {
+	// Routes run newest first; the catch-all lets the page's own host through to the routes before it.
+	await context.route('**/tiles/**', async (route) => {
+		network.tiles.push(new URL(route.request().url()));
+		// An empty vector tile: a basemap with nothing on it.
+		await route.fulfill({ status: 200, contentType: 'application/x-protobuf', body: Buffer.alloc(0) });
+	});
+	await context.route('**/*', async (route) => {
+		const { hostname } = new URL(route.request().url());
+		if (hostname === 'localhost') {
+			await route.fallback();
+			return;
+		}
+		network.blocked.push(route.request().url());
+		await route.abort('blockedbyclient');
+	});
+}
+
+export const test = base.extend<{ network: Network; ringApi: RingApi }>({
+	network: [
+		async ({ context }, use) => {
+			const network = new Network();
+			await cutOffTheNetwork(context, network);
+			await use(network);
+		},
+		{ auto: true },
+	],
 	ringApi: async ({ context }, use) => {
 		const ringApi = new RingApi();
-		await cutOffTheNetwork(context, ringApi);
+		await context.route('**/api/ring?*', (route) => ringApi.handle(route));
 		await use(ringApi);
 	},
 });
