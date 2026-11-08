@@ -27,10 +27,6 @@ on:
       parts_run_id:
         description: A run whose filtered parts (kept 2 days) to build from, of the same date and parts; empty extracts them
         default: ''
-  # Trial runs while #35 is built; .github/dataset-trial.json says which parts.
-  push:
-    branches: [claude/epic-ramanujan-4tqrk6]
-    paths: [.github/dataset-trial.json]
 
 concurrency:
   group: dataset
@@ -56,18 +52,12 @@ jobs:
       prefix: ${{ steps.plan.outputs.prefix }}
       parts_run_id: ${{ steps.plan.outputs.parts_run_id }}
     steps:
-      - uses: actions/checkout@v4
       - id: plan
         env:
           DATE: ${{ inputs.date }}
           PARTS: ${{ inputs.parts }}
           PARTS_RUN_ID: ${{ inputs.parts_run_id }}
         run: |
-          if [ "$GITHUB_EVENT_NAME" = push ]; then
-            DATE=$(jq -r '.date // ""' .github/dataset-trial.json)
-            PARTS=$(jq -r '.parts | join(" ")' .github/dataset-trial.json)
-            PARTS_RUN_ID=$(jq -r '.partsRunId // ""' .github/dataset-trial.json)
-          fi
           parts=${PARTS:-$ALL_PARTS}
           if [ -z "$DATE" ]; then
             # The dated files each part's page lists: the 1st of recent months and every day of the last week.
