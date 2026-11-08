@@ -11,7 +11,7 @@
 		"deploy": "pnpm --filter data fetch-dataset && pnpm --filter web build && wrangler deploy",
 		"dev": "wrangler dev",
 		"test": "vitest run",
-		"typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.test.json",
+		"typecheck": "tsc --noEmit -p tsconfig.worker.json && tsc --noEmit -p tsconfig.test.json",
 		"cf-typegen": "wrangler types --strict-vars=false"
 	},
 	"dependencies": {
