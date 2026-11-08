@@ -14,17 +14,16 @@ export interface Scan {
 	readonly roadNodeIds: RepeatedIds;
 	/** The ways of the zones' boundaries, by id. */
 	readonly boundaryWays: Map<number, OsmWay>;
-	/** The nodes of the roads and boundaries whose ways the file gives no locations, located by the file's nodes. */
-	readonly unlocated: OsmNodes;
 	readonly borderControls: BorderControls;
-	/** Where a node of a road or a boundary is. */
+	/** Where a node of a road or a boundary is, until `forget`. */
 	readonly locate: Locate;
+	/** Lets go of the coordinates kept by id that `locate` reads, once the roads are cut. */
+	readonly forget: () => void;
 }
 
 /** Reads the ways, then the nodes. `boundaryWayIds`: the ways of the zones' relations. */
 export function scan(source: OsmSource, boundaryWayIds: ReadonlySet<number>): Scan {
-	const ways = scanWays(source, boundaryWayIds);
-	const { unlocated } = ways;
+	const { unlocated, ...ways } = scanWays(source, boundaryWayIds);
 	const borderControls = new BorderControls();
 	source.read({
 		node(node) {
@@ -34,10 +33,24 @@ export function scan(source: OsmSource, boundaryWayIds: ReadonlySet<number>): Sc
 			}
 		},
 	});
-	return { ...ways, borderControls, locate: wayNodeLocator(unlocated) };
+	return {
+		...ways,
+		borderControls,
+		locate: wayNodeLocator(unlocated),
+		forget: () => {
+			unlocated.clear();
+		},
+	};
 }
 
-function scanWays(source: OsmSource, boundaryWayIds: ReadonlySet<number>): Omit<Scan, 'borderControls' | 'locate'> {
+/**
+ * The first pass over the ways; `unlocated` are the nodes of the roads and boundaries whose ways the file gives no
+ * locations, to be located by the file's nodes.
+ */
+function scanWays(
+	source: OsmSource,
+	boundaryWayIds: ReadonlySet<number>,
+): Pick<Scan, 'roadWays' | 'roadNodeIds' | 'boundaryWays'> & { unlocated: OsmNodes } {
 	const roadNodeIds = new RepeatedIds();
 	let roadWays = 0;
 	const boundaryWays = new Map<number, OsmWay>();

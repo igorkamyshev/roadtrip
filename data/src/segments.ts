@@ -7,6 +7,14 @@ export const FORWARD = 1;
 /** A segment may be driven from its end `b` to its end `a`. */
 export const BACKWARD = 2;
 
+/** The nodes the segments join, by their numbers: coordinates in 1e-7 degrees, and zones. */
+export interface SegmentNodes {
+	readonly count: number;
+	readonly lat: Int32Array;
+	readonly lon: Int32Array;
+	readonly zone: Uint8Array;
+}
+
 /** Road segments between two nodes, with their driving time and the directions allowed. */
 export class Segments {
 	readonly #a = new Column((length) => new Uint32Array(length));

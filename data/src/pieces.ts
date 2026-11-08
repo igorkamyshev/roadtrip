@@ -1,14 +1,15 @@
 // The builder's second pass over the road ways (build-graph.ts): each way cut into pieces, of which only the end
 // nodes are kept, so the world's ~330 M road nodes come down to the few that may stay in the graph.
 import { haversineMeters } from 'engine/geo';
-import { MAX_EDGE_SECONDS } from 'engine/graph';
+import { MAX_EDGE_SECONDS, ZoneLocator, type ZoneRings } from 'engine/graph';
 import { Column } from './column.ts';
 import { NodeIds } from './node-ids.ts';
 import type { Locate } from './osm-nodes.ts';
 import type { OsmWay } from './osm/source.ts';
+import type { RepeatedIds } from './repeated-ids.ts';
 import type { Road } from './roads.ts';
-import { BACKWARD, FORWARD, Segments } from './segments.ts';
-import type { ZoneCells } from './zone-cells.ts';
+import { BACKWARD, FORWARD, type SegmentNodes, Segments } from './segments.ts';
+import { ZoneCells } from './zone-cells.ts';
 
 /**
  * The road ways cut into pieces, each piece a chain of segments between two nodes that may stay in the graph: the
@@ -17,7 +18,7 @@ import type { ZoneCells } from './zone-cells.ts';
  * to its start is cut at its second and second-to-last nodes, as `collapse` would cut such a chain. Only the
  * pieces' end nodes are kept, numbered as first met, as `collapse` takes them.
  */
-export class Pieces {
+export class Pieces implements SegmentNodes {
 	readonly #ids = new NodeIds();
 	readonly #lat = new Column((length) => new Int32Array(length));
 	readonly #lon = new Column((length) => new Int32Array(length));
@@ -33,10 +34,13 @@ export class Pieces {
 	#cut = new Uint8Array(64);
 	readonly #point = new Int32Array(2);
 
-	/** `junctions`: the ids of the nodes that more than one place of the road ways refers to. */
-	constructor(junctions: NodeIds, zones: ZoneCells) {
-		this.#junctions = junctions;
-		this.#zones = zones;
+	/**
+	 * `roadNodeIds`: every road node's id, once per place a road way refers to it. The ids that come more than once,
+	 * the nodes at a junction, are kept; the rest are let go. `rings`: the graph's zones, which give each node its zone.
+	 */
+	constructor(roadNodeIds: RepeatedIds, rings: ZoneRings) {
+		this.#junctions = roadNodeIds.repeated();
+		this.#zones = new ZoneCells(new ZoneLocator(rings), rings);
 	}
 
 	get count(): number {

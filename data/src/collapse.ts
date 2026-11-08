@@ -3,15 +3,7 @@
 import { type GraphParts, MAX_EDGE_SECONDS } from 'engine/graph';
 import type { BorderControls } from './border-controls.ts';
 import { Column } from './column.ts';
-import type { Segments } from './segments.ts';
-
-/** The nodes the segments join, by their numbers: coordinates in 1e-7 degrees, and zones. */
-export interface SegmentNodes {
-	readonly count: number;
-	readonly lat: Int32Array;
-	readonly lon: Int32Array;
-	readonly zone: Uint8Array;
-}
+import type { SegmentNodes, Segments } from './segments.ts';
 
 /**
  * The graph of the road segments with every chain of degree-2 nodes collapsed into one edge. A node stays when

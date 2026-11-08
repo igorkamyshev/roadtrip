@@ -7,7 +7,7 @@
 // road's node ids go into `RepeatedIds`, which finds the ones at a junction. The second time, each road way is cut
 // into pieces at those, at its ends and wherever a node of the graph must stay, and only the pieces' end nodes are
 // kept (pieces.ts); `collapse` then joins the pieces across ways into the graph's edges (collapse.ts).
-import { createGraph, type Graph, ZoneLocator } from 'engine/graph';
+import { createGraph, type Graph } from 'engine/graph';
 import { borderTable as shippedBorderTable, type BorderTable, borderTableProblems } from 'rules';
 import { type BorderReport, borderReport } from './border-report.ts';
 import { collapse } from './collapse.ts';
@@ -15,7 +15,6 @@ import type { OsmSource } from './osm/source.ts';
 import { Pieces } from './pieces.ts';
 import { roadOf } from './roads.ts';
 import { scan } from './scan.ts';
-import { ZoneCells } from './zone-cells.ts';
 import { type FoundZones, findZones, graphZones, readZoneRelations, zoneRings } from './zones.ts';
 
 export interface BuildReport {
@@ -55,7 +54,7 @@ export function buildGraph(source: OsmSource, borderTable: BorderTable = shipped
 	const zones = graphZones(codes, parts);
 	const rings = zoneRings(found.ringsByZone, zones);
 
-	const pieces = new Pieces(scanned.roadNodeIds.repeated(), new ZoneCells(new ZoneLocator(rings), rings));
+	const pieces = new Pieces(scanned.roadNodeIds, rings);
 	source.read({
 		way(way) {
 			const road = roadOf(way.tags);
@@ -64,7 +63,7 @@ export function buildGraph(source: OsmSource, borderTable: BorderTable = shipped
 			}
 		},
 	});
-	scanned.unlocated.clear();
+	scanned.forget();
 	const graph = createGraph({ ...collapse(pieces, pieces.release(), scanned.borderControls), zones, zoneRings: rings });
 	return {
 		graph,
