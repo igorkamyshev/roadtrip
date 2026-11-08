@@ -3,7 +3,7 @@
 // citizenships): what the person sees and what the screen asks the API.
 import type { Page } from '@playwright/test';
 import { allowGeolocation, expect, squareRing, test, visaRules, ZONE_OUTLINES } from './fixtures.ts';
-import { firstCard, hatchedZones, outlinesOnMap, phrase, ringOnMap, slider } from './screen.ts';
+import { dottedHours, firstCard, hatchedZones, outlinesOnMap, phrase, ringOnMap, slider } from './screen.ts';
 
 const BELGRADE = { lat: 44.8176, lon: 20.4573 };
 const LINK = '/#/?p=44.81760,20.45730&h=2';
@@ -184,6 +184,40 @@ test.describe('the visa rules', () => {
 
 		await expect(firstCard(page)).toContainText('В кольце 1–2 ч');
 		expect(ringApi.calls.at(-1)?.cit).toBe('RUS');
+	});
+
+	test('missing are not kept: those hours get no dot, and asking for them again asks the Worker again', async ({ page, ringApi }) => {
+		ringApi.respond((call) =>
+			call.cit === 'RUS,SRB' && call.hours === 2
+				? { outcome: 'visa_rules_missing', missingCitizenship: 'SRB' }
+				: squareRing(Number(call.lat), Number(call.lon), (call.hours - 1) / 10, call.hours / 10),
+		);
+		await page.goto(`${LINK}&cit=RUS,SRB`);
+		await expect(firstCard(page)).toContainText('Не удалось загрузить визовые правила для гражданства Сербия.');
+
+		// Another N, then back: a request each time, and a dot only for the ring.
+		await slider(page).press('ArrowUp');
+		await expect(firstCard(page)).toContainText('В кольце 2–3 ч');
+		expect(await dottedHours(page)).toEqual([3]);
+		await slider(page).press('ArrowDown');
+		await expect(firstCard(page)).toContainText('Не удалось загрузить визовые правила для гражданства Сербия.');
+		expect(await dottedHours(page)).toEqual([3]);
+		expect(ringApi.calls.map((call) => [call.cit, call.hours])).toEqual([
+			['RUS,SRB', 2],
+			['RUS,SRB', 3],
+			['RUS,SRB', 2],
+		]);
+
+		// Without the citizenship and with it again: a request again.
+		await firstCard(page).getByRole('button', { name: 'Гражданство' }).click();
+		await choice(page, 'Сербия').click();
+		await expect(firstCard(page)).toContainText('В кольце 1–2 ч');
+		await choice(page, 'Сербия').click();
+		await expect(firstCard(page)).toContainText('Не удалось загрузить визовые правила для гражданства Сербия.');
+		expect(ringApi.calls.map((call) => [call.cit, call.hours]).slice(3)).toEqual([
+			['RUS', 2],
+			['RUS,SRB', 2],
+		]);
 	});
 
 	test('missing for the Russian citizenship says «РФ», as the phrase does', async ({ page, ringApi }) => {

@@ -1,10 +1,11 @@
 // The rings of the session in TanStack Query (spec «Состояние, ссылка и память браузера»): one query per origin, N,
 // citizenships and held visas. An answer stays in memory to the end of the session and is shown again without a
-// request; nothing repeats a request by itself, only «Повторить». While a ring comes, the previous ring of the same
+// request, but for `visa_rules_missing`, forgotten once the screen asks for something else; nothing repeats a request
+// by itself, only «Повторить». While a ring comes, the previous ring of the same
 // origin stands in for it. Every change of what the screen asks for passes through `useRing` (`ring result`,
 // src/analytics/, tells an answer from memory as `source: memory`).
-import { queryOptions, skipToken, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useCallback, useMemo, useSyncExternalStore } from 'react';
+import { hashKey, queryOptions, skipToken, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useCallback, useEffect, useMemo, useSyncExternalStore } from 'react';
 import type { RingResponse } from 'worker/api';
 import { pointText, type LatLon } from '../state/point.ts';
 import { MAX_HOURS, MIN_HOURS } from '../state/search.ts';
@@ -35,7 +36,29 @@ function ringQuery(origin: LatLon | undefined, hours: number, settings: Settings
 }
 
 export function useRing(origin: LatLon | undefined, hours: number, settings: Settings) {
-	return useQuery(ringQuery(origin, hours, settings));
+	const client = useQueryClient();
+	const options = ringQuery(origin, hours, settings);
+	const ring = useQuery(options);
+	// The visa rules missing is no ring to keep: the card says «Попробуйте позже», so once the screen asks for
+	// something else the answer is forgotten, and asking for it again asks the Worker.
+	const missing = !ring.isPlaceholderData && isMissing(ring.data);
+	const key = options.queryKey;
+	const keyHash = hashKey(key);
+	useEffect(() => {
+		if (!missing) {
+			return undefined;
+		}
+		return () => {
+			if (isMissing(client.getQueryData<RingResponse>(key))) {
+				client.removeQueries({ queryKey: key, exact: true });
+			}
+		};
+	}, [client, missing, keyHash]);
+	return ring;
+}
+
+function isMissing(answer: RingResponse | undefined): boolean {
+	return answer?.outcome === 'visa_rules_missing';
 }
 
 /** The hours whose rings are in memory for this origin and settings: the dots on the slider. */
@@ -48,7 +71,8 @@ export function useCachedHours(origin: LatLon | undefined, settings: Settings): 
 		}
 		const cached: number[] = [];
 		for (let hours = MIN_HOURS; hours <= MAX_HOURS; hours++) {
-			if (client.getQueryData(ringKey(origin, hours, settings)) !== undefined) {
+			const answer = client.getQueryData<RingResponse>(ringKey(origin, hours, settings));
+			if (answer !== undefined && !isMissing(answer)) {
 				cached.push(hours);
 			}
 		}
