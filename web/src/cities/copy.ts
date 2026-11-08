@@ -4,7 +4,7 @@ import { EU } from 'rules/eu';
 import { SCHENGEN } from 'rules/held-visas';
 import type { CountryAccess } from 'worker/api';
 import { visaName } from '../screen/countries.ts';
-import { pointText, type Point } from '../state/point.ts';
+import { pointText, type LatLon } from '../state/point.ts';
 import type { City } from './cities.ts';
 
 const ONE_DECIMAL = new Intl.NumberFormat('ru', { maximumFractionDigits: 1 });
@@ -43,7 +43,7 @@ export function platesBanned(city: City, citizenships: readonly string[]): boole
 }
 
 /** The route from the origin to the city by car in Google Maps (https://developers.google.com/maps/documentation/urls). */
-export function routeUrl(origin: Point, city: City): string {
+export function routeUrl(origin: LatLon, city: City): string {
 	const query = new URLSearchParams({ api: '1', origin: pointText(origin), destination: `${city.lat},${city.lon}`, travelmode: 'driving' });
 	return `https://www.google.com/maps/dir/?${query.toString()}`;
 }

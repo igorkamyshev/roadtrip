@@ -3,7 +3,7 @@
 // with `parseSearch` and checks it with `validateSearch`; every change is a `navigate` with `replace: true`.
 import { HELD_VISAS } from 'rules/held-visas';
 import { SHERPA_PASSPORTS } from 'rules/passports';
-import { pointFromText, pointText, type Point } from './point.ts';
+import { pointFromText, pointText, type LatLon } from './point.ts';
 
 /** The link's parameters once checked: an absent or invalid one is left out, and the screen takes its default. */
 export interface ScreenSearch {
@@ -22,7 +22,7 @@ export interface ScreenSearch {
  * visas.
  */
 export interface ScreenState {
-	readonly origin: Point | undefined;
+	readonly origin: LatLon | undefined;
 	readonly hours: number;
 	/** Alpha-3, sorted, at least one. */
 	readonly citizenships: readonly string[];

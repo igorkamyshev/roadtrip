@@ -1,6 +1,6 @@
 // Where the person is, from the browser (spec «Экран»: geolocation on the first visit and «Где я»). The screen sends
 // `geolocation failed` with the reason.
-import { point, type Point } from '../state/point.ts';
+import { point, type LatLon } from '../state/point.ts';
 
 /** Why the browser gave no position: the reasons of `geolocation failed`. */
 export type GeolocationFailure = 'denied' | 'unavailable' | 'timeout';
@@ -18,7 +18,7 @@ const TIMEOUT_MS = 15_000;
 const MAXIMUM_AGE_MS = 600_000;
 
 /** The person's position to 5 decimals; rejects with a `GeolocationError`. */
-export function locate(): Promise<Point> {
+export function locate(): Promise<LatLon> {
 	return new Promise((resolve, reject) => {
 		if (!('geolocation' in navigator)) {
 			reject(new GeolocationError('unavailable'));

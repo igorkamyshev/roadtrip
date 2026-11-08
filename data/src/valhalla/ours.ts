@@ -2,7 +2,7 @@
 //
 // The graph is built without zones, so every country is open and no border costs time (the ticket compares roads
 // and speeds only): the origin snaps to the nearest road of any country, as an origin at sea does.
-import { computeRing, type MultiPolygon } from 'engine';
+import { computeRing, type LatLon, type MultiPolygon } from 'engine';
 import { passage } from 'engine/borders';
 import { OFF_ROAD_SECONDS_PER_METER, ringContour } from 'engine/contour';
 import { LocalProjection } from 'engine/geo';
@@ -13,7 +13,6 @@ import { TRAVEL_PER_DRIVING, traverse } from 'engine/traverse';
 import { borderTable } from 'rules';
 import { buildGraph } from '../build-graph.ts';
 import { openOsm } from '../osm/open.ts';
-import type { LatLon } from './valhalla.ts';
 
 /** The graph of an extract, without zones: no road crosses a border, so no edge is at a border crossing either. */
 export function graphWithoutZones(path: string): Graph {

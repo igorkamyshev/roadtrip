@@ -14,7 +14,7 @@ import { MapView, type MapHandle } from '../map/map-view.tsx';
 import type { MapCity } from '../map/overlay.ts';
 import { RingRequestError } from '../ring/fetch-ring.ts';
 import { ringKey, useCachedHours, useRing } from '../ring/use-ring.ts';
-import { point, type Point } from '../state/point.ts';
+import { point, type LatLon } from '../state/point.ts';
 import { settingsOf } from '../state/settings.ts';
 import { useScreenState } from '../state/use-screen-state.ts';
 import { GeolocationError, locate } from '../start/geolocation.ts';
@@ -67,7 +67,7 @@ export function Screen() {
 	const analytics = useScreenAnalytics({ start, request: origin === undefined ? undefined : requestId, retries, hours, settings, ring, citiesFile });
 
 	const located = useCallback(
-		(position: Point) => {
+		(position: LatLon) => {
 			setGeolocationFailed(false);
 			setSheet(undefined);
 			setStart({ method: 'geolocation', origin: position });
@@ -324,7 +324,7 @@ export function Screen() {
 }
 
 function firstCardState(
-	origin: Point | undefined,
+	origin: LatLon | undefined,
 	hours: number,
 	ring: UseQueryResult<RingResponse, RingRequestError>,
 	geolocationFailed: boolean,

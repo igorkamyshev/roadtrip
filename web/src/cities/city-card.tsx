@@ -3,13 +3,13 @@
 import type { Access } from 'worker/api';
 import { countryName } from '../screen/countries.ts';
 import { RouteIcon } from '../screen/icons.tsx';
-import type { Point } from '../state/point.ts';
+import type { LatLon } from '../state/point.ts';
 import type { City } from './cities.ts';
 import { entryMark, platesBanned, populationText, routeUrl } from './copy.ts';
 
 export interface CityCardProps {
 	readonly city: City;
-	readonly origin: Point;
+	readonly origin: LatLon;
 	/** The entry modes of the answer shown. */
 	readonly access: Access;
 	readonly citizenships: readonly string[];

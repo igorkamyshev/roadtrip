@@ -36,9 +36,15 @@ export async function dataVersion(dataset: string, table: BorderTable): Promise<
 	return `${dataset}.${(await borderTableHash(table)).slice(0, 16)}.${ENGINE_VERSION}`;
 }
 
+/** A place in degrees. */
+export interface LatLon {
+	readonly lat: number;
+	readonly lon: number;
+}
+
 export interface RingRequest {
 	/** The origin in degrees, already rounded by the caller. */
-	readonly origin: { readonly lat: number; readonly lon: number };
+	readonly origin: LatLon;
 	/** N: the ring holds the places reached in (N − 1, N] hours of travel. */
 	readonly hours: number;
 	/**

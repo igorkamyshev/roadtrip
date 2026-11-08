@@ -1,5 +1,6 @@
 // The screen's own events in PostHog (spec «Аналитика и ошибки», «Свои события браузера»; decision #18): what the
 // person saw. Never the origin: a place is only the nearest city of the cities file and its country.
+import type { RingResponse, RingSource } from 'worker/api';
 import type { GeolocationFailure } from '../start/geolocation.ts';
 import type { StartMethod } from '../start/start.ts';
 
@@ -13,19 +14,14 @@ export interface Place {
 	readonly start_city_id?: number;
 }
 
-/** How a ring request ended (decision #18). */
-export type RingResultOutcome =
-	| 'ring'
-	| 'empty'
-	| 'no_roads'
-	| 'no_ring'
-	| 'visa_rules_missing'
-	| 'too_many_requests'
-	| 'error'
-	| 'abandoned';
+/**
+ * How a ring request ended (decision #18): the Worker's `outcome`, or the browser's own: the WAF's block, a failure, or
+ * a request left before its answer.
+ */
+export type RingResultOutcome = RingResponse['outcome'] | 'too_many_requests' | 'error' | 'abandoned';
 
 /** Where the ring came from: the browser's memory, or the Worker's `source`. */
-export type RingResultSource = 'memory' | 'cache' | 'calculation' | 'joined';
+export type RingResultSource = 'memory' | RingSource;
 
 export interface RingResult extends Place {
 	readonly outcome: RingResultOutcome;

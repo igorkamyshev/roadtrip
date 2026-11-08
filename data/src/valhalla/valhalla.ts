@@ -4,7 +4,7 @@
 import { spawn } from 'node:child_process';
 import { request as httpRequest } from 'node:http';
 import { setTimeout as sleep } from 'node:timers/promises';
-import type { MultiPolygon } from 'engine';
+import type { LatLon, MultiPolygon } from 'engine';
 import { TRAVEL_PER_DRIVING } from 'engine/traverse';
 import type { RegionFiles, Tools } from './prepare.ts';
 
@@ -13,11 +13,6 @@ export interface ValhallaService {
 	isochrones(origin: LatLon, drivingMinutes: readonly number[]): Promise<MultiPolygon[]>;
 	/** Travel time from the origin to each target in hours, the ×1.2 applied; Infinity where Valhalla finds no way. */
 	travelHours(origin: LatLon, targets: readonly LatLon[]): Promise<number[]>;
-}
-
-export interface LatLon {
-	readonly lat: number;
-	readonly lon: number;
 }
 
 /** Runs Valhalla's service on the region's tiles for as long as `use` takes. */

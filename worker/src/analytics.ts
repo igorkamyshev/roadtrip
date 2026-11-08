@@ -3,7 +3,7 @@
 // request to Sherpa. The Worker never sends the origin, not even rounded: its events are tied to the browser's session.
 import type { RingOutcome } from 'engine/protocol';
 import { PostHog, type PostHogOptions } from 'posthog-node';
-import type { RingSource } from './api.ts';
+import { PRODUCTION_HOST, type RingSource } from './api.ts';
 
 /** Each ring request that reached the Worker. */
 export interface RingServed {
@@ -50,9 +50,6 @@ export type WorkerEvent = keyof WorkerEvents;
 export interface Analytics {
 	capture<Event extends WorkerEvent>(event: Event, properties: WorkerEvents[Event]): void;
 }
-
-/** The only host whose requests send events: off it (`wrangler dev`, workers.dev, a copy) the client is disabled. */
-export const PRODUCTION_HOST = 'roadtrip.kamyshev.me';
 
 /** Straight to PostHog's US cloud: the managed proxy is for browsers. */
 export const POSTHOG_HOST = 'https://us.i.posthog.com';

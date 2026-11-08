@@ -4,7 +4,7 @@
 import { Map as MapLibre, type MapMouseEvent } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { useEffect, useImperativeHandle, useRef, useState, type Ref } from 'react';
-import { point, pointText, type Point } from '../state/point.ts';
+import { point, pointText, type LatLon } from '../state/point.ts';
 import { DropPin } from '../screen/icons.tsx';
 import { basemapStyle } from './basemap.ts';
 import {
@@ -38,16 +38,16 @@ const ORIGIN_ZOOM = 7;
 
 export interface MapHandle {
 	/** The point under the pin: the map's centre. */
-	center(): Point;
+	center(): LatLon;
 	/** Moves the map to a place, keeping the zoom unless it is below `minZoom`, with room for the phrase and the carousel. */
-	goTo(place: { readonly lat: number; readonly lon: number }, minZoom?: number): void;
+	goTo(place: LatLon, minZoom?: number): void;
 }
 
 /** How far from a city's dot a tap still picks it, in pixels: a finger is not a pointer. */
 const TAP_RADIUS = 16;
 
 export interface MapViewProps {
-	readonly origin: Point | undefined;
+	readonly origin: LatLon | undefined;
 	readonly ring: RingGeometry | undefined;
 	/** The ring stands in for one being calculated: running stripes. */
 	readonly striped: boolean;

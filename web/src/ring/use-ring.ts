@@ -6,17 +6,17 @@
 import { queryOptions, skipToken, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useMemo, useSyncExternalStore } from 'react';
 import type { RingResponse } from 'worker/api';
-import { pointText, type Point } from '../state/point.ts';
+import { pointText, type LatLon } from '../state/point.ts';
 import { MAX_HOURS, MIN_HOURS } from '../state/search.ts';
 import type { Settings } from '../state/settings.ts';
 import { fetchRing, type RingRequestError } from './fetch-ring.ts';
 
 /** The query key of a ring: ['ring', origin, N, citizenships, visas]. */
-export function ringKey(origin: Point, hours: number, settings: Settings) {
+export function ringKey(origin: LatLon, hours: number, settings: Settings) {
 	return ['ring', pointText(origin), hours, settings.citizenships.join(','), settings.visas.join(',')] as const;
 }
 
-function ringQuery(origin: Point | undefined, hours: number, settings: Settings) {
+function ringQuery(origin: LatLon | undefined, hours: number, settings: Settings) {
 	return queryOptions<RingResponse, RingRequestError>({
 		queryKey: origin === undefined ? ['ring'] : ringKey(origin, hours, settings),
 		queryFn:
@@ -34,12 +34,12 @@ function ringQuery(origin: Point | undefined, hours: number, settings: Settings)
 	});
 }
 
-export function useRing(origin: Point | undefined, hours: number, settings: Settings) {
+export function useRing(origin: LatLon | undefined, hours: number, settings: Settings) {
 	return useQuery(ringQuery(origin, hours, settings));
 }
 
 /** The hours whose rings are in memory for this origin and settings: the dots on the slider. */
-export function useCachedHours(origin: Point | undefined, settings: Settings): ReadonlySet<number> {
+export function useCachedHours(origin: LatLon | undefined, settings: Settings): ReadonlySet<number> {
 	const client = useQueryClient();
 	const subscribe = useCallback((onChange: () => void) => client.getQueryCache().subscribe(onChange), [client]);
 	const snapshot = (): string => {

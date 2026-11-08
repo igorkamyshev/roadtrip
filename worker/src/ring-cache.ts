@@ -1,7 +1,7 @@
 // The ring cache's key (spec «Кэш колец», #15): the data version, the origin rounded to 0.001°, N and the SHA-256 of
 // the sorted closed countries. A calculation gets only these fields, so a ring cached under a key is the ring of
 // that key.
-import { dataVersion, sha256Hex } from 'engine';
+import { dataVersion, type LatLon, sha256Hex } from 'engine';
 import type { CalculationRequest } from 'engine/protocol';
 import { borderTable } from 'rules';
 
@@ -15,7 +15,7 @@ export const MAX_CACHED_BYTES = 25 * 1024 * 1024;
  * The origin on the 0.001° grid (~100 m), before it snaps to a road: the cache is read without the Container, and
  * a move of ~80 m changes the ring by seconds. The calculation starts from this point.
  */
-export function roundOrigin({ lat, lon }: { lat: number; lon: number }): { lat: number; lon: number } {
+export function roundOrigin({ lat, lon }: LatLon): LatLon {
 	return { lat: Math.round(lat * 1000) / 1000, lon: Math.round(lon * 1000) / 1000 };
 }
 

@@ -6,10 +6,8 @@ import posthog from 'posthog-js';
 // of a load carries the `X-POSTHOG-*` ids for the Worker's events and errors, and an error while the page loads is caught.
 import 'posthog-js/dist/tracing-headers.js';
 import 'posthog-js/dist/exception-autocapture.js';
+import { PRODUCTION_HOST } from 'worker/api';
 import type { BrowserEvent, BrowserEvents } from './events.ts';
-
-/** The site's one host: the only one PostHog runs on, and the one its requests get the tracing headers to. */
-export const PRODUCTION_HOST = 'roadtrip.kamyshev.me';
 
 /** The project roadtrip's token (org Roadtrip, US, id 718601): it only writes events, so it is public. */
 const PROJECT_TOKEN = 'phc_uvomseW3xjkV7pvWXexL6ERPQKN6P3KBQ2XXYCw83NAg';

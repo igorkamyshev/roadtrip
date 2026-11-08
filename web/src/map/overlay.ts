@@ -12,7 +12,7 @@
 import type { FeatureCollection } from 'geojson';
 import type { ExpressionSpecification, FilterSpecification, GeoJSONSource, Map as MapLibre } from 'maplibre-gl';
 import type { RingAnswer } from 'worker/api';
-import type { Point } from '../state/point.ts';
+import type { LatLon } from '../state/point.ts';
 
 export type RingGeometry = Extract<RingAnswer, { outcome: 'ring' }>['ring'];
 
@@ -144,7 +144,7 @@ export function showRing(map: MapLibre, ring: RingGeometry | undefined, striped:
 }
 
 /** Puts the marker exactly at the origin, wherever the engine snapped it to a road. */
-export function showStart(map: MapLibre, origin: Point | undefined): void {
+export function showStart(map: MapLibre, origin: LatLon | undefined): void {
 	source(map, START_SOURCE).setData(
 		origin === undefined ? EMPTY : { type: 'Feature', properties: {}, geometry: { type: 'Point', coordinates: [origin.lon, origin.lat] } },
 	);

@@ -1,6 +1,15 @@
 // The ring API as the client sees it (spec «API кольца»): `GET /api/ring`, the Worker's one endpoint for the
 // client. The client imports these types from `worker/api`.
+import type { LatLon } from 'engine';
 import type { RingOutcome } from 'engine/protocol';
+
+export type { LatLon };
+
+/**
+ * The Worker's domain (`routes` in wrangler.jsonc), the site's one host: the only one whose requests send the Worker's
+ * events and the browser's to PostHog.
+ */
+export const PRODUCTION_HOST = 'roadtrip.kamyshev.me';
 
 export const RING_PATH = '/api/ring';
 
@@ -17,7 +26,7 @@ export const RING_PATH = '/api/ring';
  * For example `/api/ring?lat=44.8125&lon=20.4612&hours=3&cit=RUS,SRB&visas=SCHENGEN`.
  */
 export interface RingQuery {
-	readonly origin: { readonly lat: number; readonly lon: number };
+	readonly origin: LatLon;
 	readonly hours: number;
 	readonly citizenships: readonly string[];
 	readonly visas: readonly string[];
