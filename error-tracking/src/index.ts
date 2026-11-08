@@ -7,7 +7,8 @@ import { traceToExceptions } from './trace-to-exceptions';
 // Error Tracking. Never add this worker to its own tail_consumers: its error
 // logs would loop.
 export default {
-	tail(events, env, ctx) {
+	// Of its context the handler uses only waitUntil, so its tests give it no more.
+	tail(events: TraceItem[], env: Env, ctx: Pick<ExecutionContext, 'waitUntil'>) {
 		const exceptions = events.flatMap((item) => {
 			try {
 				return traceToExceptions(item);

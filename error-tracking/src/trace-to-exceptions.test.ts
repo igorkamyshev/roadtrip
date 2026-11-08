@@ -40,6 +40,11 @@ function traceItem(overrides: Partial<TraceItem> = {}): TraceItem {
 	};
 }
 
+// The Worker's own error class, named as the README says a Worker names one
+class SherpaError extends Error {
+	override name = 'SherpaError';
+}
+
 // A request that no expected cancellation covers
 const otherRequest = { event: fetchEvent('GET', 'https://roadtrip.kamyshev.me/api/other') } satisfies Partial<TraceItem>;
 
@@ -136,9 +141,6 @@ describe('traceToExceptions', () => {
 	});
 
 	test('logger.error ties the error to the browser by distinct_id and session_id and sends the other context fields', () => {
-		class SherpaError extends Error {
-			name = 'SherpaError';
-		}
 		const logs = capturedErrorLogs(() => {
 			logger.error('[sherpa] refresh failed, served the stale copy', new SherpaError('Sherpa answered HTTP 503'), {
 				distinct_id: BROWSER_ID,
@@ -292,9 +294,6 @@ describe('traceToExceptions', () => {
 	});
 
 	test('an error logged in a canceled ring request is sent without a synthetic exception', () => {
-		class SherpaError extends Error {
-			name = 'SherpaError';
-		}
 		const logs = capturedErrorLogs(() => {
 			logger.error('[sherpa] request failed, served the stale copy', new SherpaError('Sherpa timed out'), {
 				distinct_id: BROWSER_ID,
