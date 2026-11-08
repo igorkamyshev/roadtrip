@@ -91,9 +91,33 @@ interface Reach {
 	readonly nearestPoint: (a: number, b: number) => Snap | undefined;
 }
 
+/** A point of a road: how far along it from its node `a` to its node `b` (0 to 1), and how far from an origin. */
+export interface RoadPoint {
+	readonly fraction: number;
+	readonly meters: number;
+}
+
+/**
+ * The point of a road nearest the origin of `projection`: a function of the road's nodes `a` and `b`, which takes
+ * them as plain numbers since it runs for every road near the origin.
+ */
+export function nearestOnRoad(graph: Graph, projection: LocalProjection): (a: number, b: number) => RoadPoint {
+	const { nodeLat, nodeLon } = graph;
+	return (a, b) => {
+		const ax = projection.x(nodeLon[a]);
+		const ay = projection.y(nodeLat[a]);
+		const dx = projection.x(nodeLon[b]) - ax;
+		const dy = projection.y(nodeLat[b]) - ay;
+		const lengthSquared = dx * dx + dy * dy;
+		const fraction = lengthSquared === 0 ? 0 : Math.min(1, Math.max(0, -(ax * dx + ay * dy) / lengthSquared));
+		return { fraction, meters: Math.hypot(ax + fraction * dx, ay + fraction * dy) };
+	};
+}
+
 function reachOf(graph: Graph, { lat, lon }: SnapOrigin): Reach {
 	const { nodeLat, nodeLon } = graph;
 	const projection = new LocalProjection(lat, lon);
+	const pointOn = nearestOnRoad(graph, projection);
 	const latReach = MAX_SNAP_METERS / projection.metersPerE7Lat;
 	const lonReach = MAX_SNAP_METERS / projection.metersPerE7Lon;
 	return {
@@ -103,13 +127,7 @@ function reachOf(graph: Graph, { lat, lon }: SnapOrigin): Reach {
 			Math.min(nodeLon[a], nodeLon[b]) > lon + lonReach ||
 			Math.max(nodeLon[a], nodeLon[b]) < lon - lonReach,
 		nearestPoint: (a, b) => {
-			const ax = projection.x(nodeLon[a]);
-			const ay = projection.y(nodeLat[a]);
-			const dx = projection.x(nodeLon[b]) - ax;
-			const dy = projection.y(nodeLat[b]) - ay;
-			const lengthSquared = dx * dx + dy * dy;
-			const fraction = lengthSquared === 0 ? 0 : Math.min(1, Math.max(0, -(ax * dx + ay * dy) / lengthSquared));
-			const meters = Math.hypot(ax + fraction * dx, ay + fraction * dy);
+			const { fraction, meters } = pointOn(a, b);
 			return meters <= MAX_SNAP_METERS ? { a, b, fraction, meters } : undefined;
 		},
 	};

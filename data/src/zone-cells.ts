@@ -1,7 +1,7 @@
 // The zone of every road node of an extract, the world's ~360 M included (#35), without a polygon test for each:
 // a node in a cell of a fine grid that no zone boundary crosses has the zone of the cell, looked up once; only a
 // node in a cell a boundary crosses asks the zone polygons.
-import type { ZoneLocator, ZoneRings } from 'engine/graph';
+import { pointsBounds, type ZoneLocator, type ZoneRings } from 'engine/graph';
 
 /** Cells of 0.05° (~5.5 km), in 1e-7 degrees: the world is 3 600 × 7 200 cells, 52 MB. */
 const CELL = 500_000;
@@ -21,13 +21,7 @@ export class ZoneCells {
 
 	constructor(locator: ZoneLocator, rings: ZoneRings) {
 		this.#locator = locator;
-		let [minLat, minLon, maxLat, maxLon] = [Infinity, Infinity, -Infinity, -Infinity];
-		for (let point = 0; point < rings.lat.length; point++) {
-			minLat = Math.min(minLat, rings.lat[point]);
-			maxLat = Math.max(maxLat, rings.lat[point]);
-			minLon = Math.min(minLon, rings.lon[point]);
-			maxLon = Math.max(maxLon, rings.lon[point]);
-		}
+		const { minLat, minLon, maxLat, maxLon } = pointsBounds(rings, 0, rings.lat.length - 1);
 		const empty = rings.lat.length === 0;
 		this.#firstRow = empty ? 0 : Math.floor((minLat - 1) / CELL);
 		this.#firstColumn = empty ? 0 : Math.floor((minLon - 1) / CELL);

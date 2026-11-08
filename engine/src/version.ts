@@ -50,4 +50,4 @@ export const ENGINE_SOURCES: readonly string[] = [
  * hex; data/test/engine-fingerprint.test.ts checks it. A new fingerprint with the same ENGINE_VERSION says the
  * change gives every ring as before.
  */
-export const ENGINE_FINGERPRINT = 'd33cd98b8fbee4bdba7f43df5a6347a063089b408a132f015d18e47ea25b4cb6';
+export const ENGINE_FINGERPRINT = '224674c3c526cbcc45d48f86862c401542a7fa83d42eef0ba87372d518ecfe6e';

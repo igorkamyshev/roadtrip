@@ -4,9 +4,9 @@
 // edge each.
 //
 // A change to what these arrays mean changes the result of the engine: bump ENGINE_VERSION (engine/AGENTS.md).
-import { ZoneLocator } from './zones.ts';
+import { pointsBounds, ZoneLocator, type Bounds } from './zones.ts';
 
-export { ZoneLocator };
+export { pointsBounds, ZoneLocator, type Bounds };
 
 /**
  * The polygons of the zones, as rings. A point is in a zone when it is inside an odd number of the zone's rings,

@@ -208,9 +208,16 @@ function gridRings(rings: readonly IndexedRing[]): RingGrid {
 	return { firstRow, firstColumn, rows, columns, cellStart, cellRings };
 }
 
-function indexRing(rings: ZoneRings, ring: number): IndexedRing {
-	const first = rings.start[ring];
-	const last = rings.start[ring + 1] - 1;
+/** A box in 1e-7 degrees. */
+export interface Bounds {
+	readonly minLat: number;
+	readonly maxLat: number;
+	readonly minLon: number;
+	readonly maxLon: number;
+}
+
+/** The box of the points `first` to `last` of `rings`; Infinity and -Infinity without a point. */
+export function pointsBounds(rings: ZoneRings, first: number, last: number): Bounds {
 	let minLat = Infinity;
 	let maxLat = -Infinity;
 	let minLon = Infinity;
@@ -221,6 +228,13 @@ function indexRing(rings: ZoneRings, ring: number): IndexedRing {
 		minLon = Math.min(minLon, rings.lon[point]);
 		maxLon = Math.max(maxLon, rings.lon[point]);
 	}
+	return { minLat, maxLat, minLon, maxLon };
+}
+
+function indexRing(rings: ZoneRings, ring: number): IndexedRing {
+	const first = rings.start[ring];
+	const last = rings.start[ring + 1] - 1;
+	const { minLat, maxLat, minLon, maxLon } = pointsBounds(rings, first, last);
 	const bands = Math.max(1, Math.min(MAX_BANDS, Math.ceil((last - first) / POINTS_PER_BAND)));
 	const bandHeight = Math.max(1, (maxLat - minLat) / bands);
 	const bandOf = (lat: number) => Math.min(bands - 1, Math.floor((lat - minLat) / bandHeight));

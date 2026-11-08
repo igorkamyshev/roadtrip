@@ -6,6 +6,7 @@
 import { computeRing, type LatLon, type MultiPolygon } from 'engine';
 import { LocalProjection } from 'engine/geo';
 import type { Graph } from 'engine/graph';
+import { nearestOnRoad } from 'engine/snap';
 import { borderTable } from 'rules';
 import { buildGraph } from '../build-graph.ts';
 import { openOsm } from '../osm/open.ts';
@@ -63,21 +64,15 @@ export class RoadIndex {
 
 	/** The nearest road segment within the index's reach that `accept` takes, or undefined. */
 	nearest(latDegrees: number, lonDegrees: number, accept: (a: number, b: number) => boolean = () => true): NearestRoad | undefined {
-		const { nodeLat, nodeLon } = this.#graph;
 		const lat = Math.round(latDegrees * 1e7);
 		const lon = Math.round(lonDegrees * 1e7);
 		const projection = new LocalProjection(lat, lon);
+		const pointOn = nearestOnRoad(this.#graph, projection);
 		let best: NearestRoad | undefined;
 		for (const edges of this.#cellsAround(lat, lon, projection)) {
 			for (let index = 0; index < edges.length; index += 2) {
 				const [a, b] = [edges[index], edges[index + 1]];
-				const ax = projection.x(nodeLon[a]);
-				const ay = projection.y(nodeLat[a]);
-				const dx = projection.x(nodeLon[b]) - ax;
-				const dy = projection.y(nodeLat[b]) - ay;
-				const lengthSquared = dx * dx + dy * dy;
-				const fraction = lengthSquared === 0 ? 0 : Math.min(1, Math.max(0, -(ax * dx + ay * dy) / lengthSquared));
-				const meters = Math.hypot(ax + fraction * dx, ay + fraction * dy);
+				const { fraction, meters } = pointOn(a, b);
 				if (meters <= this.#maxMeters && (best === undefined || meters < best.meters) && accept(a, b)) {
 					best = { a, b, fraction, meters };
 				}
