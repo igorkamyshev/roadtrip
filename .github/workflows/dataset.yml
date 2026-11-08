@@ -24,6 +24,9 @@ on:
       parts:
         description: Parts of the world separated by spaces; empty is all of them, some of them is a trial
         default: ''
+      parts_run_id:
+        description: A run whose filtered parts (kept 2 days) to build from, of the same date and parts; empty extracts them
+        default: ''
   # Trial runs while #35 is built; .github/dataset-trial.json says which parts.
   push:
     branches: [claude/epic-ramanujan-4tqrk6]
@@ -35,6 +38,8 @@ concurrency:
 
 permissions:
   contents: read
+  # The artifacts of another run, for parts_run_id.
+  actions: read
 
 env:
   # Geofabrik's parts of the world but Russia, biggest first.
@@ -49,16 +54,19 @@ jobs:
       version: ${{ steps.plan.outputs.version }}
       parts: ${{ steps.plan.outputs.parts }}
       prefix: ${{ steps.plan.outputs.prefix }}
+      parts_run_id: ${{ steps.plan.outputs.parts_run_id }}
     steps:
       - uses: actions/checkout@v4
       - id: plan
         env:
           DATE: ${{ inputs.date }}
           PARTS: ${{ inputs.parts }}
+          PARTS_RUN_ID: ${{ inputs.parts_run_id }}
         run: |
           if [ "$GITHUB_EVENT_NAME" = push ]; then
             DATE=$(jq -r '.date // ""' .github/dataset-trial.json)
             PARTS=$(jq -r '.parts | join(" ")' .github/dataset-trial.json)
+            PARTS_RUN_ID=$(jq -r '.partsRunId // ""' .github/dataset-trial.json)
           fi
           parts=${PARTS:-$ALL_PARTS}
           if [ -z "$DATE" ]; then
@@ -85,11 +93,13 @@ jobs:
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "parts=$(jq -cn --arg parts "$parts" '$parts | split(" ") | map(select(. != ""))')" >> "$GITHUB_OUTPUT"
           echo "prefix=$prefix" >> "$GITHUB_OUTPUT"
+          echo "parts_run_id=$PARTS_RUN_ID" >> "$GITHUB_OUTPUT"
           echo "### Набор данных $version" >> "$GITHUB_STEP_SUMMARY"
           echo "Выгрузки Geofabrik на $DATE: $parts.${prefix:+ Пробный прогон: в R2 под \`$prefix\`, потом удаляется.}" >> "$GITHUB_STEP_SUMMARY"
 
   extract:
     needs: plan
+    if: needs.plan.outputs.parts_run_id == ''
     runs-on: ubuntu-latest
     timeout-minutes: 345
     strategy:
@@ -155,6 +165,7 @@ jobs:
 
   build:
     needs: [plan, extract]
+    if: ${{ !cancelled() && needs.plan.result == 'success' && (needs.extract.result == 'success' || needs.extract.result == 'skipped') }}
     runs-on: ubuntu-latest
     timeout-minutes: 345
     env:
@@ -179,6 +190,8 @@ jobs:
           pattern: part-*
           path: ${{ env.WORK }}/parts
           merge-multiple: true
+          run-id: ${{ needs.plan.outputs.parts_run_id || github.run_id }}
+          github-token: ${{ github.token }}
       - name: Merge the parts and add the locations to the ways
         working-directory: ${{ env.WORK }}
         run: |
@@ -223,6 +236,7 @@ jobs:
 
   publish:
     needs: [plan, build]
+    if: ${{ !cancelled() && needs.build.result == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
