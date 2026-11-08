@@ -10,7 +10,7 @@ export function pair(status: PairStatus, extra: Partial<BorderPair> = {}): Borde
 	return { pair: ['AAA', 'BBB'], status, checked: '2026-11-07', sources: [], ...extra };
 }
 
-/** A crossing of AAA–BBB at the point. */
-export function crossing(id: string, lat: number, lon: number, status: CrossingStatus): BorderCrossing {
+/** A crossing of AAA–BBB at the point, [lat, lon] in degrees. */
+export function crossing(id: string, [lat, lon]: readonly [number, number], status: CrossingStatus): BorderCrossing {
 	return { id, pair: ['AAA', 'BBB'], name: id, lat, lon, status, checked: '2026-11-07', sources: [] };
 }

@@ -12,11 +12,16 @@ interface Query {
 /** The query service: labels by GeoNames id (several items may share an id), or a status to answer with. */
 function queryService(labels: Record<number, string[]>, failures: { status: number; retryAfter?: string }[] = []) {
 	const queries: Query[] = [];
-	const fetch = async (input: string | URL | Request, init?: RequestInit) => {
-		const body = new URLSearchParams(String(init?.body));
+	const answer = (input: string | URL | Request, init?: RequestInit) => {
+		// The client posts the query as a form, in a string.
+		const body = new URLSearchParams(typeof init?.body === 'string' ? init.body : '');
 		const sparql = body.get('query') ?? '';
 		const ids = [...sparql.matchAll(/"(\d+)"/gu)].map((match) => Number(match[1]));
-		queries.push({ url: String(input), ids, userAgent: new Headers(init?.headers).get('user-agent') });
+		queries.push({
+			url: input instanceof Request ? input.url : input.toString(),
+			ids,
+			userAgent: new Headers(init?.headers).get('user-agent'),
+		});
 		const failure = failures.shift();
 		if (failure !== undefined) {
 			return new Response('busy', {
@@ -32,6 +37,7 @@ function queryService(labels: Record<number, string[]>, failures: { status: numb
 		);
 		return Response.json({ head: { vars: ['gn', 'l'] }, results: { bindings } });
 	};
+	const fetch = (input: string | URL | Request, init?: RequestInit) => Promise.resolve(answer(input, init));
 	return { fetch, queries };
 }
 
@@ -39,8 +45,9 @@ function clock() {
 	const waits: number[] = [];
 	return {
 		waits,
-		sleep: async (ms: number) => {
+		sleep: (ms: number) => {
 			waits.push(ms);
+			return Promise.resolve();
 		},
 	};
 }

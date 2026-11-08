@@ -22,31 +22,34 @@ function memoryStore(options: { broken?: string; truncated?: string } = {}) {
 	const objects = new Map<string, Uint8Array>();
 	const writes: string[] = [];
 	const store: DatasetStore = {
-		async upload(key, path) {
+		upload: (key, path) => {
 			if (key === options.broken) {
-				throw new Error(`network error uploading ${key}`);
+				return Promise.reject(new Error(`network error uploading ${key}`));
 			}
 			const bytes = readFileSync(path);
 			objects.set(key, key === options.truncated ? bytes.subarray(1) : bytes);
 			writes.push(key);
+			return Promise.resolve();
 		},
-		async size(key) {
-			return objects.get(key)?.length;
-		},
-		async read(key) {
+		size: (key) => Promise.resolve(objects.get(key)?.length),
+		read: (key) => {
 			const bytes = objects.get(key);
-			return bytes === undefined ? undefined : new TextDecoder().decode(bytes);
+			return Promise.resolve(bytes === undefined ? undefined : new TextDecoder().decode(bytes));
 		},
-		async write(key, text) {
+		write: (key, text) => {
 			objects.set(key, new TextEncoder().encode(text));
 			writes.push(key);
+			return Promise.resolve();
 		},
 	};
 	const text = (key: string) => new TextDecoder().decode(objects.get(key));
 	return { store, objects, writes, text };
 }
 
-const silent = () => {};
+const silent = { log: () => {} };
+
+/** Any SHA-256 in hex: vitest types its matchers as `any`. */
+const SHA256: unknown = expect.stringMatching(/^[0-9a-f]{64}$/u);
 
 describe('publishing a dataset', () => {
 	let directory: string;
@@ -80,11 +83,11 @@ describe('publishing a dataset', () => {
 		expect(JSON.parse(r2.text('current.json'))).toEqual({
 			version: '2026-11-07',
 			files: {
-				'graph.graph': { size: 19, sha256: expect.stringMatching(/^[0-9a-f]{64}$/u) },
-				'zones.json': { size: outlines(WORLD_ZONES).length, sha256: expect.stringMatching(/^[0-9a-f]{64}$/u) },
-				'cities.json': { size: 24, sha256: expect.stringMatching(/^[0-9a-f]{64}$/u) },
-				'dataset.json': { size: 28, sha256: expect.stringMatching(/^[0-9a-f]{64}$/u) },
-				'report.md': { size: 23, sha256: expect.stringMatching(/^[0-9a-f]{64}$/u) },
+				'graph.graph': { size: 19, sha256: SHA256 },
+				'zones.json': { size: outlines(WORLD_ZONES).length, sha256: SHA256 },
+				'cities.json': { size: 24, sha256: SHA256 },
+				'dataset.json': { size: 28, sha256: SHA256 },
+				'report.md': { size: 23, sha256: SHA256 },
 			},
 		});
 		expect(r2.text('2026-11-07/manifest.json')).toBe(r2.text('current.json'));
@@ -96,9 +99,9 @@ describe('publishing a dataset', () => {
 		await publishDataset(r2.store, directory, silent);
 
 		// sha256sum of 'RTGRAPH\ngraph bytes'.
-		expect(JSON.parse(r2.text('current.json')).files['graph.graph'].sha256).toBe(
-			'0de73e4d4e4c8cbb05718b4b12fd27fb31190e9c3e4043c635266f57401cd0d0',
-		);
+		expect(JSON.parse(r2.text('current.json'))).toMatchObject({
+			files: { 'graph.graph': { sha256: '0de73e4d4e4c8cbb05718b4b12fd27fb31190e9c3e4043c635266f57401cd0d0' } },
+		});
 	});
 
 	it.each([
@@ -110,7 +113,7 @@ describe('publishing a dataset', () => {
 
 		await expect(publishDataset(r2.store, directory, silent)).rejects.toThrow(message);
 
-		expect(JSON.parse(r2.text('current.json')).version).toBe('2026-10-01');
+		expect(JSON.parse(r2.text('current.json'))).toMatchObject({ version: '2026-10-01' });
 	});
 
 	it('publishes the same files under their version again, as a rerun does', async () => {
@@ -120,7 +123,7 @@ describe('publishing a dataset', () => {
 
 		await publishDataset(r2.store, directory, silent);
 
-		expect(JSON.parse(r2.text('current.json')).version).toBe('2026-11-07');
+		expect(JSON.parse(r2.text('current.json'))).toMatchObject({ version: '2026-11-07' });
 	});
 
 	it('uploads nothing over a version published with other files, and says to take a new one', async () => {
@@ -170,9 +173,9 @@ describe('publishing a dataset', () => {
 		writeFileSync(join(directory, 'zones.json'), outlines(['AND', 'ESP', 'FRA', 'PRT']));
 		const r2 = memoryStore();
 
-		await publishDataset(r2.store, directory, silent, { trial: true });
+		await publishDataset(r2.store, directory, { ...silent, trial: true });
 
-		expect(JSON.parse(r2.text('current.json')).version).toBe('2026-11-07');
+		expect(JSON.parse(r2.text('current.json'))).toMatchObject({ version: '2026-11-07' });
 	});
 });
 

@@ -113,6 +113,9 @@ describe('the roads of the graph', () => {
 	});
 });
 
+/** Any number: vitest types its matchers as `any`. */
+const ANY_NUMBER: unknown = expect.any(Number);
+
 describe('a calculation', () => {
 	it('gives the same result for the same input, on a graph built again from the same file', () => {
 		const { timings: _first, ...first } = computeRing(twoCountries, borderTable, request(0.5, 0.97, 2));
@@ -123,8 +126,8 @@ describe('a calculation', () => {
 
 	it('times the traversal and the contour', () => {
 		expect(computeRing(straightRoad, borderTable, request(0, 0, 2)).timings).toEqual({
-			traversalMs: expect.any(Number),
-			contourMs: expect.any(Number),
+			traversalMs: ANY_NUMBER,
+			contourMs: ANY_NUMBER,
 		});
 	});
 });
@@ -200,20 +203,19 @@ describe('a border', () => {
 
 describe('a closed country', () => {
 	const borders = fixtureGraph('borders.osm');
+	/** The 12 h ring from road 3 of borders.osm at `lon`°E, with the closed countries. */
+	const fromRoad3 = (lon: number, closedCountries: string[]) =>
+		computeRing(borders, rules(), { ...request(0.3, lon, 12), closedCountries });
 
 	it('lets no one through to the open country beyond it', () => {
-		const from = (closedCountries: string[]) => computeRing(borders, rules(), { ...request(0.3, 0.5, 12), closedCountries });
-
-		expect(from([])).toMatchObject({ outcome: 'empty', maxHours: 8 });
-		expect(from(['BBB'])).toMatchObject({ outcome: 'empty', maxHours: 2 });
+		expect(fromRoad3(0.5, [])).toMatchObject({ outcome: 'empty', maxHours: 8 });
+		expect(fromRoad3(0.5, ['BBB'])).toMatchObject({ outcome: 'empty', maxHours: 2 });
 	});
 
 	it('is open when it is the start country', () => {
 		// On road 3 in BBB, west of the junction at 1.5°E.
-		const from = (closedCountries: string[]) => computeRing(borders, rules(), { ...request(0.3, 1.3, 12), closedCountries });
-
-		expect(from(['BBB'])).toMatchObject({ outcome: 'empty', maxHours: 5, startCountry: 'BBB' });
-		expect(from(['AAA', 'BBB', 'CCC'])).toMatchObject({ outcome: 'empty', maxHours: 2, startCountry: 'BBB' });
+		expect(fromRoad3(1.3, ['BBB'])).toMatchObject({ outcome: 'empty', maxHours: 5, startCountry: 'BBB' });
+		expect(fromRoad3(1.3, ['AAA', 'BBB', 'CCC'])).toMatchObject({ outcome: 'empty', maxHours: 2, startCountry: 'BBB' });
 	});
 
 	it('stays out of the ring, though the land next to a reached road is in it', () => {
@@ -247,7 +249,7 @@ describe('land in no country’s polygon between two countries', () => {
 		const result = computeRing(noZone, table, { ...request(0.5, lon, 12), closedCountries });
 		return result.outcome === 'empty' ? result.maxHours : result.outcome;
 	};
-	const atTheGap = crossing('gap', 0.5, 2, 'open');
+	const atTheGap = crossing('gap', [0.5, 2], 'open');
 
 	it('is crossed into the country beyond it at the border, where the road leaves it', () => {
 		expect(maxHoursFrom(0.5, rules())).toBe(4);
@@ -266,7 +268,7 @@ describe('land in no country’s polygon between two countries', () => {
 
 /** A crossing of AAA–BBB where road `road` of borders.osm crosses it, at 1°E. */
 function crossingOn(road: number, status: CrossingStatus): BorderCrossing {
-	return crossing(`road${road}`, road / 10, 1, status);
+	return crossing(`road${road}`, [road / 10, 1], status);
 }
 
 describe('a closed territory', () => {
@@ -297,22 +299,22 @@ describe('the zones of #13', () => {
 	const zones = fixtureGraph('zones.osm');
 
 	it.each([
-		['Kosovo', 0.5, 'no_ring', 'RKS'],
-		['Northern Cyprus', 2.5, 'no_roads', 'NX'],
-		['Cyprus outside Northern Cyprus', 3.5, 'no_roads', 'CYP'],
-		['Akrotiri and Dhekelia', 4.5, 'no_roads', 'CYP'],
-		['Transnistria', 7.5, 'no_roads', 'MDA'],
-		['Russia outside Ukraine', 9.5, 'no_roads', 'RUS'],
-		['Crimea', 10.3, 'no_ring', 'CRIMEA'],
-		['Sevastopol', 10.7, 'no_ring', 'CRIMEA'],
-		['Abkhazia', 13.5, 'no_ring', 'ABKHAZIA'],
-		['South Ossetia', 14.5, 'no_ring', 'SOUTH_OSSETIA'],
-		['Georgia outside them', 13.9, 'no_roads', 'GEO'],
-		['the Gaza Strip', 16.5, 'no_ring', 'GAZA'],
-		['Morocco north of Western Sahara', 18.5, 'no_roads', 'MAR'],
-		['Western Sahara west of the wall', 19.5, 'no_ring', 'WESTERN_SAHARA'],
-		['Western Sahara east of the wall', 20.5, 'no_ring', 'WESTERN_SAHARA'],
-	])('put an origin in %s at %s°E in its zone: %s, start country %s', (_, lon, outcome, startCountry) => {
+		{ place: 'Kosovo', lon: 0.5, outcome: 'no_ring', startCountry: 'RKS' },
+		{ place: 'Northern Cyprus', lon: 2.5, outcome: 'no_roads', startCountry: 'NX' },
+		{ place: 'Cyprus outside Northern Cyprus', lon: 3.5, outcome: 'no_roads', startCountry: 'CYP' },
+		{ place: 'Akrotiri and Dhekelia', lon: 4.5, outcome: 'no_roads', startCountry: 'CYP' },
+		{ place: 'Transnistria', lon: 7.5, outcome: 'no_roads', startCountry: 'MDA' },
+		{ place: 'Russia outside Ukraine', lon: 9.5, outcome: 'no_roads', startCountry: 'RUS' },
+		{ place: 'Crimea', lon: 10.3, outcome: 'no_ring', startCountry: 'CRIMEA' },
+		{ place: 'Sevastopol', lon: 10.7, outcome: 'no_ring', startCountry: 'CRIMEA' },
+		{ place: 'Abkhazia', lon: 13.5, outcome: 'no_ring', startCountry: 'ABKHAZIA' },
+		{ place: 'South Ossetia', lon: 14.5, outcome: 'no_ring', startCountry: 'SOUTH_OSSETIA' },
+		{ place: 'Georgia outside them', lon: 13.9, outcome: 'no_roads', startCountry: 'GEO' },
+		{ place: 'the Gaza Strip', lon: 16.5, outcome: 'no_ring', startCountry: 'GAZA' },
+		{ place: 'Morocco north of Western Sahara', lon: 18.5, outcome: 'no_roads', startCountry: 'MAR' },
+		{ place: 'Western Sahara west of the wall', lon: 19.5, outcome: 'no_ring', startCountry: 'WESTERN_SAHARA' },
+		{ place: 'Western Sahara east of the wall', lon: 20.5, outcome: 'no_ring', startCountry: 'WESTERN_SAHARA' },
+	])('put an origin in $place at $lon°E in its zone: $outcome, start country $startCountry', ({ lon, outcome, startCountry }) => {
 		expect(computeRing(zones, borderTable, request(0.5, lon, 2))).toMatchObject({ outcome, startCountry });
 	});
 });

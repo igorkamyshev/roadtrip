@@ -4,12 +4,12 @@ import { createHash } from 'node:crypto';
 import { createWriteStream, mkdirSync, renameSync, rmSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { pipeline } from 'node:stream/promises';
-import { type Manifest, POINTER } from './publish.ts';
+import { type Manifest, parseManifest, POINTER } from './publish.ts';
 
 /** Where the deploy reads the dataset from: R2 by Cloudflare's API (`cli/fetch-dataset.ts`), a double in the tests. */
 export interface DatasetSource {
 	/** The bytes of the object under `key`, or undefined when there is none. */
-	get(key: string): Promise<AsyncIterable<Uint8Array> | undefined>;
+	readonly get: (key: string) => Promise<AsyncIterable<Uint8Array> | undefined>;
 }
 
 /**
@@ -23,15 +23,15 @@ export async function fetchDataset(
 	places: Readonly<Record<string, string>>,
 	log: (line: string) => void,
 ): Promise<Manifest> {
-	const manifest = JSON.parse(await text(source, POINTER)) as Manifest;
+	const manifest = parseManifest(await text(source, POINTER), POINTER);
 	const downloads: string[] = [];
 	try {
 		for (const [name, path] of Object.entries(places)) {
 			const key = `${manifest.version}/${name}`;
-			const expected = manifest.files[name];
-			if (expected === undefined) {
+			if (!Object.hasOwn(manifest.files, name)) {
 				throw new Error(`${POINTER} lists no ${name}`);
 			}
+			const expected = manifest.files[name];
 			const body = await source.get(key);
 			if (body === undefined) {
 				throw new Error(`${key} is not in the bucket`);

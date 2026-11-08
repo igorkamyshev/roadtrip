@@ -21,7 +21,7 @@ export interface ZoneOutlines {
 }
 
 /** How far a simplified boundary may stray from the graph's, in meters. */
-export const OUTLINE_TOLERANCE_METERS = 2000;
+const OUTLINE_TOLERANCE_METERS = 2000;
 
 /** Coordinates to 0.001° (~110 m): well within the tolerance, and short in JSON. */
 const DECIMALS = 1000;
@@ -37,6 +37,29 @@ export function zoneOutlines(
 	parts: readonly string[],
 	toleranceMeters = OUTLINE_TOLERANCE_METERS,
 ): ZoneOutlines {
+	const regions = new Map<string, MultiPolygon>();
+	for (const [code, rings] of simplifiedRings(graph, toleranceMeters)) {
+		// The even-odd rule of ZoneLocator: a point is in the zone when an odd number of its rings hold it.
+		const [first, ...rest] = rings.map((ring): MultiPolygon => [[ring]]);
+		regions.set(code, clipping.xor(first, ...rest));
+	}
+	const partRegions = parts.flatMap((code) => {
+		const region = regions.get(code);
+		return region === undefined ? [] : [{ region, box: bbox(region) }];
+	});
+	const features: ZoneOutline[] = [];
+	// By code, as the default sort orders strings.
+	for (const [code, region] of [...regions].toSorted(([one], [two]) => (one < two ? -1 : 1))) {
+		const coordinates = rounded(parts.includes(code) ? region : withoutParts(region, partRegions));
+		if (coordinates.length > 0) {
+			features.push({ type: 'Feature', properties: { zone: code }, geometry: { type: 'MultiPolygon', coordinates } });
+		}
+	}
+	return { type: 'FeatureCollection', features };
+}
+
+/** Each zone's rings, simplified, without those smaller than the tolerance squared. */
+function simplifiedRings(graph: Pick<Graph, 'zones' | 'zoneRings'>, toleranceMeters: number): Map<string, Ring[]> {
 	const { zone, start, lat, lon } = graph.zoneRings;
 	const ringsByZone = new Map<string, Ring[]>();
 	for (let ring = 0; ring < zone.length; ring++) {
@@ -50,32 +73,14 @@ export function zoneOutlines(
 			ringsByZone.set(code, [...(ringsByZone.get(code) ?? []), simplified]);
 		}
 	}
-	const regions = new Map<string, MultiPolygon>();
-	for (const [code, rings] of ringsByZone) {
-		// The even-odd rule of ZoneLocator: a point is in the zone when an odd number of its rings hold it.
-		const [first, ...rest] = rings.map((ring): MultiPolygon => [[ring]]);
-		regions.set(code, clipping.xor(first, ...rest));
-	}
-	const partRegions = parts.flatMap((code) => {
-		const region = regions.get(code);
-		return region === undefined ? [] : [{ code, region, box: bbox(region) }];
-	});
-	const features: ZoneOutline[] = [];
-	for (const code of [...regions.keys()].sort()) {
-		let region = regions.get(code)!;
-		if (!parts.includes(code)) {
-			const box = bbox(region);
-			const inside = partRegions.filter((part) => overlap(box, part.box)).map((part) => part.region);
-			if (inside.length > 0) {
-				region = clipping.difference(region, ...inside);
-			}
-		}
-		const coordinates = rounded(region);
-		if (coordinates.length > 0) {
-			features.push({ type: 'Feature', properties: { zone: code }, geometry: { type: 'MultiPolygon', coordinates } });
-		}
-	}
-	return { type: 'FeatureCollection', features };
+	return ringsByZone;
+}
+
+/** A country's region with the parts of countries that overlap its box cut out, since a part wins. */
+function withoutParts(region: MultiPolygon, parts: readonly { region: MultiPolygon; box: Box }[]): MultiPolygon {
+	const box = bbox(region);
+	const inside = parts.filter((part) => overlap(box, part.box)).map((part) => part.region);
+	return inside.length > 0 ? clipping.difference(region, ...inside) : region;
 }
 
 /**
@@ -96,25 +101,31 @@ function simplifyRing(ring: readonly Pair[], tolerance: number): Ring | undefine
 			farthest = point;
 		}
 	}
-	const kept = new Uint8Array(ring.length);
-	kept[0] = 1;
-	kept[farthest] = 1;
-	kept[last] = 1;
-	for (const [from, to] of [
-		[0, farthest],
-		[farthest, last],
-	]) {
-		keepFarPoints(ring, from, to, tolerance, kept);
-	}
+	const kept = keptPoints(
+		ring,
+		[
+			[0, farthest],
+			[farthest, last],
+		],
+		tolerance,
+	);
 	const simplified = ring.filter((_, point) => kept[point] === 1);
 	return simplified.length >= 4 ? simplified : undefined;
 }
 
-/** Douglas–Peucker between two kept points, without recursion: a country's ring has hundreds of thousands. */
-function keepFarPoints(ring: readonly Pair[], first: number, last: number, tolerance: number, kept: Uint8Array): void {
-	const stack: [number, number][] = [[first, last]];
-	while (stack.length > 0) {
-		const [from, to] = stack.pop()!;
+/**
+ * Douglas–Peucker on each span of the ring between two points kept, without recursion: a country's ring has
+ * hundreds of thousands. The points kept are 1, the spans' ends among them; each span is simplified on its own.
+ */
+function keptPoints(ring: readonly Pair[], spans: readonly [number, number][], tolerance: number): Uint8Array {
+	const kept = new Uint8Array(ring.length);
+	const stack = [...spans];
+	for (const [from, to] of spans) {
+		kept[from] = 1;
+		kept[to] = 1;
+	}
+	for (let span = stack.pop(); span !== undefined; span = stack.pop()) {
+		const [from, to] = span;
 		let farthest = -1;
 		let farthestMeters = tolerance;
 		for (let point = from + 1; point < to; point++) {
@@ -129,6 +140,7 @@ function keepFarPoints(ring: readonly Pair[], first: number, last: number, toler
 			stack.push([from, farthest], [farthest, to]);
 		}
 	}
+	return kept;
 }
 
 /** (x, y) in meters of `point` from `origin`, east and north, on the plane tangent at `origin`'s latitude. */
@@ -184,14 +196,7 @@ function rounded(region: MultiPolygon): MultiPolygon {
 	for (const polygon of region) {
 		const rings: Ring[] = [];
 		for (const ring of polygon) {
-			const points: Ring = [];
-			for (const [lon, lat] of ring) {
-				const point: Pair = [Math.round(lon * DECIMALS) / DECIMALS, Math.round(lat * DECIMALS) / DECIMALS];
-				const previous = points.at(-1);
-				if (previous === undefined || previous[0] !== point[0] || previous[1] !== point[1]) {
-					points.push(point);
-				}
-			}
+			const points = roundedRing(ring);
 			if (points.length >= 4) {
 				rings.push(points);
 			} else if (rings.length === 0) {
@@ -204,4 +209,17 @@ function rounded(region: MultiPolygon): MultiPolygon {
 		}
 	}
 	return result;
+}
+
+/** The ring to 0.001°, without a point repeated right after itself. */
+function roundedRing(ring: Ring): Ring {
+	const points: Ring = [];
+	for (const [lon, lat] of ring) {
+		const point: Pair = [Math.round(lon * DECIMALS) / DECIMALS, Math.round(lat * DECIMALS) / DECIMALS];
+		const previous = points.at(-1);
+		if (previous === undefined || previous[0] !== point[0] || previous[1] !== point[1]) {
+			points.push(point);
+		}
+	}
+	return points;
 }

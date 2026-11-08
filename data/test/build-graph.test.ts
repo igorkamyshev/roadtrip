@@ -24,7 +24,7 @@ function edges(graph: Graph, keep: (edge: number) => boolean = () => true): stri
 			}
 		}
 	}
-	return result.sort();
+	return result.toSorted();
 }
 
 describe('a PBF extract', () => {
@@ -101,7 +101,7 @@ describe('the graph', () => {
 				['0,1.05 BBB', '0,1.5 BBB'],
 			]
 				.flatMap(([one, two]) => [`${one} → ${two}`, `${two} → ${one}`])
-				.sort(),
+				.toSorted(),
 		);
 	});
 
@@ -114,9 +114,9 @@ describe('the graph', () => {
 				['0,0.8 AAA', '0,1.2 '],
 			]
 				.flatMap(([one, two]) => [`${one} → ${two}`, `${two} → ${one}`])
-				.sort(),
+				.toSorted(),
 		);
-		expect([...graph.edgeSeconds].sort()).toEqual([1334, 1334, 2669, 2669]);
+		expect([...graph.edgeSeconds].toSorted((one, two) => one - two)).toEqual([1334, 1334, 2669, 2669]);
 		expect(report.incompleteZones).toEqual(['BBB']);
 	});
 
@@ -129,7 +129,7 @@ describe('the graph', () => {
 				['0,2.2 ', '0,2.8 '],
 			]
 				.flatMap(([one, two]) => [`${one} → ${two}`, `${two} → ${one}`])
-				.sort(),
+				.toSorted(),
 		);
 		expect(report).toMatchObject({ zones: ['AAA'], partialZones: ['AAA'], incompleteZones: ['BBB'] });
 	});
@@ -145,7 +145,7 @@ describe('the graph', () => {
 				['0.3,1.9 BBB', '0.3,2.1 CCC'],
 			]
 				.flatMap(([one, two]) => [`${one} → ${two}`, `${two} → ${one}`])
-				.sort(),
+				.toSorted(),
 		);
 	});
 });
@@ -227,15 +227,18 @@ describe('a loop of degree-2 nodes', () => {
 	});
 });
 
-describe('a chain longer than an edge holds', () => {
-	// Three ways end to end along the equator, 0°–8°–16°–24°E, a node every 0.5°: 2 669 km, 44.5 h at 60 km/h.
-	const way = (from: number) => ({
+/** A way of 8° along the equator from `from`° east, a node every 0.5°. */
+function equatorWay(from: number) {
+	return {
 		refs: Array.from({ length: 17 }, (_, index) => from * 2 + index + 1),
 		points: Array.from({ length: 17 }, (_, index): [number, number] => [0, from + index / 2]),
-	});
+	};
+}
 
+describe('a chain longer than an edge holds', () => {
+	// Three ways end to end along the equator, 0°–8°–16°–24°E, a node every 0.5°: 2 669 km, 44.5 h at 60 km/h.
 	it('is split into edges of at most MAX_EDGE_SECONDS at its nodes, keeping its driving time', () => {
-		const graph = buildGraph(locatedWays(way(0), way(8), way(16))).graph;
+		const graph = buildGraph(locatedWays(equatorWay(0), equatorWay(8), equatorWay(16))).graph;
 
 		expect(graph.nodeLat.every((lat) => lat === 0)).toBe(true);
 		expect([...graph.nodeLon].every((lon) => (lon / 1e7) % 0.5 === 0)).toBe(true);
@@ -277,38 +280,47 @@ describe('an extract the size of a part of the world', () => {
 	});
 });
 
-describe('the build report', () => {
-	const report = (name: string, table: BorderTable) => buildGraph(openOsm(fixturePath(name)), table).report.borders;
+/** The build report on borders of a fixture with a border table. */
+function bordersReport(name: string, table: BorderTable) {
+	return buildGraph(openOsm(fixturePath(name)), table).report.borders;
+}
 
+describe('the build report', () => {
 	it('lists the pairs with passport control whose roads cross nowhere at a border crossing', () => {
 		// chains.osm: one road across AAA–BBB, no checkpoint.
-		expect(report('chains.osm', rules())).toEqual({ pairsWithoutCrossings: [{ pair: 'AAA–BBB', edges: 2 }], crossingsNotFound: [] });
+		expect(bordersReport('chains.osm', rules())).toEqual({ pairsWithoutCrossings: [{ pair: 'AAA–BBB', edges: 2 }], crossingsNotFound: [] });
 	});
 
 	it.each([
-		['an open crossing of the table is on the road', rules({ crossings: [crossing('road', 0, 1, 'open')] })],
+		['an open crossing of the table is on the road', rules({ crossings: [crossing('road', [0, 1], 'open')] })],
 		['the pair is crossed freely', rules({ schengen: ['AAA', 'BBB'] })],
 		['the pair is closed', rules({ pairs: [pair('closed')] })],
 		['a country is closed for everyone', rules({ closedForEveryone: ['BBB'] })],
 	])('lists no pair when %s', (_, table) => {
-		expect(report('chains.osm', table).pairsWithoutCrossings).toEqual([]);
+		expect(bordersReport('chains.osm', table).pairsWithoutCrossings).toEqual([]);
 	});
 
 	it('lists the open crossings of the table near no road across their border', () => {
 		const table = rules({
-			crossings: [crossing('road', 0, 1, 'open'), crossing('nowhere', 0.5, 1, 'open'), crossing('footpath', 0.6, 1, 'pedestrian_only')],
+			crossings: [
+				crossing('road', [0, 1], 'open'),
+				crossing('nowhere', [0.5, 1], 'open'),
+				crossing('footpath', [0.6, 1], 'pedestrian_only'),
+			],
 		});
 
-		expect(report('chains.osm', table).crossingsNotFound).toEqual(['nowhere']);
+		expect(bordersReport('chains.osm', table).crossingsNotFound).toEqual(['nowhere']);
 	});
 
 	it('lists no crossing of a border the graph does not have', () => {
-		const table = rules({ crossings: [{ ...crossing('elsewhere', 0, 1, 'open'), pair: ['CCC', 'DDD'] }] });
+		const table = rules({ crossings: [{ ...crossing('elsewhere', [0, 1], 'open'), pair: ['CCC', 'DDD'] }] });
 
-		expect(report('chains.osm', table).crossingsNotFound).toEqual([]);
+		expect(bordersReport('chains.osm', table).crossingsNotFound).toEqual([]);
 	});
 
 	it('is not made with a border table that has problems', () => {
-		expect(() => report('chains.osm', rules({ pairs: [{ ...pair('closed'), pair: ['BBB', 'AAA'] }] }))).toThrow('alphabetical order');
+		expect(() => bordersReport('chains.osm', rules({ pairs: [{ ...pair('closed'), pair: ['BBB', 'AAA'] }] }))).toThrow(
+			'alphabetical order',
+		);
 	});
 });

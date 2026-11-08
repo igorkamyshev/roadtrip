@@ -36,7 +36,7 @@ export class ZoneCells {
 		this.#cells = new Uint16Array(this.#rows * this.#columns).fill(UNKNOWN);
 		for (let ring = 0; ring < rings.zone.length; ring++) {
 			for (let point = rings.start[ring]; point < rings.start[ring + 1] - 1; point++) {
-				this.#cross(rings.lat[point], rings.lon[point], rings.lat[point + 1], rings.lon[point + 1]);
+				this.#cross(rings, point);
 			}
 		}
 	}
@@ -62,10 +62,15 @@ export class ZoneCells {
 	}
 
 	/**
-	 * Marks the cells the boundary edge between the two points touches, and more: the edge in steps of at most half a
-	 * cell, each marking the cells of its box widened by a unit, so an edge along a grid line marks both sides.
+	 * Marks the cells the boundary edge from point `point` of the rings to the next touches, and more: the edge in
+	 * steps of at most half a cell, each marking the cells of its box widened by a unit, so an edge along a grid line
+	 * marks both sides.
 	 */
-	#cross(lat1: number, lon1: number, lat2: number, lon2: number): void {
+	#cross(rings: ZoneRings, point: number): void {
+		const lat1 = rings.lat[point];
+		const lon1 = rings.lon[point];
+		const lat2 = rings.lat[point + 1];
+		const lon2 = rings.lon[point + 1];
 		const steps = Math.max(1, Math.ceil(Math.max(Math.abs(lat2 - lat1), Math.abs(lon2 - lon1)) / (CELL / 2)));
 		for (let step = 0; step < steps; step++) {
 			const fromLat = lat1 + ((lat2 - lat1) * step) / steps;

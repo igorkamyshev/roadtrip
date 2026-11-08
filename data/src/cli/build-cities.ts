@@ -15,7 +15,8 @@ import { brotliCompressSync } from 'node:zlib';
 import { encodeCities } from '../cities-file.ts';
 import { buildCities } from '../cities.ts';
 import { wikidataRussianLabels } from '../wikidata.ts';
-import { fileLines, loadGraph, log, seconds, userPath, withLocalFile } from './input.ts';
+import { fileLines, log, seconds, userPath, withLocalFile } from './input.ts';
+import { loadGraph } from './load-graph.ts';
 
 const DUMP = 'https://download.geonames.org/export/dump';
 
@@ -28,7 +29,8 @@ const { values, positionals } = parseArgs({
 		'no-wikidata': { type: 'boolean', default: false },
 	},
 });
-const [graphFile, out] = positionals;
+const graphFile = positionals.at(0);
+const out = positionals.at(1);
 if (graphFile === undefined || out === undefined) {
 	log(
 		'usage: pnpm --filter data build-cities <graph file | extract | URL> <out.json> [--cities <cities1000.zip | .txt | URL>] ' +
@@ -48,7 +50,7 @@ const { cities, report } = await buildCities({
 	cities: ofCountries(fileLines(values.cities)),
 	alternateNames: concat(names.map((name) => () => fileLines(name))),
 	wikidataLabels: values['no-wikidata']
-		? async () => new Map()
+		? () => Promise.resolve(new Map<number, string>())
 		: (ids) => {
 				log(`Wikidata: asking for the Russian labels of ${ids.length} cities`);
 				return wikidataRussianLabels(ids, { fetch, sleep, log });
