@@ -51,6 +51,15 @@ describe('the lint hook', () => {
 		expect(told).toContain('no-debugger');
 	});
 
+	it('reports the errors of an edited component (.tsx) too', () => {
+		const file = join(checkout, 'src/card.tsx');
+		writeFileSync(file, BAD);
+		hook({ tool_name: 'Write', tool_input: { file_path: file } });
+		const { status, told } = hook(shellCommand);
+		expect(status).toBe(2);
+		expect(told).toContain('src/card.tsx');
+	});
+
 	it('lints a change made by two edits once both are done', () => {
 		const first = hook(edit(BAD)); // say, a call to a function the next edit adds
 		hook(edit('export {};\n'));

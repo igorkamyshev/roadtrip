@@ -26,7 +26,7 @@ import { spawnSync } from 'node:child_process';
 import { appendFileSync, existsSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, isAbsolute, join, relative } from 'node:path';
 
-const SOURCE = /\.(?:ts|js|mjs|cjs)$/u;
+const SOURCE = /\.(?:ts|tsx|js|mjs|cjs)$/u;
 
 /** What the hook reads of an event: which tool (none at a stop), the file an edit names, the agent's directory and id, and whether this hook kept it from stopping. */
 interface HookEvent {
