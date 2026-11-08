@@ -3,7 +3,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import type { RingFailure } from '../ring/fetch-ring.ts';
 import { hoursShort, plural } from './copy.ts';
-import { LocateIcon, PinIcon } from './icons.tsx';
+import { LocateIcon, PinIcon, SearchIcon } from './icons.tsx';
 
 export type FirstCardState =
 	| { readonly kind: 'no_origin'; readonly geolocationFailed: boolean }
@@ -19,6 +19,8 @@ export type FirstCardState =
 	| { readonly kind: RingFailure };
 
 export interface FirstCardActions {
+	/** Opens the sheet «Откуда едем», to find a city. */
+	readonly onSearch: () => void;
 	readonly onPin: () => void;
 	readonly onLocate: () => void;
 	readonly onRetry: () => void;
@@ -34,7 +36,6 @@ export const SLOW_AFTER_MS = 5000;
 export function FirstCard({ state, actions }: { readonly state: FirstCardState; readonly actions: FirstCardActions }) {
 	switch (state.kind) {
 		case 'no_origin':
-			// #33 puts «Город» first: the search of the sheet «Откуда едем».
 			return (
 				<Card>
 					<h3>Откуда едем?</h3>
@@ -42,7 +43,8 @@ export function FirstCard({ state, actions }: { readonly state: FirstCardState; 
 						{state.geolocationFailed ? 'Браузер не дал доступ к геолокации. ' : ''}Найдите город или укажите точку на карте.
 					</p>
 					<div className="acts">
-						<PinButton onPin={actions.onPin} primary />
+						<SearchButton onSearch={actions.onSearch} primary />
+						<PinButton onPin={actions.onPin} />
 						<button type="button" className="btn" onClick={actions.onLocate} aria-label="Где я">
 							<LocateIcon />
 						</button>
@@ -95,6 +97,7 @@ export function FirstCard({ state, actions }: { readonly state: FirstCardState; 
 					<h3>Рядом нет дорог</h3>
 					<p className="muted small">Точка дальше 50 км от дороги. Выберите другую.</p>
 					<div className="acts">
+						<SearchButton onSearch={actions.onSearch} />
 						<PinButton onPin={actions.onPin} />
 					</div>
 				</Card>
@@ -105,6 +108,7 @@ export function FirstCard({ state, actions }: { readonly state: FirstCardState; 
 					<h3>Кольца нет</h3>
 					<p className="muted small">Отсюда посчитать не можем: эта страна или территория закрыта для всех.</p>
 					<div className="acts">
+						<SearchButton onSearch={actions.onSearch} />
 						<PinButton onPin={actions.onPin} />
 					</div>
 				</Card>
@@ -171,9 +175,18 @@ function Calculating({ hours }: { readonly hours: number }) {
 	);
 }
 
-function PinButton({ onPin, primary = false }: { readonly onPin: () => void; readonly primary?: boolean }) {
+/** «Город»: the sheet «Откуда едем», to find a city. */
+function SearchButton({ onSearch, primary = false }: { readonly onSearch: () => void; readonly primary?: boolean }) {
 	return (
-		<button type="button" className={primary ? 'btn primary' : 'btn'} onClick={onPin}>
+		<button type="button" className={primary ? 'btn primary' : 'btn'} onClick={onSearch}>
+			<SearchIcon /> Город
+		</button>
+	);
+}
+
+function PinButton({ onPin }: { readonly onPin: () => void }) {
+	return (
+		<button type="button" className="btn" onClick={onPin}>
 			<PinIcon /> На карте
 		</button>
 	);

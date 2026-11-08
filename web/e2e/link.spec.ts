@@ -25,7 +25,8 @@ test('a link opens its own state, not where the person is', async ({ page, ringA
 	await page.goto(`/#/?p=${SARAJEVO}&h=2`);
 
 	await expect(firstCard(page)).toContainText('В кольце 1–2 ч');
-	await expect(phrase(page)).toContainText('Из точки на карте, 1–2 часа в пути.');
+	// The origin's label is the nearest city of the cities file.
+	await expect(phrase(page)).toContainText('Из точки Сараево, 1–2 часа в пути.');
 	await expect(slider(page)).toHaveAttribute('aria-valuenow', '2');
 	expect(ringApi.calls).toEqual([expect.objectContaining({ lat: '43.85630', lon: '18.41310', hours: 2 })]);
 	await expect(page).toHaveURL(new RegExp(`#/\\?p=${SARAJEVO}&h=2&cit=RUS$`, 'u'));

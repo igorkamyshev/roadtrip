@@ -1,10 +1,11 @@
-// The sheets the phrase opens (spec «Экран»): «Откуда едем», «Гражданство», «Мои визы» and «Что важно знать». The
-// list of all cities (src/cities/cities-sheet.tsx) is a `Sheet` too.
+// The sheets the phrase opens (spec «Экран»): «Гражданство», «Мои визы» and «Что важно знать». «Откуда едем»
+// (src/start/start-sheet.tsx) and the list of all cities (src/cities/cities-sheet.tsx) are `Sheet`s too.
 import { EXEMPTION_VISAS } from 'rules/held-visas';
 import { useId, useState, type ReactNode, type Ref } from 'react';
+import { searchable } from '../cities/search.ts';
 import { CITIZENSHIP_CHOICES, countryName, DEFAULT_CITIZENSHIP, SINGLE_COUNTRY_VISAS, visaName } from './countries.ts';
 import { opensByRows, opensText } from './held-visas.ts';
-import { CheckIcon, CloseIcon, InfoIcon, LocateIcon, PinIcon, SearchIcon, WarnIcon } from './icons.tsx';
+import { CheckIcon, CloseIcon, InfoIcon, SearchIcon, WarnIcon } from './icons.tsx';
 
 export interface SheetProps {
 	readonly title: string;
@@ -33,30 +34,6 @@ export function Sheet({ title, onClose, children, bodyRef }: SheetProps) {
 	);
 }
 
-export interface StartSheetProps {
-	readonly geolocationFailed: boolean;
-	readonly onPin: () => void;
-	readonly onLocate: () => void;
-	readonly onClose: () => void;
-}
-
-/** «Откуда едем»: the pin and «Где я». #33 adds the city search over them. */
-export function StartSheet({ geolocationFailed, onPin, onLocate, onClose }: StartSheetProps) {
-	return (
-		<Sheet title="Откуда едем" onClose={onClose}>
-			<div className="chips">
-				<button type="button" className="btn" onClick={onPin}>
-					<PinIcon /> Указать на карте
-				</button>
-				<button type="button" className="btn" onClick={onLocate}>
-					<LocateIcon /> Где я
-				</button>
-			</div>
-			{geolocationFailed ? <p className="muted small">Браузер не дал доступ к геолокации.</p> : null}
-		</Sheet>
-	);
-}
-
 export interface CitizenshipSheetProps {
 	/** Sorted, at least one. */
 	readonly citizenships: readonly string[];
@@ -71,7 +48,7 @@ export interface CitizenshipSheetProps {
  */
 export function CitizenshipSheet({ citizenships, onChange, onClose }: CitizenshipSheetProps) {
 	const [filter, setFilter] = useState('');
-	const wanted = searchable(filter.trim());
+	const wanted = searchable(filter);
 	const shown = CITIZENSHIP_CHOICES.filter((code) => searchable(countryName(code)).includes(wanted));
 	const toggle = (code: string) => {
 		if (!citizenships.includes(code)) {
@@ -132,7 +109,7 @@ export interface VisasSheetProps {
  */
 export function VisasSheet({ visas, citizenships, today, onChange, onClose }: VisasSheetProps) {
 	const [filter, setFilter] = useState('');
-	const wanted = searchable(filter.trim());
+	const wanted = searchable(filter);
 	const shown = SINGLE_COUNTRY_VISAS.filter((code) => searchable(countryName(code)).includes(wanted));
 	const toggle = (code: string) => {
 		onChange(visas.includes(code) ? visas.filter((held) => held !== code) : [...visas, code].sort());
@@ -213,11 +190,6 @@ function PickSection({ title, children }: { readonly title: string; readonly chi
 			{children}
 		</section>
 	);
-}
-
-/** A name or a filter as the filter compares them: lowercase, ё as е. */
-function searchable(text: string): string {
-	return text.toLowerCase().replaceAll('ё', 'е');
 }
 
 /** ⓘ «Что важно знать»: the spec's list. */

@@ -13,7 +13,8 @@ test('on the first visit the ring comes for where the person is, N = 1', async (
 
 	const [call] = await ringApi.waitForCalls(1);
 	expect(call).toMatchObject({ lat: '44.81760', lon: '20.45730', hours: 1, cit: 'RUS', visas: null });
-	await expect(phrase(page)).toContainText('Из точки на карте, до 1 часа в пути.');
+	// The origin's label is the nearest city of the cities file.
+	await expect(phrase(page)).toContainText('Из точки Белград, до 1 часа в пути.');
 	await expect(firstCard(page)).toContainText('В кольце до 1 ч');
 	await expect.poll(() => ringOnMap(page)).toEqual([squareRing(BELGRADE.lat, BELGRADE.lon, 0, 0.5).ring]);
 	expect(await startOnMap(page)).toEqual([BELGRADE.lon, BELGRADE.lat]);
@@ -53,7 +54,7 @@ test('«Где я» sets the origin once the browser gives the position', async 
 
 	const [call] = await ringApi.waitForCalls(1);
 	expect(call).toMatchObject({ lat: '44.81760', lon: '20.45730', hours: 1 });
-	await expect(phrase(page)).toContainText('Из точки на карте, до 1 часа в пути.');
+	await expect(phrase(page)).toContainText('Из точки Белград, до 1 часа в пути.');
 	await expect(page).toHaveURL(/#\/\?p=44\.81760,20\.45730&h=1&cit=RUS$/u);
 });
 
@@ -87,7 +88,7 @@ test('«Отмена» leaves the pin mode and the origin as they were', async (
 	await page.goto('/');
 	await expect(firstCard(page)).toContainText('В кольце до 1 ч');
 
-	await phrase(page).getByRole('button', { name: 'на карте' }).click();
+	await phrase(page).getByRole('button', { name: 'Белград' }).click();
 	await page.getByRole('dialog', { name: 'Откуда едем' }).getByRole('button', { name: 'Указать на карте' }).click();
 	await expect(slider(page)).toHaveCount(0);
 	await dragMap(page, 100, 100);
