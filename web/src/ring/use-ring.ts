@@ -1,8 +1,8 @@
 // The rings of the session in TanStack Query (spec «Состояние, ссылка и память браузера»): one query per origin, N,
 // citizenships and held visas. An answer stays in memory to the end of the session and is shown again without a
 // request; nothing repeats a request by itself, only «Повторить». While a ring comes, the previous ring of the same
-// origin stands in for it. Every change of what the screen asks for passes through `useRing` (#34: `ring result`
-// with `source: memory` for an answer from memory).
+// origin stands in for it. Every change of what the screen asks for passes through `useRing` (`ring result`,
+// src/analytics/, tells an answer from memory as `source: memory`).
 import { queryOptions, skipToken, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useMemo, useSyncExternalStore } from 'react';
 import type { RingResponse } from 'worker/api';

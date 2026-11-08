@@ -1,8 +1,8 @@
-// Where the person is, from the browser (spec «Экран»: geolocation on the first visit and «Где я»). #34 sends
+// Where the person is, from the browser (spec «Экран»: geolocation on the first visit and «Где я»). The screen sends
 // `geolocation failed` with the reason.
 import { point, type Point } from '../state/point.ts';
 
-/** Why the browser gave no position: the reasons of #34's `geolocation failed`. */
+/** Why the browser gave no position: the reasons of `geolocation failed`. */
 export type GeolocationFailure = 'denied' | 'unavailable' | 'timeout';
 
 export class GeolocationError extends Error {

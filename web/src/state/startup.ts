@@ -5,7 +5,7 @@ import { parseSearch, STATE_PARAMS, stringifySearch, validateScreenSearch, type 
 
 const SAVED_KEY = 'roadtrip.screen';
 
-/** Where the opening state came from. #34's `link opened` is a load from the link with nothing saved. */
+/** Where the opening state came from. `link opened` is a load from the link with nothing saved. */
 export type StartupSource = 'link' | 'saved' | 'default';
 
 export interface Startup {

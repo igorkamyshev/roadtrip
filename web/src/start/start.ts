@@ -1,10 +1,10 @@
 // The origin and how it was set (spec «Экран»: the origin's label in the phrase; «Аналитика и ошибки»: `method` of
-// #34's `start set`). The link keeps only the point; how it was set lives in the screen's memory (useScreenState).
+// `start set`). The link keeps only the point; how it was set lives in the screen's memory (useScreenState).
 import type { City } from '../cities/cities.ts';
 import { nearestCity } from '../cities/nearest.ts';
 import type { Point } from '../state/point.ts';
 
-/** How the origin was set: `method` of #34's `start set`. */
+/** How the origin was set: `method` of `start set`. */
 export type StartMethod = 'geolocation' | 'search' | 'pin' | 'link' | 'saved';
 
 /** The origin and how it was set; a city picked in the search with it. */

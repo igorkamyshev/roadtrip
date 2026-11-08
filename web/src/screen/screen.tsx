@@ -4,7 +4,8 @@ import type { UseQueryResult } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { utcDate } from 'rules/held-visas';
 import type { RingResponse } from 'worker/api';
-import { type City, useCities } from '../cities/cities.ts';
+import { useScreenAnalytics } from '../analytics/use-screen-analytics.ts';
+import { type City, useCities, useCitiesFile } from '../cities/cities.ts';
 import { CitiesSheet } from '../cities/cities-sheet.tsx';
 import { CityCard, MoreCard } from '../cities/city-card.tsx';
 import { scrollToCard, useCarouselStops } from '../cities/carousel.ts';
@@ -16,7 +17,7 @@ import { ringKey, useCachedHours, useRing } from '../ring/use-ring.ts';
 import { point, type Point } from '../state/point.ts';
 import { settingsOf } from '../state/settings.ts';
 import { useScreenState } from '../state/use-screen-state.ts';
-import { locate } from '../start/geolocation.ts';
+import { GeolocationError, locate } from '../start/geolocation.ts';
 import { StartSheet } from '../start/start-sheet.tsx';
 import { startLabel } from '../start/start.ts';
 import { citizenshipsLabel, visasLabel } from './countries.ts';
@@ -59,6 +60,11 @@ export function Screen() {
 	const [sheet, setSheet] = useState<SheetName>();
 	const [pinning, setPinning] = useState(false);
 	const [geolocationFailed, setGeolocationFailed] = useState(false);
+	// The request the screen shows: what the 5 s of «Считаем…», the camera's fit to a new ring and `ring result` follow.
+	const requestId = origin === undefined ? '' : JSON.stringify(ringKey(origin, hours, settings));
+	const [retries, setRetries] = useState(0);
+	const citiesFile = useCitiesFile();
+	const analytics = useScreenAnalytics({ start, request: origin === undefined ? undefined : requestId, retries, hours, settings, ring, citiesFile });
 
 	const located = useCallback(
 		(position: Point) => {
@@ -68,9 +74,15 @@ export function Screen() {
 		},
 		[setStart],
 	);
-	const notLocated = useCallback(() => {
-		setGeolocationFailed(true);
-	}, []);
+	const notLocated = useCallback(
+		(error: unknown) => {
+			setGeolocationFailed(true);
+			if (error instanceof GeolocationError) {
+				analytics.geolocationFailed(error.reason);
+			}
+		},
+		[analytics],
+	);
 	const locateHere = useCallback(() => {
 		locate().then(located, notLocated);
 	}, [located, notLocated]);
@@ -110,8 +122,6 @@ export function Screen() {
 		}
 	};
 
-	// The request the screen shows: what the 5 s of «Считаем…» and the camera's fit to a new ring follow.
-	const requestId = origin === undefined ? '' : JSON.stringify(ringKey(origin, hours, settings));
 	const shownRing = ring.data?.outcome === 'ring' ? ring.data.ring : undefined;
 	// The visa rules of the answer shown: what is hatched, how old they are, and which cities are open.
 	const answer = ring.data?.outcome === 'visa_rules_missing' ? undefined : ring.data;
@@ -227,6 +237,7 @@ export function Screen() {
 							onPin: startPinning,
 							onLocate: locateHere,
 							onRetry: () => {
+								setRetries((count) => count + 1);
 								void ring.refetch();
 							},
 							onCitizenships: openCitizenships,
