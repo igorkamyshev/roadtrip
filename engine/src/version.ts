@@ -24,6 +24,7 @@ export const ENGINE_SOURCES: readonly string[] = [
 	'engine/src/protocol.ts',
 	'engine/src/snap.ts',
 	'engine/src/start.ts',
+	'engine/src/trace.ts',
 	'engine/src/traverse.ts',
 	'engine/src/zones.ts',
 	// The graph's builder: the speeds and which ways are roads, the zones it makes and each road node's, the edges it
@@ -42,4 +43,4 @@ export const ENGINE_SOURCES: readonly string[] = [
  * hex; data/test/engine-fingerprint.test.ts checks it. A new fingerprint with the same ENGINE_VERSION says the
  * change gives every ring as before.
  */
-export const ENGINE_FINGERPRINT = '3345e74587bd19f6ebfa4df34cfb1ceb24e6d7f4a86a42174822276088c47cd7';
+export const ENGINE_FINGERPRINT = 'af3e8077941fba8cc590e200e8746c7438b5dd6711a44ac4abb33f70cc430655';

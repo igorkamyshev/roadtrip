@@ -12,6 +12,13 @@ export interface Seed {
 	readonly seconds: number;
 }
 
+/** Where a traversal starts, and how far it goes. */
+export interface TraversalBounds {
+	readonly seeds: readonly Seed[];
+	/** The most travel time a traversal goes, in seconds. */
+	readonly limitSeconds: number;
+}
+
 export interface Traversal {
 	/** Travel time to each node in seconds, for every node reached within the limit; Infinity for the rest. */
 	readonly seconds: Float64Array;
@@ -23,9 +30,10 @@ export interface Traversal {
  * Travel time over `edge`, which leaves `from`, in seconds: its driving time × 1.2 and any border delay; Infinity
  * where the passage does not let a car go.
  */
+// oxlint-disable-next-line eslint/max-params -- a hot path, per edge of the traversal and the contour: an object would be allocated per call (ADR 0002)
 export function edgeTravelSeconds(graph: Graph, passage: Passage, from: number, edge: number): number {
 	const zone = passage.zone[graph.edgeTarget[edge]];
-	if (!passage.open[zone]) {
+	if (passage.open[zone] === 0) {
 		return Infinity;
 	}
 	const seconds = graph.edgeSeconds[edge] * TRAVEL_PER_DRIVING;
@@ -33,7 +41,7 @@ export function edgeTravelSeconds(graph: Graph, passage: Passage, from: number, 
 }
 
 /** Dijkstra by travel time from the seeds, up to `limitSeconds` of travel, where the passage lets it go. */
-export function traverse(graph: Graph, passage: Passage, seeds: readonly Seed[], limitSeconds: number): Traversal {
+export function traverse(graph: Graph, passage: Passage, { seeds, limitSeconds }: TraversalBounds): Traversal {
 	const { firstEdge, edgeTarget } = graph;
 	const seconds = new Float64Array(graph.nodeLat.length).fill(Infinity);
 	const heap = new NodeHeap();
@@ -63,12 +71,17 @@ export function traverse(graph: Graph, passage: Passage, seeds: readonly Seed[],
 		}
 	}
 	const exhausted = heap.size === 0;
+	forgetBeyond(seconds, limitSeconds);
+	return { seconds, exhausted };
+}
+
+/** Infinity for each node whose time is past the limit: an edge's far end gets its time before the limit stops the heap. */
+function forgetBeyond(seconds: Float64Array, limitSeconds: number): void {
 	for (let node = 0; node < seconds.length; node++) {
 		if (seconds[node] > limitSeconds) {
 			seconds[node] = Infinity;
 		}
 	}
-	return { seconds, exhausted };
 }
 
 /**
@@ -98,11 +111,15 @@ export function latestArrival(graph: Graph, traversal: Traversal, origin: Origin
 			latest = Math.max(latest, latestOn(fromSeconds, seconds[to], forward, back < 0 ? undefined : back * TRAVEL_PER_DRIVING));
 		}
 	}
-	const share = (travel: number | undefined, fraction: number) => (travel === undefined ? undefined : travel * fraction);
 	const toOrigin = snap.fraction;
 	const pastOrigin = 1 - snap.fraction;
 	latest = Math.max(latest, latestOn(seconds[snap.a], accessSeconds, share(forwardSeconds, toOrigin), share(backSeconds, toOrigin)));
 	return Math.max(latest, latestOn(accessSeconds, seconds[snap.b], share(forwardSeconds, pastOrigin), share(backSeconds, pastOrigin)));
+}
+
+/** The travel time over a share of a road, undefined where it may not be driven that way. */
+function share(travel: number | undefined, fraction: number): number | undefined {
+	return travel === undefined ? undefined : travel * fraction;
 }
 
 /**
@@ -110,6 +127,7 @@ export function latestArrival(graph: Graph, traversal: Traversal, origin: Origin
  * reached): driven in `forward` seconds from the one to the other, and in `back` the other way; undefined where the
  * road is one-way the other way. −Infinity when no point of it is reached.
  */
+// oxlint-disable-next-line eslint/max-params -- a hot path, per edge the traversal reached: an object would be allocated per call (ADR 0002)
 function latestOn(one: number, other: number, forward: number | undefined, back: number | undefined): number {
 	if (forward !== undefined && back !== undefined) {
 		// Where one + s × forward = other + (1 − s) × back.

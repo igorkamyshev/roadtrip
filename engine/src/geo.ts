@@ -7,6 +7,7 @@ export const E7 = 1e7;
 export const METERS_PER_DEGREE = (EARTH_RADIUS_M * Math.PI) / 180;
 
 /** Great-circle distance between two points in degrees, in metres. */
+// oxlint-disable-next-line eslint/max-params -- a hot path, per road segment of the builder: an object would be allocated per call (ADR 0002)
 export function haversineMeters(lat1: number, lon1: number, lat2: number, lon2: number): number {
 	const toRad = Math.PI / 180;
 	const dLat = (lat2 - lat1) * toRad;
@@ -16,6 +17,7 @@ export function haversineMeters(lat1: number, lon1: number, lat2: number, lon2: 
 }
 
 /** Distance from a point to the segment between two others, all in 1e-7 degrees, in metres; for short ones. */
+// oxlint-disable-next-line eslint/max-params -- a hot path, per road segment near a border control: an object would be allocated per call (ADR 0002)
 export function segmentMeters(lat: number, lon: number, lat1: number, lon1: number, lat2: number, lon2: number): number {
 	const projection = new LocalProjection(lat, lon);
 	const ax = projection.x(lon1);
@@ -25,6 +27,18 @@ export function segmentMeters(lat: number, lon: number, lat1: number, lon1: numb
 	const lengthSquared = dx * dx + dy * dy;
 	const fraction = lengthSquared === 0 ? 0 : Math.min(1, Math.max(0, -(ax * dx + ay * dy) / lengthSquared));
 	return Math.hypot(ax + fraction * dx, ay + fraction * dy);
+}
+
+/** A grid of cells: `rows` rows of `columns` cells from the south-west corner, row by row from the south. */
+export interface CellGrid {
+	readonly columns: number;
+	readonly rows: number;
+	/** The south-west corner of cell (0, 0), in 1e-7 degrees. */
+	readonly minLat: number;
+	readonly minLon: number;
+	/** Cell size in 1e-7 degrees. */
+	readonly cellLat: number;
+	readonly cellLon: number;
 }
 
 /**

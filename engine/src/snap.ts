@@ -4,6 +4,13 @@ import type { Graph } from './graph.ts';
 /** A road further from the origin than this is no road for it: `no_roads`. */
 export const MAX_SNAP_METERS = 50_000;
 
+/** The origin in 1e-7 degrees, and the zone whose roads it snaps to: any zone's when undefined. */
+export interface SnapOrigin {
+	readonly lat: number;
+	readonly lon: number;
+	readonly zone: number | undefined;
+}
+
 /** Where the origin meets the road: on the segment from node `a` to node `b`, `fraction` of the way from `a`. */
 export interface Snap {
 	readonly a: number;
@@ -30,15 +37,14 @@ export interface OriginRoad {
 export const MIN_REACHABLE_NODES = 50;
 
 /**
- * The nearest point of a road to the origin (1e-7 degrees), on a road with both ends in `zone`, or on any road
- * with both ends in one zone when `zone` is undefined: never on the road across a border, which would start the
- * origin in two countries. Of those, the nearest road from which MIN_REACHABLE_NODES nodes are reachable, driving
- * it each way it may be driven; the nearest of all when none is. Undefined when there is none within
- * MAX_SNAP_METERS.
+ * The nearest point of a road to the origin, on a road with both ends in the origin's `zone`, or on any road with
+ * both ends in one zone when it is undefined: never on the road across a border, which would start the origin in
+ * two countries. Of those, the nearest road from which MIN_REACHABLE_NODES nodes are reachable, driving it each way
+ * it may be driven; the nearest of all when none is. Undefined when there is none within MAX_SNAP_METERS.
  */
-export function snapToRoad(graph: Graph, lat: number, lon: number, zone: number | undefined): Snap | undefined {
+export function snapToRoad(graph: Graph, origin: SnapOrigin): Snap | undefined {
 	let nearest: Snap | undefined;
-	eachRoad(graph, lat, lon, zone, (snap) => {
+	eachRoad(graph, origin, (snap) => {
 		if (nearest === undefined || snap.meters < nearest.meters) {
 			nearest = snap;
 		}
@@ -48,50 +54,65 @@ export function snapToRoad(graph: Graph, lat: number, lon: number, zone: number 
 	}
 	// Rarely needed: every road within reach, nearest first, the order of the scan among equals.
 	const roads: Snap[] = [];
-	eachRoad(graph, lat, lon, zone, (snap) => roads.push(snap));
+	eachRoad(graph, origin, (snap) => {
+		roads.push(snap);
+	});
 	roads.sort((one, other) => one.meters - other.meters);
 	return roads.find((road) => reachesEnough(graph, road)) ?? nearest;
 }
 
 /** Calls `onRoad` with the nearest point of each road within MAX_SNAP_METERS that `snapToRoad` may snap to. */
-function eachRoad(graph: Graph, lat: number, lon: number, zone: number | undefined, onRoad: (snap: Snap) => void): void {
-	const { nodeLat, nodeLon, nodeZone, firstEdge, edgeTarget } = graph;
-	const projection = new LocalProjection(lat, lon);
-	const latReach = MAX_SNAP_METERS / projection.metersPerE7Lat;
-	const lonReach = MAX_SNAP_METERS / projection.metersPerE7Lon;
+function eachRoad(graph: Graph, origin: SnapOrigin, onRoad: (snap: Snap) => void): void {
+	const { nodeLat, nodeZone, firstEdge, edgeTarget } = graph;
+	const { zone } = origin;
+	const { beyondReach, nearestPoint } = reachOf(graph, origin);
 	for (let a = 0; a < nodeLat.length; a++) {
 		if (zone !== undefined && nodeZone[a] !== zone) {
 			continue;
 		}
-		const latA = nodeLat[a];
-		const lonA = nodeLon[a];
 		for (let edge = firstEdge[a]; edge < firstEdge[a + 1]; edge++) {
 			const b = edgeTarget[edge];
-			if (nodeZone[b] !== nodeZone[a]) {
+			if (nodeZone[b] !== nodeZone[a] || beyondReach(a, b)) {
 				continue;
 			}
-			const latB = nodeLat[b];
-			const lonB = nodeLon[b];
-			if (
-				Math.min(latA, latB) > lat + latReach ||
-				Math.max(latA, latB) < lat - latReach ||
-				Math.min(lonA, lonB) > lon + lonReach ||
-				Math.max(lonA, lonB) < lon - lonReach
-			) {
-				continue;
-			}
-			const ax = projection.x(lonA);
-			const ay = projection.y(latA);
-			const dx = projection.x(lonB) - ax;
-			const dy = projection.y(latB) - ay;
-			const lengthSquared = dx * dx + dy * dy;
-			const fraction = lengthSquared === 0 ? 0 : Math.min(1, Math.max(0, -(ax * dx + ay * dy) / lengthSquared));
-			const meters = Math.hypot(ax + fraction * dx, ay + fraction * dy);
-			if (meters <= MAX_SNAP_METERS) {
-				onRoad({ a, b, fraction, meters });
+			const snap = nearestPoint(a, b);
+			if (snap !== undefined) {
+				onRoad(snap);
 			}
 		}
 	}
+}
+
+/** How the origin reaches the road from node `a` to node `b`. */
+interface Reach {
+	/** The road's box is further than MAX_SNAP_METERS from the origin: no need to project it. */
+	readonly beyondReach: (a: number, b: number) => boolean;
+	/** The road's nearest point to the origin; undefined when it is further than MAX_SNAP_METERS. */
+	readonly nearestPoint: (a: number, b: number) => Snap | undefined;
+}
+
+function reachOf(graph: Graph, { lat, lon }: SnapOrigin): Reach {
+	const { nodeLat, nodeLon } = graph;
+	const projection = new LocalProjection(lat, lon);
+	const latReach = MAX_SNAP_METERS / projection.metersPerE7Lat;
+	const lonReach = MAX_SNAP_METERS / projection.metersPerE7Lon;
+	return {
+		beyondReach: (a, b) =>
+			Math.min(nodeLat[a], nodeLat[b]) > lat + latReach ||
+			Math.max(nodeLat[a], nodeLat[b]) < lat - latReach ||
+			Math.min(nodeLon[a], nodeLon[b]) > lon + lonReach ||
+			Math.max(nodeLon[a], nodeLon[b]) < lon - lonReach,
+		nearestPoint: (a, b) => {
+			const ax = projection.x(nodeLon[a]);
+			const ay = projection.y(nodeLat[a]);
+			const dx = projection.x(nodeLon[b]) - ax;
+			const dy = projection.y(nodeLat[b]) - ay;
+			const lengthSquared = dx * dx + dy * dy;
+			const fraction = lengthSquared === 0 ? 0 : Math.min(1, Math.max(0, -(ax * dx + ay * dy) / lengthSquared));
+			const meters = Math.hypot(ax + fraction * dx, ay + fraction * dy);
+			return meters <= MAX_SNAP_METERS ? { a, b, fraction, meters } : undefined;
+		},
+	};
 }
 
 /** Whether MIN_REACHABLE_NODES nodes are reachable from the road of the snap, by the roads' directions alone. */

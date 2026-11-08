@@ -47,19 +47,26 @@ export interface OurReach {
  * reaches it (startOnRoad), then the engine's Dijkstra. Undefined when the origin has no road within 50 km.
  */
 export function ourReach(graph: Graph, index: RoadIndex, origin: LatLon, limitHours: number): OurReach | undefined {
-	const start = startOnRoad(graph, Math.round(origin.lat * 1e7), Math.round(origin.lon * 1e7), undefined);
+	const start = startOnRoad(graph, { lat: Math.round(origin.lat * 1e7), lon: Math.round(origin.lon * 1e7), zone: undefined });
 	if (start === undefined) {
 		return undefined;
 	}
 	// Every zone open, as computeRing has it with no country closed: the graph has only zone 0.
-	const open = passage(graph, borderTable, [], 0);
-	const { seconds } = traverse(graph, open, start.seeds, limitHours * 3600);
+	const open = passage(graph, borderTable, { closedCountries: [], startZone: 0 });
+	const { seconds } = traverse(graph, open, { seeds: start.seeds, limitSeconds: limitHours * 3600 });
 	const locator = new ZoneLocator(graph.zoneRings);
 	return {
 		isochrone(hours) {
 			// Only what is reached within the hours, as a traversal up to them gives: the raster spans just that.
 			const within = seconds.map((time) => (time <= hours * 3600 ? time : Infinity));
-			return ringContour(graph, open, locator, { ...start, seconds: within }, -1, hours * 3600);
+			return ringContour({
+				graph,
+				passage: open,
+				locator,
+				reached: { ...start, seconds: within },
+				lowerSeconds: -1,
+				upperSeconds: hours * 3600,
+			});
 		},
 		travelHours(targets) {
 			return targets.map((target) => {
