@@ -40,6 +40,8 @@ The dataset build (spec «Набор данных»): the builder that turns an 
 
 `publish-dataset <dataset directory> [--bucket <name>] [--prefix <prefix>]` puts a dataset in R2 (below); it needs the aws CLI, `CLOUDFLARE_ACCOUNT_ID` and R2's S3 credentials in `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`.
 
+`fetch-dataset [--bucket <name>]` is the first step of the `roadtrip` Worker's deploy (`worker/README.md`, «Deploy»): `fetchDataset` (`src/fetch-dataset.ts`) reads the pointer, downloads its version's `graph.graph` and `dataset.json` into `engine/dataset/`, `zones.json` and `cities.json` into `web/public/data/`, each next to its place, and moves them in only once every file's size and SHA-256 match the pointer's, so a bad download leaves the files there were. It reads R2 through Cloudflare's API with `CLOUDFLARE_API_TOKEN` (Workers R2 Storage: Read) and `CLOUDFLARE_ACCOUNT_ID`, which Workers Builds gives the deploy.
+
 `build-cities <graph file | extract | URL> <out.json> [--cities <cities1000.zip | .txt | URL>] [--names <alternateNamesV2.zip | .txt | URL>,…] [--countries <alpha-2>,…] [--no-wikidata]` writes the cities file with the zones of the graph's polygons and prints how many cities, names and zones it got, and the size raw and in brotli. By default it downloads GeoNames' `cities1000.zip` and `alternateNamesV2.zip` (205 MB, streamed through `unzip -p`): that is the world build's call with the world graph. `--countries` keeps the cities of those GeoNames countries and takes their own files of alternate names (`alternatenames/<alpha-2>.zip`), for a region: `build-cities georgia.graph ../web/public/data/cities.json --countries GE,AM,AZ,TR` takes 5 s, Wikidata included. `--no-wikidata` skips Wikidata.
 
 `pnpm --filter data valhalla <work dir> [--report <file.md>] [--regions <id,…>] [--mirror <url>]` is the comparison with Valhalla on the full graph (#24; spec «Сверка с Valhalla»), a one-off check that CI does not run. The start points and their regions are in `src/valhalla/places.ts`. It needs osmium-tool, unzip and pyvalhalla's commands on PATH, a few GB of disk per region and ~10 GB of memory while Valhalla builds a region's tiles. Valhalla's results stay in the work directory, so after a change to the speeds a second run only recomputes ours. Its last report is `valhalla-report.md`, with conclusions written by hand; rerun it after a change to the speeds or the contour, and keep the conclusions.
@@ -51,15 +53,15 @@ The dataset build (spec «Набор данных»): the builder that turns an 
 1. `plan` picks the date: the newest one every part's page at Geofabrik lists a dated extract of (`europe-261107.osm.pbf`). Geofabrik keeps those of the 1st of each month for months and the others for a week. The dataset's version is that date, `2026-11-07`.
 2. `extract`, one job per part of the world (Russia is none: the others cover it), downloads the part of that date, checks its MD5 and that it holds OSM of that date, then keeps with osmium what the builder reads: `tags-filter` of the roads from motorway to tertiary with their links, `barrier=border_control` and `admin_level=2` with their members, and `getid -r` of `SPECIAL_ZONES`.
 3. `build` merges the parts (two parts of one date hold one version of an object; the job fails otherwise), runs `add-locations-to-ways --ignore-missing-nodes`, then `build-graph` with `--outlines` and `--report`, and `build-cities` on the graph. The build report goes to the run's summary, the dataset to an artifact kept 14 days.
-4. `publish` puts the dataset in R2 with `publish-dataset` (`src/publish.ts`), with the S3 credentials R2 derives from the Cloudflare API token in the repository's secrets: its id, and the SHA-256 of its value.
+4. `publish` puts the dataset in R2 with `publish-dataset` (`src/publish.ts`), with the S3 credentials R2 derives from the Cloudflare API token in the repository's secrets: its id, and the SHA-256 of its value. Then it deploys the new dataset: `.github/dataset/deploy.sh` starts the build of the Worker `roadtrip` in Cloudflare Workers Builds on the default branch, with the same token, and waits for the build's outcome, so a failed deploy fails the run (`docs/agents/infrastructure.md`). A trial deploys nothing.
 
-Every heavy step runs under `.github/dataset/measure.sh`, which puts its time, peak memory and the peak disk the job's files take in the summary; `docs/world-build.md` has the numbers of a run. After the pointer moves, the build of the `roadtrip` Worker in Workers Builds is to start (#36): the workflow marks the place.
+Every heavy step runs under `.github/dataset/measure.sh`, which puts its time, peak memory and the peak disk the job's files take in the summary; `docs/world-build.md` has the numbers of a run.
 
 The dataset in R2, bucket `roadtrip-datasets`:
 
 - `<version>/graph.graph`, `zones.json`, `cities.json`, `dataset.json` (`{ "version": "<version>" }`, as `engine/dataset/dataset.json`) and `report.md` (the build report);
 - `<version>/manifest.json`: the version and each file's size and SHA-256;
-- `current.json`: the pointer, a copy of the current version's manifest. It moves only once every file of the version is uploaded and its size checked, so a failed run leaves the version before it current. The deploy (#36) reads it, then takes the files under its version.
+- `current.json`: the pointer, a copy of the current version's manifest. It moves only once every file of the version is uploaded and its size checked, so a failed run leaves the version before it current. The deploy reads it (`fetch-dataset`, above), then takes the files under its version.
 
 A run of only some of the parts is a trial: it publishes under `trials/<run id>/` and deletes that at the end, so the current dataset stays.
 
@@ -75,4 +77,5 @@ The fixtures in `test/fixtures/` are hand-written OSM XML of a few countries and
 - `test/commands.test.ts`: the commands as processes; `build-cities` reads the small GeoNames files in `test/fixtures/geonames/`.
 - `test/zone-locator.test.ts`: `ZoneLocator` and the builder's `ZoneCells` on squares of whole degrees.
 - `test/publish.test.ts`: `publishDataset` against a double of R2: the pointer moves last, and not at all after a failed upload.
+- `test/fetch-dataset.test.ts`: `fetchDataset` against a double of R2: the files of the pointer's version take their places, and none does when one's SHA-256 is not the pointer's or the bucket lacks it.
 - `test/valhalla-metrics.test.ts`: the measures of the Valhalla comparison (ring area, the median time to cities, the tolerance); the comparison itself runs in no test.

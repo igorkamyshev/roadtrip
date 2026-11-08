@@ -1,5 +1,5 @@
 // The dataset in R2 (spec «Набор данных», «Выкладка»): each version's files under `<version>/`, and `current.json`,
-// the pointer to the current version, which the deploy (#36) reads. The pointer moves only once every file of the
+// the pointer to the current version, which the deploy reads (src/fetch-dataset.ts). The pointer moves only once every file of the
 // version is uploaded and its size checked, so a failed run leaves the version before it current.
 import { createHash } from 'node:crypto';
 import { createReadStream, existsSync, readFileSync, statSync } from 'node:fs';

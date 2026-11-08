@@ -65,7 +65,7 @@ The port of Protomaps' PMTiles Worker for Cloudflare (`serverless/cloudflare` in
 - It tells the server how long a request waited for the start (`x-cold-start-ms`), which comes back in the timings.
 - Cloudflare marks the `default` scheduling policy deprecated in favour of `durable_object`, which is in beta, has no `max_instances` and does not take the `Container` class. The policy cannot change on a deployed application, so moving means a new class and application.
 
-The dataset's version is in `engine/dataset/dataset.json`: the Worker bundles it, and the image copies it next to the graph, so both say the version of the dataset they were built with. The graph (`engine/dataset/graph.graph`) is not in git. For now it is the graph of one region, built by `data`; the deploy (#36) takes the dataset's graph and version from R2 into `engine/dataset/` before `wrangler deploy`.
+The dataset's version is in `engine/dataset/dataset.json`: the Worker bundles it, and the image copies it next to the graph, so both say the version of the dataset they were built with. The graph (`engine/dataset/graph.graph`) is not in git. Locally it is the graph of one region, built by `data`; the deploy (below) puts the world's and its version there from R2 before `wrangler deploy`. The world's graph of 2026-11-07 (357 MB) loads in 0.23–0.27 s, and the port opens 0.7–1.9 s after the process starts (Docker under the instance's limits, `docs/agents/infrastructure.md`).
 
 ## The Container bench
 
@@ -127,4 +127,18 @@ The tests never import `src/index.ts`: Node cannot load `cloudflare:workers`. Th
 
 ## Deploy
 
-Not yet: the deploy through Workers Builds and its `deploy` script come with #36. Deploy `roadtrip-error-tracking` before this Worker, which names it in `tail_consumers`. The archive named by `BASEMAP_ARCHIVE` must be in `roadtrip-basemap` before the deploy, or every tile answers 500. The Owner sets the secret `SHERPA_API_KEY` (`wrangler secret put SHERPA_API_KEY`); its type is declared by hand in `src/env.d.ts`, since `wrangler types` does not see secrets.
+Cloudflare Workers Builds deploys this Worker on every push to `main` (trigger «Deploy default branch», deploy command `pnpm --filter worker run deploy`), and the monthly world build starts the same build once a new dataset is current. How to check, rerun or change a build: `docs/agents/infrastructure.md`. The `deploy` script is the whole deploy:
+
+1. `pnpm --filter data fetch-dataset`: the dataset `current.json` points at in the R2 bucket `roadtrip-datasets` (`data/AGENTS.md`), each file checked by its size and SHA-256 before it takes its place: the graph and `dataset.json` in `engine/dataset/`, the zone outlines and the cities file in `web/public/data/`. It needs `CLOUDFLARE_API_TOKEN` with Workers R2 Storage: Read and `CLOUDFLARE_ACCOUNT_ID`, which Workers Builds gives it. Run by hand, it overwrites the committed `engine/dataset/dataset.json` (`local`): put that back before a commit.
+2. `pnpm --filter web build`: the client, its source maps uploaded to PostHog when the build has the key (below).
+3. `wrangler deploy`: the Container's image with the graph (535 MB, 315 MB compressed with the dataset of 2026-11-07), the Worker with the client, then the Container's rollout.
+
+`roadtrip-error-tracking` went first on the first launch: this Worker names it in `tail_consumers`. The archive named by `BASEMAP_ARCHIVE` must be in `roadtrip-basemap` before a deploy that changes it, or every tile answers 500.
+
+### What stays with the Owner
+
+The agent never sees these secrets:
+
+- **The build secret `POSTHOG_PERSONAL_API_KEY`**: the Owner's personal PostHog key (`phx_…`) with the scope «error tracking: write», for the client's source maps (`web/README.md`, «Source maps»). It goes on this Worker's trigger as a secret: Workers & Pages → roadtrip → Settings → Build → Variables and secrets, or `PATCH /accounts/{account_id}/builds/triggers/5d0acd69-e1e3-4ad2-ac21-47399686d952/environment_variables` with `{ "POSTHOG_PERSONAL_API_KEY": { "value": "phx_…", "is_secret": true } }`. `POSTHOG_PROJECT_ID` (`718601`) is already there. Until the key is set, the builds succeed and upload no source maps; the next build after it uploads them.
+- **The Worker's secret `SHERPA_API_KEY`**: `wrangler secret put SHERPA_API_KEY` in `worker/`, or Workers & Pages → roadtrip → Settings → Variables and Secrets, as a secret. It survives every deploy. Until it is set, every ring answers `visa_rules_missing` and each request logs a `SherpaError`. Its type is declared by hand in `src/env.d.ts`, since `wrangler types` does not see secrets.
+- **The build's access to `roadtrip-datasets`**: the build token, «ytc-yt-downloader build token», the Owner's user token that ytc's Workers deploy with too, reads it already: the first build took the dataset with it. Should a build stop at `R2 answered 403` (say, after the token's permissions change), the Owner gives that token Workers R2 Storage: Read (My Profile → API Tokens).

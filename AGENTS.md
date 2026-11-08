@@ -17,6 +17,10 @@ Read a package's `AGENTS.md` before working in it:
 
 `web` is the client, the one screen, built into the Worker's static assets. Its `README.md` says where the state, the ring requests, the map's layers, the phrase's slots and the events to PostHog are, how the source maps are uploaded, and how the screen tests run (`pnpm e2e`, Playwright).
 
+## Deploy and services
+
+A merge to `main` deploys both Workers through Cloudflare Workers Builds, and the monthly world build deploys each new dataset the same way. Deploys, checking and rerunning a build, a new worker, secrets and vars, the logs of every run, PostHog: read `docs/agents/infrastructure.md` before the first call. What only the Owner sets is in `worker/README.md`, «Deploy».
+
 ## Agent skills
 
 ### Issue tracker
