@@ -1,0 +1,24 @@
+name: Deploy trial
+
+# Temporary (#36): runs the world build's last step, .github/dataset/deploy.sh, with the repository's secrets on the
+# integration branch, to check that their token starts and reads a build of the Worker roadtrip. Deleted once it ran.
+on:
+  push:
+    branches: [claude/epic-ramanujan-4tqrk6]
+    paths: [.github/workflows/deploy-trial.yml]
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - name: Deploy the dataset
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          TRIGGER: 5d0acd69-e1e3-4ad2-ac21-47399686d952
+        run: .github/dataset/deploy.sh "$TRIGGER" "$GITHUB_REF_NAME"
