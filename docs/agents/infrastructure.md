@@ -34,7 +34,7 @@ Workers Builds (Paid plan): 20 minutes a build, 4 vCPU, 8 GB of memory, 20 GB of
 The first builds, 2026-11-08, dataset `2026-11-07` with its 357 MB graph, are far inside them:
 
 - `roadtrip-error-tracking` (`ef78e946-3663-49b0-9268-03a3c2627de2`): 27 s.
-- `roadtrip` (`1ffa4237-4a10-4967-8376-96a8543cddd5`): 85 s running, 2 min with the queue and the environment's start. `pnpm install` 5 s from the build cache; `fetch-dataset` 16 s, the graph 11.7 s of it (~30 MB/s); the client 1 s; the image 27 s; the Worker with its 85 assets 5 s; the image's push 11 s (the graph's layer 8 s; `node:22-alpine`'s layers were in the registry already); the Container application 3 s.
+- `roadtrip` (`1ffa4237-4a10-4967-8376-96a8543cddd5`): 85 s running, 2 min with the queue and the environment's start. `pnpm install` 5 s from the build cache; `fetch-dataset` 16 s, the graph 11.7 s of it (~30 MB/s); the client 1 s; the image 27 s; the Worker with its 85 assets 5 s; the image's push 11 s (the graph's layer 8 s; `node:22-alpine`'s layers were in the registry already); the Container application 3 s. The second (`a3d04f24-b078-4a5a-8489-ae97f24e754a`) took 86 s and modified the application in place, a new image on the same `standard-2`.
 - The image: 535 MB unpacked, 315 MB compressed, the graph's layer ~253 MB of it (the same image rebuilt locally from the world build's artifact).
 - Every deploy pushes the graph's layer again: BuildKit stamps the layer with the build's time, so the same graph never makes the same layer (a fixed mtime on the file does not help), and the images stay in the registry until deleted: about 200 deploys fill the account's 50 GB, which ytc's images share.
 
