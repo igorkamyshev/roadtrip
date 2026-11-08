@@ -303,4 +303,10 @@ describe('a ring past the end of the roads', () => {
 		// The whole road: 3.71 h at the wheel, 4.45 h of travel.
 		expect(computeRing(straightRoad, borderTable, request(0, 0, 6))).toMatchObject({ outcome: 'empty', maxHours: 5 });
 	});
+
+	it('is empty from the middle of the road, the travel time to its ends rounded up', () => {
+		// Half the road each way: 1.85 h at the wheel, 2.22 h of travel.
+		expect(computeRing(straightRoad, borderTable, request(0, 1, 6))).toMatchObject({ outcome: 'empty', maxHours: 3 });
+		expect(computeRing(straightRoad, borderTable, request(0, 1, 4))).toMatchObject({ outcome: 'empty', maxHours: 3 });
+	});
 });

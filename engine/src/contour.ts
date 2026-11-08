@@ -6,7 +6,7 @@ import type { Passage } from './borders.ts';
 import { E7, LocalProjection } from './geo.ts';
 import type { Graph } from './graph.ts';
 import type { MultiPolygon } from './index.ts';
-import type { Snap } from './snap.ts';
+import type { OriginRoad } from './snap.ts';
 import { edgeTravelSeconds, TRAVEL_PER_DRIVING } from './traverse.ts';
 import type { ZoneLocator } from './zones.ts';
 
@@ -24,15 +24,8 @@ export const OFF_ROAD_SECONDS_PER_METER = (3.6 / 30) * TRAVEL_PER_DRIVING;
 const MAX_CELLS = 16_000_000;
 
 /** What the traversal reached: the travel time to each node (Infinity when not reached), and the origin's road. */
-export interface Reached {
+export interface Reached extends OriginRoad {
 	readonly seconds: Float64Array;
-	readonly snap: Snap;
-	/** Travel time from the origin to where it meets its road. */
-	readonly accessSeconds: number;
-	/** Travel time along the origin's road from `snap.a` to `snap.b`; undefined when it is one-way the other way. */
-	readonly forwardSeconds: number | undefined;
-	/** Travel time along the origin's road from `snap.b` to `snap.a`; undefined when it is one-way the other way. */
-	readonly backSeconds: number | undefined;
 }
 
 export function ringContour(

@@ -123,7 +123,7 @@ export function computeRing(graph: Graph, borderTable: BorderTable, request: Rin
 	const startCountry = zoneCode(graph, startZone);
 
 	if (traversal.exhausted) {
-		const latestHours = latestArrival(graph, traversal) / 3600;
+		const latestHours = latestArrival(graph, traversal, { snap, accessSeconds, forwardSeconds: forward, backSeconds: back }) / 3600;
 		if (latestHours <= request.hours - 1) {
 			return { outcome: 'empty', maxHours: Math.ceil(latestHours - 1e-9), startCountry, timings: since(started, traversed) };
 		}

@@ -12,6 +12,17 @@ export interface Snap {
 	readonly meters: number;
 }
 
+/** The origin on its road: where it meets it, and the travel times to there and along the road. */
+export interface OriginRoad {
+	readonly snap: Snap;
+	/** Travel time from the origin to where it meets its road. */
+	readonly accessSeconds: number;
+	/** Travel time along the origin's road from `snap.a` to `snap.b`; undefined when it is one-way the other way. */
+	readonly forwardSeconds: number | undefined;
+	/** Travel time along the origin's road from `snap.b` to `snap.a`; undefined when it is one-way the other way. */
+	readonly backSeconds: number | undefined;
+}
+
 /**
  * The nearest point of a road to the origin (1e-7 degrees), on a road with both ends in `zone`, or on any road
  * with both ends in one zone when `zone` is undefined: never on the road across a border, which would start the
