@@ -63,16 +63,49 @@ describe('a held visa', () => {
 
 		// The 29 states (home-affairs.ec.europa.eu, 2026-11-07), then Gibraltar, Monaco, San Marino and the Vatican.
 		const schengen = [
-			'AUT', 'BEL', 'BGR', 'CHE', 'CZE', 'DEU', 'DNK', 'ESP', 'EST', 'FIN', 'FRA', 'GRC', 'HRV', 'HUN', 'ISL', 'ITA', 'LIE',
-			'LTU', 'LUX', 'LVA', 'MLT', 'NLD', 'NOR', 'POL', 'PRT', 'ROU', 'SVK', 'SVN', 'SWE', 'GIB', 'MCO', 'SMR', 'VAT',
+			'AUT',
+			'BEL',
+			'BGR',
+			'CHE',
+			'CZE',
+			'DEU',
+			'DNK',
+			'ESP',
+			'EST',
+			'FIN',
+			'FRA',
+			'GRC',
+			'HRV',
+			'HUN',
+			'ISL',
+			'ITA',
+			'LIE',
+			'LTU',
+			'LUX',
+			'LVA',
+			'MLT',
+			'NLD',
+			'NOR',
+			'POL',
+			'PRT',
+			'ROU',
+			'SVK',
+			'SVN',
+			'SWE',
+			'GIB',
+			'MCO',
+			'SMR',
+			'VAT',
 		];
 		const access = body.access as Record<string, unknown>;
 		for (const country of schengen) {
 			expect(access[country], country).toEqual({ mode: 'held_visa', visa: 'SCHENGEN' });
 		}
-		expect(Object.keys(access).filter((country) => (access[country] as { mode: string }).mode === 'held_visa').sort()).toEqual(
-			[...schengen].sort(),
-		);
+		expect(
+			Object.keys(access)
+				.filter((country) => (access[country] as { mode: string }).mode === 'held_visa')
+				.sort(),
+		).toEqual([...schengen].sort());
 		// Cyprus and Ireland are in the EU, not in Schengen.
 		expect(access).toMatchObject({ CYP: { mode: 'closed' }, IRL: { mode: 'closed' } });
 		const closed = await closedCountries(container);
@@ -112,7 +145,9 @@ describe("the visa exemptions' rows", () => {
 		expect((await get('lat=0&lon=0&hours=2&cit=RUS&visas=USA')).body.access).toMatchObject({ MKD: { mode: 'closed' } });
 		expect(await closedCountries(container)).toContain('MKD');
 		// A row without a last day goes on.
-		expect((await get('lat=0&lon=0&hours=2&cit=RUS&visas=SCHENGEN')).body.access).toMatchObject({ MKD: { mode: 'held_visa', visa: 'SCHENGEN' } });
+		expect((await get('lat=0&lon=0&hours=2&cit=RUS&visas=SCHENGEN')).body.access).toMatchObject({
+			MKD: { mode: 'held_visa', visa: 'SCHENGEN' },
+		});
 	});
 
 	it('that name citizenships act only for a person of one of them', async () => {
@@ -236,13 +271,9 @@ describe('the held visas of a request', () => {
 		['Schengen and the four', 'CAN,GBR,SCHENGEN,USA'],
 		['countries outside Schengen', 'AND,CYP,GEO,IRL,RKS,TUR'],
 		['countries without a passport of Sherpa’s: territories, North Korea, Northern Cyprus', 'GRL,NX,PRI,PRK'],
-	])(
-		'with %s is answered',
-		async (_, visas) => {
-			const { get } = api({ container: await engineContainer(straightRoad) });
+	])('with %s is answered', async (_, visas) => {
+		const { get } = api({ container: await engineContainer(straightRoad) });
 
-			expect((await get(`lat=0&lon=0&hours=2&cit=RUS&visas=${visas}`)).status).toBe(200);
-		},
-	);
+		expect((await get(`lat=0&lon=0&hours=2&cit=RUS&visas=${visas}`)).status).toBe(200);
+	});
 });
-

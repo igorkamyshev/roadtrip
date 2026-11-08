@@ -98,7 +98,12 @@ async function request(passport: string, deps: SherpaDeps, signal: AbortSignal):
 	}
 	const quota = quotaRemaining(response.headers);
 	if (!response.ok) {
-		return { result: 'http_error', status: response.status, problem: `Sherpa answered ${response.status}: ${text.slice(0, 200)}`, ...quota };
+		return {
+			result: 'http_error',
+			status: response.status,
+			problem: `Sherpa answered ${response.status}: ${text.slice(0, 200)}`,
+			...quota,
+		};
 	}
 	const classes = parseMap(text);
 	return typeof classes === 'string'

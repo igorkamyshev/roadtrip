@@ -12,7 +12,9 @@ const RUSSIAN_NAME = ['coalesce', ['get', 'name:ru'], ['get', 'name']];
 /** The map's style once it has loaded: its sprite, its fonts and the tiles of the view are in. */
 async function loadedStyle(page: Page): Promise<StyleSpecification> {
 	type MapForTests = { loaded(): boolean; getStyle(): StyleSpecification };
-	await expect.poll(() => page.evaluate(() => (window as unknown as { __roadtripMap?: MapForTests }).__roadtripMap?.loaded() ?? false)).toBe(true);
+	await expect
+		.poll(() => page.evaluate(() => (window as unknown as { __roadtripMap?: MapForTests }).__roadtripMap?.loaded() ?? false))
+		.toBe(true);
 	return page.evaluate(() => (window as unknown as { __roadtripMap: MapForTests }).__roadtripMap.getStyle());
 }
 
@@ -57,7 +59,11 @@ test('the labels are in Russian, else in the local language, on one line', async
 	expect(label('places_locality')?.['text-field']).toEqual(RUSSIAN_NAME);
 	expect(label('places_country')?.['text-field']).toEqual(RUSSIAN_NAME);
 	// No label anywhere takes another name: not the English one, not a second line in the local language.
-	const names = new Set(JSON.stringify(style.layers.map((layer) => (layer.layout as Record<string, unknown> | undefined)?.['text-field'])).match(/"(pgf:)?name[^"]*"/gu));
+	const names = new Set(
+		JSON.stringify(style.layers.map((layer) => (layer.layout as Record<string, unknown> | undefined)?.['text-field'])).match(
+			/"(pgf:)?name[^"]*"/gu,
+		),
+	);
 	expect([...names].sort()).toEqual(['"name"', '"name:ru"']);
 });
 

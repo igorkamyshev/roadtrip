@@ -58,7 +58,9 @@ describe('publishing a dataset', () => {
 		writeFileSync(join(directory, 'dataset.json'), '{ "version": "2026-11-07" }\n');
 		writeFileSync(join(directory, 'report.md'), '## Граф дорог\n');
 	});
-	afterEach(() => rmSync(directory, { recursive: true }));
+	afterEach(() => {
+		rmSync(directory, { recursive: true });
+	});
 
 	it('uploads every file under its version, then points current.json at it', async () => {
 		const r2 = memoryStore();
@@ -94,7 +96,9 @@ describe('publishing a dataset', () => {
 		await publishDataset(r2.store, directory, silent);
 
 		// sha256sum of 'RTGRAPH\ngraph bytes'.
-		expect(JSON.parse(r2.text('current.json')).files['graph.graph'].sha256).toBe('0de73e4d4e4c8cbb05718b4b12fd27fb31190e9c3e4043c635266f57401cd0d0');
+		expect(JSON.parse(r2.text('current.json')).files['graph.graph'].sha256).toBe(
+			'0de73e4d4e4c8cbb05718b4b12fd27fb31190e9c3e4043c635266f57401cd0d0',
+		);
 	});
 
 	it.each([
@@ -132,11 +136,25 @@ describe('publishing a dataset', () => {
 	});
 
 	it.each([
-		['a file is missing', () => rmSync(join(directory, 'cities.json')), 'cities.json'],
-		['dataset.json names no version', () => writeFileSync(join(directory, 'dataset.json'), '{}'), 'version'],
+		[
+			'a file is missing',
+			() => {
+				rmSync(join(directory, 'cities.json'));
+			},
+			'cities.json',
+		],
+		[
+			'dataset.json names no version',
+			() => {
+				writeFileSync(join(directory, 'dataset.json'), '{}');
+			},
+			'version',
+		],
 		[
 			'countries that have a zone in the world have none',
-			() => writeFileSync(join(directory, 'zones.json'), outlines(WORLD_ZONES.filter((zone) => zone !== 'USA' && zone !== 'NX'))),
+			() => {
+				writeFileSync(join(directory, 'zones.json'), outlines(WORLD_ZONES.filter((zone) => zone !== 'USA' && zone !== 'NX')));
+			},
 			'no zone for NX, USA',
 		],
 	])('uploads nothing when %s', async (_, spoil, message) => {

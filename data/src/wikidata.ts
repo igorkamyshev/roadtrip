@@ -57,7 +57,11 @@ async function query(sparql: string, { fetch, sleep }: WikidataDeps): Promise<Bi
 		try {
 			const response = await fetch(QUERY_SERVICE, {
 				method: 'POST',
-				headers: { 'content-type': 'application/x-www-form-urlencoded', accept: 'application/sparql-results+json', 'user-agent': USER_AGENT },
+				headers: {
+					'content-type': 'application/x-www-form-urlencoded',
+					accept: 'application/sparql-results+json',
+					'user-agent': USER_AGENT,
+				},
 				body: new URLSearchParams({ query: sparql }).toString(),
 			});
 			if (response.ok) {

@@ -41,7 +41,7 @@ describe('the tail handler', () => {
 		const log = vi.spyOn(console, 'log').mockImplementation(() => {});
 		const { ctx, background } = executionContext();
 
-		void worker.tail([FAILED_RUN], { POSTHOG_API_KEY: '' }, ctx);
+		worker.tail([FAILED_RUN], { POSTHOG_API_KEY: '' }, ctx);
 
 		expect(fetch).not.toHaveBeenCalled();
 		expect(background).toEqual([]);
@@ -54,7 +54,7 @@ describe('the tail handler', () => {
 		vi.stubGlobal('fetch', fetch);
 		const { ctx, background } = executionContext();
 
-		void worker.tail([FAILED_RUN], { POSTHOG_API_KEY: 'phc_test' }, ctx);
+		worker.tail([FAILED_RUN], { POSTHOG_API_KEY: 'phc_test' }, ctx);
 		await Promise.all(background);
 
 		expect(fetch).toHaveBeenCalledTimes(1);
@@ -72,7 +72,7 @@ describe('the tail handler', () => {
 		const log = vi.spyOn(console, 'log').mockImplementation(() => {});
 		const { ctx, background } = executionContext();
 
-		void worker.tail([{ ...FAILED_RUN, logs: [] }], { POSTHOG_API_KEY: '' }, ctx);
+		worker.tail([{ ...FAILED_RUN, logs: [] }], { POSTHOG_API_KEY: '' }, ctx);
 
 		expect(fetch).not.toHaveBeenCalled();
 		expect(background).toEqual([]);

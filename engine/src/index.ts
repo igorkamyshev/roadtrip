@@ -109,7 +109,7 @@ export function computeRing(graph: Graph, borderTable: BorderTable, request: Rin
 		return { outcome: 'no_roads', startCountry: zoneCode(graph, originZone), timings: since(started, started) };
 	}
 	const { snap } = start;
-	const startZone = originZone !== 0 ? originZone : borderZones(graph)[snap.fraction < 0.5 ? snap.a : snap.b];
+	const startZone = originZone === 0 ? borderZones(graph)[snap.fraction < 0.5 ? snap.a : snap.b] : originZone;
 	if (closed[startZone]) {
 		return { outcome: 'no_ring', startCountry: zoneCode(graph, startZone), timings: since(started, started) };
 	}

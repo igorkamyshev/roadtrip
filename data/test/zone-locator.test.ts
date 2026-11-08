@@ -16,7 +16,12 @@ function rings(...corners: [zone: number, points: [number, number][]][]): ZoneRi
 		}
 		start.push(lat.length);
 	}
-	return { zone: Uint8Array.from(corners.map(([zone]) => zone)), start: Uint32Array.from(start), lat: Int32Array.from(lat), lon: Int32Array.from(lon) };
+	return {
+		zone: Uint8Array.from(corners.map(([zone]) => zone)),
+		start: Uint32Array.from(start),
+		lat: Int32Array.from(lat),
+		lon: Int32Array.from(lon),
+	};
 }
 
 const square = (south: number, west: number, north: number, east: number): [number, number][] => [
@@ -28,7 +33,12 @@ const square = (south: number, west: number, north: number, east: number): [numb
 
 // Zone 2 a square from 10°S 20°W to 10°N 20°E with a hole from 1.5°S 1.5°W to 1.5°N 1.5°E; zone 1 a small square
 // inside the hole, from 0.5°S 0.5°W to 0.5°N 0.5°E; far away, zone 3 an island at 60°N 170°E.
-const zoneRings = rings([2, square(-10, -20, 10, 20)], [2, square(-1.5, -1.5, 1.5, 1.5)], [1, square(-0.5, -0.5, 0.5, 0.5)], [3, square(60, 170, 60.2, 170.4)]);
+const zoneRings = rings(
+	[2, square(-10, -20, 10, 20)],
+	[2, square(-1.5, -1.5, 1.5, 1.5)],
+	[1, square(-0.5, -0.5, 0.5, 0.5)],
+	[3, square(60, 170, 60.2, 170.4)],
+);
 
 describe.each([
 	['ZoneLocator', new ZoneLocator(zoneRings)],

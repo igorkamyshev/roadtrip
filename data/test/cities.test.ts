@@ -23,7 +23,9 @@ interface Place {
 
 /** A line of cities1000.txt: 19 columns separated by tabs. */
 function cityLine({ id, name, lat, lon, population, code = 'PPL', country = 'CY' }: Place): string {
-	return [id, name, name, '', lat, lon, 'P', code, country, '', '01', '', '', '', population, '', '10', 'Asia/Nicosia', '2026-01-01'].join('\t');
+	return [id, name, name, '', lat, lon, 'P', code, country, '', '01', '', '', '', population, '', '10', 'Asia/Nicosia', '2026-01-01'].join(
+		'\t',
+	);
 }
 
 interface AlternateName {
@@ -150,7 +152,7 @@ describe('the cities', () => {
 		]);
 	});
 
-	it("asks Wikidata only for the cities without a Russian name in GeoNames, and takes its label; else the name stays empty", async () => {
+	it('asks Wikidata only for the cities without a Russian name in GeoNames, and takes its label; else the name stays empty', async () => {
 		const asked: number[][] = [];
 		const { cities, report } = await build(
 			[

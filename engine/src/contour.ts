@@ -245,7 +245,8 @@ function spreadOffRoad(grid: Grid): void {
 function traceRings(inside: Uint8Array, columns: number, rows: number): number[][] {
 	const height = 2 * rows + 5;
 	const key = (x2: number, y2: number) => (x2 + 2) * height + (y2 + 2);
-	const at = (column: number, row: number) => (column < 0 || row < 0 || column >= columns || row >= rows ? 0 : inside[row * columns + column]);
+	const at = (column: number, row: number) =>
+		column < 0 || row < 0 || column >= columns || row >= rows ? 0 : inside[row * columns + column];
 	const next = new Map<number, number>();
 	for (let row = -1; row < rows; row++) {
 		for (let column = -1; column < columns; column++) {
@@ -266,7 +267,7 @@ function traceRings(inside: Uint8Array, columns: number, rows: number): number[]
 	for (const [start, first] of next) {
 		next.delete(start);
 		const ring = [Math.floor(start / height) - 2, (start % height) - 2];
-		for (let point = first; point !== start; ) {
+		for (let point = first; point !== start;) {
 			ring.push(Math.floor(point / height) - 2, (point % height) - 2);
 			const to = next.get(point)!;
 			next.delete(point);

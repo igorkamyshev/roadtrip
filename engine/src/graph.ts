@@ -182,7 +182,9 @@ export function decodeGraph(bytes: Uint8Array): Graph {
 	}
 	const array = <Name extends ArrayName>(name: Name): InstanceType<(typeof ARRAY_TYPES)[Name]> => {
 		const { offset, length } = header.arrays[name];
-		return new ARRAY_TYPES[name](aligned.buffer as ArrayBuffer, aligned.byteOffset + offset, length) as InstanceType<(typeof ARRAY_TYPES)[Name]>;
+		return new ARRAY_TYPES[name](aligned.buffer as ArrayBuffer, aligned.byteOffset + offset, length) as InstanceType<
+			(typeof ARRAY_TYPES)[Name]
+		>;
 	};
 	return {
 		nodeLat: array('nodeLat'),

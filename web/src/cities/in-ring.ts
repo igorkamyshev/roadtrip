@@ -76,7 +76,10 @@ function ringContains(ring: RingGeometry): (lat: number, lon: number) => boolean
 		}
 		let inside = false;
 		for (const edge of edges[bandOf(lat)]) {
-			if (lat1[edge] > lat !== lat2[edge] > lat && lon < lon1[edge] + ((lon2[edge] - lon1[edge]) * (lat - lat1[edge])) / (lat2[edge] - lat1[edge])) {
+			if (
+				lat1[edge] > lat !== lat2[edge] > lat &&
+				lon < lon1[edge] + ((lon2[edge] - lon1[edge]) * (lat - lat1[edge])) / (lat2[edge] - lat1[edge])
+			) {
 				inside = !inside;
 			}
 		}

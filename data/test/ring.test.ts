@@ -170,10 +170,13 @@ describe('a border', () => {
 		expect(maxHoursOf(2, table)).toBe(1); // a checkpoint in OSM, but not in the table
 	});
 
-	it.each(['closed', 'pedestrian_only'] as const)('is not crossed at a crossing that is %s, though OSM has a checkpoint there', (status) => {
-		expect(maxHoursOf(2, rules({ crossings: [crossingOn(2, status)] }))).toBe(1);
-		expect(maxHoursOf(2, rules({ schengen: ['AAA', 'BBB'], crossings: [crossingOn(2, status)] }))).toBe(1);
-	});
+	it.each(['closed', 'pedestrian_only'] as const)(
+		'is not crossed at a crossing that is %s, though OSM has a checkpoint there',
+		(status) => {
+			expect(maxHoursOf(2, rules({ crossings: [crossingOn(2, status)] }))).toBe(1);
+			expect(maxHoursOf(2, rules({ schengen: ['AAA', 'BBB'], crossings: [crossingOn(2, status)] }))).toBe(1);
+		},
+	);
 
 	it.each(['closed', 'no_crossing', 'pedestrian_only'] as const)('of a %s pair is not crossed, though OSM has a checkpoint', (status) => {
 		expect(maxHoursOf(2, rules({ pairs: [pair(status)] }))).toBe(1);
@@ -223,7 +226,10 @@ describe('a closed country', () => {
 	});
 
 	it('for everyone is closed though not among the closed countries', () => {
-		expect(computeRing(borders, rules({ closedForEveryone: ['BBB'] }), request(0.3, 0.5, 12))).toMatchObject({ outcome: 'empty', maxHours: 2 });
+		expect(computeRing(borders, rules({ closedForEveryone: ['BBB'] }), request(0.3, 0.5, 12))).toMatchObject({
+			outcome: 'empty',
+			maxHours: 2,
+		});
 	});
 
 	it('for everyone gives no ring from inside it', () => {
@@ -267,7 +273,11 @@ describe('a closed territory', () => {
 	const territory = fixtureGraph('closed-territory.osm');
 
 	it('is not crossed, though its country is open', () => {
-		expect(computeRing(territory, borderTable, request(0.5, 0.2, 12))).toMatchObject({ outcome: 'empty', maxHours: 2, startCountry: 'GEO' });
+		expect(computeRing(territory, borderTable, request(0.5, 0.2, 12))).toMatchObject({
+			outcome: 'empty',
+			maxHours: 2,
+			startCountry: 'GEO',
+		});
 	});
 
 	it('stays out of the ring, though the land next to a reached road is in it', () => {

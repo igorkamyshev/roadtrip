@@ -185,7 +185,14 @@ async function readPlaces(lines: AsyncIterable<string>): Promise<{ places: Place
 		if (columns[6] !== 'P' || LEFT_OUT.has(columns[7]) || !(population >= MIN_POPULATION)) {
 			continue;
 		}
-		places.push({ id: Number(columns[0]), name: columns[1], lat: Number(columns[4]), lon: Number(columns[5]), population, country: columns[8] });
+		places.push({
+			id: Number(columns[0]),
+			name: columns[1],
+			lat: Number(columns[4]),
+			lon: Number(columns[5]),
+			population,
+			country: columns[8],
+		});
 	}
 	return { places, read };
 }

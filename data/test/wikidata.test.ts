@@ -19,9 +19,17 @@ function queryService(labels: Record<number, string[]>, failures: { status: numb
 		queries.push({ url: String(input), ids, userAgent: new Headers(init?.headers).get('user-agent') });
 		const failure = failures.shift();
 		if (failure !== undefined) {
-			return new Response('busy', { status: failure.status, headers: failure.retryAfter === undefined ? {} : { 'retry-after': failure.retryAfter } });
+			return new Response('busy', {
+				status: failure.status,
+				headers: failure.retryAfter === undefined ? {} : { 'retry-after': failure.retryAfter },
+			});
 		}
-		const bindings = ids.flatMap((id) => (labels[id] ?? []).map((label) => ({ gn: { type: 'literal', value: String(id) }, l: { type: 'literal', 'xml:lang': 'ru', value: label } })));
+		const bindings = ids.flatMap((id) =>
+			(labels[id] ?? []).map((label) => ({
+				gn: { type: 'literal', value: String(id) },
+				l: { type: 'literal', 'xml:lang': 'ru', value: label },
+			})),
+		);
 		return Response.json({ head: { vars: ['gn', 'l'] }, results: { bindings } });
 	};
 	return { fetch, queries };
@@ -76,7 +84,10 @@ describe("Wikidata's Russian labels", () => {
 	});
 
 	it('fail the build when the query service keeps failing', async () => {
-		const service = queryService({}, Array.from({ length: 10 }, () => ({ status: 500 })));
+		const service = queryService(
+			{},
+			Array.from({ length: 10 }, () => ({ status: 500 })),
+		);
 
 		await expect(wikidataRussianLabels([1], { fetch: service.fetch, sleep: clock().sleep })).rejects.toThrow('Wikidata: HTTP 500');
 	});

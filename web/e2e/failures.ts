@@ -9,7 +9,7 @@ import { dirname, relative } from 'node:path';
 import type { FullConfig, FullResult, Reporter, TestCase, TestError, TestResult } from '@playwright/test/reporter';
 
 /** The colours of Playwright's messages. */
-const ANSI = /\u001b\[[0-9;]*m/gu;
+const ANSI = /\u001B\[[0-9;]*m/gu;
 
 /** What Playwright says when the preview server's port is taken; it suggests reusing that server, which we never do. */
 const PORT_TAKEN = /is already used, make sure that nothing is running on the port/u;
@@ -79,9 +79,9 @@ export default class FailuresReporter implements Reporter {
 /** An error as the console shows it, without its colours: the message, the code that threw it, the stack. */
 function formatError(error: TestError): string[] {
 	const frames = (error.stack ?? '').split('\n').filter((line) => /^\s+at /u.test(line));
-	const lines = ['```', (error.message ?? error.value ?? '').replace(ANSI, '')];
+	const lines = ['```', (error.message ?? error.value ?? '').replaceAll(ANSI, '')];
 	if (error.snippet !== undefined) {
-		lines.push('', error.snippet.replace(ANSI, ''));
+		lines.push('', error.snippet.replaceAll(ANSI, ''));
 	}
 	if (frames.length > 0) {
 		lines.push('', ...frames);

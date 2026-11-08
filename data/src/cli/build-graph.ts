@@ -11,7 +11,10 @@ import { reportMarkdown } from '../build-report.ts';
 import { zoneOutlines } from '../outlines.ts';
 import { loadGraph, log, seconds, userPath, withLocalFile } from './input.ts';
 
-const { values, positionals } = parseArgs({ allowPositionals: true, options: { outlines: { type: 'string' }, report: { type: 'string' } } });
+const { values, positionals } = parseArgs({
+	allowPositionals: true,
+	options: { outlines: { type: 'string' }, report: { type: 'string' } },
+});
 const [extract, out] = positionals;
 if (extract === undefined || out === undefined || extract.endsWith('.graph')) {
 	log('usage: pnpm --filter data build-graph <extract.osm.pbf | URL> <out.graph> [--outlines <zones.json>] [--report <report.md>]');

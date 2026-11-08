@@ -35,7 +35,7 @@ if (opening.source !== 'default') {
 
 const queryClient = new QueryClient();
 
-const root = document.getElementById('root');
+const root = document.querySelector('#root');
 if (root === null) {
 	throw new Error('index.html has no #root');
 }

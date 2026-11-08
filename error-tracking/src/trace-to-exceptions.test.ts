@@ -124,10 +124,7 @@ describe('traceToExceptions', () => {
 			traceToExceptions(
 				traceItem({
 					logs: [
-						errorLog(
-							['[ring] the engine failed hours=6', 'Error: boom'],
-							[null, { name: 'Error', message: 'boom', stack: WORKER_STACK }],
-						),
+						errorLog(['[ring] the engine failed hours=6', 'Error: boom'], [null, { name: 'Error', message: 'boom', stack: WORKER_STACK }]),
 					],
 				}),
 			),

@@ -41,7 +41,12 @@ function rings(...zones: { zone: number; points: [number, number][] }[]): Graph[
 		}
 		start.push(lat.length);
 	}
-	return { zone: Uint8Array.from(zones, ({ zone }) => zone), start: Uint32Array.from(start), lat: Int32Array.from(lat), lon: Int32Array.from(lon) };
+	return {
+		zone: Uint8Array.from(zones, ({ zone }) => zone),
+		start: Uint32Array.from(start),
+		lat: Int32Array.from(lat),
+		lon: Int32Array.from(lon),
+	};
 }
 
 describe('the zone outlines', () => {

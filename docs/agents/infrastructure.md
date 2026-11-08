@@ -6,10 +6,10 @@ Everything runs on the Owner's Cloudflare account `1d6db711ad880b2455da08a6aeb2a
 
 Nothing is deployed by hand (spec «Набор данных», «Деплой»; #36). Each Worker has its own Workers Builds trigger, «Deploy default branch», connected to `igorkamyshev/roadtrip`: branch `main`, root `/`, empty build command, deploy command `pnpm --filter <package> run deploy`, paths `*`, build cache on. The package's `deploy` script is the whole deploy, so a step the deploy needs goes in that script. A merge to `main` runs both triggers at once, in no fixed order.
 
-| Worker | Tag | Trigger | Deploy script |
-| --- | --- | --- | --- |
+| Worker                    | Tag                                | Trigger                                | Deploy script     |
+| ------------------------- | ---------------------------------- | -------------------------------------- | ----------------- |
 | `roadtrip-error-tracking` | `44628a3a33c14a7a98ad064976904dda` | `3fd91a31-bd70-49d0-ba5f-54ae3d45fb36` | `wrangler deploy` |
-| `roadtrip` | `9cb118bdadc145da87a91743d9d461b9` | `5d0acd69-e1e3-4ad2-ac21-47399686d952` | below |
+| `roadtrip`                | `9cb118bdadc145da87a91743d9d461b9` | `5d0acd69-e1e3-4ad2-ac21-47399686d952` | below             |
 
 `roadtrip`'s `deploy` (`worker/package.json`) runs three steps:
 

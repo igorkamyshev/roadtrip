@@ -32,7 +32,11 @@ const METERS_PER_DEGREE = 111_195;
  * The outlines of the graph's zones. `parts` are the zones that are parts of countries (the build report's
  * `parts`); a ring smaller than the tolerance squared after simplification, such as a small island, is left out.
  */
-export function zoneOutlines(graph: Pick<Graph, 'zones' | 'zoneRings'>, parts: readonly string[], toleranceMeters = OUTLINE_TOLERANCE_METERS): ZoneOutlines {
+export function zoneOutlines(
+	graph: Pick<Graph, 'zones' | 'zoneRings'>,
+	parts: readonly string[],
+	toleranceMeters = OUTLINE_TOLERANCE_METERS,
+): ZoneOutlines {
 	const { zone, start, lat, lon } = graph.zoneRings;
 	const ringsByZone = new Map<string, Ring[]>();
 	for (let ring = 0; ring < zone.length; ring++) {

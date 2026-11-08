@@ -19,7 +19,9 @@ export function populationText(population: number): string {
  * The mark of the entry mode: «оформить заранее» for an e-visa, «виза на границе» for a visa on arrival, «по визе
  * Шенгена» or «по визе: <страна>» for a held visa, «страна старта»; none without a visa.
  */
-export function entryMark(access: CountryAccess | undefined): { readonly text: string; readonly kind: 'evisa' | 'held' | 'plain' } | undefined {
+export function entryMark(
+	access: CountryAccess | undefined,
+): { readonly text: string; readonly kind: 'evisa' | 'held' | 'plain' } | undefined {
 	switch (access?.mode) {
 		case 'evisa':
 			return { text: 'оформить заранее', kind: 'evisa' };

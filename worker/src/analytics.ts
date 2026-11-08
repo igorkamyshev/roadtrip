@@ -118,5 +118,5 @@ export function browserIds(request: Request): { distinct_id?: string; session_id
 
 /** An id from a header without control characters, cut to 1000 characters. */
 function cleanId(id: string): string {
-	return id.replace(/[\u0000-\u001f\u007f]/gu, '').slice(0, MAX_ID_LENGTH);
+	return id.replaceAll(/[\u0000-\u001F\u007F]/gu, '').slice(0, MAX_ID_LENGTH);
 }

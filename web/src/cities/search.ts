@@ -17,7 +17,10 @@ const entries = new WeakMap<readonly City[], readonly Entry[]>();
 function entriesOf(cities: readonly City[]): readonly Entry[] {
 	let list = entries.get(cities);
 	if (list === undefined) {
-		list = cities.map((city) => ({ city, names: city.local === undefined ? [searchable(city.name)] : [searchable(city.name), searchable(city.local)] }));
+		list = cities.map((city) => ({
+			city,
+			names: city.local === undefined ? [searchable(city.name)] : [searchable(city.name), searchable(city.local)],
+		}));
 		entries.set(cities, list);
 	}
 	return list;
@@ -45,5 +48,9 @@ export function searchCities(cities: readonly City[], text: string): City[] {
  * («нови сад» is «Нови-Сад»), one space between words, none around.
  */
 export function searchable(text: string): string {
-	return text.toLowerCase().replaceAll('ё', 'е').replaceAll(/[-‐‑–—\s]+/gu, ' ').trim();
+	return text
+		.toLowerCase()
+		.replaceAll('ё', 'е')
+		.replaceAll(/[-‐‑–—\s]+/gu, ' ')
+		.trim();
 }

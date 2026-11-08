@@ -50,7 +50,11 @@ export type CitizenshipsRules = { readonly copies: ReadonlyMap<string, VisaRules
  * The visa rules of `citizenships`, from their copies or from Sherpa. `context` (the browser's ids, N) goes with
  * each failure to `logger.error`.
  */
-export async function citizenshipsRules(citizenships: readonly string[], deps: VisaRulesDeps, context: LogContext): Promise<CitizenshipsRules> {
+export async function citizenshipsRules(
+	citizenships: readonly string[],
+	deps: VisaRulesDeps,
+	context: LogContext,
+): Promise<CitizenshipsRules> {
 	const copies = await Promise.all(citizenships.map((citizenship) => visaRules(citizenship, deps, context)));
 	const missing = citizenships.find((_, index) => copies[index] === undefined);
 	if (missing !== undefined) {

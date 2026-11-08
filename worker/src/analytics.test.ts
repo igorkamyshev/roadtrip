@@ -12,7 +12,8 @@ const served = { source: 'cache', outcome: 'ring', hours: 3, duration_ms: 41 } a
 
 /** PostHog's capture API: keeps each request and the events of its batch. */
 function postHogDouble() {
-	const requests: { url: string; apiKey: string; batch: { event: string; distinct_id: string; properties: Record<string, unknown> }[] }[] = [];
+	const requests: { url: string; apiKey: string; batch: { event: string; distinct_id: string; properties: Record<string, unknown> }[] }[] =
+		[];
 	const fetch: PostHogFetch = async (url, options) => {
 		const body = options.body instanceof Blob ? new Uint8Array(await options.body.arrayBuffer()) : options.body;
 		const bytes = typeof body === 'string' ? new TextEncoder().encode(body) : (body ?? new Uint8Array());
@@ -51,7 +52,9 @@ describe("the Worker's analytics", () => {
 		expect(background).toHaveLength(2);
 		await settle();
 
-		expect(requests).toEqual([{ url: 'https://us.i.posthog.com/batch/', apiKey: TOKEN, batch: [expect.objectContaining({ event: 'ring served' })] }]);
+		expect(requests).toEqual([
+			{ url: 'https://us.i.posthog.com/batch/', apiKey: TOKEN, batch: [expect.objectContaining({ event: 'ring served' })] },
+		]);
 	});
 
 	it("tie each event to the browser's distinct_id and session, and create no person", async () => {

@@ -87,7 +87,8 @@ for (const region of REGIONS.filter((one) => regionIds.includes(one.id))) {
 				}
 				const candidates = cities.filter(
 					(city) =>
-						haversineMeters(point.lat, point.lon, city.lat, city.lon) <= CITY_REACH_METERS && index.nearest(city.lat, city.lon) !== undefined,
+						haversineMeters(point.lat, point.lon, city.lat, city.lon) <= CITY_REACH_METERS &&
+						index.nearest(city.lat, city.lon) !== undefined,
 				);
 				const hours = await service.travelHours(point, candidates);
 				const result: ValhallaResult = {
@@ -127,7 +128,12 @@ for (const region of REGIONS.filter((one) => regionIds.includes(one.id))) {
 		comparisons.push({ point, rings });
 		log(
 			`${point.id} (${seconds(pointStarted)}): ` +
-				rings.map((ring) => `${ring.hours} h area ${pct(ring.area.deviation)} median ${ring.median === undefined ? '—' : pct(ring.median.deviation)}`).join('; '),
+				rings
+					.map(
+						(ring) =>
+							`${ring.hours} h area ${pct(ring.area.deviation)} median ${ring.median === undefined ? '—' : pct(ring.median.deviation)}`,
+					)
+					.join('; '),
 		);
 	}
 }
@@ -166,7 +172,10 @@ function checkSameAsComputeRing(graph: Graph, point: StartPoint, isochrone: Mult
 }
 
 function featureCollection(geometries: readonly unknown[]): string {
-	return JSON.stringify({ type: 'FeatureCollection', features: geometries.map((geometry) => ({ type: 'Feature', geometry, properties: {} })) });
+	return JSON.stringify({
+		type: 'FeatureCollection',
+		features: geometries.map((geometry) => ({ type: 'Feature', geometry, properties: {} })),
+	});
 }
 
 function pct(deviation: number): string {

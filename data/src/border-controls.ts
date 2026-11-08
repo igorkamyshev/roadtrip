@@ -26,8 +26,16 @@ export class BorderControls {
 		const latReach = (BORDER_CROSSING_METERS / METERS_PER_DEGREE) * E7;
 		const cos = Math.max(0.01, Math.cos((Math.max(Math.abs(lat1), Math.abs(lat2)) / E7 + latReach / E7) * (Math.PI / 180)));
 		const lonReach = latReach / cos;
-		for (let row = Math.floor((Math.min(lat1, lat2) - latReach) / CELL); row <= Math.floor((Math.max(lat1, lat2) + latReach) / CELL); row++) {
-			for (let column = Math.floor((Math.min(lon1, lon2) - lonReach) / CELL); column <= Math.floor((Math.max(lon1, lon2) + lonReach) / CELL); column++) {
+		for (
+			let row = Math.floor((Math.min(lat1, lat2) - latReach) / CELL);
+			row <= Math.floor((Math.max(lat1, lat2) + latReach) / CELL);
+			row++
+		) {
+			for (
+				let column = Math.floor((Math.min(lon1, lon2) - lonReach) / CELL);
+				column <= Math.floor((Math.max(lon1, lon2) + lonReach) / CELL);
+				column++
+			) {
 				const points = this.#cells.get(cellKey(row, column)) ?? [];
 				for (let index = 0; index < points.length; index += 2) {
 					if (segmentMeters(points[index], points[index + 1], lat1, lon1, lat2, lon2) <= BORDER_CROSSING_METERS) {

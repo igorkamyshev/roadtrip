@@ -44,7 +44,14 @@ function citiesOnMap(cities: readonly City[], chosen: number | undefined): MapCi
 	if (chosenCity !== undefined && !shown.includes(chosenCity)) {
 		shown.push(chosenCity);
 	}
-	return shown.map(({ id, name, lat, lon }, index) => ({ id, name, lat, lon, label: index < CAROUSEL_CITIES || id === chosen, chosen: id === chosen }));
+	return shown.map(({ id, name, lat, lon }, index) => ({
+		id,
+		name,
+		lat,
+		lon,
+		label: index < CAROUSEL_CITIES || id === chosen,
+		chosen: id === chosen,
+	}));
 }
 
 export function Screen() {
@@ -60,7 +67,15 @@ export function Screen() {
 	const requestId = origin === undefined ? '' : JSON.stringify(ringKey(origin, hours, settings));
 	const [retries, setRetries] = useState(0);
 	const citiesFile = useCitiesFile();
-	const analytics = useScreenAnalytics({ start, request: origin === undefined ? undefined : requestId, retries, hours, settings, ring, citiesFile });
+	const analytics = useScreenAnalytics({
+		start,
+		request: origin === undefined ? undefined : requestId,
+		retries,
+		hours,
+		settings,
+		ring,
+		citiesFile,
+	});
 
 	const located = useCallback(
 		(position: LatLon) => {
@@ -347,9 +362,7 @@ function firstCardState(
 			if (cities === undefined) {
 				return { kind: 'ring', hours };
 			}
-			return cities.length === 0
-				? { kind: 'no_cities' }
-				: { kind: 'ring', hours, cities: countOf(cities) };
+			return cities.length === 0 ? { kind: 'no_cities' } : { kind: 'ring', hours, cities: countOf(cities) };
 		case 'empty':
 			return { kind: 'empty', maxHours: answer.maxHours };
 		case 'no_roads':

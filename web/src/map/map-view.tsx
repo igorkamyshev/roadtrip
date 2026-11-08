@@ -111,7 +111,11 @@ export function MapView({ origin, ring, striped, fit, pinning, closed, cities, o
 			goTo(place, minZoom = 0) {
 				// An offset, not a padding: a padding would stay on the map and move its centre off the pin's.
 				const { top, right, bottom, left } = MAP_PADDING;
-				map?.easeTo({ center: [place.lon, place.lat], zoom: Math.max(map.getZoom(), minZoom), offset: [(left - right) / 2, (top - bottom) / 2] });
+				map?.easeTo({
+					center: [place.lon, place.lat],
+					zoom: Math.max(map.getZoom(), minZoom),
+					offset: [(left - right) / 2, (top - bottom) / 2],
+				});
 			},
 		}),
 		[map, origin],

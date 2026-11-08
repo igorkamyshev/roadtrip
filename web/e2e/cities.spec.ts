@@ -6,7 +6,18 @@
 import type { Locator, Page } from '@playwright/test';
 import type { Access } from 'worker/api';
 import { allowGeolocation, expect, serveCities, squareRing, test, visaRules } from './fixtures.ts';
-import { citiesOnMap, distanceFromTheMiddle, expectRingCard, firstCard, labelsOnMap, mapAtRest, mapZoom, phrase, slider, tapMap } from './screen.ts';
+import {
+	citiesOnMap,
+	distanceFromTheMiddle,
+	expectRingCard,
+	firstCard,
+	labelsOnMap,
+	mapAtRest,
+	mapZoom,
+	phrase,
+	slider,
+	tapMap,
+} from './screen.ts';
 
 const BELGRADE = { lat: 44.8176, lon: 20.4573 };
 const LINK = '/#/?p=44.81760,20.45730&h=3';
@@ -43,7 +54,7 @@ function ringAroundBelgrade(access: Access) {
 
 /** What a person reads in an element: its inner text with the line breaks as spaces. */
 async function read(locator: Locator): Promise<string> {
-	return (await locator.innerText()).replace(/\s+/gu, ' ').trim();
+	return (await locator.innerText()).replaceAll(/\s+/gu, ' ').trim();
 }
 
 test.beforeEach(async ({ context }) => {
@@ -83,7 +94,10 @@ test.describe('the first card', () => {
 		await page.goto('/#/?p=35.20000,33.40000&h=2');
 
 		await expect.poll(() => read(firstCard(page))).toBe('В кольце 1–2 ч 2 города в 1 стране Листайте → самые крупные');
-		await expect(cityCards(page).locator('.muted')).toHaveText(['Famagusta · Северный Кипр · 43 тыс.', 'Kyrenia · Северный Кипр · 27 тыс.']);
+		await expect(cityCards(page).locator('.muted')).toHaveText([
+			'Famagusta · Северный Кипр · 43 тыс.',
+			'Kyrenia · Северный Кипр · 27 тыс.',
+		]);
 	});
 
 	test('leaves out the cities of a closed territory', async ({ page, ringApi }) => {
@@ -95,7 +109,10 @@ test.describe('the first card', () => {
 		// Access names Crimea closed for everyone, or does not name it at all: neither opens it.
 		const closedForEveryone: Access = { CRIMEA: { mode: 'closed', closedForEveryone: true } };
 		for (const crimea of [closedForEveryone, {}]) {
-			ringApi.respond((call) => ({ ...squareRing(Number(call.lat), Number(call.lon), 0, 2), ...visaRules({ ...crimea, UKR: { mode: 'visa_free', citizenship: 'SRB' } }) }));
+			ringApi.respond((call) => ({
+				...squareRing(Number(call.lat), Number(call.lon), 0, 2),
+				...visaRules({ ...crimea, UKR: { mode: 'visa_free', citizenship: 'SRB' } }),
+			}));
 			await page.goto(`/#/?p=45.50000,33.50000&h=${'CRIMEA' in crimea ? 2 : 3}&cit=SRB`);
 
 			await expect(cityCards(page).locator('h3')).toHaveText(['Херсон']);
@@ -166,7 +183,19 @@ test.describe('the list of all cities', () => {
 		// 3 000 cities in Serbia between 1.5° and 2.5° from Belgrade, the n-th of 100 000 − n people.
 		await serveCities(
 			page,
-			Array.from({ length: 3000 }, (_, n) => [n + 1, `Город ${n + 1}`, `Grad ${n + 1}`, BELGRADE.lat + 1.5 + (n % 100) / 100, BELGRADE.lon - 1 + Math.floor(n / 100) / 15, 100_000 - n, 'SRB'] as const),
+			Array.from(
+				{ length: 3000 },
+				(_, n) =>
+					[
+						n + 1,
+						`Город ${n + 1}`,
+						`Grad ${n + 1}`,
+						BELGRADE.lat + 1.5 + (n % 100) / 100,
+						BELGRADE.lon - 1 + Math.floor(n / 100) / 15,
+						100_000 - n,
+						'SRB',
+					] as const,
+			),
 		);
 		ringApi.respond(() => ringAroundBelgrade(RUSSIAN));
 		await page.goto(LINK);
@@ -176,9 +205,11 @@ test.describe('the list of all cities', () => {
 		await expect(rows(page).first()).toContainText('Город 1');
 		expect(await rows(page).count()).toBeLessThan(50);
 
-		await sheet(page).locator('.sheet-body').evaluate((body) => {
-			body.scrollTop = body.scrollHeight;
-		});
+		await sheet(page)
+			.locator('.sheet-body')
+			.evaluate((body) => {
+				body.scrollTop = body.scrollHeight;
+			});
 
 		await expect(rows(page).last()).toContainText('Город 3000');
 		expect(await rows(page).count()).toBeLessThan(50);
@@ -223,10 +254,12 @@ test.describe('the carousel and the map', () => {
 	}
 
 	test("the map labels the carousel's cities, and dots the others of the ring", async ({ page }) => {
-		await expect.poll(() => labelsOnMap(page)).toEqual({
-			labels: ['Будапешт', 'Сараево', 'Ниш', 'Подгорица', 'Дебрецен', 'Арад', 'Сегед', 'Печ', 'Тузла', 'Кечкемет', 'Мостар', 'Суботица'],
-			chosen: [],
-		});
+		await expect
+			.poll(() => labelsOnMap(page))
+			.toEqual({
+				labels: ['Будапешт', 'Сараево', 'Ниш', 'Подгорица', 'Дебрецен', 'Арад', 'Сегед', 'Печ', 'Тузла', 'Кечкемет', 'Мостар', 'Суботица'],
+				chosen: [],
+			});
 		expect((await citiesOnMap(page)).map((city) => city.name).slice(12)).toEqual(['Решица', 'Дробета-Турну-Северин', 'Осиек', 'Ilidža']);
 	});
 
@@ -302,12 +335,17 @@ test.describe('a city card', () => {
 	/** The card of the city whose name is in its heading. */
 	const card = (page: Page, name: string) => cityCards(page).filter({ has: page.getByRole('heading', { name, exact: true }) });
 
-	test('says the name, the local name, the country and the population, and leads to Google Maps from the origin', async ({ page, ringApi }) => {
+	test('says the name, the local name, the country and the population, and leads to Google Maps from the origin', async ({
+		page,
+		ringApi,
+	}) => {
 		ringApi.respond(() => ringAroundBelgrade(WITH_SCHENGEN_VISA));
 		await page.goto(LINK);
 
 		const budapest = card(page, 'Будапешт');
-		await expect.poll(() => read(budapest)).toBe('Будапешт Budapest · Венгрия · 1,7 млн по визе Шенгена Российские номера не пустят Маршрут');
+		await expect
+			.poll(() => read(budapest))
+			.toBe('Будапешт Budapest · Венгрия · 1,7 млн по визе Шенгена Российские номера не пустят Маршрут');
 		await expect(budapest.getByRole('link', { name: 'Маршрут' })).toHaveAttribute(
 			'href',
 			'https://www.google.com/maps/dir/?api=1&origin=44.81760%2C20.45730&destination=47.498%2C19.04&travelmode=driving',

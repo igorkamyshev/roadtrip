@@ -23,7 +23,9 @@ const { values, positionals } = parseArgs({
 const [directory] = positionals;
 const account = process.env.CLOUDFLARE_ACCOUNT_ID;
 if (directory === undefined || account === undefined) {
-	log('usage: CLOUDFLARE_ACCOUNT_ID=… node data/src/cli/publish-dataset.ts <dataset directory> [--bucket <name>] [--prefix <prefix>] [--trial]');
+	log(
+		'usage: CLOUDFLARE_ACCOUNT_ID=… node data/src/cli/publish-dataset.ts <dataset directory> [--bucket <name>] [--prefix <prefix>] [--trial]',
+	);
 	process.exit(2);
 }
 
@@ -35,7 +37,9 @@ const r2: DatasetStore = {
 		await aws(['s3', 'cp', path, url(key), '--no-progress', '--only-show-errors', ...endpoint]);
 	},
 	async size(key) {
-		const head = await aws(['s3api', 'head-object', '--bucket', values.bucket, '--key', `${values.prefix}${key}`, ...endpoint], { missing: true });
+		const head = await aws(['s3api', 'head-object', '--bucket', values.bucket, '--key', `${values.prefix}${key}`, ...endpoint], {
+			missing: true,
+		});
 		return head === undefined ? undefined : (JSON.parse(head) as { ContentLength: number }).ContentLength;
 	},
 	async read(key) {

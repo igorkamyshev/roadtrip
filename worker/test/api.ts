@@ -164,7 +164,11 @@ export const SHERPA_COUNTRIES = Object.keys(COUNTRIES);
  */
 export function sherpaMap(
 	passport: string,
-	{ groups = {}, rest = 'NO_VISA_REQUIRED', absent = [] }: { groups?: Readonly<Record<string, SherpaGroup>>; rest?: SherpaGroup; absent?: readonly string[] } = {},
+	{
+		groups = {},
+		rest = 'NO_VISA_REQUIRED',
+		absent = [],
+	}: { groups?: Readonly<Record<string, SherpaGroup>>; rest?: SherpaGroup; absent?: readonly string[] } = {},
 ): object {
 	const series = new Map<SherpaGroup, { id: string; type: 'LOCATION'; name: string }[]>();
 	for (const country of SHERPA_COUNTRIES) {

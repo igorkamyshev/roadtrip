@@ -55,7 +55,10 @@ export async function prepareRoads(work: string, region: Region, tools: Tools): 
 		const parts: string[] = [];
 		for (const path of region.extracts) {
 			const url = /^https?:\/\//u.test(path) ? path : `${tools.extractBase}/${path}-latest.osm.pbf`;
-			const name = path.split('/').at(-1)!.replace(/\.pbf$/u, '');
+			const name = path
+				.split('/')
+				.at(-1)!
+				.replace(/\.pbf$/u, '');
 			const raw = join(download, `${name}.osm.pbf`);
 			await fetchFile(url, raw, tools);
 			const part = join(download, `${name}-highways.osm.pbf`);
@@ -68,7 +71,11 @@ export async function prepareRoads(work: string, region: Region, tools: Tools): 
 		rmSync(download, { recursive: true });
 	}
 	if (!existsSync(files.roads)) {
-		run('osmium', ['tags-filter', '--overwrite', '-o', files.roads, files.highways, `w/highway=${Object.keys(CLASS_SPEED_KMH).join(',')}`], tools);
+		run(
+			'osmium',
+			['tags-filter', '--overwrite', '-o', files.roads, files.highways, `w/highway=${Object.keys(CLASS_SPEED_KMH).join(',')}`],
+			tools,
+		);
 	}
 	return files;
 }

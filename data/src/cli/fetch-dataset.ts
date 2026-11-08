@@ -44,7 +44,8 @@ const r2: DatasetSource = {
 			return undefined;
 		}
 		if (!response.ok || response.body === null) {
-			const why = response.status === 401 || response.status === 403 ? ' (the API token needs Workers R2 Storage: Read on the account)' : '';
+			const why =
+				response.status === 401 || response.status === 403 ? ' (the API token needs Workers R2 Storage: Read on the account)' : '';
 			throw new Error(`R2 answered ${response.status} to GET ${values.bucket}/${key}${why}: ${await response.text()}`);
 		}
 		return response.body;

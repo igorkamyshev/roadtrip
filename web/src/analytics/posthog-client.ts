@@ -36,6 +36,14 @@ export function start(host: string, earlyErrors: readonly unknown[]): void {
 	}
 }
 
-export function capture<Event extends BrowserEvent>(event: Event, properties: BrowserEvents[Event], { at, beacon = false }: SendOptions): void {
-	posthog.capture(event, { ...properties }, { ...(at === undefined ? {} : { timestamp: at }), ...(beacon ? { transport: 'sendBeacon', send_instantly: true } : {}) });
+export function capture<Event extends BrowserEvent>(
+	event: Event,
+	properties: BrowserEvents[Event],
+	{ at, beacon = false }: SendOptions,
+): void {
+	posthog.capture(
+		event,
+		{ ...properties },
+		{ ...(at === undefined ? {} : { timestamp: at }), ...(beacon ? { transport: 'sendBeacon', send_instantly: true } : {}) },
+	);
 }

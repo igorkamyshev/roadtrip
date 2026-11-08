@@ -54,9 +54,24 @@ test('«На карте» of a card without a ring turns the pin mode on', async
 });
 
 const failures: readonly { failure: string; reply: RingReply; state: string; texts: readonly string[] }[] = [
-	{ failure: '429 from the WAF', reply: { status: 429 }, state: 'too_many_requests', texts: ['Слишком много запросов, подождите несколько секунд'] },
-	{ failure: '5xx', reply: { status: 502 }, state: 'error', texts: ['Не получилось посчитать', 'Проверьте интернет и попробуйте ещё раз.'] },
-	{ failure: 'a network failure', reply: 'network error', state: 'error', texts: ['Не получилось посчитать', 'Проверьте интернет и попробуйте ещё раз.'] },
+	{
+		failure: '429 from the WAF',
+		reply: { status: 429 },
+		state: 'too_many_requests',
+		texts: ['Слишком много запросов, подождите несколько секунд'],
+	},
+	{
+		failure: '5xx',
+		reply: { status: 502 },
+		state: 'error',
+		texts: ['Не получилось посчитать', 'Проверьте интернет и попробуйте ещё раз.'],
+	},
+	{
+		failure: 'a network failure',
+		reply: 'network error',
+		state: 'error',
+		texts: ['Не получилось посчитать', 'Проверьте интернет и попробуйте ещё раз.'],
+	},
 ];
 
 for (const { failure, reply, state, texts } of failures) {

@@ -161,7 +161,8 @@ export const PRODUCTION = 'https://roadtrip.kamyshev.me';
 /** PostHog's managed proxy, where the browser sends its events (`PostHogDouble`). */
 export const POSTHOG_PROXY = 'https://r-rt.kamyshev.me';
 
-const PHONE_USER_AGENT = 'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Mobile Safari/537.36';
+const PHONE_USER_AGENT =
+	'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Mobile Safari/537.36';
 
 /** What the page asked of the network: the basemap's tiles it got, and the requests to other hosts, cut off. */
 export class Network {
@@ -302,7 +303,11 @@ export class PostHogDouble {
 			return;
 		}
 		if (url.pathname.startsWith('/flags')) {
-			await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ featureFlags: {}, featureFlagPayloads: {}, errorsWhileComputingFlags: false }) });
+			await route.fulfill({
+				status: 200,
+				contentType: 'application/json',
+				body: JSON.stringify({ featureFlags: {}, featureFlagPayloads: {}, errorsWhileComputingFlags: false }),
+			});
 			return;
 		}
 		const body = request.postDataBuffer();
@@ -354,7 +359,11 @@ function decodeEvents(body: Buffer, compression: string | null): { event: string
 		text = body.toString('utf8');
 	}
 	const json = JSON.parse(text) as unknown;
-	const events = Array.isArray(json) ? json : typeof json === 'object' && json !== null && 'batch' in json ? (json as { batch: unknown[] }).batch : [json];
+	const events = Array.isArray(json)
+		? json
+		: typeof json === 'object' && json !== null && 'batch' in json
+			? (json as { batch: unknown[] }).batch
+			: [json];
 	return events as { event: string; properties?: Record<string, unknown> }[];
 }
 
@@ -376,12 +385,15 @@ export async function allowGeolocation(context: BrowserContext, at: { readonly l
  * (`timeout`). A refusal (`denied`) needs nothing: a context without the permission refuses.
  */
 export async function failGeolocation(context: BrowserContext, reason: 'unavailable' | 'timeout'): Promise<void> {
-	await context.addInitScript((code) => {
-		const error = { code, message: 'test', PERMISSION_DENIED: 1, POSITION_UNAVAILABLE: 2, TIMEOUT: 3 } as GeolocationPositionError;
-		navigator.geolocation.getCurrentPosition = (_, fail) => {
-			setTimeout(() => fail?.(error), 0);
-		};
-	}, reason === 'unavailable' ? 2 : 3);
+	await context.addInitScript(
+		(code) => {
+			const error = { code, message: 'test', PERMISSION_DENIED: 1, POSITION_UNAVAILABLE: 2, TIMEOUT: 3 } as GeolocationPositionError;
+			navigator.geolocation.getCurrentPosition = (_, fail) => {
+				setTimeout(() => fail?.(error), 0);
+			};
+		},
+		reason === 'unavailable' ? 2 : 3,
+	);
 }
 
 /**
@@ -407,5 +419,11 @@ export function squareRing(lat: number, lon: number, inner: number, outer: numbe
 		[lon - d, lat - d],
 	];
 	const polygon = inner === 0 ? [square(outer)] : [square(outer), square(inner).reverse()];
-	return { outcome: 'ring', ring: { type: 'MultiPolygon', coordinates: [polygon] }, startCountry: 'SRB', source: 'calculation', ...visaRules() };
+	return {
+		outcome: 'ring',
+		ring: { type: 'MultiPolygon', coordinates: [polygon] },
+		startCountry: 'SRB',
+		source: 'calculation',
+		...visaRules(),
+	};
 }

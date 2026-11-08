@@ -21,9 +21,7 @@ function ringQuery(origin: LatLon | undefined, hours: number, settings: Settings
 	return queryOptions<RingResponse, RingRequestError>({
 		queryKey: origin === undefined ? ['ring'] : ringKey(origin, hours, settings),
 		queryFn:
-			origin === undefined
-				? skipToken
-				: () => fetchRing({ origin, hours, citizenships: settings.citizenships, visas: settings.visas }),
+			origin === undefined ? skipToken : () => fetchRing({ origin, hours, citizenships: settings.citizenships, visas: settings.visas }),
 		staleTime: Infinity,
 		gcTime: Infinity,
 		retry: false,

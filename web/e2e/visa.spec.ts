@@ -71,7 +71,7 @@ test.describe('the citizenships', () => {
 		const filter = sheet(page).getByRole('searchbox', { name: 'Найти гражданство' });
 		const names = () => sheet(page).locator('.pick-item').allInnerTexts();
 
-		expect(await sheet(page).locator('.pick-item').count()).toBe(199);
+		await expect(sheet(page).locator('.pick-item')).toHaveCount(199);
 		await filter.fill('корея');
 		// North Korea's passport is not Sherpa's.
 		expect(await names()).toEqual(['Республика Корея']);
@@ -84,7 +84,7 @@ test.describe('the citizenships', () => {
 		// Neither the spec nor the prototype has a line for an empty filter.
 		await expect(sheet(page)).not.toContainText('нет в списке');
 		await filter.fill('');
-		expect(await sheet(page).locator('.pick-item').count()).toBe(199);
+		await expect(sheet(page).locator('.pick-item')).toHaveCount(199);
 	});
 
 	test('in a link open with it, sorted, and are saved', async ({ page, ringApi }) => {
@@ -164,7 +164,10 @@ test.describe('the visa rules', () => {
 	});
 
 	test('of another year are dated with the year', async ({ page, ringApi }) => {
-		ringApi.respond((call) => ({ ...squareRing(Number(call.lat), Number(call.lon), 0, 0.1), ...visaRules(undefined, '2025-12-30T09:00:00Z') }));
+		ringApi.respond((call) => ({
+			...squareRing(Number(call.lat), Number(call.lon), 0, 0.1),
+			...visaRules(undefined, '2025-12-30T09:00:00Z'),
+		}));
 		await page.goto(LINK);
 
 		await expect(phrase(page)).toContainText('визовые правила от 30 декабря 2025');

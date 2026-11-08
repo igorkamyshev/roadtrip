@@ -25,7 +25,9 @@ export const DEFAULT_CITIZENSHIP = 'RUS';
 /** Sherpa's passports in the sheet's order: the default first, then by name. */
 export const CITIZENSHIP_CHOICES: readonly string[] = [
 	DEFAULT_CITIZENSHIP,
-	...SHERPA_PASSPORTS.filter((code) => code !== DEFAULT_CITIZENSHIP).sort((one, two) => countryName(one).localeCompare(countryName(two), 'ru')),
+	...SHERPA_PASSPORTS.filter((code) => code !== DEFAULT_CITIZENSHIP).sort((one, two) =>
+		countryName(one).localeCompare(countryName(two), 'ru'),
+	),
 ];
 
 const VISA_NAMES: Readonly<Record<string, string>> = { [SCHENGEN]: 'Шенген', USA: 'США' };

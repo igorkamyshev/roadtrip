@@ -2,7 +2,18 @@
 // браузера»: TanStack Query; stories 10–15, 22): a ring is asked for when the slider is let go, rings in memory
 // come back without a request, and a calculation keeps the old ring of the same origin, striped.
 import { allowGeolocation, expect, squareRing, test } from './fixtures.ts';
-import { dottedHours, dragMap, dragSlider, expectRingCard, firstCard, mapBounds, phrase, ringIsStriped, ringOnMap, slider } from './screen.ts';
+import {
+	dottedHours,
+	dragMap,
+	dragSlider,
+	expectRingCard,
+	firstCard,
+	mapBounds,
+	phrase,
+	ringIsStriped,
+	ringOnMap,
+	slider,
+} from './screen.ts';
 
 const BELGRADE = { lat: 44.8176, lon: 20.4573 };
 /** Where the page's clock starts in the tests that hold it, in ms since the epoch. */
@@ -11,7 +22,8 @@ const MINUTE = 60_000;
 const BELGRADE_CALL = { lat: '44.81760', lon: '20.45730' };
 
 /** A ring per N: a band from N − 1 to N tenths of a degree around the origin. */
-const ringFor = (call: { lat: string; lon: string; hours: number }) => squareRing(Number(call.lat), Number(call.lon), (call.hours - 1) / 10, call.hours / 10);
+const ringFor = (call: { lat: string; lon: string; hours: number }) =>
+	squareRing(Number(call.lat), Number(call.lon), (call.hours - 1) / 10, call.hours / 10);
 
 test.beforeEach(async ({ context }) => {
 	await allowGeolocation(context, BELGRADE);

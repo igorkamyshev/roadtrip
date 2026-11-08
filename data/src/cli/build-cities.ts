@@ -36,9 +36,11 @@ if (graphFile === undefined || out === undefined) {
 	);
 	process.exit(2);
 }
-const countries = values.countries === undefined ? undefined : new Set(values.countries.split(',').map((code) => code.trim().toUpperCase()));
+const countries =
+	values.countries === undefined ? undefined : new Set(values.countries.split(',').map((code) => code.trim().toUpperCase()));
 const names =
-	values.names?.split(',') ?? (countries === undefined ? [`${DUMP}/alternateNamesV2.zip`] : [...countries].map((code) => `${DUMP}/alternatenames/${code}.zip`));
+	values.names?.split(',') ??
+	(countries === undefined ? [`${DUMP}/alternateNamesV2.zip`] : [...countries].map((code) => `${DUMP}/alternatenames/${code}.zip`));
 
 const { graph } = await withLocalFile(graphFile, loadGraph);
 const started = performance.now();
@@ -56,8 +58,12 @@ const { cities, report } = await buildCities({
 const json = JSON.stringify(encodeCities(cities));
 writeFileSync(userPath(out), json);
 
-log(`${report.cities} cities of ${report.read} lines of ${values.cities}${countries === undefined ? '' : ` in ${[...countries].join(', ')}`}, in ${seconds(started)}`);
-log(`Russian names: ${report.russianFromGeoNames} from GeoNames, ${report.russianFromWikidata} from Wikidata, ${report.withoutRussian} without`);
+log(
+	`${report.cities} cities of ${report.read} lines of ${values.cities}${countries === undefined ? '' : ` in ${[...countries].join(', ')}`}, in ${seconds(started)}`,
+);
+log(
+	`Russian names: ${report.russianFromGeoNames} from GeoNames, ${report.russianFromWikidata} from Wikidata, ${report.withoutRussian} without`,
+);
 log(`zones: ${report.zoneByPolygon} by the graph's polygons, ${report.zoneByCountry} outside every polygon by their GeoNames country`);
 if (report.withoutZone.length > 0) {
 	log(`left out, outside every polygon and in a country that is no zone: ${report.withoutZone.join('; ')}`);

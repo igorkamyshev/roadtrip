@@ -30,7 +30,12 @@ export function borderTableProblems(table: BorderTable): string[] {
 			problems.push(`${code} is not a country's code`);
 		}
 	}
-	problems.push(...repeated('closedTerritories', [...table.closedTerritories.map((territory) => territory.code)]));
+	problems.push(
+		...repeated(
+			'closedTerritories',
+			table.closedTerritories.map((territory) => territory.code),
+		),
+	);
 	for (const { code } of table.closedTerritories) {
 		if (!TERRITORY_CODE.test(code)) {
 			problems.push(`the closed territory ${code} needs a code of capitals and underscores longer than an alpha-3`);

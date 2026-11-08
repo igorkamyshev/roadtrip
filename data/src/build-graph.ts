@@ -175,7 +175,9 @@ function readZoneRelations(source: OsmSource): ZoneRelation[] {
 		relation(relation) {
 			const zone = zoneOf(relation);
 			if (zone !== undefined) {
-				const ways = relation.members.filter((member) => member.type === 'way').map((member) => ({ id: member.ref, inner: member.role === 'inner' }));
+				const ways = relation.members
+					.filter((member) => member.type === 'way')
+					.map((member) => ({ id: member.ref, inner: member.role === 'inner' }));
 				relations.push({ ...zone, ways });
 			}
 		},
@@ -318,11 +320,14 @@ class Pieces {
 		cut[length - 1] = 1;
 		for (let node = 1; node < length - 1; node++) {
 			const stays =
-				zone[node - 1] !== zone[node] || zone[node + 1] !== zone[node] || ids[node - 1] === ids[node + 1] || this.#junctions.get(ids[node]) >= 0;
+				zone[node - 1] !== zone[node] ||
+				zone[node + 1] !== zone[node] ||
+				ids[node - 1] === ids[node + 1] ||
+				this.#junctions.get(ids[node]) >= 0;
 			cut[node] = stays ? 1 : 0;
 		}
 		// A piece that comes back to its start.
-		for (let start = 0, end = 1; end < length; end++) {
+		for (let end = 1, start = 0; end < length; end++) {
 			if (cut[end]) {
 				if (ids[end] === ids[start] && end - start >= 3) {
 					cut[start + 1] = 1;
@@ -508,7 +513,10 @@ function collapse(
 			const next = other(segment, node);
 			const stepForward = seconds(segment, node);
 			const stepBackward = seconds(segment, next);
-			if (node !== chainStart && (next === chainStart || forward + stepForward > MAX_EDGE_SECONDS || backward + stepBackward > MAX_EDGE_SECONDS)) {
+			if (
+				node !== chainStart &&
+				(next === chainStart || forward + stepForward > MAX_EDGE_SECONDS || backward + stepBackward > MAX_EDGE_SECONDS)
+			) {
 				kept[node] = 1;
 				emit(chainStart, node, forward, backward);
 				chainStart = node;

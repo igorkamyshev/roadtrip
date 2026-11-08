@@ -39,10 +39,15 @@ test.describe('the held visas', () => {
 test.describe('the sheet «Мои визы»', () => {
 	const section = (page: Page, name: string) => sheet(page).getByRole('region', { name });
 	/** A choice of the sheet by its name, without the counter under it. */
-	const choice = (page: Page, name: string) => sheet(page).locator('.pick-item').filter({ has: page.locator('.pick-name', { hasText: new RegExp(`^${name}$`, 'u') }) });
+	const choice = (page: Page, name: string) =>
+		sheet(page)
+			.locator('.pick-item')
+			.filter({ has: page.locator('.pick-name', { hasText: new RegExp(`^${name}$`, 'u') }) });
 	const subOf = (page: Page, name: string) => choice(page, name).locator('.pick-sub');
 
-	test('lists Schengen and the visas that open other countries, with what each opens today, then the visa of one country', async ({ page }) => {
+	test('lists Schengen and the visas that open other countries, with what each opens today, then the visa of one country', async ({
+		page,
+	}) => {
 		await page.goto(LINK);
 		await phrase(page).getByRole('button', { name: 'нет' }).click();
 
@@ -132,14 +137,9 @@ test.describe('the sheet «Мои визы»', () => {
 		await expect(phrase(page)).toContainText('мои визы: нет');
 		await expect(page).toHaveURL(/&cit=RUS$/u);
 		// A request per change; without visas the first ring comes back from memory, with no request.
-		await expect.poll(() => ringApi.calls.map((call) => call.visas)).toEqual([
-			null,
-			'SCHENGEN',
-			'GEO,SCHENGEN',
-			'GEO,SCHENGEN,USA',
-			'GEO,USA',
-			'GEO',
-		]);
+		await expect
+			.poll(() => ringApi.calls.map((call) => call.visas))
+			.toEqual([null, 'SCHENGEN', 'GEO,SCHENGEN', 'GEO,SCHENGEN,USA', 'GEO,USA', 'GEO']);
 		await expectRingCard(page, '1–2 ч');
 
 		await sheet(page).getByRole('button', { name: 'Закрыть' }).click();
@@ -150,14 +150,24 @@ test.describe('the sheet «Мои визы»', () => {
 test('«Мои визы» of the card `empty` opens the sheet, and a visa chosen there asks for its ring', async ({ page, ringApi }) => {
 	ringApi.respond((call) =>
 		call.visas === null
-			? { outcome: 'empty', maxHours: 1, startCountry: 'SRB', source: 'calculation', access: {}, visaRulesLoadedAt: new Date().toISOString() }
+			? {
+					outcome: 'empty',
+					maxHours: 1,
+					startCountry: 'SRB',
+					source: 'calculation',
+					access: {},
+					visaRulesLoadedAt: new Date().toISOString(),
+				}
 			: squareRing(Number(call.lat), Number(call.lon), 0.1, 0.2),
 	);
 	await page.goto(LINK);
 	await expect(firstCard(page)).toContainText('Дальше 1 ч не уехать');
 
 	await firstCard(page).getByRole('button', { name: 'Мои визы' }).click();
-	await sheet(page).locator('.pick-item').filter({ hasText: /^Шенген/u }).click();
+	await sheet(page)
+		.locator('.pick-item')
+		.filter({ hasText: /^Шенген/u })
+		.click();
 
 	await expectRingCard(page, '1–2 ч');
 	expect(ringApi.calls.at(-1)?.visas).toBe('SCHENGEN');

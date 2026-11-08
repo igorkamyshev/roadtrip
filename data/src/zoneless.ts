@@ -9,23 +9,48 @@
  */
 export const ZONELESS_COUNTRIES: ReadonlySet<string> = new Set([
 	// In France's outline: its overseas departments, collectivities and lands.
-	'ATF', 'BLM', 'GLP', 'GUF', 'MAF', 'MTQ', 'MYT', 'NCL', 'PYF', 'REU', 'SPM', 'WLF',
+	'ATF',
+	'BLM',
+	'GLP',
+	'GUF',
+	'MAF',
+	'MTQ',
+	'MYT',
+	'NCL',
+	'PYF',
+	'REU',
+	'SPM',
+	'WLF',
 	// In the USA's: its territories.
-	'ASM', 'GUM', 'MNP', 'PRI', 'UMI', 'VIR',
+	'ASM',
+	'GUM',
+	'MNP',
+	'PRI',
+	'UMI',
+	'VIR',
 	// In the Netherlands': the islands of the Kingdom in the Caribbean.
-	'ABW', 'BES', 'CUW', 'SXM',
+	'ABW',
+	'BES',
+	'CUW',
+	'SXM',
 	// In Australia's: its external territories.
-	'CCK', 'CXR', 'HMD', 'NFK',
+	'CCK',
+	'CXR',
+	'HMD',
+	'NFK',
 	// In Norway's: Bouvet Island, Svalbard and Jan Mayen.
-	'BVT', 'SJM',
+	'BVT',
+	'SJM',
 	// In China's: Hong Kong and Macau.
-	'HKG', 'MAC',
+	'HKG',
+	'MAC',
 	// In Finland's: Åland.
 	'ALA',
 	// In Italy's: the Vatican, 0.44 km², under the 2 × 2 km an outline's ring takes (src/outlines.ts).
 	'VAT',
 	// Zones of #13 instead: WESTERN_SAHARA, and GAZA with the West Bank in no polygon (data/AGENTS.md, «Cities file»).
-	'ESH', 'PSE',
+	'ESH',
+	'PSE',
 	// In no outline: Antarctica.
 	'ATA',
 ]);

@@ -155,7 +155,7 @@ export class RepeatedIds {
 		const heap = chunks.map((_, index) => index);
 		const head = (slot: number) => chunks[heap[slot]][next[heap[slot]]];
 		const siftDown = (from: number) => {
-			for (let slot = from; ; ) {
+			for (let slot = from; ;) {
 				const left = 2 * slot + 1;
 				let least = slot;
 				if (left < heap.length && head(left) < head(least)) {

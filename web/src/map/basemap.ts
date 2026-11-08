@@ -45,6 +45,7 @@ function withRussianName(layer: LayerSpecification): LayerSpecification {
 	if (field === undefined || !JSON.stringify(field).includes('"name:ru"')) {
 		return layer;
 	}
-	const text = Array.isArray(field) && field[0] === 'step' ? ([...field.slice(0, -1), RUSSIAN_NAME] as ExpressionSpecification) : RUSSIAN_NAME;
+	const text =
+		Array.isArray(field) && field[0] === 'step' ? ([...field.slice(0, -1), RUSSIAN_NAME] as ExpressionSpecification) : RUSSIAN_NAME;
 	return { ...layer, layout: { ...layer.layout, 'text-field': text } };
 }

@@ -55,7 +55,8 @@ export function useScreenState(): ScreenStateControls {
 	const { origin } = state;
 	const originText = origin === undefined ? undefined : pointText(origin);
 	const start = useMemo(
-		(): Start | undefined => (origin === undefined || originText === undefined ? undefined : (starts.get(originText) ?? { method: 'link', origin })),
+		(): Start | undefined =>
+			origin === undefined || originText === undefined ? undefined : (starts.get(originText) ?? { method: 'link', origin }),
 		// Keyed by the origin's text: a new object for the same point is the same start.
 		[originText, starts],
 	);

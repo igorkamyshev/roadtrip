@@ -99,7 +99,11 @@ function readPrimitiveBlock(bytes: Uint8Array, visitor: OsmVisitor): void {
 		(tag, result, reader) => {
 			if (tag === 1) {
 				const end = reader.readVarint() + reader.pos;
-				reader.readFields((stringTag, strings, stringReader) => stringTag === 1 && strings.push(stringReader.readString()), result.strings, end);
+				reader.readFields(
+					(stringTag, strings, stringReader) => stringTag === 1 && strings.push(stringReader.readString()),
+					result.strings,
+					end,
+				);
 			} else if (tag === 2) {
 				const end = reader.readVarint() + reader.pos;
 				result.groups.push([reader.pos, end]);
@@ -250,11 +254,7 @@ function readWayField(tag: number, way: Element & { refs: number[]; lat: number[
 	}
 }
 
-function readRelationField(
-	tag: number,
-	relation: Element & { roles: number[]; members: number[]; types: number[] },
-	pbf: PbfReader,
-): void {
+function readRelationField(tag: number, relation: Element & { roles: number[]; members: number[]; types: number[] }, pbf: PbfReader): void {
 	if (tag === 1) {
 		relation.id = pbf.readVarint();
 	} else if (tag === 2) {

@@ -46,9 +46,11 @@ export async function dragSlider(page: Page, hours: number, meanwhile?: () => Pr
 
 /** The hours the slider marks with a dot: their rings are in memory. */
 export async function dottedHours(page: Page): Promise<number[]> {
-	return (await slider(page).locator('[data-cached]').evaluateAll((ticks) => ticks.map((tick) => Number(tick.getAttribute('data-hours'))))).sort(
-		(a, b) => a - b,
-	);
+	return (
+		await slider(page)
+			.locator('[data-cached]')
+			.evaluateAll((ticks) => ticks.map((tick) => Number(tick.dataset.hours)))
+	).sort((a, b) => a - b);
 }
 
 /**
@@ -131,7 +133,10 @@ export async function citiesOnMap(page: Page): Promise<CityOnMap[]> {
 /** The names of the cities the map labels, and of the chosen one. */
 export async function labelsOnMap(page: Page): Promise<{ labels: string[]; chosen: string[] }> {
 	const cities = await citiesOnMap(page);
-	return { labels: cities.filter((city) => city.label).map((city) => city.name), chosen: cities.filter((city) => city.chosen).map((city) => city.name) };
+	return {
+		labels: cities.filter((city) => city.label).map((city) => city.name),
+		chosen: cities.filter((city) => city.chosen).map((city) => city.name),
+	};
 }
 
 /** Taps the map where the point (lat, lon) is, once the map has drawn everything and stopped. */
@@ -140,7 +145,10 @@ export async function tapMap(page: Page, at: { readonly lat: number; readonly lo
 		const map = (window as unknown as { __roadtripMap?: MapForTests }).__roadtripMap;
 		return map !== undefined && map.loaded() && !map.isMoving();
 	});
-	const { x, y } = await page.evaluate(([lat, lon]) => (window as unknown as { __roadtripMap: MapForTests }).__roadtripMap.project([lon, lat]), [at.lat, at.lon]);
+	const { x, y } = await page.evaluate(
+		([lat, lon]) => (window as unknown as { __roadtripMap: MapForTests }).__roadtripMap.project([lon, lat]),
+		[at.lat, at.lon],
+	);
 	const box = await page.locator('.map-canvas').boundingBox();
 	await page.mouse.click((box?.x ?? 0) + x, (box?.y ?? 0) + y);
 }
@@ -157,7 +165,10 @@ export async function distanceFromTheMiddle(page: Page, at: { readonly lat: numb
 	if (phraseBox === null || carouselBox === null || sliderBox === null || canvasBox === null) {
 		throw new Error('the phrase, the carousel, the slider or the map is not on the screen');
 	}
-	const { x, y } = await page.evaluate(([lat, lon]) => (window as unknown as { __roadtripMap: MapForTests }).__roadtripMap.project([lon, lat]), [at.lat, at.lon]);
+	const { x, y } = await page.evaluate(
+		([lat, lon]) => (window as unknown as { __roadtripMap: MapForTests }).__roadtripMap.project([lon, lat]),
+		[at.lat, at.lon],
+	);
 	const middle = { x: (canvasBox.x + sliderBox.x) / 2, y: (phraseBox.y + phraseBox.height + carouselBox.y) / 2 };
 	return Math.hypot(canvasBox.x + x - middle.x, canvasBox.y + y - middle.y);
 }

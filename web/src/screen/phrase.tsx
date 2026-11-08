@@ -24,8 +24,7 @@ export function Phrase({ startLabel, hours, busy, onStart, onInfo, settings, foo
 	return (
 		<div className="c-phrase" data-testid="phrase">
 			<p>
-				Из точки{' '}
-				{/* The comma stays on the token's line. */}
+				Из точки {/* The comma stays on the token's line. */}
 				<span className="nowrap">
 					<PhraseToken onClick={onStart} wanted={startLabel === undefined}>
 						{startLabel ?? 'выберите'}
@@ -69,7 +68,15 @@ export function VisaRulesDate({ loadedAt, now }: { readonly loadedAt: string | u
 }
 
 /** A word in brackets: opens its sheet. `wanted` makes it blink red, as «выберите» without an origin. */
-export function PhraseToken({ children, onClick, wanted = false }: { readonly children: ReactNode; readonly onClick: () => void; readonly wanted?: boolean }) {
+export function PhraseToken({
+	children,
+	onClick,
+	wanted = false,
+}: {
+	readonly children: ReactNode;
+	readonly onClick: () => void;
+	readonly wanted?: boolean;
+}) {
 	return (
 		<button type="button" className={wanted ? 'tok want' : 'tok'} onClick={onClick}>
 			{children}

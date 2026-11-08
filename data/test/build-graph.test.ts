@@ -29,24 +29,36 @@ function edges(graph: Graph, keep: (edge: number) => boolean = () => true): stri
 
 describe('a PBF extract', () => {
 	const directory = mkdtempSync(join(tmpdir(), 'roadtrip-pbf-'));
-	afterAll(() => rmSync(directory, { recursive: true }));
+	afterAll(() => {
+		rmSync(directory, { recursive: true });
+	});
 
-	it.each(['straight-road.osm', 'two-countries.osm', 'roads.osm', 'chains.osm', 'borders.osm', 'closed-territory.osm', 'zones.osm', 'edge-of-extract.osm', 'partial-zone.osm'])(
-		'gives the graph its OSM XML gives: %s',
+	it.each([
+		'straight-road.osm',
+		'two-countries.osm',
+		'roads.osm',
+		'chains.osm',
+		'borders.osm',
+		'closed-territory.osm',
+		'zones.osm',
+		'edge-of-extract.osm',
+		'partial-zone.osm',
+	])('gives the graph its OSM XML gives: %s', (name) => {
+		const pbf = join(directory, `${name}.pbf`);
+		writePbf(openOsm(fixturePath(name)), pbf, { locationsOnWays: false });
+
+		expect(buildGraph(openOsm(pbf)).graph).toEqual(fixtureGraph(name));
+	});
+
+	it.each(['straight-road.osm', 'two-countries.osm', 'borders.osm', 'edge-of-extract.osm', 'partial-zone.osm'])(
+		'with the locations on its ways and no untagged nodes gives the same graph: %s',
 		(name) => {
-			const pbf = join(directory, `${name}.pbf`);
-			writePbf(openOsm(fixturePath(name)), pbf, { locationsOnWays: false });
+			const pbf = join(directory, `${name}.locations.pbf`);
+			writePbf(openOsm(fixturePath(name)), pbf, { locationsOnWays: true });
 
 			expect(buildGraph(openOsm(pbf)).graph).toEqual(fixtureGraph(name));
 		},
 	);
-
-	it.each(['straight-road.osm', 'two-countries.osm', 'borders.osm', 'edge-of-extract.osm', 'partial-zone.osm'])('with the locations on its ways and no untagged nodes gives the same graph: %s', (name) => {
-		const pbf = join(directory, `${name}.locations.pbf`);
-		writePbf(openOsm(fixturePath(name)), pbf, { locationsOnWays: true });
-
-		expect(buildGraph(openOsm(pbf)).graph).toEqual(fixtureGraph(name));
-	});
 });
 
 describe('a graph file', () => {
@@ -156,16 +168,50 @@ function locatedWays(...ways: { refs: number[]; points: [number, number][]; tags
 
 describe('a loop of degree-2 nodes', () => {
 	// A road from 0,0 to the loop's junction at 0,0.1; the loop goes round through 0.1,0.2, 0,0.3 and −0.1,0.2.
-	const road = { refs: [1, 2], points: [[0, 0], [0, 0.1]] as [number, number][] };
+	const road = {
+		refs: [1, 2],
+		points: [
+			[0, 0],
+			[0, 0.1],
+		] as [number, number][],
+	};
 	const loopSeconds = 4 * (15_725 / (60 / 3.6));
 
 	it.each([
-		['one closed way', [{ refs: [2, 3, 4, 5, 2], points: [[0, 0.1], [0.1, 0.2], [0, 0.3], [-0.1, 0.2], [0, 0.1]] as [number, number][] }]],
+		[
+			'one closed way',
+			[
+				{
+					refs: [2, 3, 4, 5, 2],
+					points: [
+						[0, 0.1],
+						[0.1, 0.2],
+						[0, 0.3],
+						[-0.1, 0.2],
+						[0, 0.1],
+					] as [number, number][],
+				},
+			],
+		],
 		[
 			'two ways',
 			[
-				{ refs: [2, 3, 4], points: [[0, 0.1], [0.1, 0.2], [0, 0.3]] as [number, number][] },
-				{ refs: [4, 5, 2], points: [[0, 0.3], [-0.1, 0.2], [0, 0.1]] as [number, number][] },
+				{
+					refs: [2, 3, 4],
+					points: [
+						[0, 0.1],
+						[0.1, 0.2],
+						[0, 0.3],
+					] as [number, number][],
+				},
+				{
+					refs: [4, 5, 2],
+					points: [
+						[0, 0.3],
+						[-0.1, 0.2],
+						[0, 0.1],
+					] as [number, number][],
+				},
 			],
 		],
 	])('made of %s keeps its edges both ways, none from a node to itself', (_, loop) => {

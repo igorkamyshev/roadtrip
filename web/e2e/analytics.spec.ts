@@ -89,9 +89,9 @@ test('an error the screen did not catch goes to PostHog', async ({ page, ringApi
 		});
 	});
 
-	await expect.poll(() => posthog.named('$exception'), SENT).toEqual([
-		expect.objectContaining({ $exception_list: [expect.objectContaining({ type: 'TypeError', value: 'the screen broke' })] }),
-	]);
+	await expect
+		.poll(() => posthog.named('$exception'), SENT)
+		.toEqual([expect.objectContaining({ $exception_list: [expect.objectContaining({ type: 'TypeError', value: 'the screen broke' })] })]);
 });
 
 test('posthog-js comes after the screen, and still gets the errors thrown before it came, and the ring waits for its ids', async ({
@@ -124,9 +124,11 @@ test('posthog-js comes after the screen, and still gets the errors thrown before
 
 	await expectRingCard(page, '2–3 ч');
 	expect(ringApi.calls[0].headers['x-posthog-distinct-id']).toEqual(expect.any(String));
-	await expect.poll(() => posthog.named('$exception'), SENT).toEqual([
-		expect.objectContaining({ $exception_list: [expect.objectContaining({ type: 'RangeError', value: 'broke before PostHog' })] }),
-	]);
+	await expect
+		.poll(() => posthog.named('$exception'), SENT)
+		.toEqual([
+			expect.objectContaining({ $exception_list: [expect.objectContaining({ type: 'RangeError', value: 'broke before PostHog' })] }),
+		]);
 });
 
 test('off the production host PostHog is not started: nothing goes to it', async ({ page, context, ringApi, posthog }) => {
@@ -172,14 +174,18 @@ test('no request of a test reaches PostHog: one no route answers, a beacon of a 
 		void fetch(`${urls[0]}/flags/`, { mode: 'no-cors' }).catch(() => undefined);
 	}, hosts);
 
-	await expect.poll(() => failed.toSorted()).toEqual(
-		[`${hosts[0]}/e/`, `${hosts[0]}/flags/`, `${hosts[1]}/e/`].map((url) => `${url} net::ERR_PROXY_CONNECTION_FAILED`),
-	);
+	await expect
+		.poll(() => failed.toSorted())
+		.toEqual([`${hosts[0]}/e/`, `${hosts[0]}/flags/`, `${hosts[1]}/e/`].map((url) => `${url} net::ERR_PROXY_CONNECTION_FAILED`));
 	expect(finished).toEqual([]);
 });
 
 test.describe('start set', () => {
-	test('on load from a link nothing was saved for: by link, with the nearest city and its country; and link opened', async ({ page, ringApi, posthog }) => {
+	test('on load from a link nothing was saved for: by link, with the nearest city and its country; and link opened', async ({
+		page,
+		ringApi,
+		posthog,
+	}) => {
 		ringApi.respond((call) => squareRing(BELGRADE.lat, BELGRADE.lon, call.hours - 1, call.hours));
 
 		await openInProduction(page, LINK);
@@ -192,7 +198,11 @@ test.describe('start set', () => {
 		expect(posthog.named('link opened')).toEqual([expect.not.objectContaining({ method: expect.anything() })]);
 	});
 
-	test('on load from the saved state: by saved, and no link opened; a link opened over a saved state: by link', async ({ page, ringApi, posthog }) => {
+	test('on load from the saved state: by saved, and no link opened; a link opened over a saved state: by link', async ({
+		page,
+		ringApi,
+		posthog,
+	}) => {
 		ringApi.respond((call) => squareRing(BELGRADE.lat, BELGRADE.lon, call.hours - 1, call.hours));
 		await openInProduction(page, LINK);
 		await expect.poll(() => posthog.named('start set'), SENT).toHaveLength(1);
@@ -218,9 +228,9 @@ test.describe('start set', () => {
 
 		await openInProduction(page);
 
-		await expect.poll(() => posthog.named('start set'), SENT).toEqual([
-			expect.objectContaining({ method: 'geolocation', start_country: 'SRB', start_city: 'Нови-Сад', start_city_id: 3194360 }),
-		]);
+		await expect
+			.poll(() => posthog.named('start set'), SENT)
+			.toEqual([expect.objectContaining({ method: 'geolocation', start_country: 'SRB', start_city: 'Нови-Сад', start_city_id: 3194360 })]);
 		expect(posthog.ours).not.toContain('link opened');
 	});
 
@@ -230,11 +240,14 @@ test.describe('start set', () => {
 
 		await phrase(page).getByRole('button', { name: 'выберите' }).click();
 		await page.getByRole('dialog', { name: 'Откуда едем' }).getByRole('searchbox', { name: 'Найти город' }).fill('сег');
-		await page.getByRole('dialog', { name: 'Откуда едем' }).getByRole('button', { name: /^Сегед/u }).click();
+		await page
+			.getByRole('dialog', { name: 'Откуда едем' })
+			.getByRole('button', { name: /^Сегед/u })
+			.click();
 
-		await expect.poll(() => posthog.named('start set'), SENT).toEqual([
-			expect.objectContaining({ method: 'search', start_country: 'HUN', start_city: 'Сегед', start_city_id: 715429 }),
-		]);
+		await expect
+			.poll(() => posthog.named('start set'), SENT)
+			.toEqual([expect.objectContaining({ method: 'search', start_country: 'HUN', start_city: 'Сегед', start_city_id: 715429 })]);
 	});
 
 	test('by the pin: the city nearest to it', async ({ page, ringApi, posthog }) => {
@@ -246,10 +259,12 @@ test.describe('start set', () => {
 		await page.getByRole('dialog', { name: 'Откуда едем' }).getByRole('button', { name: 'Указать на карте' }).click();
 		await page.getByRole('button', { name: 'Старт здесь' }).click();
 
-		await expect.poll(() => posthog.named('start set'), SENT).toEqual([
-			expect.objectContaining({ method: 'link', start_city: 'Белград' }),
-			expect.objectContaining({ method: 'pin', start_country: 'SRB', start_city: 'Белград', start_city_id: 792680 }),
-		]);
+		await expect
+			.poll(() => posthog.named('start set'), SENT)
+			.toEqual([
+				expect.objectContaining({ method: 'link', start_city: 'Белград' }),
+				expect.objectContaining({ method: 'pin', start_country: 'SRB', start_city: 'Белград', start_city_id: 792680 }),
+			]);
 	});
 
 	test('without the cities file: only the method', async ({ page, ringApi, posthog }) => {
@@ -284,10 +299,9 @@ test.describe('geolocation failed', () => {
 
 			await firstCard(page).getByRole('button', { name: 'Где я' }).click();
 
-			await expect.poll(() => posthog.named('geolocation failed'), SENT).toEqual([
-				expect.objectContaining({ reason }),
-				expect.objectContaining({ reason }),
-			]);
+			await expect
+				.poll(() => posthog.named('geolocation failed'), SENT)
+				.toEqual([expect.objectContaining({ reason }), expect.objectContaining({ reason })]);
 		});
 	}
 });
@@ -300,7 +314,11 @@ test.describe('ring result', () => {
 		source,
 	});
 
-	test('tells the ring: N, the citizenships and held visas sorted, the place, the source, the wait and the cities', async ({ page, ringApi, posthog }) => {
+	test('tells the ring: N, the citizenships and held visas sorted, the place, the source, the wait and the cities', async ({
+		page,
+		ringApi,
+		posthog,
+	}) => {
 		await holdTheClock(page);
 		await openInProduction(page, '/#/?p=44.81760,20.45730&h=3&cit=RUS,SRB&visas=GEO,SCHENGEN');
 		await ringApi.waitForCalls(1);
@@ -346,12 +364,20 @@ test.describe('ring result', () => {
 
 		await dragSlider(page, 3);
 
-		await expect.poll(() => posthog.named('ring result').map(({ hours, source }) => [hours, source]), SENT).toEqual([
-			[3, 'calculation'],
-			[5, 'calculation'],
-			[3, 'memory'],
-		]);
-		expect(posthog.named('ring result')[2]).toMatchObject({ outcome: 'ring', wait_ms: 0, cities_count: 11, countries_count: 2, start_city: 'Белград' });
+		await expect
+			.poll(() => posthog.named('ring result').map(({ hours, source }) => [hours, source]), SENT)
+			.toEqual([
+				[3, 'calculation'],
+				[5, 'calculation'],
+				[3, 'memory'],
+			]);
+		expect(posthog.named('ring result')[2]).toMatchObject({
+			outcome: 'ring',
+			wait_ms: 0,
+			cities_count: 11,
+			countries_count: 2,
+			start_city: 'Белград',
+		});
 		expect(ringApi.calls).toHaveLength(2);
 	});
 
@@ -404,16 +430,18 @@ test.describe('ring result', () => {
 		// The ring of 5 h is asked for, so the one of 3 h is abandoned, at the held time.
 		await runNowUntil(page, () => ringApi.calls.length === 2);
 		await page.clock.resume();
-		await expect.poll(() => posthog.named('ring result'), SENT).toEqual([
-			expect.objectContaining({ outcome: 'abandoned', hours: 3, start_city: 'Белград' }),
-		]);
+		await expect
+			.poll(() => posthog.named('ring result'), SENT)
+			.toEqual([expect.objectContaining({ outcome: 'abandoned', hours: 3, start_city: 'Белград' })]);
 		await ringApi.answer(belgradeRing(), 5);
 		await ringApi.answer(belgradeRing(), 3);
 
-		await expect.poll(() => posthog.named('ring result').map(({ hours, outcome }) => [hours, outcome]), SENT).toEqual([
-			[3, 'abandoned'],
-			[5, 'ring'],
-		]);
+		await expect
+			.poll(() => posthog.named('ring result').map(({ hours, outcome }) => [hours, outcome]), SENT)
+			.toEqual([
+				[3, 'abandoned'],
+				[5, 'ring'],
+			]);
 		const [abandoned] = posthog.named('ring result');
 		expect(abandoned).not.toHaveProperty('source');
 		expect(abandoned.wait_ms).toBe(500);
@@ -422,11 +450,13 @@ test.describe('ring result', () => {
 		await expect.poll(() => dottedHours(page)).toEqual([3, 5]);
 		ringApi.respond(() => belgradeRing());
 		await slider(page).press('ArrowUp');
-		await expect.poll(() => posthog.named('ring result').map(({ hours, outcome }) => [hours, outcome]), SENT).toEqual([
-			[3, 'abandoned'],
-			[5, 'ring'],
-			[6, 'ring'],
-		]);
+		await expect
+			.poll(() => posthog.named('ring result').map(({ hours, outcome }) => [hours, outcome]), SENT)
+			.toEqual([
+				[3, 'abandoned'],
+				[5, 'ring'],
+				[6, 'ring'],
+			]);
 	});
 
 	test('a request the person left the page during is abandoned by beacon', async ({ page, ringApi, posthog }) => {
@@ -436,9 +466,14 @@ test.describe('ring result', () => {
 
 		await leave(page);
 
-		await expect.poll(() => posthog.events.filter((sent) => sent.event === 'ring result'), SENT).toEqual([
-			expect.objectContaining({ beacon: true, properties: expect.objectContaining({ outcome: 'abandoned', hours: 3, start_city: 'Белград' }) }),
-		]);
+		await expect
+			.poll(() => posthog.events.filter((sent) => sent.event === 'ring result'), SENT)
+			.toEqual([
+				expect.objectContaining({
+					beacon: true,
+					properties: expect.objectContaining({ outcome: 'abandoned', hours: 3, start_city: 'Белград' }),
+				}),
+			]);
 	});
 
 	test('none while the slider moves: only where it is let go', async ({ page, ringApi, posthog }) => {
@@ -455,7 +490,11 @@ test.describe('ring result', () => {
 	});
 });
 
-test('taps on the map are no dead clicks or rage clicks; a tap on text that does nothing is a dead click', async ({ page, ringApi, posthog }) => {
+test('taps on the map are no dead clicks or rage clicks; a tap on text that does nothing is a dead click', async ({
+	page,
+	ringApi,
+	posthog,
+}) => {
 	// The project's dead clicks on, as the Owner may switch them.
 	posthog.remoteConfig = { ...posthog.remoteConfig, captureDeadClicks: true };
 	// PostHog waits a few seconds after a click for the page to change: the page's clock runs them.

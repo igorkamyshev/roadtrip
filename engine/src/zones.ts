@@ -93,7 +93,7 @@ export class ZoneLocator {
 		for (let row = 0; row < rows; row++) {
 			const lat = minLat + (row + 0.5) * cellLat;
 			// Zone by zone from the lowest, which wins where zones overlap: a cell keeps the first zone that holds it.
-			for (let first = 0; first < rings.length; ) {
+			for (let first = 0; first < rings.length;) {
 				const zone = rings[first].zone;
 				crossings.length = 0;
 				let ringIndex = first;
@@ -174,7 +174,9 @@ function gridRings(rings: readonly IndexedRing[]): RingGrid {
 	}
 	const cellRings = new Uint32Array(cellStart[rows * columns]);
 	const fill = cellStart.slice(0, rows * columns);
-	rings.forEach((ring, index) => eachCell(ring, (cell) => (cellRings[fill[cell]++] = index)));
+	rings.forEach((ring, index) => {
+		eachCell(ring, (cell) => (cellRings[fill[cell]++] = index));
+	});
 	return { firstRow, firstColumn, rows, columns, cellStart, cellRings };
 }
 

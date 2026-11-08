@@ -15,7 +15,7 @@ function fingerprint(read: (path: string) => string): Promise<string> {
 	return sha256Hex(
 		[...ENGINE_SOURCES]
 			.sort()
-			.map((path) => read(path).replace(/\r\n?/gu, '\n'))
+			.map((path) => read(path).replaceAll(/\r\n?/gu, '\n'))
 			.join(''),
 	);
 }
@@ -33,6 +33,6 @@ describe('the engine fingerprint', () => {
 	});
 
 	it('is the same in a checkout with CRLF line endings', async () => {
-		expect(await fingerprint((path) => checkout(path).replace(/\n/gu, '\r\n'))).toBe(await fingerprint(checkout));
+		expect(await fingerprint((path) => checkout(path).replaceAll('\n', '\r\n'))).toBe(await fingerprint(checkout));
 	});
 });

@@ -44,7 +44,9 @@ describe('taking the current dataset for the deploy', () => {
 	beforeEach(() => {
 		directory = mkdtempSync(join(tmpdir(), 'roadtrip-deploy-'));
 	});
-	afterEach(() => rmSync(directory, { recursive: true }));
+	afterEach(() => {
+		rmSync(directory, { recursive: true });
+	});
 
 	it('puts each file of the version current.json points at in its place', async () => {
 		const r2 = memorySource({

@@ -16,7 +16,9 @@ const command = (name: string, ...args: string[]) =>
 
 describe('the ring command', () => {
 	const directory = mkdtempSync(join(tmpdir(), 'roadtrip-commands-'));
-	afterAll(() => rmSync(directory, { recursive: true }));
+	afterAll(() => {
+		rmSync(directory, { recursive: true });
+	});
 
 	it('writes the ring of an extract as GeoJSON', () => {
 		const geojson = JSON.parse(command('ring', fixturePath('straight-road.osm'), '--lat', '0', '--lon', '0', '--hours', '2'));
@@ -38,7 +40,9 @@ describe('the ring command', () => {
 
 	it('takes the closed countries', () => {
 		// Road 3 of borders.osm, from its west end, stops before BBB (the fixture's header).
-		const geojson = JSON.parse(command('ring', fixturePath('borders.osm'), '--lat', '0.3', '--lon', '0.5', '--hours', '12', '--closed', 'BBB'));
+		const geojson = JSON.parse(
+			command('ring', fixturePath('borders.osm'), '--lat', '0.3', '--lon', '0.5', '--hours', '12', '--closed', 'BBB'),
+		);
 
 		expect(geojson.features[0].properties).toMatchObject({ outcome: 'empty', maxHours: 2, closedCountries: ['BBB'] });
 	});
@@ -46,12 +50,18 @@ describe('the ring command', () => {
 
 describe('the build-graph command', () => {
 	const directory = mkdtempSync(join(tmpdir(), 'roadtrip-commands-'));
-	afterAll(() => rmSync(directory, { recursive: true }));
+	afterAll(() => {
+		rmSync(directory, { recursive: true });
+	});
 
 	it('reports the pairs with passport control and no border crossing on their roads', () => {
-		const run = spawnSync(process.execPath, [fileURLToPath(new URL('../src/cli/build-graph.ts', import.meta.url)), fixturePath('chains.osm'), join(directory, 'chains.graph')], {
-			encoding: 'utf8',
-		});
+		const run = spawnSync(
+			process.execPath,
+			[fileURLToPath(new URL('../src/cli/build-graph.ts', import.meta.url)), fixturePath('chains.osm'), join(directory, 'chains.graph')],
+			{
+				encoding: 'utf8',
+			},
+		);
 
 		expect(run.status).toBe(0);
 		expect(run.stderr).toContain('pairs with passport control and no border crossing on their roads');
@@ -75,7 +85,13 @@ describe('the build-graph command', () => {
 
 		const run = spawnSync(
 			process.execPath,
-			[fileURLToPath(new URL('../src/cli/build-graph.ts', import.meta.url)), fixturePath('partial-zone.osm'), join(directory, 'partial.graph'), '--report', report],
+			[
+				fileURLToPath(new URL('../src/cli/build-graph.ts', import.meta.url)),
+				fixturePath('partial-zone.osm'),
+				join(directory, 'partial.graph'),
+				'--report',
+				report,
+			],
 			{ encoding: 'utf8' },
 		);
 
@@ -99,7 +115,9 @@ describe('the build-graph command', () => {
 
 describe('the build-cities command', () => {
 	const directory = mkdtempSync(join(tmpdir(), 'roadtrip-commands-'));
-	afterAll(() => rmSync(directory, { recursive: true }));
+	afterAll(() => {
+		rmSync(directory, { recursive: true });
+	});
 	const geonames = (name: string) => fixturePath(`geonames/${name}`);
 
 	it("writes the cities file of GeoNames' files, the zones by the polygons of a graph", () => {
@@ -138,8 +156,24 @@ describe('the build-cities command', () => {
 	it('takes the cities of the countries given', () => {
 		const out = join(directory, 'cyprus.json');
 
-		command('build-cities', fixturePath('zones.osm'), out, '--cities', geonames('cities1000.txt'), '--names', geonames('alternateNamesV2.txt'), '--countries', 'CY', '--no-wikidata');
+		command(
+			'build-cities',
+			fixturePath('zones.osm'),
+			out,
+			'--cities',
+			geonames('cities1000.txt'),
+			'--names',
+			geonames('alternateNamesV2.txt'),
+			'--countries',
+			'CY',
+			'--no-wikidata',
+		);
 
-		expect(decodeCities(JSON.parse(readFileSync(out, 'utf8'))).map(([, , local]) => local)).toEqual(['Nicosia', 'Limassol', 'Famagusta', 'Kyrenia']);
+		expect(decodeCities(JSON.parse(readFileSync(out, 'utf8'))).map(([, , local]) => local)).toEqual([
+			'Nicosia',
+			'Limassol',
+			'Famagusta',
+			'Kyrenia',
+		]);
 	});
 });
