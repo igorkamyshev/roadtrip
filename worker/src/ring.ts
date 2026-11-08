@@ -42,17 +42,22 @@ export interface RingDeps {
 	readonly analytics: Analytics;
 }
 
-/** The steps of «Порядок работы Worker'а» (spec «API кольца»), and `ring served` for each valid request. */
+/** The steps of «Порядок работы Worker'а» (spec «API кольца»), and `ring served` for each request. */
 export async function handleRing(request: Request, deps: RingDeps): Promise<Response> {
+	const started = deps.now();
+	// A request that is no ring request is an error with neither a source nor N.
+	const refused = (response: Response) => {
+		deps.analytics.capture('ring served', { outcome: 'error', duration_ms: deps.now() - started });
+		return response;
+	};
 	if (request.method !== 'GET') {
-		return new Response(null, { status: 405, headers: { allow: 'GET' } });
+		return refused(new Response(null, { status: 405, headers: { allow: 'GET' } }));
 	}
 	// Step 1: the input.
 	const query = parseRingQuery(new URL(request.url).searchParams);
 	if ('problem' in query) {
-		return json(400, { error: query.problem } satisfies RingError);
+		return refused(json(400, { error: query.problem } satisfies RingError));
 	}
-	const started = deps.now();
 	const { status, body, served } = await serve(query, browserIds(request), deps);
 	deps.analytics.capture('ring served', { ...served, hours: query.hours, duration_ms: deps.now() - started });
 	return json(status, body);

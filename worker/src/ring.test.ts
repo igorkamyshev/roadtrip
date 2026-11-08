@@ -397,13 +397,16 @@ describe('ring served', () => {
 		expect(analytics.named('ring served')).toEqual([{ source: 'calculation', outcome: 'error', hours: 2, duration_ms: 60_000 }]);
 	});
 
-	it('is not sent for a request that is no ring request: 400 and 405', async () => {
+	it('tells a query that is no ring query (400) and a method other than GET (405) as an error without a source or N', async () => {
 		const { get, analytics, deps } = api({ container: await engineContainer(straightRoad) });
 
 		await get('lat=0&lon=0&hours=13&cit=RUS');
 		await handleRing(new Request('https://roadtrip.kamyshev.me/api/ring?lat=0&lon=0&hours=2&cit=RUS', { method: 'POST' }), deps);
 
-		expect(analytics.events).toEqual([]);
+		expect(analytics.named('ring served')).toEqual([
+			{ outcome: 'error', duration_ms: 0 },
+			{ outcome: 'error', duration_ms: 0 },
+		]);
 	});
 
 	it("rounds the Container's timings to whole milliseconds", async () => {

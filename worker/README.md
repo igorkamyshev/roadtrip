@@ -33,7 +33,9 @@ A Container failure answers 502: its 500 `{ name, message, stack }` is rebuilt i
 
 The events, never with the origin:
 
-- `ring served`, for each valid `GET /api/ring` (not a 400 or 405): `source` (`cache`, `calculation`, `joined`; none for `visa_rules_missing`), `outcome` (the engine's, `visa_rules_missing`, or `error` for the 502), `hours`, `duration_ms`, and for a calculation and a joined request the Container's timings `queue_ms`, `traversal_ms`, `contour_ms`, and `cold_start_ms` when it waited for the start.
+- `ring served`, for each request to `/api/ring` that reached the Worker, as the spec has it: `source` (`cache`, `calculation`, `joined`; none for `visa_rules_missing`), `outcome` (the engine's, `visa_rules_missing`, or `error`), `hours`, `duration_ms`, and for a calculation and a joined request the Container's timings `queue_ms`, `traversal_ms`, `contour_ms`, and `cold_start_ms` when it waited for the start.
+  - The 502 is `error` with `source: calculation`.
+  - A query that is no ring query (400) or a method other than GET (405) is `error` with `duration_ms` alone: it has no N, and asked neither the cache nor the Container. Decision #18 has no outcome of its own for it, and `error` is the one of its outcomes that fits; the missing `source` tells it from the 502.
 - `sherpa fetched`, for each request to Sherpa (`load` in `src/visa-rules.ts`): `citizenship`, `result` (`ok`, `http_error`, `timeout`, `bad_response`), `status` when Sherpa answered, `duration_ms`, `mode` (`background` refreshed a stale copy, `blocking` was waited for), and `quota_remaining` when Sherpa's answer has `x-ratelimit-remaining` or `ratelimit-remaining` (research/sherpa-api saw neither: the quota is the count of these events an hour).
 
 ## Visa rules

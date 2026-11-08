@@ -5,13 +5,17 @@ import type { RingOutcome } from 'engine/protocol';
 import { PostHog, type PostHogOptions } from 'posthog-node';
 import type { RingSource } from './api.ts';
 
-/** Each ring request that reached the Worker with a valid query. */
+/** Each ring request that reached the Worker. */
 export interface RingServed {
-	/** Absent for `visa_rules_missing`, which asked neither the cache nor the Container. */
+	/**
+	 * Absent for `visa_rules_missing`, which asked neither the cache nor the Container, and for a query that is no ring
+	 * query (400) or a method other than GET (405).
+	 */
 	readonly source?: RingSource;
-	/** The engine's outcome, `visa_rules_missing`, or `error` when the Container failed (502). */
+	/** The engine's outcome, `visa_rules_missing`, or `error`: the Container failed (502), or a 400 or 405. */
 	readonly outcome: RingOutcome['outcome'] | 'visa_rules_missing' | 'error';
-	readonly hours: number;
+	/** N; absent for a 400 or 405. */
+	readonly hours?: number;
 	/** From the request to the answer. */
 	readonly duration_ms: number;
 	/** The Container's timings of a calculation (and of the calculation a joined request waited for). */
