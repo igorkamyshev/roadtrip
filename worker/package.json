@@ -8,6 +8,7 @@
 		"./api": "./src/api.ts"
 	},
 	"scripts": {
+		"deploy": "pnpm --filter data fetch-dataset && pnpm --filter web build && wrangler deploy",
 		"dev": "wrangler dev",
 		"test": "vitest run",
 		"typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.test.json",

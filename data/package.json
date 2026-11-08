@@ -11,6 +11,7 @@
 	"scripts": {
 		"build-cities": "node src/cli/build-cities.ts",
 		"build-graph": "node src/cli/build-graph.ts",
+		"fetch-dataset": "node src/cli/fetch-dataset.ts",
 		"publish-dataset": "node src/cli/publish-dataset.ts",
 		"ring": "node src/cli/ring.ts",
 		"test": "vitest run",
