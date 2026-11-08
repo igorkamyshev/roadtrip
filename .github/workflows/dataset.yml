@@ -29,6 +29,9 @@ on:
       parts_run_id:
         description: A run whose filtered parts (kept 2 days) to build from, of the same date and parts; empty extracts them
         default: ''
+      revision:
+        description: A rebuild of a published date's extracts after a fix of the build (2, 3, …) publishes as <date>-r<revision>, since a published version keeps its files; empty for the first
+        default: ''
 
 concurrency:
   group: dataset
@@ -49,6 +52,7 @@ jobs:
     timeout-minutes: 10
     outputs:
       date: ${{ steps.plan.outputs.date }}
+      day: ${{ steps.plan.outputs.day }}
       version: ${{ steps.plan.outputs.version }}
       parts: ${{ steps.plan.outputs.parts }}
       prefix: ${{ steps.plan.outputs.prefix }}
@@ -59,6 +63,7 @@ jobs:
           DATE: ${{ inputs.date }}
           PARTS: ${{ inputs.parts }}
           PARTS_RUN_ID: ${{ inputs.parts_run_id }}
+          REVISION: ${{ inputs.revision }}
         run: |
           parts=${PARTS:-$ALL_PARTS}
           if [ -z "$DATE" ]; then
@@ -75,13 +80,19 @@ jobs:
             echo "::error::No date every part has: '$DATE'"
             exit 1
           fi
-          version="20${DATE:0:2}-${DATE:2:2}-${DATE:4:2}"
+          if ! [[ "$REVISION" =~ ^([2-9]|[1-9][0-9]+)?$ ]]; then
+            echo "::error::The revision is a number from 2: '$REVISION'"
+            exit 1
+          fi
+          day="20${DATE:0:2}-${DATE:2:2}-${DATE:4:2}"
+          version="$day${REVISION:+-r$REVISION}"
           if [ "$(echo $parts | tr ' ' '\n' | sort)" = "$(echo $ALL_PARTS | tr ' ' '\n' | sort)" ]; then
             prefix=
           else
             prefix="trials/$GITHUB_RUN_ID/"
           fi
           echo "date=$DATE" >> "$GITHUB_OUTPUT"
+          echo "day=$day" >> "$GITHUB_OUTPUT"
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "parts=$(jq -cn --arg parts "$parts" '$parts | split(" ") | map(select(. != ""))')" >> "$GITHUB_OUTPUT"
           echo "prefix=$prefix" >> "$GITHUB_OUTPUT"
@@ -102,7 +113,7 @@ jobs:
     env:
       PART: ${{ matrix.part }}
       DATE: ${{ needs.plan.outputs.date }}
-      VERSION: ${{ needs.plan.outputs.version }}
+      DAY: ${{ needs.plan.outputs.day }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -123,8 +134,8 @@ jobs:
           # An extract of one date holds OSM as of that day's evening.
           timestamp=$(osmium fileinfo -g header.option.osmosis_replication_timestamp part.osm.pbf)
           echo "OSM as of $timestamp" | tee -a "$NOTES"
-          if [ "${timestamp:0:10}" != "$VERSION" ]; then
-            echo "::error::$PART-$DATE.osm.pbf holds OSM as of $timestamp, not of $VERSION"
+          if [ "${timestamp:0:10}" != "$DAY" ]; then
+            echo "::error::$PART-$DATE.osm.pbf holds OSM as of $timestamp, not of $DAY"
             exit 1
           fi
       # The filter of spec «Набор данных»: the roads from motorway to tertiary with their links, the border
