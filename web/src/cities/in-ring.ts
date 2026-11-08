@@ -4,7 +4,7 @@
 // zone `access` does not name is not open either). Biggest first.
 import type { Access } from 'worker/api';
 import type { RingGeometry } from '../map/overlay.ts';
-import type { City } from './cities.ts';
+import { biggestFirst, type City } from './cities.ts';
 
 /** How many cities the ring holds and in how many countries: the first card's numbers, and `ring result`'s. */
 export interface CitiesCount {
@@ -20,10 +20,10 @@ export function citiesInRing(cities: readonly City[], ring: RingGeometry, access
 	const inside = ringContains(ring);
 	return cities
 		.filter((city) => {
-			const entry = access[city.zone];
-			return entry !== undefined && entry.mode !== 'closed' && inside(city.lat, city.lon);
+			// A zone `access` does not name is not open.
+			return city.zone in access && access[city.zone].mode !== 'closed' && inside(city.lat, city.lon);
 		})
-		.sort((one, two) => two.population - one.population || one.id - two.id);
+		.sort(biggestFirst);
 }
 
 /** The ring's edges per latitude band, so that a point crosses only the edges at its latitude: rings have 10⁵ points. */
@@ -60,7 +60,9 @@ function ringContains(ring: RingGeometry): (lat: number, lon: number) => boolean
 		}
 	}
 	const bands = Math.max(1, Math.min(MAX_BANDS, Math.ceil(lat1.length / POINTS_PER_BAND)));
-	const height = (north - south) / bands || 1;
+	// A band's height; any for a ring of no height.
+	const span = (north - south) / bands;
+	const height = span > 0 ? span : 1;
 	const bandOf = (lat: number) => Math.min(bands - 1, Math.max(0, Math.floor((lat - south) / height)));
 	const edges: number[][] = Array.from({ length: bands }, () => []);
 	for (let edge = 0; edge < lat1.length; edge++) {

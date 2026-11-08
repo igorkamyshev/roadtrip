@@ -2,12 +2,12 @@
 // city on the map that has no card in the carousel. A 12-hour ring can hold thousands of cities, so the list is
 // virtual (TanStack Virtual): only the rows in view are on the page.
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, type ReactElement } from 'react';
 import type { Access } from 'worker/api';
 import { hoursShort, plural } from '../screen/copy.ts';
 import { Sheet } from '../screen/sheets.tsx';
 import type { City } from './cities.ts';
-import { cityFacts, EntryMark } from './city-card.tsx';
+import { CityRowText, EntryMark } from './city-card.tsx';
 
 /** A row's height in pixels, fixed so that the list needs no measuring (styles.css, `.city-row`). */
 const ROW_HEIGHT = 60;
@@ -24,8 +24,9 @@ export interface CitiesSheetProps {
 	readonly onClose: () => void;
 }
 
-export function CitiesSheet({ cities, hours, access, chosen, onPick, onClose }: CitiesSheetProps) {
+export function CitiesSheet({ cities, hours, access, chosen, onPick, onClose }: CitiesSheetProps): ReactElement {
 	const body = useRef<HTMLDivElement>(null);
+	// oxlint-disable-next-line react/incompatible-library -- the rule guards React Compiler's memoization, which this build does not run: the list renders anew as it scrolls
 	const list = useVirtualizer({ count: cities.length, getScrollElement: () => body.current, estimateSize: () => ROW_HEIGHT, overscan: 6 });
 	const opened = useRef(false);
 	useEffect(() => {
@@ -57,11 +58,7 @@ export function CitiesSheet({ cities, hours, access, chosen, onPick, onClose }: 
 								onPick(city);
 							}}
 						>
-							<span className="row-main">
-								<span className="row-name">{city.name}</span>
-								{city.local === undefined ? null : <span className="row-alt"> {city.local}</span>}
-								<span className="row-sub">{cityFacts({ ...city, local: undefined })}</span>
-							</span>
+							<CityRowText city={city} />
 							<EntryMark city={city} access={access} />
 						</button>
 					);

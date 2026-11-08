@@ -25,9 +25,9 @@ async function loadCities(): Promise<readonly City[]> {
 	if (!response.ok) {
 		throw new Error(`${CITIES_PATH}: HTTP ${response.status}`);
 	}
-	const file = (await response.json()) as CitiesFile;
-	if (file.format !== CITIES_FORMAT) {
-		throw new Error(`${CITIES_PATH}: format ${String(file.format)}, not ${CITIES_FORMAT}`);
+	const file: unknown = await response.json();
+	if (!isCitiesFile(file)) {
+		throw new Error(`${CITIES_PATH}: not a cities file of format ${String(CITIES_FORMAT)}`);
 	}
 	return decodeCities(file).map(([id, ru, local, lat, lon, population, zone]) => ({
 		id,
@@ -40,6 +40,23 @@ async function loadCities(): Promise<readonly City[]> {
 	}));
 }
 
+/** A cities file of the format the client reads: its rows are then the format's (data/cities-file). */
+function isCitiesFile(file: unknown): file is CitiesFile {
+	return (
+		typeof file === 'object' &&
+		file !== null &&
+		'format' in file &&
+		file.format === CITIES_FORMAT &&
+		'cities' in file &&
+		Array.isArray(file.cities)
+	);
+}
+
+/** Biggest first: by population, then by id, as the cities file's order and every list of cities on the screen. */
+export function biggestFirst(one: Pick<City, 'id' | 'population'>, two: Pick<City, 'id' | 'population'>): number {
+	return one.population === two.population ? one.id - two.id : two.population - one.population;
+}
+
 const citiesQuery = queryOptions({
 	queryKey: ['cities'],
 	queryFn: loadCities,
@@ -50,12 +67,10 @@ const citiesQuery = queryOptions({
 	refetchOnReconnect: false,
 });
 
-/** The cities, or undefined until they come (and if they cannot be had: the screen then counts none). */
-export function useCities(): readonly City[] | undefined {
-	return useQuery(citiesQuery).data;
-}
-
-/** The cities file as the events need it: whether it is settled, the cities once it came, none if it could not be had. */
+/**
+ * The cities file: whether it is settled (the events wait for it), and the cities once it came; undefined until then,
+ * and if it could not be had (the screen then counts none).
+ */
 export function useCitiesFile(): { readonly settled: boolean; readonly cities: readonly City[] | undefined } {
 	const { status, data } = useQuery(citiesQuery);
 	return useMemo(() => ({ settled: status !== 'pending', cities: data }), [status, data]);
