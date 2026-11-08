@@ -2,7 +2,7 @@
 // of the Worker. Fetched once, when the screen first needs it, and kept for the session in TanStack Query.
 import { queryOptions, useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
-import { CITIES_FORMAT, CITIES_PATH, decodeCities, type CitiesFile } from 'data/cities-file';
+import { CITIES_PATH, decodeCities, parseCitiesFile } from 'data/cities-file';
 
 /** A city, a point of interest of the carousel (GLOSSARY «Точка интереса»). */
 export interface City {
@@ -25,11 +25,7 @@ async function loadCities(): Promise<readonly City[]> {
 	if (!response.ok) {
 		throw new Error(`${CITIES_PATH}: HTTP ${response.status}`);
 	}
-	const file: unknown = await response.json();
-	if (!isCitiesFile(file)) {
-		throw new Error(`${CITIES_PATH}: not a cities file of format ${String(CITIES_FORMAT)}`);
-	}
-	return decodeCities(file).map(([id, ru, local, lat, lon, population, zone]) => ({
+	return decodeCities(parseCitiesFile(await response.json())).map(([id, ru, local, lat, lon, population, zone]) => ({
 		id,
 		name: ru === '' ? local : ru,
 		local: ru === '' || ru === local ? undefined : local,
@@ -38,18 +34,6 @@ async function loadCities(): Promise<readonly City[]> {
 		population,
 		zone,
 	}));
-}
-
-/** A cities file of the format the client reads: its rows are then the format's (data/cities-file). */
-function isCitiesFile(file: unknown): file is CitiesFile {
-	return (
-		typeof file === 'object' &&
-		file !== null &&
-		'format' in file &&
-		file.format === CITIES_FORMAT &&
-		'cities' in file &&
-		Array.isArray(file.cities)
-	);
 }
 
 /** Biggest first: by population, then by id, as the cities file's order and every list of cities on the screen. */
