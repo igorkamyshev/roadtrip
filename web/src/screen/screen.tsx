@@ -350,7 +350,7 @@ function firstCardState(
 				return { kind: 'ring', hours };
 			}
 			return cities.length === 0
-				? { kind: 'no_cities', hours }
+				? { kind: 'no_cities' }
 				: { kind: 'ring', hours, cities: { count: cities.length, countries: new Set(cities.map((city) => city.zone)).size } };
 		case 'empty':
 			return { kind: 'empty', maxHours: answer.maxHours };

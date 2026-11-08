@@ -81,7 +81,8 @@ test.describe('the citizenships', () => {
 		expect(await names()).toEqual(['Сент-Винсент и Гренадины', 'Сент-Китс и Невис', 'Сент-Люсия']);
 		await filter.fill('Атлантида');
 		expect(await names()).toEqual([]);
-		await expect(sheet(page)).toContainText('Такого гражданства нет в списке.');
+		// Neither the spec nor the prototype has a line for an empty filter.
+		await expect(sheet(page)).not.toContainText('нет в списке');
 		await filter.fill('');
 		expect(await sheet(page).locator('.pick-item').count()).toBe(199);
 	});
@@ -197,7 +198,8 @@ test.describe('the visa rules', () => {
 
 		// Another N, then back: a request each time, and a dot only for the ring.
 		await slider(page).press('ArrowUp');
-		await expect(firstCard(page)).toContainText('В кольце 2–3 ч');
+		// The ring of 2–3 h, 0.2°–0.3° around Belgrade, has none of the test's cities.
+		await expect(firstCard(page)).toContainText('Городов в кольце нет');
 		expect(await dottedHours(page)).toEqual([3]);
 		await slider(page).press('ArrowDown');
 		await expect(firstCard(page)).toContainText('Не удалось загрузить визовые правила для гражданства Сербия.');

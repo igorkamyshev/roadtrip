@@ -10,7 +10,7 @@ export type FirstCardState =
 	| { readonly kind: 'calculating'; readonly hours: number; readonly request: string }
 	/** `cities`: how many cities the ring holds and in how many countries; undefined until the cities file comes. */
 	| { readonly kind: 'ring'; readonly hours: number; readonly cities?: { readonly count: number; readonly countries: number } }
-	| { readonly kind: 'no_cities'; readonly hours: number }
+	| { readonly kind: 'no_cities' }
 	| { readonly kind: 'empty'; readonly maxHours: number }
 	| { readonly kind: 'no_roads' }
 	| { readonly kind: 'no_ring' }
@@ -71,10 +71,8 @@ export function FirstCard({ state, actions }: { readonly state: FirstCardState; 
 				</Card>
 			);
 		case 'no_cities':
-			// The ring's hours too, as on the ring's card: it is the same ring, without cities.
 			return (
 				<Card>
-					<span className="muted small">В кольце {hoursShort(state.hours)}</span>
 					<h3>Городов в кольце нет</h3>
 					<p className="muted small">Показываем города больше 15 000 жителей.</p>
 				</Card>

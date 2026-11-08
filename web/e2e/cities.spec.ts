@@ -63,7 +63,7 @@ test.describe('the first card', () => {
 		ringApi.respond(() => ({ ...squareRing(BELGRADE.lat, BELGRADE.lon, 0.02, 0.1), ...visaRules(RUSSIAN) }));
 		await page.goto(LINK);
 
-		await expect.poll(() => read(firstCard(page))).toBe('В кольце 2–3 ч Городов в кольце нет Показываем города больше 15 000 жителей.');
+		await expect.poll(() => read(firstCard(page))).toBe('Городов в кольце нет Показываем города больше 15 000 жителей.');
 		await expect(cityCards(page)).toHaveCount(0);
 	});
 

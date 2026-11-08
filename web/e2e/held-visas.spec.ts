@@ -104,7 +104,7 @@ test.describe('the sheet «Мои визы»', () => {
 		await expect(one.locator('.pick-name')).toHaveText(['Сент-Винсент и Гренадины', 'Сент-Китс и Невис', 'Сент-Люсия']);
 		await filter.fill('Германия');
 		await expect(one.locator('.pick-name')).toHaveCount(0);
-		await expect(one).toContainText('Такой страны нет в списке.');
+		await expect(one).not.toContainText('нет в списке');
 		// The first section stays as it is.
 		await expect(section(page, 'Шенген и визы, которые открывают другие страны').locator('.pick-name')).toHaveCount(4);
 	});

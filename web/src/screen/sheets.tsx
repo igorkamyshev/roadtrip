@@ -85,7 +85,6 @@ export function CitizenshipSheet({ citizenships, onChange, onClose }: Citizenshi
 					/>
 				))}
 			</div>
-			{shown.length === 0 ? <p className="muted small">Такого гражданства нет в списке.</p> : null}
 		</Sheet>
 	);
 }
@@ -145,7 +144,6 @@ export function VisasSheet({ visas, citizenships, today, onChange, onClose }: Vi
 					/>
 				</label>
 				{shown.map((code) => item(code))}
-				{shown.length === 0 ? <p className="muted small">Такой страны нет в списке.</p> : null}
 			</PickSection>
 		</Sheet>
 	);
