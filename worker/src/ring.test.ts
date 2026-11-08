@@ -6,7 +6,7 @@ import { computeRing, dataVersion, type RingRequest } from 'engine';
 import type { Graph } from 'engine/graph';
 import { borderTable } from 'rules';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { answering, api, counted, DATASET, DAY, engineContainer, MemoryKv, recorded, SherpaDouble, sherpaMap, START } from '../test/api.ts';
+import { answering, api, counted, DATASET, DAY, engineContainer, MemoryKv, recorded, SherpaDouble, sherpaMap, START, taking } from '../test/api.ts';
 import { handleRing } from './ring.ts';
 
 const straightRoad = fixtureGraph('straight-road.osm');
@@ -324,5 +324,103 @@ describe('the origin', () => {
 		expect((await get('lat=0.0006&lon=0.1&hours=2&cit=RUS')).body.source).toBe('calculation');
 		expect((await get('lat=0&lon=0.1006&hours=2&cit=RUS')).body.source).toBe('calculation');
 		expect(container.calls).toBe(3);
+	});
+});
+
+describe('ring served', () => {
+	const timings = { queueMs: 400, traversalMs: 1200, contourMs: 300 };
+
+	it("tells a calculation: the outcome, N, how long the request took and the Container's timings", async () => {
+		const clock = { now: START };
+		const container = taking(2500, clock, await answering(200, { outcome: 'empty', maxHours: 5, startCountry: 'AAA', timings }));
+		const { get, analytics } = api({ container, clock });
+
+		await get('lat=0&lon=0&hours=6&cit=RUS');
+
+		expect(analytics.named('ring served')).toEqual([
+			{ source: 'calculation', outcome: 'empty', hours: 6, duration_ms: 2500, queue_ms: 400, traversal_ms: 1200, contour_ms: 300 },
+		]);
+	});
+
+	it('tells the cold start of a calculation that waited for the Container to start', async () => {
+		const container = await answering(200, { outcome: 'no_roads', startCountry: 'AAA', timings: { ...timings, coldStartMs: 14250 } });
+		const { get, analytics } = api({ container });
+
+		await get('lat=0&lon=0&hours=2&cit=RUS');
+
+		expect(analytics.named('ring served')).toEqual([
+			{ source: 'calculation', outcome: 'no_roads', hours: 2, duration_ms: 0, queue_ms: 400, traversal_ms: 1200, contour_ms: 300, cold_start_ms: 14250 },
+		]);
+	});
+
+	it('tells a request joined to a calculation, with the timings of that calculation', async () => {
+		const clock = { now: START };
+		const container = taking(800, clock, await answering(200, { outcome: 'ring', ring: { type: 'MultiPolygon', coordinates: [] }, startCountry: 'AAA', joined: true, timings }));
+		const { get, analytics } = api({ container, clock });
+
+		await get('lat=0&lon=0&hours=3&cit=RUS');
+
+		expect(analytics.named('ring served')).toEqual([
+			{ source: 'joined', outcome: 'ring', hours: 3, duration_ms: 800, queue_ms: 400, traversal_ms: 1200, contour_ms: 300 },
+		]);
+	});
+
+	it('tells a ring from the cache without timings', async () => {
+		const { get, analytics } = api({ container: await engineContainer(straightRoad) });
+
+		await get('lat=0&lon=0&hours=2&cit=RUS');
+		await get('lat=0&lon=0&hours=2&cit=SRB');
+
+		expect(analytics.named('ring served')).toEqual([
+			expect.objectContaining({ source: 'calculation', outcome: 'ring', hours: 2 }),
+			{ source: 'cache', outcome: 'ring', hours: 2, duration_ms: 0 },
+		]);
+	});
+
+	it('tells visa_rules_missing without a source: neither the cache nor the Container was asked', async () => {
+		const sherpa = new SherpaDouble();
+		sherpa.answer(() => ({ status: 503 }));
+		const { get, analytics } = api({ container: await engineContainer(straightRoad), sherpa });
+
+		await get('lat=0&lon=0&hours=4&cit=RUS');
+
+		expect(analytics.named('ring served')).toEqual([{ outcome: 'visa_rules_missing', hours: 4, duration_ms: 0 }]);
+	});
+
+	it('tells a failed Container as an error of a calculation', async () => {
+		const clock = { now: START };
+		const container = taking(60_000, clock, { fetch: () => Promise.reject(new Error('Container failed to start')) });
+		const { get, analytics } = api({ container, clock });
+
+		await get('lat=0&lon=0&hours=2&cit=RUS');
+
+		expect(analytics.named('ring served')).toEqual([{ source: 'calculation', outcome: 'error', hours: 2, duration_ms: 60_000 }]);
+	});
+
+	it('is not sent for a request that is no ring request: 400 and 405', async () => {
+		const { get, analytics, deps } = api({ container: await engineContainer(straightRoad) });
+
+		await get('lat=0&lon=0&hours=13&cit=RUS');
+		await handleRing(new Request('https://roadtrip.kamyshev.me/api/ring?lat=0&lon=0&hours=2&cit=RUS', { method: 'POST' }), deps);
+
+		expect(analytics.events).toEqual([]);
+	});
+
+	it("rounds the Container's timings to whole milliseconds", async () => {
+		const container = await answering(200, { outcome: 'no_roads', startCountry: 'AAA', timings: { queueMs: 0.12, traversalMs: 1200.5, contourMs: 299.7, coldStartMs: 14250.4 } });
+		const { get, analytics } = api({ container });
+
+		await get('lat=0&lon=0&hours=2&cit=RUS');
+
+		expect(analytics.named('ring served')).toEqual([expect.objectContaining({ queue_ms: 0, traversal_ms: 1201, contour_ms: 300, cold_start_ms: 14250 })]);
+	});
+
+	it('never carries the origin, not even rounded', async () => {
+		const { get, analytics } = api({ container: await engineContainer(straightRoad) });
+
+		await get('lat=0.0123&lon=0.0456&hours=2&cit=RUS');
+
+		expect(analytics.named('ring served')).toEqual([expect.objectContaining({ outcome: 'ring' })]);
+		expect(JSON.stringify(analytics.events)).not.toMatch(/0\.01|0\.04/u);
 	});
 });

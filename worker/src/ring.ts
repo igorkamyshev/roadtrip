@@ -4,7 +4,8 @@ import type { LogContext, Logger } from 'error-tracking/logger';
 import { utcDate, type VisaExemption } from 'rules';
 import { type Calculation, type CalculationFailure, CALCULATION_PATH, type CalculationRequest, type RingOutcome } from 'engine/protocol';
 import { reduceVisaRules, withStartCountry } from './access.ts';
-import type { RingError, RingResponse } from './api.ts';
+import { type Analytics, browserIds, type RingServed } from './analytics.ts';
+import type { RingError, RingQuery, RingResponse } from './api.ts';
 import { parseRingQuery } from './query.ts';
 import { MAX_CACHED_BYTES, RING_TTL_SECONDS, ringKey, roundOrigin, workerDataVersion } from './ring-cache.ts';
 import { citizenshipsRules, type VisaRulesStore } from './visa-rules.ts';
@@ -37,9 +38,11 @@ export interface RingDeps {
 	readonly now: () => number;
 	readonly waitUntil: (promise: Promise<unknown>) => void;
 	readonly logger: Pick<Logger, 'error' | 'info'>;
+	/** PostHog: `ring served` and `sherpa fetched`, tied to the browser that sent the request (analytics.ts). */
+	readonly analytics: Analytics;
 }
 
-/** The steps of «Порядок работы Worker'а» (spec «API кольца»). */
+/** The steps of «Порядок работы Worker'а» (spec «API кольца»), and `ring served` for each valid request. */
 export async function handleRing(request: Request, deps: RingDeps): Promise<Response> {
 	if (request.method !== 'GET') {
 		return new Response(null, { status: 405, headers: { allow: 'GET' } });
@@ -49,12 +52,31 @@ export async function handleRing(request: Request, deps: RingDeps): Promise<Resp
 	if ('problem' in query) {
 		return json(400, { error: query.problem } satisfies RingError);
 	}
+	const started = deps.now();
+	const { status, body, served } = await serve(query, browserIds(request), deps);
+	deps.analytics.capture('ring served', { ...served, hours: query.hours, duration_ms: deps.now() - started });
+	return json(status, body);
+}
+
+/** What `ring served` says of an answer besides N and the duration. */
+type Served = Omit<RingServed, 'hours' | 'duration_ms'>;
+
+/** Steps 2–7 for a valid query: the answer, and what `ring served` says of it. */
+async function serve(
+	query: RingQuery,
+	browser: ReturnType<typeof browserIds>,
+	deps: RingDeps,
+): Promise<{ status: number; body: RingResponse | RingError; served: Served }> {
 	// What logger.error gets with an error. Never the origin: it must not reach PostHog.
-	const context = { ...browserIds(request), hours: query.hours };
+	const context = { ...browser, hours: query.hours };
 	// Step 2: the citizenships' visa rules, or `visa_rules_missing` for the first without any.
 	const rules = await citizenshipsRules(query.citizenships, deps, context);
 	if ('missing' in rules) {
-		return json(200, { outcome: 'visa_rules_missing', missingCitizenship: rules.missing } satisfies RingResponse);
+		return {
+			status: 200,
+			body: { outcome: 'visa_rules_missing', missingCitizenship: rules.missing },
+			served: { outcome: 'visa_rules_missing' },
+		};
 	}
 	// Step 3: their reduction with the held visas and the exemptions' rows acting today, into the entry modes and the
 	// closed countries.
@@ -76,7 +98,7 @@ export async function handleRing(request: Request, deps: RingDeps): Promise<Resp
 	const cached = await deps.rings.get(key);
 	if (cached !== null) {
 		const outcome = JSON.parse(cached) as RingOutcome;
-		return json(200, { ...outcome, ...visa(outcome), source: 'cache' } satisfies RingResponse);
+		return { status: 200, body: { ...outcome, ...visa(outcome), source: 'cache' }, served: { source: 'cache', outcome: outcome.outcome } };
 	}
 
 	// Step 6: the Container.
@@ -85,16 +107,29 @@ export async function handleRing(request: Request, deps: RingDeps): Promise<Resp
 		calculated = await calculate(calculation, deps.container);
 	} catch (error) {
 		deps.logger.error('[ring] the Container failed', error, context);
-		return json(502, { error: 'The engine failed' } satisfies RingError);
+		return { status: 502, body: { error: 'The engine failed' }, served: { source: 'calculation', outcome: 'error' } };
 	}
 	// Step 7: cache and answer, the start country open in `access`.
-	const { dataVersion: calculatedWith, joined, timings: _timings, ...outcome } = calculated;
+	const { dataVersion: calculatedWith, joined, timings, ...outcome } = calculated;
 	// A joined request got the result of another request's calculation, which caches it: a second write of the key
 	// at the same moment would only meet KV's limit of one write a second per key.
 	if (!joined) {
 		cache(key, outcome, { version, calculatedWith }, context, deps);
 	}
-	return json(200, { ...outcome, ...visa(outcome), source: joined ? 'joined' : 'calculation' } satisfies RingResponse);
+	const source = joined ? 'joined' : 'calculation';
+	return {
+		status: 200,
+		body: { ...outcome, ...visa(outcome), source },
+		// The engine measures in fractions of a millisecond.
+		served: {
+			source,
+			outcome: outcome.outcome,
+			queue_ms: Math.round(timings.queueMs),
+			traversal_ms: Math.round(timings.traversalMs),
+			contour_ms: Math.round(timings.contourMs),
+			...(timings.coldStartMs === undefined ? {} : { cold_start_ms: Math.round(timings.coldStartMs) }),
+		},
+	};
 }
 
 /** A failure of the Container other than the engine's own error: it could not start, or answered something else. */
@@ -136,13 +171,6 @@ function engineError(status: number, text: string): Error | undefined {
 	return typeof name === 'string' && typeof message === 'string' && typeof stack === 'string'
 		? Object.assign(new Error(message), { name, stack })
 		: undefined;
-}
-
-/** The browser's PostHog ids from the headers `posthog-js` adds, for the context of `logger.error`. */
-function browserIds(request: Request): { distinct_id?: string; session_id?: string } {
-	const distinctId = request.headers.get('X-POSTHOG-DISTINCT-ID');
-	const sessionId = request.headers.get('X-POSTHOG-SESSION-ID');
-	return { ...(distinctId === null ? {} : { distinct_id: distinctId }), ...(sessionId === null ? {} : { session_id: sessionId }) };
 }
 
 /**

@@ -7,8 +7,10 @@
 // - a good copy is never deleted, and a failed load never overwrites it;
 // - after a failure, the next request to Sherpa for that citizenship waits 15 min: a mark in KV with a TTL.
 //
-// Every failure goes to `logger.error` as a `SherpaError`, also when the person got the stale copy.
+// Every failure goes to `logger.error` as a `SherpaError`, also when the person got the stale copy, and every request
+// to Sherpa to PostHog as `sherpa fetched`.
 import type { LogContext, Logger } from 'error-tracking/logger';
+import type { Analytics } from './analytics.ts';
 import { failureReason, fetchSherpaClasses, type SherpaClasses, type SherpaDeps, SherpaError, type SherpaFailure } from './sherpa.ts';
 
 /** A copy is fresh this long after it came from Sherpa. Sherpa advises an hour; we keep it longer on purpose (#11). */
@@ -30,6 +32,8 @@ export interface VisaRulesDeps extends SherpaDeps {
 	readonly now: () => number;
 	readonly waitUntil: (promise: Promise<unknown>) => void;
 	readonly logger: Pick<Logger, 'error'>;
+	/** For `sherpa fetched`, on every request to Sherpa. */
+	readonly analytics: Analytics;
 }
 
 /** A citizenship's copy: Sherpa's classes and when they came from Sherpa (ISO 8601). */
@@ -84,8 +88,16 @@ async function load(
 	deps: VisaRulesDeps,
 	context: LogContext,
 ): Promise<VisaRulesCopy | undefined> {
+	const started = deps.now();
 	const result = await fetchSherpaClasses(citizenship, deps);
-	// #34: `sherpa fetched` goes here, with `citizenship`, `result.result`, `result.status`, the duration and `mode`.
+	deps.analytics.capture('sherpa fetched', {
+		citizenship,
+		result: result.result,
+		...('status' in result && result.status !== undefined ? { status: result.status } : {}),
+		duration_ms: deps.now() - started,
+		mode,
+		...(result.quotaRemaining === undefined ? {} : { quota_remaining: result.quotaRemaining }),
+	});
 	if (result.result !== 'ok') {
 		failed(citizenship, result, mode === 'background' ? 'stale' : 'error', deps, context);
 		return undefined;
