@@ -8,7 +8,7 @@ The Worker `roadtrip` on `roadtrip.kamyshev.me` (spec «Устройство», 
 
 - `GET /api/ring` (`src/ring.ts`): the ring, from the ring cache in KV or calculated in the Container. The query and the answer are typed in `src/api.ts` (`RingQuery`, `RingResponse`, `RingError`), which the client imports as `worker/api`.
 - `GET /tiles/{z}/{x}/{y}` (`src/tiles.ts`): the basemap's vector tiles from the world's PMTiles archive in R2.
-- The client's static assets, `web/dist` (`"assets"` in `wrangler.jsonc`), with the basemap's fonts and sprites and the dataset's zone outlines for the hatching (`/data/zones.json`, `data/AGENTS.md`), are served before the Worker runs, so only paths without a file reach it.
+- The client's static assets, `web/dist` (`"assets"` in `wrangler.jsonc`), with the basemap's fonts and sprites and the dataset's zone outlines for the hatching (`/data/zones.json`) and cities file (`/data/cities.json`, both in `data/AGENTS.md`), are served before the Worker runs, so only paths without a file reach it.
 
 ## GET /api/ring
 

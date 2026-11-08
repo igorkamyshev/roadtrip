@@ -1,6 +1,6 @@
 # data
 
-The dataset build (spec «Набор данных»). So far: the builder that turns one OSM extract into the road graph and its build report, and the commands around it. The monthly world build in GitHub Actions comes with #35.
+The dataset build (spec «Набор данных»). So far: the builder that turns one OSM extract into the road graph and its build report, the zone outlines and the cities file, and the commands around them. The monthly world build in GitHub Actions comes with #35.
 
 ## Builder
 
@@ -22,9 +22,20 @@ The dataset build (spec «Набор данных»). So far: the builder that t
 - OSM's country boundaries run along the territorial waters, so coasts are smooth: Greece with its islands is 14 KB (3 KB in brotli), Cyprus with Northern Cyprus 3 KB; the world should be about 1 MB in brotli.
 - The Worker serves the file as a static asset at `/data/zones.json`: `build-graph --outlines` writes it into `web/public/data/` (gitignored), which the client's build copies into `web/dist`.
 
+## Cities file
+
+`buildCities` in `src/cities.ts` makes the cities file the screen picks the cities in the ring from (#32, spec «Файл городов», research in #6): JSON in the format of `src/cities-file.ts` (exported as `data/cities-file`, which the client reads), `{ format: 1, cities: [[id, ru, local, lat, lon, population, zone], …] }`. `encodeCities` writes the rows in order of id, each id as its difference from the row before's, which takes the world's file from 0.69 MB to 0.58 MB in brotli; `decodeCities` reads them back biggest first.
+
+- The cities are GeoNames' `cities1000` from 15 000 people, without PPLX (sections of cities) and PPLH, PPLQ, PPLW (historical, abandoned, destroyed). The world on 2026-11-07: 31 795 cities, 21 097 of them with a Russian name (17 756 GeoNames', 3 341 Wikidata's), 0.60 MB in brotli, built in 98 s, Wikidata's 36 queries included (none answered 429).
+- `ru` is GeoNames' Russian name (from `alternateNamesV2`: in use, non-colloquial, Cyrillic, preferred, short, shortest, in that order), else Wikidata's Russian label of the item with that GeoNames id (P1566, `src/wikidata.ts`: 400 ids a query, one query at a time, waiting as long as a 429 says), else empty. `local` is GeoNames' `name`.
+- `zone` is the graph's: the zone polygon the city is in, as `ZoneLocator` sees it, so Kyrenia is `NX` and Sukhumi `ABKHAZIA` though GeoNames puts them in CY and GE. A city outside every polygon (the West Bank has none in OSM) gets its GeoNames country as alpha-3 (`rules/countries`), and one whose country is no zone is left out and reported.
+- The Worker serves the file as a static asset at `/data/cities.json`: `build-cities` writes it into `web/public/data/` (gitignored) for `vite dev` and local builds, like the zone outlines.
+
 ## Commands
 
 `pnpm --filter data ring <extract | graph file | URL> --lat <degrees> --lon <degrees> --hours <N> [--closed <alpha-3,…>] [--out <file.geojson>]` is the one-command check of the ticket: it builds the graph of an extract (for example `https://download.geofabrik.de/europe/andorra-latest.osm.pbf`), computes the ring and writes GeoJSON. `build-graph <extract> <out.graph> [--outlines <zones.json>]` writes the graph file, which `ring` also reads, and with `--outlines` the zone outlines, printing their size raw and in brotli. Both print the build report to stderr when they build. pnpm runs both in `data/`; they take a relative path from where pnpm started.
+
+`build-cities <graph file | extract | URL> <out.json> [--cities <cities1000.zip | .txt | URL>] [--names <alternateNamesV2.zip | .txt | URL>,…] [--countries <alpha-2>,…] [--no-wikidata]` writes the cities file with the zones of the graph's polygons and prints how many cities, names and zones it got, and the size raw and in brotli. By default it downloads GeoNames' `cities1000.zip` and `alternateNamesV2.zip` (205 MB, streamed through `unzip -p`): that is the world build's call with the world graph. `--countries` keeps the cities of those GeoNames countries and takes their own files of alternate names (`alternatenames/<alpha-2>.zip`), for a region: `build-cities georgia.graph ../web/public/data/cities.json --countries GE,AM,AZ,TR` takes 5 s, Wikidata included. `--no-wikidata` skips Wikidata.
 
 `pnpm --filter data valhalla <work dir> [--report <file.md>] [--regions <id,…>] [--mirror <url>]` is the comparison with Valhalla on the full graph (#24; spec «Сверка с Valhalla»), a one-off check that CI does not run. The start points and their regions are in `src/valhalla/places.ts`. It needs osmium-tool, unzip and pyvalhalla's commands on PATH, a few GB of disk per region and ~10 GB of memory while Valhalla builds a region's tiles. Valhalla's results stay in the work directory, so after a change to the speeds a second run only recomputes ours. Its last report is `valhalla-report.md`, with conclusions written by hand; rerun it after a change to the speeds or the contour, and keep the conclusions.
 
@@ -36,5 +47,6 @@ The fixtures in `test/fixtures/` are hand-written OSM XML of a few countries and
 - `test/build-graph.test.ts`: the graph itself, the PBF reader against the XML, the graph file, the build report.
 - `test/outlines.test.ts`: the zone outlines against the graph's `ZoneLocator` on `zones.osm`, and the simplification.
 - `test/border-table.test.ts` and `test/data-version.test.ts`: the border table's check and the data version, here because every package's tests run under `data`'s vitest and types.
-- `test/commands.test.ts`: the commands as processes.
+- `test/cities.test.ts`: the cities file from lines in GeoNames' formats, a double of Wikidata and the zones of `zones.osm`; `test/wikidata.test.ts`: the Wikidata client against a double of the Query Service.
+- `test/commands.test.ts`: the commands as processes; `build-cities` reads the small GeoNames files in `test/fixtures/geonames/`.
 - `test/valhalla-metrics.test.ts`: the measures of the Valhalla comparison (ring area, the median time to cities, the tolerance); the comparison itself runs in no test.

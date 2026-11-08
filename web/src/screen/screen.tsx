@@ -4,7 +4,13 @@ import type { UseQueryResult } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { utcDate } from 'rules/held-visas';
 import type { RingResponse } from 'worker/api';
+import { type City, useCities } from '../cities/cities.ts';
+import { CitiesSheet } from '../cities/cities-sheet.tsx';
+import { CityCard, MoreCard } from '../cities/city-card.tsx';
+import { scrollToCard, useCarouselStops } from '../cities/carousel.ts';
+import { citiesInRing } from '../cities/in-ring.ts';
 import { MapView, type MapHandle } from '../map/map-view.tsx';
+import type { MapCity } from '../map/overlay.ts';
 import { RingRequestError } from '../ring/fetch-ring.ts';
 import { ringKey, useCachedHours, useRing } from '../ring/use-ring.ts';
 import type { Point } from '../state/point.ts';
@@ -17,7 +23,24 @@ import { Phrase, PhraseToken, VisaRulesDate } from './phrase.tsx';
 import { CitizenshipSheet, InfoSheet, StartSheet, VisasSheet } from './sheets.tsx';
 import { Slider } from './slider.tsx';
 
-type SheetName = 'start' | 'citizenships' | 'visas' | 'info';
+type SheetName = 'start' | 'citizenships' | 'visas' | 'info' | 'cities';
+
+/** The carousel's cards of cities: the biggest of the ring's, named on the map. */
+const CAROUSEL_CITIES = 12;
+/** The ring's cities the map dots, the biggest: a 12-hour ring holds thousands. */
+const MAP_CITIES = 250;
+/** The map comes at least this close to a city picked in the list of all. */
+const PICKED_CITY_ZOOM = 8;
+
+/** The cities the map shows: the biggest of the ring's, named if they have a card, and the chosen one. */
+function citiesOnMap(cities: readonly City[], chosen: number | undefined): MapCity[] {
+	const shown = cities.slice(0, MAP_CITIES);
+	const chosenCity = cities.find((city) => city.id === chosen);
+	if (chosenCity !== undefined && !shown.includes(chosenCity)) {
+		shown.push(chosenCity);
+	}
+	return shown.map(({ id, name, lat, lon }, index) => ({ id, name, lat, lon, label: index < CAROUSEL_CITIES || id === chosen, chosen: id === chosen }));
+}
 
 export function Screen() {
 	const { origin, hours, citizenships, visas, setOrigin, setHours, setCitizenships, setVisas } = useScreenState();
@@ -28,6 +51,7 @@ export function Screen() {
 		[citizenshipsText, visasText],
 	);
 	const ring = useRing(origin, hours, settings);
+	const cities = useCities();
 	const cachedHours = useCachedHours(origin, settings);
 	const map = useRef<MapHandle>(null);
 	const [sheet, setSheet] = useState<SheetName>();
@@ -79,10 +103,51 @@ export function Screen() {
 
 	// The request the screen shows: what the 5 s of «Считаем…» and the camera's fit to a new ring follow.
 	const requestId = origin === undefined ? '' : JSON.stringify(ringKey(origin, hours, settings));
-	const card = firstCardState(origin, hours, ring, geolocationFailed, requestId);
 	const shownRing = ring.data?.outcome === 'ring' ? ring.data.ring : undefined;
-	// The visa rules of the answer shown: what is hatched, and how old they are.
+	// The visa rules of the answer shown: what is hatched, how old they are, and which cities are open.
 	const answer = ring.data?.outcome === 'visa_rules_missing' ? undefined : ring.data;
+	const access = answer?.access;
+	// The ring's cities, once the ring is this request's (not an old one standing in) and the cities have come.
+	const ringCities = useMemo(
+		() => (cities === undefined || shownRing === undefined || access === undefined ? undefined : citiesInRing(cities, shownRing, access)),
+		[cities, shownRing, access],
+	);
+	const shownCities = ring.isPlaceholderData ? undefined : ringCities;
+	const card = firstCardState(origin, hours, ring, geolocationFailed, requestId, shownCities);
+
+	// The chosen city: the card in the carousel's middle, a city tapped on the map or picked in the list of all. A new
+	// ring chooses none and shows the carousel from its start.
+	const [chosen, setChosen] = useState<number>();
+	const carousel = useRef<HTMLDivElement>(null);
+	useEffect(() => {
+		setChosen(undefined);
+		carousel.current?.scrollTo({ left: 0 });
+	}, [requestId]);
+	const cityById = (id: number | undefined) => (id === undefined ? undefined : shownCities?.find((city) => city.id === id));
+	const onCarouselScroll = useCarouselStops(carousel, (id) => {
+		setChosen(id);
+		const city = cityById(id);
+		if (city !== undefined) {
+			map.current?.goTo(city);
+		}
+	});
+	const tapCity = (id: number) => {
+		// A city with no card in the carousel is found in the list of all.
+		if (!scrollToCard(carousel.current, id)) {
+			setChosen(id);
+			setSheet('cities');
+		}
+	};
+	const pickCity = (city: City) => {
+		setSheet(undefined);
+		// A city with a card is chosen when the carousel stops at it, which moves the map; another one here, and the
+		// map comes close to it.
+		if (city.id === chosen || !scrollToCard(carousel.current, city.id)) {
+			setChosen(city.id);
+			map.current?.goTo(city, PICKED_CITY_ZOOM);
+		}
+	};
+	const mapCities = useMemo(() => citiesOnMap(shownCities ?? [], chosen), [shownCities, chosen]);
 	const closed = answer === undefined ? [] : Object.keys(answer.access).filter((code) => answer.access[code].mode === 'closed');
 	const openCitizenships = () => {
 		setSheet('citizenships');
@@ -101,6 +166,8 @@ export function Screen() {
 				fit={ring.isPlaceholderData || shownRing === undefined ? undefined : requestId}
 				pinning={pinning}
 				closed={closed}
+				cities={mapCities}
+				onCity={tapCity}
 			/>
 			<Phrase
 				startLabel={origin === undefined ? undefined : 'на карте'}
@@ -144,8 +211,7 @@ export function Screen() {
 					</div>
 				</div>
 			) : (
-				// #32: the cards of the cities after the first one, and «и ещё K / Все города →».
-				<div className="c-car">
+				<div className="c-car" ref={carousel} onScroll={onCarouselScroll}>
 					<FirstCard
 						state={card}
 						actions={{
@@ -158,6 +224,28 @@ export function Screen() {
 							onVisas: openVisas,
 						}}
 					/>
+					{origin !== undefined && access !== undefined
+						? shownCities
+								?.slice(0, CAROUSEL_CITIES)
+								.map((city) => (
+									<CityCard
+										key={city.id}
+										city={city}
+										origin={origin}
+										access={access}
+										citizenships={citizenships}
+										chosen={city.id === chosen}
+									/>
+								))
+						: null}
+					{shownCities !== undefined && shownCities.length > CAROUSEL_CITIES ? (
+						<MoreCard
+							more={shownCities.length - CAROUSEL_CITIES}
+							onOpen={() => {
+								setSheet('cities');
+							}}
+						/>
+					) : null}
 				</div>
 			)}
 			{sheet === 'citizenships' ? (
@@ -190,6 +278,18 @@ export function Screen() {
 					}}
 				/>
 			) : null}
+			{sheet === 'cities' && shownCities !== undefined && access !== undefined ? (
+				<CitiesSheet
+					cities={shownCities}
+					hours={hours}
+					access={access}
+					chosen={chosen}
+					onPick={pickCity}
+					onClose={() => {
+						setSheet(undefined);
+					}}
+				/>
+			) : null}
 			{sheet === 'info' ? (
 				<InfoSheet
 					onClose={() => {
@@ -207,6 +307,7 @@ function firstCardState(
 	ring: UseQueryResult<RingResponse, RingRequestError>,
 	geolocationFailed: boolean,
 	request: string,
+	cities: readonly City[] | undefined,
 ): FirstCardState {
 	if (origin === undefined) {
 		return { kind: 'no_origin', geolocationFailed };
@@ -223,7 +324,12 @@ function firstCardState(
 	}
 	switch (answer.outcome) {
 		case 'ring':
-			return { kind: 'ring', hours };
+			if (cities === undefined) {
+				return { kind: 'ring', hours };
+			}
+			return cities.length === 0
+				? { kind: 'no_cities', hours }
+				: { kind: 'ring', hours, cities: { count: cities.length, countries: new Set(cities.map((city) => city.zone)).size } };
 		case 'empty':
 			return { kind: 'empty', maxHours: answer.maxHours };
 		case 'no_roads':

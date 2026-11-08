@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterAll, describe, expect, it } from 'vitest';
+import { decodeCities } from '../src/cities-file.ts';
 import { fixturePath } from './fixture-graph.ts';
 
 const command = (name: string, ...args: string[]) =>
@@ -65,5 +66,52 @@ describe('the build-graph command', () => {
 		const written = JSON.parse(readFileSync(outlines, 'utf8')) as { type: string; features: { properties: { zone: string } }[] };
 		expect(written.type).toBe('FeatureCollection');
 		expect(written.features.map(({ properties }) => properties.zone)).toContain('NX');
+	});
+});
+
+describe('the build-cities command', () => {
+	const directory = mkdtempSync(join(tmpdir(), 'roadtrip-commands-'));
+	afterAll(() => rmSync(directory, { recursive: true }));
+	const geonames = (name: string) => fixturePath(`geonames/${name}`);
+
+	it("writes the cities file of GeoNames' files, the zones by the polygons of a graph", () => {
+		const out = join(directory, 'cities.json');
+
+		const run = spawnSync(
+			process.execPath,
+			[
+				fileURLToPath(new URL('../src/cli/build-cities.ts', import.meta.url)),
+				fixturePath('zones.osm'),
+				out,
+				'--cities',
+				geonames('cities1000.txt'),
+				'--names',
+				geonames('alternateNamesV2.txt'),
+				'--no-wikidata',
+			],
+			{ encoding: 'utf8' },
+		);
+
+		expect(run.status).toBe(0);
+		// The fixtures' cities in the squares of zones.osm: Kyrenia and Famagusta in Northern Cyprus.
+		expect(decodeCities(JSON.parse(readFileSync(out, 'utf8')))).toEqual([
+			[146268, 'Никосия', 'Nicosia', 0.5, 3.5, 200_452, 'CYP'],
+			[786714, 'Приштина', 'Pristina', 0.5, 0.5, 161_751, 'RKS'],
+			[617239, 'Тирасполь', 'Tiraspol', 0.5, 7.5, 157_000, 'MDA'],
+			[146384, 'Лимасол', 'Limassol', 0.3, 3.2, 154_000, 'CYP'],
+			[146617, '', 'Famagusta', 0.7, 2.7, 42_526, 'NX'],
+			[146412, 'Кирения', 'Kyrenia', 0.5, 2.5, 26_701, 'NX'],
+		]);
+		expect(run.stderr).toContain('6 cities of 8 lines');
+		expect(run.stderr).toContain('Russian names: 5 from GeoNames, 0 from Wikidata, 1 without');
+		expect(run.stderr).toMatch(/MB in brotli/u);
+	});
+
+	it('takes the cities of the countries given', () => {
+		const out = join(directory, 'cyprus.json');
+
+		command('build-cities', fixturePath('zones.osm'), out, '--cities', geonames('cities1000.txt'), '--names', geonames('alternateNamesV2.txt'), '--countries', 'CY', '--no-wikidata');
+
+		expect(decodeCities(JSON.parse(readFileSync(out, 'utf8'))).map(([, , local]) => local)).toEqual(['Nicosia', 'Limassol', 'Famagusta', 'Kyrenia']);
 	});
 });

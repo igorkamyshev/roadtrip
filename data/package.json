@@ -3,11 +3,13 @@
 	"version": "0.0.0",
 	"private": true,
 	"type": "module",
-	"description": "The dataset build: the road graph and the zone outlines from an OSM extract, and the command that computes a ring from an extract.",
+	"description": "The dataset build: the road graph and the zone outlines from an OSM extract, the cities file from GeoNames and Wikidata, and the command that computes a ring from an extract.",
 	"exports": {
+		"./cities-file": "./src/cities-file.ts",
 		"./fixture-graph": "./test/fixture-graph.ts"
 	},
 	"scripts": {
+		"build-cities": "node src/cli/build-cities.ts",
 		"build-graph": "node src/cli/build-graph.ts",
 		"ring": "node src/cli/ring.ts",
 		"test": "vitest run",

@@ -3,10 +3,11 @@
 	"version": "0.0.0",
 	"private": true,
 	"type": "module",
-	"description": "Tables edited by hand: the border table and the visa exemptions' table with their schemas and checks, the Schengen area, the countries as zones and Sherpa's passports.",
+	"description": "Tables edited by hand: the border table and the visa exemptions' table with their schemas and checks, the Schengen area, the countries as zones, Sherpa's passports and the EU.",
 	"exports": {
 		".": "./src/index.ts",
 		"./countries": "./src/countries.ts",
+		"./eu": "./src/eu.ts",
 		"./passports": "./src/passports.ts",
 		"./held-visas": "./src/held-visas.ts"
 	},

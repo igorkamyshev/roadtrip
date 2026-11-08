@@ -12,6 +12,9 @@
 	--ring: #1b5fd6;
 	--ring-fill: rgba(27, 95, 214, 0.24);
 	--start: #e2412c;
+	/* The cities on the map: dots and names, on a halo. */
+	--city: #0e2a5a;
+	--halo: #f4f6f2;
 	/* The hatching of closed countries over the basemap: lines on a veil. */
 	--hatch: rgba(84, 95, 90, 0.55);
 	--hatch-veil: rgba(220, 223, 216, 0.35);
@@ -42,6 +45,8 @@
 		--ring: #6aa3ff;
 		--ring-fill: rgba(106, 163, 255, 0.24);
 		--start: #ff6a52;
+		--city: #d6e4ff;
+		--halo: #1c2321;
 		--hatch: rgba(150, 162, 157, 0.5);
 		--hatch-veil: rgba(27, 33, 32, 0.4);
 		--evisa: #ffcf7d;
@@ -160,6 +165,27 @@ a {
 }
 .small {
 	font-size: 13px;
+}
+.badge {
+	display: inline-block;
+	font-size: 12px;
+	font-weight: 500;
+	line-height: 1;
+	padding: 4px 7px;
+	border-radius: 6px;
+	white-space: nowrap;
+}
+.b-evisa {
+	background: var(--evisa-bg);
+	color: var(--evisa);
+}
+.b-held {
+	background: var(--held-bg);
+	color: var(--held);
+}
+.b-plain {
+	background: var(--surface-2);
+	color: var(--muted);
 }
 .note {
 	display: flex;
@@ -342,6 +368,47 @@ a {
 .pick-box svg {
 	width: 14px;
 	height: 14px;
+}
+/* ---------- the list of all cities (a virtual list: rows of a fixed height, placed by the list) ---------- */
+.city-list {
+	position: relative;
+}
+.row {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	border-bottom: 1px solid var(--line);
+	text-align: left;
+	width: 100%;
+}
+.city-row {
+	position: absolute;
+	top: 0;
+	left: 0;
+	height: 60px;
+	box-sizing: border-box;
+}
+.city-row.on .row-name {
+	color: var(--ring);
+}
+.city-row .row-main,
+.city-row .row-sub {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.row-name {
+	font-weight: 600;
+}
+.row-alt {
+	font-weight: 400;
+	color: var(--muted);
+	font-size: 13px;
+}
+.row-sub {
+	display: block;
+	font-size: 13px;
+	color: var(--muted);
 }
 .row-main {
 	flex: 1;
@@ -564,6 +631,22 @@ a {
 }
 .c-card p {
 	margin: 0;
+}
+.c-card .big {
+	font-family: var(--display);
+	font-size: 30px;
+	font-weight: 700;
+	line-height: 1;
+}
+.c-card.focus {
+	outline: 2px solid var(--ring);
+}
+.c-card .plates {
+	color: var(--warn);
+}
+.c-card .c-more {
+	color: var(--ring);
+	font-weight: 600;
 }
 .c-card .acts {
 	display: flex;
