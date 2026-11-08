@@ -20,8 +20,8 @@ export const RING_PATH = '/api/ring';
  *   cache);
  * - `hours`: N, a whole number from 1 to 12;
  * - `cit`: the citizenships, at least one, each one of Sherpa's passports (rules' `SHERPA_PASSPORTS`);
- * - `visas`: the held visas, `SCHENGEN` and the alpha-3 of countries outside Schengen whose passports Sherpa knows
- *   (rules' `HELD_VISAS`); may be empty or left out.
+ * - `visas`: the held visas, `SCHENGEN` and the codes of the countries outside Schengen (rules' `HELD_VISAS`: those
+ *   of `COUNTRIES`, alpha-3, `RKS`, `NX`); may be empty or left out.
  *
  * For example `/api/ring?lat=44.8125&lon=20.4612&hours=3&cit=RUS,SRB&visas=SCHENGEN`.
  */

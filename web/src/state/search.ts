@@ -13,7 +13,7 @@ export interface ScreenSearch {
 	readonly h?: number;
 	/** The citizenships: Sherpa's passports, alpha-3, sorted, comma-separated. */
 	readonly cit?: string;
-	/** The held visas: `SCHENGEN` and alpha-3 outside Schengen (rules' `HELD_VISAS`), sorted, comma-separated. */
+	/** The held visas: `SCHENGEN` and the countries outside Schengen (rules' `HELD_VISAS`), sorted, comma-separated. */
 	readonly visas?: string;
 }
 

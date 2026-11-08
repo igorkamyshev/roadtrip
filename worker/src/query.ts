@@ -8,8 +8,8 @@ const PASSPORTS: ReadonlySet<string> = new Set(SHERPA_PASSPORTS);
 const VISAS: ReadonlySet<string> = new Set(HELD_VISAS);
 
 /**
- * The query, or what is wrong with it. A citizenship is one of Sherpa's passports; a held visa is `SCHENGEN` or the
- * country of one of them outside Schengen (rules' `HELD_VISAS`).
+ * The query, or what is wrong with it. A citizenship is one of Sherpa's passports; a held visa is `SCHENGEN` or a
+ * country outside Schengen (rules' `HELD_VISAS`).
  */
 export function parseRingQuery(params: URLSearchParams): RingQuery | { readonly problem: string } {
 	const single = (name: string): string | undefined => {

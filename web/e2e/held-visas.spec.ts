@@ -67,8 +67,9 @@ test.describe('the sheet «Мои визы»', () => {
 		for (const held of ['Германия', 'Монако', 'Гибралтар', 'США', 'Соединенные Штаты', 'Великобритания', 'Канада']) {
 			expect(names).not.toContain(held);
 		}
-		// Sherpa's 199 passports, but the 32 in Schengen and the USA, the UK and Canada.
-		expect(names).toHaveLength(199 - 32 - 3);
+		// Every country: ISO 3166-1's 249, Kosovo and Northern Cyprus, but the 33 in Schengen and the USA, the UK and Canada.
+		expect(names).toHaveLength(249 + 2 - 33 - 3);
+		expect(names).toEqual(expect.arrayContaining(['Гренландия', 'Северный Кипр', 'КНДР']));
 		expect(names).toEqual([...names].sort((a, b) => a.localeCompare(b, 'ru')));
 	});
 
@@ -188,7 +189,7 @@ test.describe('the held visas of a link', () => {
 		await expect.poll(() => ringApi.calls.map((call) => call.visas)).toEqual(['USA', null]);
 	});
 
-	for (const visas of ['DEU', 'SCHENGEN,XXX', 'schengen', 'NX', '']) {
+	for (const visas of ['DEU', 'SCHENGEN,XXX', 'schengen', '']) {
 		test(`that are not held visas take the default, none: visas=${visas}`, async ({ page, ringApi }) => {
 			await page.goto(`${LINK}&visas=${visas}`);
 

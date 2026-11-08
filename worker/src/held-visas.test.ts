@@ -45,6 +45,16 @@ describe('a held visa', () => {
 		expect(await closedCountries(container)).toContain('ARM');
 	});
 
+	it('of any country outside Schengen opens it, one without a passport of Sherpa’s too', async () => {
+		const container = recorded(await engineContainer(straightRoad));
+		const { get } = api({ container, sherpa: sherpaClosing(), visaExemptions: [] });
+
+		const { body } = await get('lat=0&lon=0&hours=2&cit=RUS&visas=GRL,NX');
+
+		expect(body.access).toMatchObject({ GRL: { mode: 'held_visa', visa: 'GRL' }, NX: { mode: 'held_visa', visa: 'NX' } });
+		expect(await closedCountries(container)).not.toContain('GRL');
+	});
+
 	it('SCHENGEN opens all of Schengen with the four entered through it, and no country beyond without a row', async () => {
 		const container = recorded(await engineContainer(straightRoad));
 		const { get } = api({ container, sherpa: sherpaClosing(), visaExemptions: [] });
@@ -211,7 +221,6 @@ describe('the held visas of a request', () => {
 		['a Schengen country, which is held only as Schengen', 'DEU'],
 		['Gibraltar, in Schengen too', 'GIB,SCHENGEN'],
 		['a code that is no country', 'GBR,XXX'],
-		['Northern Cyprus, which is not alpha-3', 'NX'],
 	])('with %s is 400, and goes nowhere', async (_, visas) => {
 		const container = counted(await engineContainer(straightRoad));
 		const { get } = api({ container });
@@ -223,7 +232,11 @@ describe('the held visas of a request', () => {
 		expect(container.calls).toBe(0);
 	});
 
-	it.each([['Schengen and the four', 'CAN,GBR,SCHENGEN,USA'], ['countries outside Schengen', 'AND,CYP,GEO,IRL,RKS,TUR']])(
+	it.each([
+		['Schengen and the four', 'CAN,GBR,SCHENGEN,USA'],
+		['countries outside Schengen', 'AND,CYP,GEO,IRL,RKS,TUR'],
+		['countries without a passport of Sherpa’s: territories, North Korea, Northern Cyprus', 'GRL,NX,PRI,PRK'],
+	])(
 		'with %s is answered',
 		async (_, visas) => {
 			const { get } = api({ container: await engineContainer(straightRoad) });

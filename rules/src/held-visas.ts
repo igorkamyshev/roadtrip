@@ -3,7 +3,7 @@
 // countries by them; the client counts what each of the four visas opens. Both import this, the client by its own
 // path (`rules/held-visas`), without the border table.
 import type { ExemptionVisa, VisaExemption } from './index.ts';
-import { SHERPA_PASSPORTS } from './passports.ts';
+import { COUNTRIES } from './countries.ts';
 import { SCHENGEN_AREA } from './schengen.ts';
 
 export { VISA_EXEMPTIONS } from './visa-exemptions.ts';
@@ -15,11 +15,11 @@ export const SCHENGEN = 'SCHENGEN';
 export const EXEMPTION_VISAS: readonly ExemptionVisa[] = ['SCHENGEN', 'USA', 'GBR', 'CAN'];
 
 /**
- * Every visa a person may hold, sorted: `SCHENGEN`, and the country of every one of Sherpa's passports outside the
- * Schengen area. The countries that issue passports are the ones that issue visas; a dependent territory follows
- * its country's visa, and a Schengen country is held only as Schengen.
+ * Every visa a person may hold, sorted: `SCHENGEN`, and every country outside the Schengen area (spec «Экран»: «Виза
+ * одной страны» lists all of them), by its code in `COUNTRIES`: alpha-3, `RKS`, `NX`. A Schengen country is held only
+ * as Schengen.
  */
-export const HELD_VISAS: readonly string[] = [SCHENGEN, ...SHERPA_PASSPORTS.filter((code) => !SCHENGEN_AREA.includes(code))].sort();
+export const HELD_VISAS: readonly string[] = [SCHENGEN, ...Object.keys(COUNTRIES).filter((code) => !SCHENGEN_AREA.includes(code))].sort();
 
 /**
  * The rows that act on `today` (YYYY-MM-DD, the date in UTC) for a person of `citizenships`: up to their last day
