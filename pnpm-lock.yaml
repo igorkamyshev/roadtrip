@@ -10,10 +10,10 @@ importers:
     devDependencies:
       '@tanstack/eslint-plugin-query':
         specifier: 5.107.1
-        version: 5.107.1(eslint@10.14.0)(typescript@7.0.2)
+        version: 5.107.1(eslint@10.14.0)(typescript@5.9.3)
       '@tanstack/eslint-plugin-router':
         specifier: 1.162.0
-        version: 1.162.0(eslint@10.14.0)(typescript@7.0.2)
+        version: 1.162.0(eslint@10.14.0)(typescript@5.9.3)
       eslint:
         specifier: 10.14.0
         version: 10.14.0
@@ -32,6 +32,9 @@ importers:
       oxlint-tsgolint:
         specifier: 7.0.2005
         version: 7.0.2005
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
       vitest:
         specifier: ^5.1.0
         version: 5.1.0(@types/node@22.20.5)(vite@8.3.6(@types/node@22.20.5)(esbuild@0.28.2))
@@ -3067,18 +3070,18 @@ snapshots:
 
   '@speed-highlight/core@1.2.24': {}
 
-  '@tanstack/eslint-plugin-query@5.107.1(eslint@10.14.0)(typescript@7.0.2)':
+  '@tanstack/eslint-plugin-query@5.107.1(eslint@10.14.0)(typescript@5.9.3)':
     dependencies:
-      '@typescript-eslint/utils': 8.72.1(eslint@10.14.0)(typescript@7.0.2)
+      '@typescript-eslint/utils': 8.72.1(eslint@10.14.0)(typescript@5.9.3)
       eslint: 10.14.0
     optionalDependencies:
-      typescript: 7.0.2
+      typescript: 5.9.3
     transitivePeerDependencies:
       - supports-color
 
-  '@tanstack/eslint-plugin-router@1.162.0(eslint@10.14.0)(typescript@7.0.2)':
+  '@tanstack/eslint-plugin-router@1.162.0(eslint@10.14.0)(typescript@5.9.3)':
     dependencies:
-      '@typescript-eslint/utils': 8.72.1(eslint@10.14.0)(typescript@7.0.2)
+      '@typescript-eslint/utils': 8.72.1(eslint@10.14.0)(typescript@5.9.3)
       eslint: 10.14.0
     transitivePeerDependencies:
       - supports-color
@@ -3158,12 +3161,12 @@ snapshots:
   '@types/trusted-types@2.0.7':
     optional: true
 
-  '@typescript-eslint/project-service@8.72.1(typescript@7.0.2)':
+  '@typescript-eslint/project-service@8.72.1(typescript@5.9.3)':
     dependencies:
-      '@typescript-eslint/tsconfig-utils': 8.72.1(typescript@7.0.2)
+      '@typescript-eslint/tsconfig-utils': 8.72.1(typescript@5.9.3)
       '@typescript-eslint/types': 8.72.1
       debug: 4.4.3
-      typescript: 7.0.2
+      typescript: 5.9.3
     transitivePeerDependencies:
       - supports-color
 
@@ -3172,35 +3175,35 @@ snapshots:
       '@typescript-eslint/types': 8.72.1
       '@typescript-eslint/visitor-keys': 8.72.1
 
-  '@typescript-eslint/tsconfig-utils@8.72.1(typescript@7.0.2)':
+  '@typescript-eslint/tsconfig-utils@8.72.1(typescript@5.9.3)':
     dependencies:
-      typescript: 7.0.2
+      typescript: 5.9.3
 
   '@typescript-eslint/types@8.72.1': {}
 
-  '@typescript-eslint/typescript-estree@8.72.1(typescript@7.0.2)':
+  '@typescript-eslint/typescript-estree@8.72.1(typescript@5.9.3)':
     dependencies:
-      '@typescript-eslint/project-service': 8.72.1(typescript@7.0.2)
-      '@typescript-eslint/tsconfig-utils': 8.72.1(typescript@7.0.2)
+      '@typescript-eslint/project-service': 8.72.1(typescript@5.9.3)
+      '@typescript-eslint/tsconfig-utils': 8.72.1(typescript@5.9.3)
       '@typescript-eslint/types': 8.72.1
       '@typescript-eslint/visitor-keys': 8.72.1
       debug: 4.4.3
       minimatch: 10.2.6
       semver: 7.8.6
       tinyglobby: 0.2.17
-      ts-api-utils: 2.5.0(typescript@7.0.2)
-      typescript: 7.0.2
+      ts-api-utils: 2.5.0(typescript@5.9.3)
+      typescript: 5.9.3
     transitivePeerDependencies:
       - supports-color
 
-  '@typescript-eslint/utils@8.72.1(eslint@10.14.0)(typescript@7.0.2)':
+  '@typescript-eslint/utils@8.72.1(eslint@10.14.0)(typescript@5.9.3)':
     dependencies:
       '@eslint-community/eslint-utils': 4.10.1(eslint@10.14.0)
       '@typescript-eslint/scope-manager': 8.72.1
       '@typescript-eslint/types': 8.72.1
-      '@typescript-eslint/typescript-estree': 8.72.1(typescript@7.0.2)
+      '@typescript-eslint/typescript-estree': 8.72.1(typescript@5.9.3)
       eslint: 10.14.0
-      typescript: 7.0.2
+      typescript: 5.9.3
     transitivePeerDependencies:
       - supports-color
 
@@ -3987,9 +3990,9 @@ snapshots:
 
   tinyqueue@3.0.0: {}
 
-  ts-api-utils@2.5.0(typescript@7.0.2):
+  ts-api-utils@2.5.0(typescript@5.9.3):
     dependencies:
-      typescript: 7.0.2
+      typescript: 5.9.3
 
   tslib@2.9.1:
     optional: true
@@ -4022,6 +4025,7 @@ snapshots:
       '@typescript/typescript-sunos-x64': 7.0.2
       '@typescript/typescript-win32-arm64': 7.0.2
       '@typescript/typescript-win32-x64': 7.0.2
+    optional: true
 
   undici-types@6.21.0: {}
 
