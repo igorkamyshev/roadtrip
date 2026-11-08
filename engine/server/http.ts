@@ -1,9 +1,10 @@
 // Serves a web-standard handler (engine-server.ts) with Node's http module: the Container's port.
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
+import { buffer } from 'node:stream/consumers';
 import { calculationFailure } from '../src/protocol.ts';
 
 export interface Handler {
-	fetch(request: Request): Promise<Response>;
+	readonly fetch: (request: Request) => Promise<Response>;
 }
 
 /** Listens on `port` (0 for a free one) and resolves once the port takes connections. */
@@ -23,10 +24,7 @@ export async function listen(handler: Handler, port: number): Promise<Server> {
 
 async function respond(handler: Handler, incoming: IncomingMessage, outgoing: ServerResponse): Promise<void> {
 	try {
-		const chunks: Buffer[] = [];
-		for await (const chunk of incoming) {
-			chunks.push(chunk as Buffer);
-		}
+		const body = await buffer(incoming);
 		const headers = new Headers();
 		for (const [name, value] of Object.entries(incoming.headers)) {
 			if (value !== undefined) {
@@ -37,7 +35,7 @@ async function respond(handler: Handler, incoming: IncomingMessage, outgoing: Se
 			new Request(new URL(incoming.url ?? '/', 'http://engine'), {
 				method: incoming.method,
 				headers,
-				body: chunks.length > 0 ? Buffer.concat(chunks) : undefined,
+				body: body.length > 0 ? body : undefined,
 			}),
 		);
 		outgoing.writeHead(response.status, Object.fromEntries(response.headers));

@@ -90,38 +90,33 @@ export const GRAPH_FORMAT_VERSION = 2;
 
 const MAGIC = 'RTGRAPH\n';
 
-type ArrayName =
-	| 'nodeLat'
-	| 'nodeLon'
-	| 'nodeZone'
-	| 'firstEdge'
-	| 'edgeTarget'
-	| 'edgeSeconds'
-	| 'borderControlEdges'
-	| 'ringZone'
-	| 'ringStart'
-	| 'ringLat'
-	| 'ringLon';
+/** The graph's arrays in the order the file holds them. */
+const ARRAY_NAMES = [
+	'nodeLat',
+	'nodeLon',
+	'nodeZone',
+	'firstEdge',
+	'edgeTarget',
+	'edgeSeconds',
+	'borderControlEdges',
+	'ringZone',
+	'ringStart',
+	'ringLat',
+	'ringLon',
+] as const;
 
-const ARRAY_TYPES = {
-	nodeLat: Int32Array,
-	nodeLon: Int32Array,
-	nodeZone: Uint8Array,
-	firstEdge: Uint32Array,
-	edgeTarget: Uint32Array,
-	edgeSeconds: Uint16Array,
-	borderControlEdges: Uint32Array,
-	ringZone: Uint8Array,
-	ringStart: Uint32Array,
-	ringLat: Int32Array,
-	ringLon: Int32Array,
-} as const;
+type ArrayName = (typeof ARRAY_NAMES)[number];
+
+/** Where an array starts in the file and how many elements it has. */
+interface Placement {
+	readonly offset: number;
+	readonly length: number;
+}
 
 interface FileHeader {
 	readonly format: number;
 	readonly zones: readonly string[];
-	/** Where each array starts in the file and how many elements it has. */
-	readonly arrays: Readonly<Record<ArrayName, { readonly offset: number; readonly length: number }>>;
+	readonly arrays: Readonly<Record<ArrayName, Placement>>;
 }
 
 /**
@@ -143,16 +138,15 @@ export function encodeGraph(graph: Graph): Uint8Array {
 		ringLat: graph.zoneRings.lat,
 		ringLon: graph.zoneRings.lon,
 	};
-	const names = Object.keys(ARRAY_TYPES) as ArrayName[];
 	// The header's length depends on the offsets, which depend on its length: lay the arrays out after a header
 	// slot big enough for any offsets.
 	const draft = (start: number) => {
-		const placed = {} as Record<ArrayName, { offset: number; length: number }>;
 		let offset = start;
-		for (const name of names) {
-			placed[name] = { offset, length: arrays[name].length };
+		const placed = byName((name) => {
+			const placement = { offset, length: arrays[name].length };
 			offset = align(offset + arrays[name].byteLength);
-		}
+			return placement;
+		});
 		return { header: { format: GRAPH_FORMAT_VERSION, zones: graph.zones, arrays: placed } satisfies FileHeader, end: offset };
 	};
 	const slot = align(MAGIC.length + 4 + new TextEncoder().encode(JSON.stringify(draft(Number.MAX_SAFE_INTEGER).header)).length);
@@ -162,11 +156,28 @@ export function encodeGraph(graph: Graph): Uint8Array {
 	const headerBytes = new TextEncoder().encode(JSON.stringify(header));
 	new DataView(bytes.buffer).setUint32(MAGIC.length, headerBytes.length, true);
 	bytes.set(headerBytes, MAGIC.length + 4);
-	for (const name of names) {
+	for (const name of ARRAY_NAMES) {
 		const array = arrays[name];
 		bytes.set(new Uint8Array(array.buffer, array.byteOffset, array.byteLength), header.arrays[name].offset);
 	}
 	return bytes;
+}
+
+/** A record of every array name, its values made by name in the order of ARRAY_NAMES. */
+function byName<Value>(make: (name: ArrayName) => Value): Record<ArrayName, Value> {
+	return {
+		nodeLat: make('nodeLat'),
+		nodeLon: make('nodeLon'),
+		nodeZone: make('nodeZone'),
+		firstEdge: make('firstEdge'),
+		edgeTarget: make('edgeTarget'),
+		edgeSeconds: make('edgeSeconds'),
+		borderControlEdges: make('borderControlEdges'),
+		ringZone: make('ringZone'),
+		ringStart: make('ringStart'),
+		ringLat: make('ringLat'),
+		ringLon: make('ringLon'),
+	};
 }
 
 /** The graph in a file `encodeGraph` wrote. Its arrays are views of `bytes` (of a copy, if `bytes` is misaligned). */
@@ -176,27 +187,65 @@ export function decodeGraph(bytes: Uint8Array): Graph {
 	}
 	const aligned = bytes.byteOffset % 8 === 0 ? bytes : bytes.slice();
 	const headerLength = new DataView(aligned.buffer, aligned.byteOffset).getUint32(MAGIC.length, true);
-	const header = JSON.parse(new TextDecoder().decode(aligned.subarray(MAGIC.length + 4, MAGIC.length + 4 + headerLength))) as FileHeader;
-	if (header.format !== GRAPH_FORMAT_VERSION) {
-		throw new Error(`The graph file has format ${header.format}, this engine reads ${GRAPH_FORMAT_VERSION}`);
-	}
-	const array = <Name extends ArrayName>(name: Name): InstanceType<(typeof ARRAY_TYPES)[Name]> => {
+	const header = readHeader(new TextDecoder().decode(aligned.subarray(MAGIC.length + 4, MAGIC.length + 4 + headerLength)));
+	const view = <View>(Type: new (buffer: ArrayBufferLike, byteOffset: number, length: number) => View, name: ArrayName): View => {
 		const { offset, length } = header.arrays[name];
-		return new ARRAY_TYPES[name](aligned.buffer as ArrayBuffer, aligned.byteOffset + offset, length) as InstanceType<
-			(typeof ARRAY_TYPES)[Name]
-		>;
+		return new Type(aligned.buffer, aligned.byteOffset + offset, length);
 	};
 	return {
-		nodeLat: array('nodeLat'),
-		nodeLon: array('nodeLon'),
-		nodeZone: array('nodeZone'),
-		firstEdge: array('firstEdge'),
-		edgeTarget: array('edgeTarget'),
-		edgeSeconds: array('edgeSeconds'),
-		borderControlEdges: array('borderControlEdges'),
+		nodeLat: view(Int32Array, 'nodeLat'),
+		nodeLon: view(Int32Array, 'nodeLon'),
+		nodeZone: view(Uint8Array, 'nodeZone'),
+		firstEdge: view(Uint32Array, 'firstEdge'),
+		edgeTarget: view(Uint32Array, 'edgeTarget'),
+		edgeSeconds: view(Uint16Array, 'edgeSeconds'),
+		borderControlEdges: view(Uint32Array, 'borderControlEdges'),
 		zones: header.zones,
-		zoneRings: { zone: array('ringZone'), start: array('ringStart'), lat: array('ringLat'), lon: array('ringLon') },
+		zoneRings: {
+			zone: view(Uint8Array, 'ringZone'),
+			start: view(Uint32Array, 'ringStart'),
+			lat: view(Int32Array, 'ringLat'),
+			lon: view(Int32Array, 'ringLon'),
+		},
 	};
+}
+
+/** The file's header, of this engine's format. */
+function readHeader(json: string): FileHeader {
+	const header: unknown = JSON.parse(json);
+	const format = typeof header === 'object' && header !== null && 'format' in header ? header.format : undefined;
+	if (format !== GRAPH_FORMAT_VERSION) {
+		throw new Error(`The graph file has format ${String(format)}, this engine reads ${GRAPH_FORMAT_VERSION}`);
+	}
+	if (!isFileHeader(header)) {
+		throw new Error(`The graph file's header is not one of format ${GRAPH_FORMAT_VERSION}`);
+	}
+	return header;
+}
+
+function isFileHeader(value: unknown): value is FileHeader {
+	if (typeof value !== 'object' || value === null || !('zones' in value) || !('arrays' in value)) {
+		return false;
+	}
+	const { zones, arrays } = value;
+	return (
+		Array.isArray(zones) &&
+		zones.every((zone) => typeof zone === 'string') &&
+		typeof arrays === 'object' &&
+		arrays !== null &&
+		ARRAY_NAMES.every((name) => isPlacement(Reflect.get(arrays, name)))
+	);
+}
+
+function isPlacement(value: unknown): value is Placement {
+	return (
+		typeof value === 'object' &&
+		value !== null &&
+		'offset' in value &&
+		'length' in value &&
+		Number.isInteger(value.offset) &&
+		Number.isInteger(value.length)
+	);
 }
 
 function align(offset: number): number {
@@ -225,7 +274,7 @@ export function createGraph(parts: GraphParts): Graph {
 		const slot = next[from[edge]]++;
 		edgeTarget[slot] = to[edge];
 		edgeSeconds[slot] = seconds[edge];
-		if (borderControl[edge]) {
+		if (borderControl[edge] !== 0) {
 			borderControlSlots.push(slot);
 		}
 	}
@@ -236,7 +285,7 @@ export function createGraph(parts: GraphParts): Graph {
 		firstEdge,
 		edgeTarget,
 		edgeSeconds,
-		borderControlEdges: Uint32Array.from(borderControlSlots).sort(),
+		borderControlEdges: Uint32Array.from(borderControlSlots).toSorted(),
 		zones: parts.zones,
 		zoneRings: parts.zoneRings,
 	};

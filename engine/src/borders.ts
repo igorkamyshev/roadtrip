@@ -33,11 +33,17 @@ const BLOCKING = new Set(['closed', 'no_crossing', 'pedestrian_only']);
 
 const borderSecondsCache = new WeakMap<Graph, WeakMap<BorderTable, ReadonlyMap<number, number>>>();
 
+/** The countries closed by the visa rules, alpha-3, and the start zone, which is open whatever they hold. */
+interface VisaClosures {
+	readonly closedCountries: readonly string[];
+	readonly startZone: number;
+}
+
 /**
  * Where a traversal of `graph` may go under the border table, with `closedCountries` closed but for the start
  * zone, which is always open (spec «Движок»).
  */
-export function passage(graph: Graph, table: BorderTable, closedCountries: readonly string[], startZone: number): Passage {
+export function passage(graph: Graph, table: BorderTable, { closedCountries, startZone }: VisaClosures): Passage {
 	let byTable = borderSecondsCache.get(graph);
 	if (byTable === undefined) {
 		byTable = new WeakMap();
@@ -52,7 +58,7 @@ export function passage(graph: Graph, table: BorderTable, closedCountries: reado
 	const closed = closedForEveryone(graph, table);
 	return {
 		zone: borderZones(graph),
-		open: Uint8Array.from(graph.zones, (code, zone) => (closed[zone] || (closedByVisas.has(code) && zone !== startZone) ? 0 : 1)),
+		open: Uint8Array.from(graph.zones, (code, zone) => (closed[zone] === 1 || (closedByVisas.has(code) && zone !== startZone) ? 0 : 1)),
 		borderSeconds,
 	};
 }
@@ -76,8 +82,8 @@ export function borderZones(graph: Graph): Uint8Array {
 }
 
 function zonesOfNoZone(graph: Graph): Uint8Array {
-	const { nodeZone, firstEdge, edgeTarget } = graph;
-	// The nodes in no zone, numbered, and their stretches by union–find over the edges between them.
+	const { nodeZone } = graph;
+	// The nodes in no zone, numbered.
 	const index = new Map<number, number>();
 	for (let node = 0; node < nodeZone.length; node++) {
 		if (nodeZone[node] === 0) {
@@ -87,6 +93,29 @@ function zonesOfNoZone(graph: Graph): Uint8Array {
 	if (index.size === 0) {
 		return nodeZone;
 	}
+	const root = joinStretches(graph, index);
+	const stretchOf = (node: number): number => {
+		const at = index.get(node);
+		if (at === undefined) {
+			throw new Error(`Node ${node} is in a zone, not in a stretch of no zone`);
+		}
+		return root(at);
+	};
+	const counts = edgesToZones(graph, stretchOf);
+	const zones = nodeZone.slice();
+	for (const [node, at] of index) {
+		const byZone = counts.get(root(at));
+		zones[node] = byZone === undefined ? 0 : mostLedTo(byZone);
+	}
+	return zones;
+}
+
+/**
+ * The stretches of no zone by union–find over the edges between nodes in no zone: the root of the stretch of each
+ * such node, by its number in `index`.
+ */
+function joinStretches(graph: Graph, index: ReadonlyMap<number, number>): (at: number) => number {
+	const { firstEdge, edgeTarget } = graph;
 	const parent = Int32Array.from({ length: index.size }, (_, at) => at);
 	const root = (at: number): number => {
 		while (parent[at] !== at) {
@@ -103,10 +132,14 @@ function zonesOfNoZone(graph: Graph): Uint8Array {
 			}
 		}
 	}
-	// The edges between each stretch and each zone, either way.
+	return root;
+}
+
+/** The edges between each stretch of no zone and each zone, either way: a count per zone, by the stretch. */
+function edgesToZones(graph: Graph, stretchOf: (node: number) => number): Map<number, Uint32Array> {
+	const { nodeZone, firstEdge, edgeTarget } = graph;
 	const counts = new Map<number, Uint32Array>();
-	const count = (at: number, zone: number) => {
-		const stretch = root(at);
+	const count = (stretch: number, zone: number) => {
 		let byZone = counts.get(stretch);
 		if (byZone === undefined) {
 			byZone = new Uint32Array(graph.zones.length);
@@ -118,24 +151,24 @@ function zonesOfNoZone(graph: Graph): Uint8Array {
 		for (let edge = firstEdge[node]; edge < firstEdge[node + 1]; edge++) {
 			const target = edgeTarget[edge];
 			if (nodeZone[node] === 0 && nodeZone[target] !== 0) {
-				count(index.get(node) as number, nodeZone[target]);
+				count(stretchOf(node), nodeZone[target]);
 			} else if (nodeZone[node] !== 0 && nodeZone[target] === 0) {
-				count(index.get(target) as number, nodeZone[node]);
+				count(stretchOf(target), nodeZone[node]);
 			}
 		}
 	}
-	const zones = nodeZone.slice();
-	for (const [node, at] of index) {
-		const byZone = counts.get(root(at));
-		let best = 0;
-		for (let zone = 1; byZone !== undefined && zone < byZone.length; zone++) {
-			if (byZone[zone] > byZone[best]) {
-				best = zone;
-			}
+	return counts;
+}
+
+/** The zone with the most edges, ties to the zone listed first. */
+function mostLedTo(byZone: Uint32Array): number {
+	let best = 0;
+	for (let zone = 1; zone < byZone.length; zone++) {
+		if (byZone[zone] > byZone[best]) {
+			best = zone;
 		}
-		zones[node] = best;
 	}
-	return zones;
+	return best;
 }
 
 /** 1 for each zone of the graph that is closed for everyone: a country of the table's, or a closed territory. */
@@ -157,52 +190,100 @@ export function closedForEveryone(graph: Graph, table: BorderTable): Uint8Array 
  * Antarctica, or a country whose polygon the extract does not hold.
  */
 export function borderEdges(graph: Graph, table: BorderTable): BorderEdge[] {
-	const { firstEdge, edgeTarget, zones } = graph;
+	const { firstEdge, edgeTarget } = graph;
 	const nodeZone = borderZones(graph);
-	const borderControl = new Set(graph.borderControlEdges);
-	const schengen = new Set(table.schengen);
-	const pairs = new Map(table.pairs.map((row) => [pairKey(...row.pair), row]));
-	const crossings = Map.groupBy(table.crossings, (crossing) => pairKey(...crossing.pair));
+	const borderEdge = borderEdgeRules(graph, table);
 	const result: BorderEdge[] = [];
 	for (let from = 0; from < nodeZone.length; from++) {
 		for (let edge = firstEdge[from]; edge < firstEdge[from + 1]; edge++) {
 			const to = edgeTarget[edge];
-			if (nodeZone[to] === nodeZone[from] || nodeZone[to] === 0 || nodeZone[from] === 0) {
-				continue;
+			if (nodeZone[to] !== nodeZone[from] && nodeZone[to] !== 0 && nodeZone[from] !== 0) {
+				result.push(borderEdge({ edge, from, to }));
 			}
-			const [one, two] = [zones[nodeZone[from]], zones[nodeZone[to]]].sort();
-			const pair = pairKey(one, two);
-			const row = pairs.get(pair);
-			const crossing = nearestCrossing(graph, from, to, crossings.get(pair));
-			const controlSeconds = (row?.borderHours ?? table.defaultBorderHours) * 3600;
-			let seconds: number;
-			if ((crossing !== undefined && crossing.status !== 'open') || (row !== undefined && BLOCKING.has(row.status))) {
-				seconds = Infinity;
-			} else if (row?.status === 'crossings_only') {
-				seconds = crossing === undefined ? Infinity : controlSeconds;
-			} else if ((schengen.has(one) && schengen.has(two)) || row?.status === 'no_control') {
-				seconds = (row?.borderHours ?? 0) * 3600;
-			} else {
-				seconds = borderControl.has(edge) || crossing !== undefined ? controlSeconds : Infinity;
-			}
-			result.push({ edge, from, to, pair, row, crossing, seconds });
 		}
 	}
 	return result;
 }
 
-/** The crossing nearest to the edge from `a` to `b`, if one is within BORDER_CROSSING_METERS of it. */
-function nearestCrossing(graph: Graph, a: number, b: number, crossings: readonly BorderCrossing[] | undefined): BorderCrossing | undefined {
+/** An edge of the graph, from node `from` to node `to`. */
+interface EdgeEnds {
+	readonly edge: number;
+	readonly from: number;
+	readonly to: number;
+}
+
+/** What the border table makes of an edge between two zones of the graph, neither of them zone 0. */
+function borderEdgeRules(graph: Graph, table: BorderTable): (ends: EdgeEnds) => BorderEdge {
+	const { zones } = graph;
+	const nodeZone = borderZones(graph);
+	const borderControl = new Set(graph.borderControlEdges);
+	const schengen = new Set(table.schengen);
+	const pairs = new Map(table.pairs.map((row) => [pairKey(...row.pair), row]));
+	const crossings = Map.groupBy(table.crossings, (crossing) => pairKey(...crossing.pair));
+	return (ends) => {
+		const one = zones[nodeZone[ends.from]];
+		const two = zones[nodeZone[ends.to]];
+		const pair = pairKey(one, two);
+		const row = pairs.get(pair);
+		const crossing = nearestCrossing(graph, ends, crossings.get(pair));
+		const seconds = borderDelaySeconds(row, crossing, {
+			withoutControl: (schengen.has(one) && schengen.has(two)) || row?.status === 'no_control',
+			atBorderControl: borderControl.has(ends.edge),
+			defaultBorderHours: table.defaultBorderHours,
+		});
+		return { ...ends, pair, row, crossing, seconds };
+	};
+}
+
+/** Where an edge across a border runs, beyond the pair's row and the crossing near it. */
+interface BorderPlace {
+	/** Inside Schengen, or at a `no_control` pair. */
+	readonly withoutControl: boolean;
+	/** The edge passes a `barrier=border_control` of OSM (`Graph.borderControlEdges`). */
+	readonly atBorderControl: boolean;
+	readonly defaultBorderHours: number;
+}
+
+/** The border delay of an edge across a border, in seconds of travel, by the rules of `borderEdges`. */
+function borderDelaySeconds(row: BorderPair | undefined, crossing: BorderCrossing | undefined, place: BorderPlace): number {
+	if (closes(row, crossing)) {
+		return Infinity;
+	}
+	if (row?.status === 'crossings_only') {
+		return crossing === undefined ? Infinity : controlSeconds(row, place);
+	}
+	if (place.withoutControl) {
+		return (row?.borderHours ?? 0) * 3600;
+	}
+	return place.atBorderControl || crossing !== undefined ? controlSeconds(row, place) : Infinity;
+}
+
+/** A closed or pedestrian-only crossing of the table at the edge, or a `closed`, `no_crossing` or `pedestrian_only` pair. */
+function closes(row: BorderPair | undefined, crossing: BorderCrossing | undefined): boolean {
+	return (crossing !== undefined && crossing.status !== 'open') || (row !== undefined && BLOCKING.has(row.status));
+}
+
+/** The delay of passport control: the pair's own, or the table's default. */
+function controlSeconds(row: BorderPair | undefined, place: BorderPlace): number {
+	return (row?.borderHours ?? place.defaultBorderHours) * 3600;
+}
+
+/** The crossing nearest to the edge, if one is within BORDER_CROSSING_METERS of it. */
+function nearestCrossing(
+	graph: Graph,
+	{ from, to }: EdgeEnds,
+	crossings: readonly BorderCrossing[] | undefined,
+): BorderCrossing | undefined {
 	let nearest: BorderCrossing | undefined;
 	let nearestMeters = BORDER_CROSSING_METERS;
 	for (const crossing of crossings ?? []) {
 		const meters = segmentMeters(
 			Math.round(crossing.lat * E7),
 			Math.round(crossing.lon * E7),
-			graph.nodeLat[a],
-			graph.nodeLon[a],
-			graph.nodeLat[b],
-			graph.nodeLon[b],
+			graph.nodeLat[from],
+			graph.nodeLon[from],
+			graph.nodeLat[to],
+			graph.nodeLon[to],
 		);
 		if (meters <= nearestMeters) {
 			nearest = crossing;

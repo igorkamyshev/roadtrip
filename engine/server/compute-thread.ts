@@ -18,11 +18,12 @@ export type ThreadMessage =
 	| { readonly type: 'failed'; readonly id: number; readonly failure: ReturnType<typeof calculationFailure> };
 
 const port = parentPort;
-if (port === null) {
-	throw new Error('compute-thread.ts runs as a worker thread of calculator.ts');
+const data: unknown = workerData;
+if (port === null || !isThreadData(data)) {
+	throw new Error('compute-thread.ts runs as a worker thread of calculator.ts, with its ThreadData');
 }
 const started = performance.now();
-const graph = decodeGraph(readFileSync((workerData as ThreadData).graphPath));
+const graph = decodeGraph(readFileSync(data.graphPath));
 port.postMessage({
 	type: 'loaded',
 	loadMs: performance.now() - started,
@@ -37,3 +38,7 @@ port.on('message', ({ id, request }: { id: number; request: CalculationRequest }
 		port.postMessage({ type: 'failed', id, failure: calculationFailure(error) } satisfies ThreadMessage);
 	}
 });
+
+function isThreadData(value: unknown): value is ThreadData {
+	return typeof value === 'object' && value !== null && 'graphPath' in value && typeof value.graphPath === 'string';
+}

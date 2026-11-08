@@ -66,6 +66,7 @@ export async function startCalculator(graphPath: string): Promise<Calculator> {
 				}
 				const id = nextId++;
 				running.set(id, { resolve, reject });
+				// oxlint-disable-next-line unicorn/require-post-message-target-origin -- a worker thread's postMessage, which has no target origin: that is window.postMessage's
 				thread.postMessage({ id, request });
 			}),
 		loadMs: loaded.loadMs,

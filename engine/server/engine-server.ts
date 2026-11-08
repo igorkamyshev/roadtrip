@@ -21,7 +21,7 @@ export interface EngineServerDeps {
 }
 
 export interface EngineServer {
-	fetch(request: Request): Promise<Response>;
+	readonly fetch: (request: Request) => Promise<Response>;
 }
 
 /** How a calculation ended, and when it started. */
@@ -95,29 +95,37 @@ function parseCalculation(body: string): CalculationRequest | undefined {
 	} catch {
 		return undefined;
 	}
-	if (typeof value !== 'object' || value === null) {
+	if (!isRecord(value) || !isRecord(value.origin)) {
 		return undefined;
 	}
-	const { origin, hours, closedCountries } = value as Record<string, unknown>;
-	if (typeof origin !== 'object' || origin === null) {
+	const { lat, lon } = value.origin;
+	const { hours, closedCountries } = value;
+	if (!isCoordinate(lat) || !isCoordinate(lon) || !isHours(hours) || !isCodes(closedCountries)) {
 		return undefined;
 	}
-	const { lat, lon } = origin as Record<string, unknown>;
-	const valid =
-		typeof lat === 'number' &&
-		typeof lon === 'number' &&
-		Number.isFinite(lat) &&
-		Number.isFinite(lon) &&
-		Number.isInteger(hours) &&
-		(hours as number) > 0 &&
-		Array.isArray(closedCountries) &&
-		closedCountries.every((code) => typeof code === 'string');
-	return valid ? { origin: { lat, lon }, hours: hours as number, closedCountries: closedCountries as string[] } : undefined;
+	return { origin: { lat, lon }, hours, closedCountries };
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null;
+}
+
+function isCoordinate(value: unknown): value is number {
+	return typeof value === 'number' && Number.isFinite(value);
+}
+
+/** N, a whole number of hours. */
+function isHours(value: unknown): value is number {
+	return typeof value === 'number' && Number.isInteger(value) && value > 0;
+}
+
+function isCodes(value: unknown): value is string[] {
+	return Array.isArray(value) && value.every((code) => typeof code === 'string');
 }
 
 /** The same origin, N and set of closed countries give the same ring. */
 function calculationKey({ origin, hours, closedCountries }: CalculationRequest): string {
-	return JSON.stringify([origin.lat, origin.lon, hours, [...closedCountries].sort()]);
+	return JSON.stringify([origin.lat, origin.lon, hours, closedCountries.toSorted()]);
 }
 
 function json(status: number, body: Calculation | CalculationFailure | { error: string }): Response {
