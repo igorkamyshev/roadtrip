@@ -6,7 +6,7 @@ const TIMERS = new Set(['setTimeout', 'setInterval']);
 const TIMERS_MESSAGE =
 	'Take the timers from deps (`deps.sleep`), so a test moves their time; only the entry, worker/src/index.ts, builds them.';
 const CLOCK_MESSAGE = 'Take the clock from deps (`deps.now`), so a test sets the time; only the entry, worker/src/index.ts, builds it.';
-const FAKE_MESSAGE = "Move the time on deps' clock and timers (worker/test/api.ts: Clock, Timers), not by faking the globals with vi.";
+const FAKE_MESSAGE = "Move the time on deps' clock and timers (worker/test/timers.ts: Clock, timersOn), not by faking the globals with vi.";
 
 /** `object.method(…)`: the calls that read the global clock or fake it, with what to do instead. */
 const METHODS = new Map([
@@ -16,7 +16,7 @@ const METHODS = new Map([
 	['vi.setSystemTime', FAKE_MESSAGE],
 ]);
 
-/** The Worker takes its clock and timers from deps, built in its entry (CODING_STANDARDS.md, Tests and Where code goes). */
+/** The Worker takes its clock and timers from deps, built in its entry (CODING_STANDARDS.md, Where code goes; ADR 0002). */
 export const timeThroughDeps: Rule = {
 	meta: { type: 'problem', docs: { description: 'Take the clock and the timers from deps, not from the globals.' } },
 	create(context) {

@@ -36,7 +36,7 @@ function globalObject(node: unknown): string | undefined {
 	return typeof inner.name === 'string' && GLOBALS.has(inner.name) ? inner.name : undefined;
 }
 
-/** Production code carries no test hooks (CODING_STANDARDS.md, Product). */
+/** Production code carries no test hooks (ADR 0002, its own rules). */
 export const noWindowAssignment: Rule = {
 	meta: { type: 'problem', docs: { description: 'Put no property on window or globalThis.' } },
 	create(context) {

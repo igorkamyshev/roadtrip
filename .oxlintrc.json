@@ -114,7 +114,7 @@
 			"rules": { "roadtrip/no-capture-exception": "error" }
 		},
 		{
-			// The Worker's clock and timers come from deps (CODING_STANDARDS.md, Tests), its tests move them on their own clock.
+			// The Worker's clock and timers come from deps (CODING_STANDARDS.md, Where code goes; ADR 0002), its tests move them on their own clock.
 			"files": ["worker/src/**", "worker/test/**"],
 			"rules": { "roadtrip/time-through-deps": "error" }
 		},
@@ -138,7 +138,7 @@
 				"@tanstack/query/prefer-query-options": "error",
 				"@tanstack/router/create-route-property-order": "error",
 				"@tanstack/router/route-param-names": "error",
-				// No test hooks on window; the screen's tests are Playwright's (CODING_STANDARDS.md, Tests and Product).
+				// No test hooks on window; the screen's tests are Playwright's (CODING_STANDARDS.md, Tests; ADR 0002).
 				"roadtrip/no-window-assignment": "error",
 				"roadtrip/screen-tests-in-playwright": "error",
 				// Imported for what they do: the styles, the fonts, and the parts of posthog-js the SDK would load later.
