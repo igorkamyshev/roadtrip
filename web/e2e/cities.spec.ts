@@ -11,6 +11,9 @@ import { citiesOnMap, distanceFromTheMiddle, firstCard, labelsOnMap, mapZoom, ph
 const BELGRADE = { lat: 44.8176, lon: 20.4573 };
 const LINK = '/#/?p=44.81760,20.45730&h=3';
 
+/** Longer than any easing of the map's camera: MapLibre's `easeTo` takes 500 ms. */
+const EASING_PAST_MS = 2000;
+
 /** A Russian's entry modes around Serbia, the start country. */
 const RUSSIAN: Access = {
 	SRB: { mode: 'start' },
@@ -194,10 +197,18 @@ test.describe('the carousel and the map', () => {
 	const chosenCard = (page: Page) => page.locator('[data-testid="city-card"][aria-current="true"]');
 
 	test.beforeEach(async ({ page, ringApi }) => {
+		// The page's clock, which the map's easing runs by: a test moves it past the easing, whatever the machine's load.
+		await page.clock.install();
 		ringApi.respond(() => ringAroundBelgrade(WITH_SCHENGEN_VISA));
 		await page.goto(LINK);
 		await expect(cityCards(page)).toHaveCount(12);
 	});
+
+	/** How far the place is from the middle of the map once the camera went to it: past its easing, by the page's clock. */
+	async function wentTo(page: Page, at: { readonly lat: number; readonly lon: number }): Promise<number> {
+		await page.clock.fastForward(EASING_PAST_MS);
+		return distanceFromTheMiddle(page, at);
+	}
 
 	test("the map labels the carousel's cities, and dots the others of the ring", async ({ page }) => {
 		await expect.poll(() => labelsOnMap(page)).toEqual({
@@ -212,7 +223,7 @@ test.describe('the carousel and the map', () => {
 
 		await expect(chosenCard(page).locator('h3')).toHaveText('Ниш');
 		await expect.poll(async () => (await labelsOnMap(page)).chosen).toEqual(['Ниш']);
-		await expect.poll(() => distanceFromTheMiddle(page, { lat: 43.325, lon: 21.903 })).toBeLessThan(25);
+		expect(await wentTo(page, { lat: 43.325, lon: 21.903 })).toBeLessThan(25);
 
 		// Back to the first card: no city is chosen.
 		await firstCard(page).evaluate((card) => {
@@ -247,7 +258,7 @@ test.describe('the carousel and the map', () => {
 		await expect(page.getByRole('dialog')).toHaveCount(0);
 		await expect.poll(() => labelsOnMap(page)).toMatchObject({ chosen: ['Осиек'] });
 		expect((await labelsOnMap(page)).labels).toContain('Осиек');
-		await expect.poll(() => distanceFromTheMiddle(page, { lat: 45.551, lon: 18.694 })).toBeLessThan(25);
+		expect(await wentTo(page, { lat: 45.551, lon: 18.694 })).toBeLessThan(25);
 		expect(await mapZoom(page)).toBeGreaterThanOrEqual(8);
 		await expect(chosenCard(page)).toHaveCount(0);
 	});
@@ -259,7 +270,7 @@ test.describe('the carousel and the map', () => {
 
 		await expect(chosenCard(page).locator('h3')).toHaveText('Тузла');
 		await expect(chosenCard(page)).toBeInViewport({ ratio: 0.9 });
-		await expect.poll(() => distanceFromTheMiddle(page, { lat: 44.538, lon: 18.667 })).toBeLessThan(25);
+		expect(await wentTo(page, { lat: 44.538, lon: 18.667 })).toBeLessThan(25);
 	});
 
 	test('a new ring chooses no city and shows the carousel from its start', async ({ page }) => {

@@ -1,6 +1,7 @@
 // PostHog in the browser (spec «Аналитика и ошибки», «Решения по тестам», seam 3): the screen opened on the
 // production host, where PostHog runs, with PostHog's proxy doubled (`PostHogDouble`): the page views, the screen's
 // own events and their properties. Never the origin.
+import type { Page } from '@playwright/test';
 import type { RingResponse, RingSource } from 'worker/api';
 import type { RingResultOutcome } from '../src/analytics/events.ts';
 import {
@@ -15,10 +16,21 @@ import {
 	test,
 	visaRules,
 } from './fixtures.ts';
-import { dragSlider, expectRingCard, firstCard, leave, mapAtRest, phrase } from './screen.ts';
+import { dottedHours, dragSlider, expectRingCard, firstCard, leave, mapAtRest, phrase, slider } from './screen.ts';
 
 const BELGRADE = { lat: 44.8176, lon: 20.4573 };
 const LINK = '/#/?p=44.81760,20.45730&h=3&cit=RUS';
+
+/** Where the page's clock starts in the tests that hold it, in ms since the epoch. */
+const START = Date.UTC(2026, 10, 7, 10);
+/**
+ * Stops the page's clock before the page loads, so that the screen's ask is at a known time: a minute after `START`,
+ * which a busy machine cannot have passed between the two calls. `page.clock.resume()` lets posthog-js send.
+ */
+async function holdTheClock(page: Page): Promise<void> {
+	await page.clock.install({ time: START });
+	await page.clock.pauseAt(START + 60_000);
+}
 
 /** posthog-js sends its queue every few seconds. */
 const SENT = { timeout: 15_000 };
@@ -244,10 +256,12 @@ test.describe('ring result', () => {
 	});
 
 	test('tells the ring: N, the citizenships and held visas sorted, the place, the source, the wait and the cities', async ({ page, ringApi, posthog }) => {
+		await holdTheClock(page);
 		await openInProduction(page, '/#/?p=44.81760,20.45730&h=3&cit=RUS,SRB&visas=GEO,SCHENGEN');
 		await ringApi.waitForCalls(1);
-		await page.waitForTimeout(1000);
+		await page.clock.runFor(1000);
 		await ringApi.answer(belgradeRing());
+		await page.clock.resume();
 
 		await expect(firstCard(page)).toContainText(/11\s*городов в 2 странах/u);
 		await expect.poll(() => posthog.named('ring result'), SENT).toHaveLength(1);
@@ -264,8 +278,7 @@ test.describe('ring result', () => {
 			cities_count: 11,
 			countries_count: 2,
 		});
-		expect(result.wait_ms).toBeGreaterThanOrEqual(1000);
-		expect(result.wait_ms).toBeLessThan(10_000);
+		expect(result.wait_ms).toBe(1000);
 	});
 
 	for (const source of ['cache', 'joined'] as const) {
@@ -336,11 +349,13 @@ test.describe('ring result', () => {
 	});
 
 	test('a request the person moved on from is abandoned at once, and its late answer tells nothing', async ({ page, ringApi, posthog }) => {
+		await holdTheClock(page);
 		await openInProduction(page, LINK);
 		await ringApi.waitForCalls(1);
-		await page.waitForTimeout(500);
+		await page.clock.runFor(500);
 
 		await dragSlider(page, 5);
+		await page.clock.resume();
 		await expect.poll(() => posthog.named('ring result'), SENT).toEqual([
 			expect.objectContaining({ outcome: 'abandoned', hours: 3, start_city: 'Белград' }),
 		]);
@@ -353,9 +368,17 @@ test.describe('ring result', () => {
 		]);
 		const [abandoned] = posthog.named('ring result');
 		expect(abandoned).not.toHaveProperty('source');
-		expect(abandoned.wait_ms).toBeGreaterThanOrEqual(500);
-		await page.waitForTimeout(1000);
-		expect(posthog.named('ring result')).toHaveLength(2);
+		expect(abandoned.wait_ms).toBe(500);
+
+		// The late answer is in memory (its dot), and the next ring result follows the two: nothing came of it between.
+		await expect.poll(() => dottedHours(page)).toEqual([3, 5]);
+		ringApi.respond(() => belgradeRing());
+		await slider(page).press('ArrowUp');
+		await expect.poll(() => posthog.named('ring result').map(({ hours, outcome }) => [hours, outcome]), SENT).toEqual([
+			[3, 'abandoned'],
+			[5, 'ring'],
+			[6, 'ring'],
+		]);
 	});
 
 	test('a request the person left the page during is abandoned by beacon', async ({ page, ringApi, posthog }) => {
@@ -378,14 +401,17 @@ test.describe('ring result', () => {
 		await dragSlider(page, 8);
 
 		await expect.poll(() => posthog.named('ring result').map(({ hours }) => hours), SENT).toEqual([3, 8]);
-		await page.waitForTimeout(1000);
-		expect(posthog.named('ring result')).toHaveLength(2);
+		// The next ring result follows the two: nothing came of the hours passed between.
+		await slider(page).press('ArrowUp');
+		await expect.poll(() => posthog.named('ring result').map(({ hours }) => hours), SENT).toEqual([3, 8, 9]);
 	});
 });
 
 test('taps on the map are no dead clicks or rage clicks; a tap on text that does nothing is a dead click', async ({ page, ringApi, posthog }) => {
 	// The project's dead clicks on, as the Owner may switch them.
 	posthog.remoteConfig = { ...posthog.remoteConfig, captureDeadClicks: true };
+	// PostHog waits a few seconds after a click for the page to change: the page's clock runs them.
+	await page.clock.install();
 	ringApi.respond((call) => squareRing(BELGRADE.lat, BELGRADE.lon, call.hours - 1, call.hours));
 	await openInProduction(page, LINK);
 	await expectRingCard(page, '2–3 ч');
@@ -400,10 +426,10 @@ test('taps on the map are no dead clicks or rage clicks; a tap on text that does
 	// The map, between the phrase and the carousel, where nothing is: the map moves, the page does not.
 	const phraseBox = await phrase(page).boundingBox();
 	await tapThrice({ x: 20, y: (phraseBox?.y ?? 0) + (phraseBox?.height ?? 0) + 40, width: 40, height: 40 });
-	await page.waitForTimeout(3500);
+	await page.clock.runFor(3500);
 	// And the phrase's text, which does nothing either: PostHog does look.
 	await tapThrice(await phrase(page).getByText('в пути').boundingBox());
-	await page.waitForTimeout(3500);
+	await page.clock.runFor(3500);
 	await leave(page);
 
 	// The element each was on, by the start of its chain.

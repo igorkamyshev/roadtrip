@@ -5,6 +5,9 @@ import { allowGeolocation, expect, squareRing, test } from './fixtures.ts';
 import { dottedHours, dragMap, dragSlider, firstCard, mapBounds, phrase, ringIsStriped, ringOnMap, slider } from './screen.ts';
 
 const BELGRADE = { lat: 44.8176, lon: 20.4573 };
+/** Where the page's clock starts in the tests that hold it, in ms since the epoch. */
+const START = Date.UTC(2026, 10, 7, 10);
+const MINUTE = 60_000;
 const BELGRADE_CALL = { lat: '44.81760', lon: '20.45730' };
 
 /** A ring per N: a band from N − 1 to N tenths of a degree around the origin. */
@@ -113,17 +116,20 @@ test('the ring of another origin is not kept while the new origin’s ring is ca
 });
 
 test('a calculation that takes over 5 s says it takes longer than usual', async ({ page, ringApi }) => {
-	await page.clock.install();
+	// The page's time stands still from the load: the 5 s count from the card's start, whatever the machine's load. It
+	// stops a minute after the install, which a busy machine cannot have passed.
+	await page.clock.install({ time: START });
+	await page.clock.pauseAt(START + MINUTE);
 	await page.goto('/');
 	await expect(firstCard(page)).toContainText('Считаем…');
-	await expect(firstCard(page)).not.toContainText('Чуть дольше обычного');
 
-	await page.clock.fastForward(4000);
+	await page.clock.runFor(4999);
 	await expect(firstCard(page)).not.toContainText('Чуть дольше обычного');
-	await page.clock.fastForward(1000);
+	await page.clock.runFor(1);
 
 	await expect(firstCard(page)).toContainText('Считаем…');
 	await expect(firstCard(page)).toContainText('Чуть дольше обычного, досчитываем — подождите');
+	await page.clock.resume();
 	await ringApi.answer(ringFor({ ...BELGRADE_CALL, hours: 1 }));
 	await expect(firstCard(page)).toContainText('В кольце до 1 ч');
 });

@@ -60,14 +60,15 @@ const failures: readonly { failure: string; reply: RingReply; texts: readonly st
 for (const { failure, reply, texts } of failures) {
 	test(`${failure}: the first card says so, and «Повторить» asks again`, async ({ page, context, ringApi }) => {
 		await allowGeolocation(context, BELGRADE);
+		await page.clock.install();
 		ringApi.respond(() => reply);
 		await page.goto('/');
 
 		for (const text of texts) {
 			await expect(firstCard(page)).toContainText(text);
 		}
-		// Nothing repeats the request by itself.
-		await page.waitForTimeout(500);
+		// Nothing repeats the request by itself, a minute later by the page's clock: «Повторить» below is the second.
+		await page.clock.fastForward(60_000);
 		expect(ringApi.calls).toHaveLength(1);
 
 		ringApi.respond((call) => squareRing(Number(call.lat), Number(call.lon), 0, 0.5));
