@@ -32,6 +32,16 @@ async function holdTheClock(page: Page): Promise<void> {
 	await page.clock.pauseAt(START + 60_000);
 }
 
+/** While the clock stands still, lets the page run what is due now (its zero timeouts) until `done` holds. */
+async function runNowUntil(page: Page, done: () => Promise<boolean> | boolean): Promise<void> {
+	await expect
+		.poll(async () => {
+			await page.clock.runFor(0);
+			return done();
+		})
+		.toBe(true);
+}
+
 /** posthog-js sends its queue every few seconds. */
 const SENT = { timeout: 15_000 };
 
@@ -296,9 +306,10 @@ test.describe('ring result', () => {
 		await ringApi.waitForCalls(1);
 		await page.clock.runFor(1000);
 		await ringApi.answer(belgradeRing());
+		// The answer is in, at the held time, before the clock goes on.
+		await runNowUntil(page, async () => /11\s*городов в 2 странах/u.test(await firstCard(page).innerText()));
 		await page.clock.resume();
 
-		await expect(firstCard(page)).toContainText(/11\s*городов в 2 странах/u);
 		await expect.poll(() => posthog.named('ring result'), SENT).toHaveLength(1);
 		const [result] = posthog.named('ring result');
 		expect(result).toMatchObject({
@@ -390,6 +401,8 @@ test.describe('ring result', () => {
 		await page.clock.runFor(500);
 
 		await dragSlider(page, 5);
+		// The ring of 5 h is asked for, so the one of 3 h is abandoned, at the held time.
+		await runNowUntil(page, () => ringApi.calls.length === 2);
 		await page.clock.resume();
 		await expect.poll(() => posthog.named('ring result'), SENT).toEqual([
 			expect.objectContaining({ outcome: 'abandoned', hours: 3, start_city: 'Белград' }),
