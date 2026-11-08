@@ -1,6 +1,7 @@
 // The cities file (data's `build-cities`, spec «Файл городов»): GeoNames' cities from 15 000 people, a static asset
 // of the Worker. Fetched once, when the screen first needs it, and kept for the session in TanStack Query.
-import { useQuery } from '@tanstack/react-query';
+import { queryOptions, useQuery } from '@tanstack/react-query';
+import { useMemo } from 'react';
 import { CITIES_FORMAT, CITIES_PATH, decodeCities, type CitiesFile } from 'data/cities-file';
 
 /** A city, a point of interest of the carousel (GLOSSARY «Точка интереса»). */
@@ -39,15 +40,23 @@ async function loadCities(): Promise<readonly City[]> {
 	}));
 }
 
+const citiesQuery = queryOptions({
+	queryKey: ['cities'],
+	queryFn: loadCities,
+	staleTime: Infinity,
+	gcTime: Infinity,
+	retry: false,
+	refetchOnWindowFocus: false,
+	refetchOnReconnect: false,
+});
+
 /** The cities, or undefined until they come (and if they cannot be had: the screen then counts none). */
 export function useCities(): readonly City[] | undefined {
-	return useQuery({
-		queryKey: ['cities'],
-		queryFn: loadCities,
-		staleTime: Infinity,
-		gcTime: Infinity,
-		retry: false,
-		refetchOnWindowFocus: false,
-		refetchOnReconnect: false,
-	}).data;
+	return useQuery(citiesQuery).data;
+}
+
+/** The cities file as the events need it: whether it is settled, the cities once it came, none if it could not be had. */
+export function useCitiesFile(): { readonly settled: boolean; readonly cities: readonly City[] | undefined } {
+	const { status, data } = useQuery(citiesQuery);
+	return useMemo(() => ({ settled: status !== 'pending', cities: data }), [status, data]);
 }

@@ -1,9 +1,15 @@
 // The external boundaries of the screen, doubled for its tests: `GET /api/ring` (a scripted double that records
 // every request and answers or holds it), the basemap's tiles (`GET /tiles/{z}/{x}/{y}`, each one empty), the
 // dataset's zone outlines (`/data/zones.json`, `ZONE_OUTLINES`) and cities (`/data/cities.json`, `CITIES`, or a
-// test's own through `serveCities`), and every other host, which is cut off in every test so that none reaches the
-// network. The basemap's fonts and sprites are the client's own static assets. Geolocation
-// and time come from Playwright itself (context permissions, `page.clock`).
+// test's own through `serveCities`), PostHog behind its proxy (`PostHogDouble`, the `posthog` fixture), and every
+// other host, which is cut off in every test so that none reaches the network. The production host is the preview
+// server under the production name (`openInProduction`), where the build runs PostHog. The basemap's fonts and
+// sprites are the client's own static assets. Geolocation and time come from Playwright itself (context
+// permissions, `page.clock`; `failGeolocation` for a failure other than a refusal).
+import { existsSync } from 'node:fs';
+import { createRequire } from 'node:module';
+import { dirname, join } from 'node:path';
+import { gunzipSync } from 'node:zlib';
 import { test as base, expect, type BrowserContext, type Page, type Route } from '@playwright/test';
 import { encodeCities, type CityRow } from 'data/cities-file';
 import type { Access, RingResponse } from 'worker/api';
@@ -18,6 +24,8 @@ export interface RingCall {
 	readonly cit: string | null;
 	readonly visas: string | null;
 	readonly query: string;
+	/** Its headers, lowercase: PostHog's `x-posthog-*` among them on the production host. */
+	readonly headers: Readonly<Record<string, string>>;
 }
 
 /** How the double answers: 200 with a body, another status, or a dropped connection. */
@@ -60,6 +68,7 @@ export class RingApi {
 			cit: url.searchParams.get('cit'),
 			visas: url.searchParams.get('visas'),
 			query: url.search,
+			headers: route.request().headers(),
 		};
 		this.calls.push(call);
 		const reply = this.#responder(call);
@@ -143,14 +152,35 @@ export const CITIES: readonly CityRow[] = [
 	[3191376, 'Шабац', 'Šabac', 44.747, 19.69, 55_114, 'SRB'],
 ];
 
+/**
+ * The production host. The screen opened there (`openInProduction`) is the very build of the other tests, served by
+ * the same preview server, but runs PostHog as it does in production: nothing in the client knows it is a test.
+ */
+export const PRODUCTION = 'https://roadtrip.kamyshev.me';
+
+/** PostHog's managed proxy, where the browser sends its events (`PostHogDouble`). */
+export const POSTHOG_PROXY = 'https://r-rt.kamyshev.me';
+
+const PHONE_USER_AGENT = 'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Mobile Safari/537.36';
+
 /** What the page asked of the network: the basemap's tiles it got, and the requests to other hosts, cut off. */
 export class Network {
 	readonly tiles: URL[] = [];
 	readonly blocked: string[] = [];
 }
 
-async function cutOffTheNetwork(context: BrowserContext, network: Network): Promise<void> {
-	// Routes run newest first; the catch-all lets the page's own host through to the routes before it.
+async function cutOffTheNetwork(context: BrowserContext, network: Network, preview: string): Promise<void> {
+	// Routes run newest first; the catch-all lets the page's own host through to the routes before it, and this one,
+	// the oldest, answers what is left on the production host from the preview server.
+	await context.route(`${PRODUCTION}/**`, async (route) => {
+		const request = route.request();
+		const { pathname, search } = new URL(request.url());
+		const response = await context.request.fetch(new URL(pathname + search, preview).href, {
+			method: request.method(),
+			headers: request.headers(),
+		});
+		await route.fulfill({ response });
+	});
 	await context.route('**/tiles/**', async (route) => {
 		network.tiles.push(new URL(route.request().url()));
 		// An empty vector tile: a basemap with nothing on it.
@@ -163,8 +193,8 @@ async function cutOffTheNetwork(context: BrowserContext, network: Network): Prom
 		route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(encodeCities(CITIES)) }),
 	);
 	await context.route('**/*', async (route) => {
-		const { hostname } = new URL(route.request().url());
-		if (hostname === 'localhost') {
+		const { hostname, origin } = new URL(route.request().url());
+		if (hostname === 'localhost' || origin === PRODUCTION) {
 			await route.fallback();
 			return;
 		}
@@ -173,11 +203,11 @@ async function cutOffTheNetwork(context: BrowserContext, network: Network): Prom
 	});
 }
 
-export const test = base.extend<{ network: Network; ringApi: RingApi }>({
+export const test = base.extend<{ network: Network; ringApi: RingApi; posthog: PostHogDouble }>({
 	network: [
-		async ({ context }, use) => {
+		async ({ context, baseURL }, use) => {
 			const network = new Network();
-			await cutOffTheNetwork(context, network);
+			await cutOffTheNetwork(context, network, baseURL ?? '');
 			await use(network);
 		},
 		{ auto: true },
@@ -187,7 +217,130 @@ export const test = base.extend<{ network: Network; ringApi: RingApi }>({
 		await context.route('**/api/ring?*', (route) => ringApi.handle(route));
 		await use(ringApi);
 	},
+	posthog: async ({ context }, use) => {
+		const posthog = new PostHogDouble();
+		await context.route(`${POSTHOG_PROXY}/**`, (route) => posthog.handle(route));
+		// posthog-js drops the events of a browser that looks automated (Headless in the user agent or its brands,
+		// `navigator.webdriver`): the page sees a person's phone.
+		await context.addInitScript((userAgent) => {
+			Object.defineProperty(Navigator.prototype, 'webdriver', { get: () => false });
+			Object.defineProperty(Navigator.prototype, 'userAgent', { get: () => userAgent });
+			Object.defineProperty(Navigator.prototype, 'userAgentData', { get: () => undefined });
+		}, PHONE_USER_AGENT);
+		await use(posthog);
+	},
 });
+
+/** Opens the screen on the production host, where PostHog runs: `path` is the rest of the URL, as `/#/?p=…`. */
+export async function openInProduction(page: Page, path = '/'): Promise<void> {
+	await page.goto(`${PRODUCTION}${path}`);
+}
+
+/** An event the page sent to PostHog. */
+export interface SentEvent {
+	readonly event: string;
+	readonly properties: Readonly<Record<string, unknown>>;
+	/** Sent by `navigator.sendBeacon`, as a page going away does. */
+	readonly beacon: boolean;
+}
+
+/**
+ * PostHog behind its managed proxy: records the events the page sends (`/e/`, `/i/v0/e/`, `/batch/`, as JSON,
+ * base64 or gzip), answers the remote config with `remoteConfig` and the flags with none, and serves the SDK's lazy
+ * scripts from the installed posthog-js.
+ */
+export class PostHogDouble {
+	readonly events: SentEvent[] = [];
+	/** What the project's settings say to the SDK (`/array/<token>/config`): by default the project's own. */
+	remoteConfig: Record<string, unknown> = { ...PROJECT_CONFIG };
+
+	/** The properties of each `event` sent, in order. */
+	named(event: string): Readonly<Record<string, unknown>>[] {
+		return this.events.filter((sent) => sent.event === event).map((sent) => sent.properties);
+	}
+
+	/** The names of the events sent, in order, without PostHog's own (`$…`). */
+	get ours(): string[] {
+		return this.events.map((sent) => sent.event).filter((event) => !event.startsWith('$'));
+	}
+
+	async handle(route: Route): Promise<void> {
+		const request = route.request();
+		const url = new URL(request.url());
+		if (url.pathname.startsWith('/static/')) {
+			const name = url.pathname.split('/').at(-1) ?? '';
+			const file = join(POSTHOG_JS_DIST, name);
+			await (existsSync(file) ? route.fulfill({ path: file, contentType: 'application/javascript' }) : route.fulfill({ status: 404 }));
+			return;
+		}
+		const config = /^\/array\/(?<token>[^/]+)\/config(?<script>\.js)?$/u.exec(url.pathname)?.groups;
+		if (config !== undefined) {
+			const json = JSON.stringify(this.remoteConfig);
+			await (config.script === undefined
+				? route.fulfill({ status: 200, contentType: 'application/json', body: json })
+				: route.fulfill({
+						status: 200,
+						contentType: 'application/javascript',
+						body: `window._POSTHOG_REMOTE_CONFIG = window._POSTHOG_REMOTE_CONFIG || {}; window._POSTHOG_REMOTE_CONFIG[${JSON.stringify(config.token)}] = { config: ${json}, siteApps: [] };`,
+					}));
+			return;
+		}
+		if (url.pathname.startsWith('/flags')) {
+			await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ featureFlags: {}, featureFlagPayloads: {}, errorsWhileComputingFlags: false }) });
+			return;
+		}
+		const body = request.postDataBuffer();
+		if (body !== null && body.length > 0) {
+			// Chromium's type for `navigator.sendBeacon`.
+			const beacon = request.resourceType() === 'ping';
+			for (const sent of decodeEvents(body, url.searchParams.get('compression'))) {
+				this.events.push({ event: sent.event, properties: sent.properties ?? {}, beacon });
+			}
+		}
+		await route.fulfill({ status: 200, contentType: 'application/json', body: '{"status":1}' });
+	}
+}
+
+/** The remote config of the project roadtrip as PostHog served it on 2026-11-08: its settings as the SDK sees them. */
+const PROJECT_CONFIG = {
+	analytics: { endpoint: '/i/v0/e/' },
+	autocaptureExceptions: true,
+	autocapture_opt_out: false,
+	captureDeadClicks: false,
+	capturePerformance: { network_timing: true, web_vitals: true, web_vitals_allowed_metrics: null },
+	conversations: false,
+	defaultIdentifiedOnly: true,
+	elementsChainAsString: true,
+	errorTracking: { autocaptureExceptions: true, suppressionRules: [] },
+	hasFeatureFlags: false,
+	heatmaps: { captureMode: 'url_allowlist', urlAllowlist: [], urlAllowlistEnforced: false },
+	logs: { captureConsoleLogs: false },
+	productTours: false,
+	push: { appIds: [] },
+	sdkVersion: { requested: '1' },
+	sessionRecording: false,
+	supportedCompression: ['gzip', 'gzip-js'],
+	surveys: false,
+};
+
+/** Where the installed posthog-js keeps the scripts it loads from `/static/`. */
+const POSTHOG_JS_DIST = join(dirname(createRequire(import.meta.url).resolve('posthog-js/package.json')), 'dist');
+
+/** The events of a body posthog-js sent: one event, a list, or `{ batch }`; gzipped or base64 by `compression`. */
+function decodeEvents(body: Buffer, compression: string | null): { event: string; properties?: Record<string, unknown> }[] {
+	let text: string;
+	if (compression === 'gzip-js' || (body[0] === 0x1f && body[1] === 0x8b)) {
+		text = gunzipSync(body).toString('utf8');
+	} else if (compression === 'base64' || body.toString('utf8').startsWith('data=')) {
+		const data = new URLSearchParams(body.toString('utf8')).get('data') ?? '';
+		text = Buffer.from(data, 'base64').toString('utf8');
+	} else {
+		text = body.toString('utf8');
+	}
+	const json = JSON.parse(text) as unknown;
+	const events = Array.isArray(json) ? json : typeof json === 'object' && json !== null && 'batch' in json ? (json as { batch: unknown[] }).batch : [json];
+	return events as { event: string; properties?: Record<string, unknown> }[];
+}
 
 /** Serves the page `cities` as the cities file instead of `CITIES`. */
 export async function serveCities(page: Page, cities: readonly CityRow[]): Promise<void> {
@@ -200,6 +353,19 @@ export async function serveCities(page: Page, cities: readonly CityRow[]): Promi
 export async function allowGeolocation(context: BrowserContext, at: { readonly lat: number; readonly lon: number }): Promise<void> {
 	await context.setGeolocation({ latitude: at.lat, longitude: at.lon });
 	await context.grantPermissions(['geolocation']);
+}
+
+/**
+ * Makes the browser fail to give a position for `reason`, as a phone without a fix (`unavailable`) or one too slow
+ * (`timeout`). A refusal (`denied`) needs nothing: a context without the permission refuses.
+ */
+export async function failGeolocation(context: BrowserContext, reason: 'unavailable' | 'timeout'): Promise<void> {
+	await context.addInitScript((code) => {
+		const error = { code, message: 'test', PERMISSION_DENIED: 1, POSITION_UNAVAILABLE: 2, TIMEOUT: 3 } as GeolocationPositionError;
+		navigator.geolocation.getCurrentPosition = (_, fail) => {
+			setTimeout(() => fail?.(error), 0);
+		};
+	}, reason === 'unavailable' ? 2 : 3);
 }
 
 /**

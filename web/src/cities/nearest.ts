@@ -1,5 +1,5 @@
 // The nearest city of the cities file: the origin's label when it came from geolocation, a link or the saved state
-// (spec «Экран»), and the only place #34's events name instead of the origin (spec «Аналитика и ошибки»:
+// (spec «Экран»), and the only place the events to PostHog name instead of the origin (spec «Аналитика и ошибки»:
 // `start_city`, `start_city_id` and `start_country` are its `name`, `id` and `zone`).
 import type { City } from './cities.ts';
 

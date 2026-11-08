@@ -7,6 +7,7 @@ import dataset from 'engine/dataset';
 import { COLD_START_HEADER } from 'engine/protocol';
 import { logger } from 'error-tracking/logger';
 import { VISA_EXEMPTIONS } from 'rules';
+import { requestAnalytics } from './analytics.ts';
 import { RING_PATH } from './api.ts';
 import { handleRing } from './ring.ts';
 import { createTilesHandler, TILES_PREFIX } from './tiles.ts';
@@ -66,7 +67,13 @@ export default {
 	async fetch(request, env, ctx) {
 		const { pathname } = new URL(request.url);
 		if (pathname === RING_PATH) {
-			return handleRing(request, {
+			const analytics = requestAnalytics(request, {
+				token: env.POSTHOG_API_KEY,
+				waitUntil: (promise) => {
+					ctx.waitUntil(promise);
+				},
+			});
+			const response = await handleRing(request, {
 				rings: {
 					get: (key) => env.RINGS.get(key, 'text'),
 					put: (key, value, options) => env.RINGS.put(key, value, options),
@@ -85,7 +92,10 @@ export default {
 					ctx.waitUntil(promise);
 				},
 				logger,
+				analytics,
 			});
+			analytics.shutdown();
+			return response;
 		}
 		if (pathname.startsWith(TILES_PREFIX)) {
 			return handleTiles(request, {

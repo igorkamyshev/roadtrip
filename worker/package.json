@@ -18,6 +18,7 @@
 		"engine": "workspace:*",
 		"error-tracking": "workspace:*",
 		"pmtiles": "^4.5.0",
+		"posthog-node": "^5.63.1",
 		"rules": "workspace:*"
 	},
 	"devDependencies": {

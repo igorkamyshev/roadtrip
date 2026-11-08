@@ -7,6 +7,7 @@ import { computeRing, dataVersion } from 'engine';
 import type { Graph } from 'engine/graph';
 import { createEngineServer } from 'engine/server';
 import { borderTable, COUNTRIES, VISA_EXEMPTIONS, type VisaExemption } from 'rules';
+import type { Analytics, WorkerEvent, WorkerEvents } from '../src/analytics.ts';
 import { type Container, handleRing, type RingDeps } from '../src/ring.ts';
 
 export const DATASET = '2026-11-01';
@@ -55,6 +56,16 @@ export function recorded(container: Container): Container & { bodies: unknown[] 
 	};
 }
 
+/** `container`, whose every answer takes `ms` by `clock`. */
+export function taking(ms: number, clock: Clock, container: Container): Container {
+	return {
+		fetch: async (request) => {
+			clock.now += ms;
+			return container.fetch(request);
+		},
+	};
+}
+
 /** `container`, counting the requests it gets. */
 export function counted(container: Container): Container & { calls: number } {
 	const result = {
@@ -65,6 +76,20 @@ export function counted(container: Container): Container & { calls: number } {
 		},
 	};
 	return result;
+}
+
+/** PostHog's double: the Worker's events of every request, in the order they were captured. */
+export class AnalyticsDouble implements Analytics {
+	readonly events: { readonly event: WorkerEvent; readonly properties: object }[] = [];
+
+	capture<Event extends WorkerEvent>(event: Event, properties: WorkerEvents[Event]): void {
+		this.events.push({ event, properties });
+	}
+
+	/** The properties of each `event` captured, in order. */
+	named<Event extends WorkerEvent>(event: Event): WorkerEvents[Event][] {
+		return this.events.filter((captured) => captured.event === event).map((captured) => captured.properties as WorkerEvents[Event]);
+	}
 }
 
 /** Workers KV in memory: an entry put with `expirationTtl` is gone that many seconds later by `clock`. */
@@ -129,10 +154,15 @@ export function sherpaMap(
 }
 
 /**
- * How the double answers a passport: 201 with a body (`sherpaMap`'s, or any JSON or text), another status, a dropped
- * connection, or nothing until the request is aborted.
+ * How the double answers a passport: 201 with a body (`sherpaMap`'s, or any JSON or text) and the headers given,
+ * another status, a dropped connection, or nothing until the request is aborted.
  */
-export type SherpaReply = { readonly body: unknown } | { readonly text: string } | { readonly status: number } | 'network error' | 'no answer';
+export type SherpaReply =
+	| { readonly body: unknown; readonly headers?: Readonly<Record<string, string>> }
+	| { readonly text: string }
+	| { readonly status: number }
+	| 'network error'
+	| 'no answer';
 
 /** Sherpa's `/v3/maps`: records each request, and answers it by `reply` once the test lets it. */
 export class SherpaDouble {
@@ -182,15 +212,15 @@ export class SherpaDouble {
 		if ('status' in reply) {
 			return Response.json({ errors: [{ status: String(reply.status) }] }, { status: reply.status });
 		}
-		return 'text' in reply ? new Response(reply.text, { status: 201 }) : Response.json(reply.body, { status: 201 });
+		return 'text' in reply ? new Response(reply.text, { status: 201 }) : Response.json(reply.body, { status: 201, headers: reply.headers });
 	};
 }
 
 export const SHERPA_API_KEY = 'sherpa-test-key';
 
 /**
- * The handler with its deps: a ring cache, a visa rules' store and a Sherpa of its own unless given ones, all on
- * `clock`, and the shipped visa exemptions' table unless given rows. `get` sends GET /api/ring with `query` and waits for the handler's background work too; `request` does
+ * The handler with its deps: a ring cache, a visa rules' store, a Sherpa and a PostHog of its own unless given ones,
+ * all on `clock`, and the shipped visa exemptions' table unless given rows. `get` sends GET /api/ring with `query` and waits for the handler's background work too; `request` does
  * not, and `settle` waits for it later.
  */
 export function api({
@@ -201,6 +231,7 @@ export function api({
 	visaRules = new MemoryKv(clock),
 	sherpa = new SherpaDouble(),
 	visaExemptions = VISA_EXEMPTIONS,
+	analytics = new AnalyticsDouble(),
 }: {
 	container: Container;
 	datasetVersion?: string;
@@ -209,6 +240,7 @@ export function api({
 	visaRules?: MemoryKv;
 	sherpa?: SherpaDouble;
 	visaExemptions?: readonly VisaExemption[];
+	analytics?: AnalyticsDouble;
 }) {
 	const errors: unknown[][] = [];
 	const background: Promise<unknown>[] = [];
@@ -230,6 +262,7 @@ export function api({
 			},
 			info: () => {},
 		},
+		analytics,
 	};
 	const request = async (query: string, headers: Record<string, string> = {}) => {
 		const response = await handleRing(new Request(`https://roadtrip.kamyshev.me/api/ring?${query}`, { headers }), deps);
@@ -245,5 +278,5 @@ export function api({
 		await settle();
 		return answer;
 	};
-	return { get, request, settle, clock, kv: rings, rings, visaRules, sherpa, errors, deps };
+	return { get, request, settle, clock, kv: rings, rings, visaRules, sherpa, errors, analytics, deps };
 }

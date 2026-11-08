@@ -16,7 +16,13 @@
 	// The basemap (#29): the world's PMTiles archive, which the Owner uploads (#22) and GET /tiles/{z}/{x}/{y}
 	// serves. A manual update uploads the new build under a new key and changes the var.
 	"r2_buckets": [{ "binding": "BASEMAP", "bucket_name": "roadtrip-basemap" }],
-	"vars": { "BASEMAP_ARCHIVE": "20261107.pmtiles" },
+	"vars": {
+		"BASEMAP_ARCHIVE": "20261107.pmtiles",
+		// The token of the PostHog project roadtrip (org Roadtrip, US, id 718601), for `ring served` and `sherpa
+		// fetched` (src/analytics.ts). It only writes events and is public, so not a secret. Events go only from the
+		// production host: `wrangler dev` sends none.
+		"POSTHOG_API_KEY": "phc_uvomseW3xjkV7pvWXexL6ERPQKN6P3KBQ2XXYCw83NAg",
+	},
 	"observability": {
 		"enabled": true,
 	},

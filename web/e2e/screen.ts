@@ -181,6 +181,16 @@ export async function dragMap(page: Page, dx: number, dy: number): Promise<void>
 	await mapAtRest(page);
 }
 
+/**
+ * The person leaves the page: the browser's `pagehide`, as when the tab closes or goes to another site. The page
+ * itself stays: Playwright does not see the beacons of a page that is really gone.
+ */
+export async function leave(page: Page): Promise<void> {
+	await page.evaluate(() => {
+		window.dispatchEvent(new PageTransitionEvent('pagehide', { persisted: false }));
+	});
+}
+
 /** What the tests use of MapLibre's `Map`, without importing MapLibre into Node. */
 interface MapForTests {
 	isMoving(): boolean;

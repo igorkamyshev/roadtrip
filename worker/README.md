@@ -22,6 +22,20 @@ The Worker `roadtrip` on `roadtrip.kamyshev.me` (spec «Устройство», 
 
 A Container failure answers 502: its 500 `{ name, message, stack }` is rebuilt into an `Error` for `logger.error`, as is anything else it answers (`ContainerError`) or a start that failed. The context holds the browser's PostHog ids from `X-POSTHOG-*` and N, never the origin.
 
+## Analytics
+
+`src/analytics.ts` sends the Worker's events to PostHog (spec «Аналитика и ошибки», «Worker»; decision #18) through `posthog-node`, whose `workerd` build needs no `nodejs_compat`. The handlers capture through `deps.analytics`; `requestAnalytics` at the entry is the client of one request:
+
+- `flushAt: 1`, `flushInterval: 0`, each event a `captureImmediate` in `ctx.waitUntil`, and `shutdown()` once the answer is out. A background refresh from Sherpa's still sends after it.
+- `distinct_id` is the browser's `X-POSTHOG-DISTINCT-ID`, else `server`; `$session_id` its `X-POSTHOG-SESSION-ID`. The browser adds both to its requests to the production host (`tracing_headers`, web's `src/analytics/`). Every event has `$process_person_profile: false`.
+- Disabled off `roadtrip.kamyshev.me`: `wrangler dev` and any other host send nothing.
+- Straight to `https://us.i.posthog.com` with the project token, the var `POSTHOG_API_KEY` (public: it only writes events).
+
+The events, never with the origin:
+
+- `ring served`, for each valid `GET /api/ring` (not a 400 or 405): `source` (`cache`, `calculation`, `joined`; none for `visa_rules_missing`), `outcome` (the engine's, `visa_rules_missing`, or `error` for the 502), `hours`, `duration_ms`, and for a calculation and a joined request the Container's timings `queue_ms`, `traversal_ms`, `contour_ms`, and `cold_start_ms` when it waited for the start.
+- `sherpa fetched`, for each request to Sherpa (`load` in `src/visa-rules.ts`): `citizenship`, `result` (`ok`, `http_error`, `timeout`, `bad_response`), `status` when Sherpa answered, `duration_ms`, `mode` (`background` refreshed a stale copy, `blocking` was waited for), and `quota_remaining` when Sherpa's answer has `x-ratelimit-remaining` or `ratelimit-remaining` (research/sherpa-api saw neither: the quota is the count of these events an hour).
+
 ## Visa rules
 
 `src/sherpa.ts` asks Sherpa's undocumented `POST https://requirements-api.joinsherpa.com/v3/maps` for one passport, with the secret `SHERPA_API_KEY` in `x-api-key` (research/sherpa-api, #11). The whole request has 10 s; the answer must pass the schema (`data.attributes.series[]` of the 7 known groups, each `data[]` of `{ id }`) and list at least 200 countries, or it is `bad_response`.
@@ -30,7 +44,7 @@ A Container failure answers 502: its 500 `{ name, message, stack }` is rebuilt i
 
 - A copy is fresh for a day. A stale copy is served at once and refreshed through `waitUntil`; without a copy the request waits for Sherpa.
 - A failure never overwrites or deletes a copy. It writes `visa-rules-failed:<alpha-3>` for 15 min (KV's TTL), and while that mark is there Sherpa is not asked for that citizenship: a stale copy is served as it is, and without one the answer is `visa_rules_missing`.
-- Every failure goes to `logger.error` as a `SherpaError`, with `reason` (the HTTP status, `network`, `timeout` or `bad_response`), `citizenship`, `served` (`stale` or `error`) and `problem`, the detail. `load` in `src/visa-rules.ts` marks where #34's `sherpa fetched` goes.
+- Every failure goes to `logger.error` as a `SherpaError`, with `reason` (the HTTP status, `network`, `timeout` or `bad_response`), `citizenship`, `served` (`stale` or `error`) and `problem`, the detail. Every request to Sherpa, failed or not, is a `sherpa fetched` event (above).
 
 ## GET /tiles/{z}/{x}/{y}
 
@@ -109,7 +123,7 @@ pnpm typecheck   # the Worker against `wrangler types`, the tests against Node's
 pnpm cf-typegen  # after changing wrangler.jsonc
 ```
 
-The tests never import `src/index.ts`: Node cannot load `cloudflare:workers`. They call `handleRing` (`test/api.ts`) with doubles for both KV namespaces on one clock, a faked `fetch` for Sherpa (`SherpaDouble`, `sherpaMap` in Sherpa's shape) and the Container, and the engine server in-process on `data`'s fixture graphs: `src/ring.test.ts` covers the ring and its cache, `src/visa-rules.test.ts` the visa rules, `src/held-visas.test.ts` the held visas with exemption rows of its own (so the table's monthly edits never touch it), and `src/visa-exemptions.test.ts` the shipped table's check. And the tiles route with an R2 double holding a small archive that `test/pmtiles-archive.ts` writes, and a Cache API double.
+The tests never import `src/index.ts`: Node cannot load `cloudflare:workers`. They call `handleRing` (`test/api.ts`) with doubles for both KV namespaces on one clock, a faked `fetch` for Sherpa (`SherpaDouble`, `sherpaMap` in Sherpa's shape), the Container and PostHog (`AnalyticsDouble`, which records the events), and the engine server in-process on `data`'s fixture graphs: `src/ring.test.ts` covers the ring, its cache and `ring served`, `src/visa-rules.test.ts` the visa rules and `sherpa fetched`, `src/analytics.test.ts` the PostHog client of a request with PostHog's capture API doubled under `posthog-node`, `src/held-visas.test.ts` the held visas with exemption rows of its own (so the table's monthly edits never touch it), and `src/visa-exemptions.test.ts` the shipped table's check. And the tiles route with an R2 double holding a small archive that `test/pmtiles-archive.ts` writes, and a Cache API double.
 
 ## Deploy
 
