@@ -1,4 +1,4 @@
-# Infrastructure: Cloudflare and PostHog
+# Infrastructure: Cloudflare, GitHub Actions and PostHog
 
 Everything runs on the Owner's Cloudflare account `1d6db711ad880b2455da08a6aeb2a119`, which holds other projects too: always filter by name. The Cloudflare connector calls the API (`cloudflare.request`, with `accountId` defined); an AIP call is cut off after about 30 seconds, so send one slow request per call and poll across calls.
 
@@ -19,7 +19,7 @@ Nothing is deployed by hand (spec «Набор данных», «Деплой»;
 
 The monthly world build (`.github/workflows/dataset.yml`) starts the same build once it moves the pointer, with the same request as below, and waits for the outcome (`.github/dataset/deploy.sh`, «Deploy the dataset»): a new dataset goes live with `main`'s code. It calls the API with the repository's secrets `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`, not the build token. A trial run deploys nothing.
 
-The Builds API takes only a user token, and the secret `CLOUDFLARE_API_TOKEN` is an account-owned one (2026-11-08: it verifies at `/accounts/{account_id}/tokens/verify`, not at `/user/tokens/verify`), so the API answers it «Invalid token» (12006) and the step fails: a new dataset gets published but not deployed until the Owner makes the secret a user token (`worker/README.md`, «What stays with the Owner»). Until then, deploy it by starting the build by hand (below).
+The Builds API takes only a user token (My Profile → API Tokens). It answers an account-owned token «Invalid token» (12006): such a token verifies at `/accounts/{account_id}/tokens/verify`, not at `/user/tokens/verify`, and `GET /accounts/{account_id}/tokens` lists it. Since 2026-11-08 the secret is a user token: a run with it verified as a user's, wrote to R2 and started a build that succeeded. Should the step fail again, deploy by starting the build by hand (below).
 
 The first launch went in this order: `roadtrip-error-tracking`, then `roadtrip`, whose `tail_consumers` names it.
 
@@ -82,9 +82,21 @@ Of a Worker's runs, PostHog gets only the failures, through the Tail Worker (`er
 
 The Container application: `GET /accounts/{account_id}/containers/applications` (name `roadtrip-enginecontainer`), its instances under `…/applications/<id>/instances-v2`.
 
+## GitHub Actions
+
+- `gh` reaches Actions from a cloud session (`gh api …/actions`, `gh run watch`, `gh run download`), although `gh auth status` calls the token in `GH_TOKEN` invalid; only the secrets API is closed to it, and secrets are the Owner's.
+- Wait for a run with `gh run watch <run id> --exit-status` as a background command: it outlives the 10-minute limit of a foreground one and exits non-zero when the run fails. A failed job's log: the GitHub MCP's `get_job_logs` with `failed_only`.
+- Try a heavy workflow on a small input first: `dataset.yml` with a few `parts` is a trial, published under `trials/` and deployed nowhere.
+
 ## PostHog
 
-The project is **718601** (`roadtrip`) in the organization **Roadtrip**, US cloud, behind the proxy `https://r-rt.kamyshev.me`. The connector starts on another organization and project: `switch-project {"projectId": 718601}` first, then pass the `conversation_id` it gives on every later call.
+The project is **718601** (`roadtrip`) in the organization **Roadtrip**, US cloud, behind the proxy `https://r-rt.kamyshev.me`. The connector's `exec` takes `call <tool> <JSON>`. If a query answers from another project, `call switch-project {"project_id": 718601}` first, then pass the `conversation_id` it gives on every later call. A query, with the events' real property names:
+
+```
+call execute-sql {"query": "select timestamp, properties.citizenship, properties.status, properties.duration_ms from events where event = 'sherpa fetched' and timestamp > now() - interval 1 day order by timestamp desc limit 20"}
+```
+
+`info <tool>` prints a tool's whole manual (`execute-sql`'s is about 45k characters): reach for it only when a call's error leaves you stuck.
 
 - The browser's events (`start set`, `ring result`, `link opened`, `geolocation failed`) are in `web/README.md`, the Worker's (`ring served`, `sherpa fetched`) in `worker/README.md`, the errors (`$exception` from the Tail Worker, with `worker`, `trigger`, `outcome`, `log_message` and the `logger.error` context) in `error-tracking/README.md`.
 - The project token (`phc_…`) only writes events and is public: it is in `vars`. A personal key (`phx_…`) is a secret: the source maps' one is a build secret of the `roadtrip` trigger.
