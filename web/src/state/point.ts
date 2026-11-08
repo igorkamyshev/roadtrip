@@ -30,10 +30,6 @@ export function pointFromText(text: string): LatLon | undefined {
 	return Math.abs(lat) <= 90 && Math.abs(lon) <= 180 ? { lat: round(lat), lon: round(lon) } : undefined;
 }
 
-export function samePoint(a: LatLon, b: LatLon): boolean {
-	return a.lat === b.lat && a.lon === b.lon;
-}
-
 function round(degrees: number): number {
 	// + 0 turns −0 into 0.
 	return Number(degrees.toFixed(DECIMALS)) + 0;

@@ -1,7 +1,7 @@
 // posthog-js itself, a chunk of its own that posthog.ts imports as the page starts on the production host: the first
 // paint does not wait for its ~140 KB (gzip). Web analytics, autocapture and errors as by default, and the screen's
 // own events (events.ts).
-import posthog from 'posthog-js';
+import { posthog } from 'posthog-js';
 // The SDK loads these two from the proxy after `init`; bundled with it, they act from its first moment: the ring
 // requests carry the `X-POSTHOG-*` ids for the Worker's events and errors (the first one waits for this chunk:
 // src/ring/fetch-ring.ts), and exceptions are caught.

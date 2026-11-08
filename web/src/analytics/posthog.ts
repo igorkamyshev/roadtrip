@@ -30,21 +30,25 @@ export function startAnalytics(hostname: string): void {
 	}
 	const queue: ((loaded: Client) => void)[] = [];
 	waiting = queue;
-	const early = keepErrors();
-	started = import('./posthog-client.ts').then(
-		(loaded) => {
-			loaded.start(PRODUCTION_HOST, early.stop());
-			client = loaded;
-			for (const run of queue.splice(0)) {
-				run(loaded);
-			}
-		},
+	started = loadClient(queue, keepErrors());
+}
+
+/** Imports posthog-js, starts it with the errors kept so far, and runs the sends that waited for it. */
+async function loadClient(queue: ((loaded: Client) => void)[], early: KeptErrors): Promise<void> {
+	let loaded: Client;
+	try {
+		loaded = await import('./posthog-client.ts');
+	} catch {
 		// The chunk could not come (the network, a blocker): nothing is sent, and the ring requests go without ids.
-		() => {
-			early.stop();
-			queue.length = 0;
-		},
-	);
+		early.stop();
+		queue.length = 0;
+		return;
+	}
+	loaded.start(PRODUCTION_HOST, early.stop());
+	client = loaded;
+	for (const run of queue.splice(0)) {
+		run(loaded);
+	}
 }
 
 /** Resolves once PostHog is up on the production host or could not be, at once anywhere else. */
@@ -70,8 +74,13 @@ export function send<Event extends BrowserEvent>(event: Event, properties: Brows
 	});
 }
 
+interface KeptErrors {
+	/** Stops keeping them and gives them. */
+	readonly stop: () => unknown[];
+}
+
 /** Keeps the errors the page throws and its rejections nobody handles, until `stop`, which gives them. */
-function keepErrors(): { stop(): unknown[] } {
+function keepErrors(): KeptErrors {
 	const errors: unknown[] = [];
 	const onError = (event: ErrorEvent) => {
 		errors.push(event.error ?? new Error(event.message));

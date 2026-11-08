@@ -1,6 +1,6 @@
 // One route with hash history (decision #18): the whole state of the link lives after `#`, so PostHog's URLs
 // never carry the origin and a change writes no page view. `/#/?p=44.81760,20.45730&h=3`.
-import { createHashHistory, createRootRouteWithContext, createRoute, createRouter, Navigate } from '@tanstack/react-router';
+import { createHashHistory, createRootRouteWithContext, createRoute, createRouter, Navigate, type Router } from '@tanstack/react-router';
 import { Screen } from './screen/screen.tsx';
 import { parseSearch, stringifySearch, validateScreenSearch } from './state/search.ts';
 import type { StartupSource } from './state/startup.ts';
@@ -20,9 +20,11 @@ const screenRoute = createRoute({
 	component: Screen,
 });
 
-export function createScreenRouter(context: ScreenContext) {
+const routeTree = rootRoute.addChildren([screenRoute]);
+
+export function createScreenRouter(context: ScreenContext): Router<typeof routeTree> {
 	return createRouter({
-		routeTree: rootRoute.addChildren([screenRoute]),
+		routeTree,
 		context,
 		history: createHashHistory(),
 		parseSearch,
