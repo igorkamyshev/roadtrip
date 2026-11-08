@@ -7,7 +7,7 @@ import { createHash } from 'node:crypto';
 import { createReadStream, existsSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { COUNTRIES } from 'rules/countries';
-import { field, items } from 'engine/json';
+import { field, isRecord, items } from 'engine/json';
 import { ZONELESS_COUNTRIES } from './zoneless.ts';
 
 /** The files of a dataset, as the world build writes them into one directory. */
@@ -93,7 +93,7 @@ export function parseManifest(text: string, key: string): Manifest {
 	const json: unknown = JSON.parse(text);
 	const version = field(json, 'version');
 	const files = field(json, 'files');
-	if (typeof version !== 'string' || typeof files !== 'object' || files === null) {
+	if (typeof version !== 'string' || !isRecord(files)) {
 		throw new Error(`${key} is no manifest: it lacks the version or the files`);
 	}
 	const checks: Record<string, FileCheck> = {};

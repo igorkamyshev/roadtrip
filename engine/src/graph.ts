@@ -4,6 +4,7 @@
 // edge each.
 //
 // A change to what these arrays mean changes the result of the engine: bump ENGINE_VERSION (engine/AGENTS.md).
+import { field, isRecord } from './json.ts';
 import { pointsBounds, ZoneLocator, type Bounds } from './zones.ts';
 
 export { pointsBounds, ZoneLocator, type Bounds };
@@ -213,7 +214,7 @@ export function decodeGraph(bytes: Uint8Array): Graph {
 /** The file's header, of this engine's format. */
 function readHeader(json: string): FileHeader {
 	const header: unknown = JSON.parse(json);
-	const format = typeof header === 'object' && header !== null && 'format' in header ? header.format : undefined;
+	const format = field(header, 'format');
 	if (format !== GRAPH_FORMAT_VERSION) {
 		throw new Error(`The graph file has format ${String(format)}, this engine reads ${GRAPH_FORMAT_VERSION}`);
 	}
@@ -224,28 +225,18 @@ function readHeader(json: string): FileHeader {
 }
 
 function isFileHeader(value: unknown): value is FileHeader {
-	if (typeof value !== 'object' || value === null || !('zones' in value) || !('arrays' in value)) {
-		return false;
-	}
-	const { zones, arrays } = value;
+	const zones = field(value, 'zones');
+	const arrays = field(value, 'arrays');
 	return (
 		Array.isArray(zones) &&
 		zones.every((zone) => typeof zone === 'string') &&
-		typeof arrays === 'object' &&
-		arrays !== null &&
-		ARRAY_NAMES.every((name) => isPlacement(Reflect.get(arrays, name)))
+		isRecord(arrays) &&
+		ARRAY_NAMES.every((name) => isPlacement(field(arrays, name)))
 	);
 }
 
 function isPlacement(value: unknown): value is Placement {
-	return (
-		typeof value === 'object' &&
-		value !== null &&
-		'offset' in value &&
-		'length' in value &&
-		Number.isInteger(value.offset) &&
-		Number.isInteger(value.length)
-	);
+	return isRecord(value) && Number.isInteger(value.offset) && Number.isInteger(value.length);
 }
 
 function align(offset: number): number {

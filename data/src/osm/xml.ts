@@ -1,6 +1,7 @@
 // OSM XML (https://wiki.openstreetmap.org/wiki/OSM_XML), read whole into memory: for the small hand-written
 // files of the tests. A country or the world comes as PBF (pbf.ts).
 import { readFileSync } from 'node:fs';
+import { isRecord } from 'engine/json';
 import { XMLParser } from 'fast-xml-parser';
 import type { OsmMember, OsmNode, OsmRelation, OsmSource, OsmWay, Tags } from './source.ts';
 
@@ -57,7 +58,7 @@ export function openOsmXml(path: string): OsmSource {
 }
 
 function isElement(value: unknown): value is XmlElement {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
+	return isRecord(value);
 }
 
 /** The element's children named `name`, in order. */

@@ -2,9 +2,10 @@
 // engine's answer is only the ring's outline (#19). A city is in the ring when its point is inside the ring's
 // MultiPolygon, its zone is open by `access`, and that zone is not a closed territory (`access` closes those, and a
 // zone `access` does not name is not open either). Biggest first.
+import { biggestFirst } from 'data/cities-file';
 import type { Access } from 'worker/api';
 import type { RingGeometry } from '../map/overlay.ts';
-import { biggestFirst, type City } from './cities.ts';
+import type { City } from './cities.ts';
 
 /** How many cities the ring holds and in how many countries: the first card's numbers, and `ring result`'s. */
 export interface CitiesCount {

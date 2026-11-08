@@ -47,14 +47,30 @@ export function encodeCities(cities: readonly CityRow[]): CitiesFile {
 	return { format: CITIES_FORMAT, cities: rows };
 }
 
-/** The cities of the file with their ids, biggest first: by population, then by id. */
+/** What puts cities in order: a city's id and population. */
+export interface Ranked {
+	readonly id: number;
+	readonly population: number;
+}
+
+/** Biggest first: by population, then by id, as the cities file holds them and every list of cities shows them. */
+export function biggestFirst(one: Ranked, two: Ranked): number {
+	return one.population === two.population ? one.id - two.id : two.population - one.population;
+}
+
+/** A row's id and population. */
+function ranked([id, , , , , population]: CityRow): Ranked {
+	return { id, population };
+}
+
+/** The cities of the file with their ids, biggest first. */
 export function decodeCities(file: CitiesFile): CityRow[] {
 	let id = 0;
 	const rows = file.cities.map((row) => {
 		id += row[0];
 		return withId(row, id);
 	});
-	rows.sort((one, two) => (one[5] === two[5] ? one[0] - two[0] : two[5] - one[5]));
+	rows.sort((one, two) => biggestFirst(ranked(one), ranked(two)));
 	return rows;
 }
 

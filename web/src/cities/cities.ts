@@ -36,11 +36,6 @@ async function loadCities(): Promise<readonly City[]> {
 	}));
 }
 
-/** Biggest first: by population, then by id, as the cities file's order and every list of cities on the screen. */
-export function biggestFirst(one: Pick<City, 'id' | 'population'>, two: Pick<City, 'id' | 'population'>): number {
-	return one.population === two.population ? one.id - two.id : two.population - one.population;
-}
-
 const citiesQuery = queryOptions({
 	queryKey: ['cities'],
 	queryFn: loadCities,

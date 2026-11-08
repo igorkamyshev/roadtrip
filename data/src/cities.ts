@@ -3,7 +3,7 @@
 // (CC0), and the zone by the graph's polygons. The format is `cities-file.ts`.
 import { type Graph, ZoneLocator } from 'engine/graph';
 import { COUNTRIES } from 'rules/countries';
-import type { CityRow } from './cities-file.ts';
+import { biggestFirst, type CityRow } from './cities-file.ts';
 
 const MIN_POPULATION = 15_000;
 
@@ -70,7 +70,7 @@ export async function buildCities(sources: CitiesSources): Promise<{ cities: Cit
 		zoneByPolygon += polygon === 0 ? 0 : 1;
 		zoned.push({ ...place, zone });
 	}
-	zoned.sort((one, two) => (one.population === two.population ? one.id - two.id : two.population - one.population));
+	zoned.sort(biggestFirst);
 
 	const geonames = await russianNames(sources.alternateNames, new Set(zoned.map((place) => place.id)));
 	const wikidata = await sources.wikidataLabels(zoned.filter((place) => !geonames.has(place.id)).map((place) => place.id));

@@ -6,6 +6,7 @@ import { parentPort, workerData } from 'node:worker_threads';
 import { borderTable } from 'rules';
 import { computeRing } from '../src/index.ts';
 import { decodeGraph } from '../src/graph.ts';
+import { isRecord } from '../src/json.ts';
 import { calculationFailure, type CalculationRequest } from '../src/protocol.ts';
 
 export interface ThreadData {
@@ -40,5 +41,5 @@ port.on('message', ({ id, request }: { id: number; request: CalculationRequest }
 });
 
 function isThreadData(value: unknown): value is ThreadData {
-	return typeof value === 'object' && value !== null && 'graphPath' in value && typeof value.graphPath === 'string';
+	return isRecord(value) && typeof value.graphPath === 'string';
 }

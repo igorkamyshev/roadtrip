@@ -11,6 +11,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { borderTable } from 'rules';
 import { dataVersion } from '../src/index.ts';
+import { field } from '../src/json.ts';
 import { startCalculator } from './calculator.ts';
 import { createEngineServer } from './engine-server.ts';
 import { listen } from './http.ts';
@@ -18,12 +19,12 @@ import { listen } from './http.ts';
 const directory = process.env.DATASET_DIR ?? fileURLToPath(new URL('../dataset/', import.meta.url));
 const port = Number(process.env.PORT ?? 8080);
 
-const dataset: unknown = JSON.parse(readFileSync(join(directory, 'dataset.json'), 'utf8'));
-if (typeof dataset !== 'object' || dataset === null || !('version' in dataset) || typeof dataset.version !== 'string') {
-	throw new Error(`${join(directory, 'dataset.json')} is not { "version": "<the dataset's version>" }`);
+const datasetVersion = field(JSON.parse(readFileSync(join(directory, 'dataset.json'), 'utf8')), 'version');
+if (typeof datasetVersion !== 'string') {
+	throw new TypeError(`${join(directory, 'dataset.json')} is not { "version": "<the dataset's version>" }`);
 }
 const calculator = await startCalculator(join(directory, 'graph.graph'));
-const version = await dataVersion(dataset.version, borderTable);
+const version = await dataVersion(datasetVersion, borderTable);
 const server = await listen(createEngineServer({ calculate: calculator.calculate, dataVersion: version }), port);
 const address = server.address();
 console.log(
