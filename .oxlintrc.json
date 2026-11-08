@@ -1,0 +1,204 @@
+{
+	"$schema": "./node_modules/oxlint/configuration_schema.json",
+	"plugins": ["eslint", "typescript", "unicorn", "oxc", "import", "vitest", "promise", "node"],
+	"categories": {
+		"correctness": "error",
+		"suspicious": "error",
+		"pedantic": "error",
+		"perf": "error",
+		// Mostly taste that contradicts this codebase (no async/await, no named exports, no null…) and
+		// rules that contradict each other; the few worth having are turned on by name below (ADR 0002).
+		"style": "off",
+		"restriction": "off",
+		"nursery": "off"
+	},
+	"options": {
+		"typeAware": true,
+		"reportUnusedDisableDirectives": "error"
+	},
+	"ignorePatterns": ["**/worker-configuration.d.ts"],
+	"jsPlugins": ["./lint/plugin.ts"],
+	"rules": {
+		// Escape hatches out of the type system.
+		"typescript/no-explicit-any": "error",
+		"typescript/no-non-null-assertion": "error",
+		"typescript/no-unsafe-type-assertion": "error",
+		"typescript/ban-ts-comment": [
+			"error",
+			{ "ts-ignore": true, "ts-nocheck": true, "ts-expect-error": "allow-with-description", "minimumDescriptionLength": 10 }
+		],
+
+		// Conditions say what they check.
+		"typescript/strict-boolean-expressions": ["error", { "allowString": false, "allowNumber": false, "allowNullableObject": true }],
+		"typescript/switch-exhaustiveness-check": "error",
+		"typescript/no-unnecessary-condition": "error",
+
+		// An exported function spells out its contract; local ones infer.
+		"typescript/explicit-module-boundary-types": "error",
+		// Functions in a type are properties (`now: () => number`): safe to destructure (unbound-method) and checked strictly.
+		"typescript/method-signature-style": ["error", "property"],
+		"eslint/curly": "error",
+
+		// A Worker logs through error-tracking/logger (error-tracking/README.md); console is for command-line programs.
+		"eslint/no-console": "error",
+
+		// A Worker reads env in its entry's handlers and passes what a module needs in deps (CODING_STANDARDS.md, Where code goes).
+		"eslint/no-restricted-imports": [
+			"error",
+			{
+				"paths": [
+					{
+						"name": "cloudflare:workers",
+						"importNames": ["env", "waitUntil"],
+						"message": "Only a Worker's entry reads env, from its handler's arguments; pass what a module needs in its deps."
+					}
+				]
+			}
+		],
+
+		// Two tests under one name both run, and the copy hides an edit gone wrong.
+		"vitest/no-identical-title": "error",
+
+		// Size and complexity limits (ADR 0002). Cognitive complexity is fallow's.
+		"eslint/complexity": ["error", { "max": 10 }],
+		"eslint/max-depth": ["error", { "max": 3 }],
+		"eslint/max-params": ["error", { "max": 3 }],
+		"eslint/max-lines": ["error", { "max": 300, "skipBlankLines": true, "skipComments": true }],
+		"eslint/max-lines-per-function": ["error", { "max": 60, "skipBlankLines": true, "skipComments": true, "IIFEs": true }],
+
+		// roadtrip's own rules (lint/plugin.ts).
+		"roadtrip/disable-needs-reason": "error",
+		"roadtrip/no-mock-own-modules": ["error", { "packages": ["engine", "data", "rules", "error-tracking", "worker", "web", "lint"] }],
+
+		// Off, each for its reason (ADR 0002):
+		// a `readonly` on every parameter is noise in a codebase that does not mutate its inputs;
+		"typescript/prefer-readonly-parameter-types": "off",
+		// typescript/require-await reports the same with type information;
+		"eslint/require-await": "off",
+		// the awaits in loops are sequential on purpose: Wikidata's queries one at a time, R2's files one by one, the
+		// retries of a request, the steps of a screen test;
+		"eslint/no-await-in-loop": "off",
+		// a comment at the end of a line is a fine place for a short note;
+		"eslint/no-inline-comments": "off",
+		// the doubles of Sherpa and R2 branch on the request, and a sweep over a grid works out each cell's answer:
+		// that is what they are for.
+		"vitest/no-conditional-in-test": "off"
+	},
+	"overrides": [
+		{
+			// Tests, their helpers and doubles, and the screen tests: no limit on length or branching; nesting depth,
+			// parameter count and every other rule hold.
+			"files": ["**/*.test.ts", "data/test/**", "worker/test/**", "web/e2e/**"],
+			"rules": {
+				"eslint/complexity": "off",
+				"eslint/max-lines": "off",
+				"eslint/max-lines-per-function": "off",
+				"eslint/max-statements": "off",
+				"import/max-dependencies": "off"
+			}
+		},
+		{
+			// Command-line programs print to the terminal; the Container's server logs to its stdout; the screen tests'
+			// reporter prints to the console; the logger is where console is called on purpose.
+			"files": ["scripts/**", "lint/oxlint-overrides.ts", "engine/server/main.ts", "web/e2e/failures.ts", "error-tracking/src/logger.ts"],
+			"rules": { "eslint/no-console": "off" }
+		},
+		{
+			// A Worker's errors reach PostHog through the logger and the Tail Worker (error-tracking/README.md).
+			"files": ["worker/**", "error-tracking/**"],
+			"rules": { "roadtrip/no-capture-exception": "error" }
+		},
+		{
+			// The Worker's clock and timers come from deps (CODING_STANDARDS.md, Tests), its tests move them on their own clock.
+			"files": ["worker/src/**", "worker/test/**"],
+			"rules": { "roadtrip/time-through-deps": "error" }
+		},
+		{
+			// The entry builds deps, the real clock and timers with them (worker/README.md, Routes).
+			"files": ["worker/src/index.ts"],
+			"rules": { "roadtrip/time-through-deps": "off" }
+		},
+		{
+			// The screen. React's hooks and React Compiler's rules, accessibility and TanStack's rules (ADR 0002, «Фронтенд»).
+			"files": ["web/src/**"],
+			"plugins": ["eslint", "typescript", "unicorn", "oxc", "import", "promise", "react", "jsx-a11y"],
+			"jsPlugins": ["@tanstack/eslint-plugin-query", "@tanstack/eslint-plugin-router"],
+			"rules": {
+				"@tanstack/query/exhaustive-deps": "error",
+				"@tanstack/query/no-rest-destructuring": "error",
+				"@tanstack/query/stable-query-client": "error",
+				"@tanstack/query/no-unstable-deps": "error",
+				"@tanstack/query/infinite-query-property-order": "error",
+				"@tanstack/query/mutation-property-order": "error",
+				"@tanstack/query/prefer-query-options": "error",
+				"@tanstack/router/create-route-property-order": "error",
+				"@tanstack/router/route-param-names": "error",
+				// No test hooks on window; the screen's tests are Playwright's (CODING_STANDARDS.md, Tests and Product).
+				"roadtrip/no-window-assignment": "error",
+				"roadtrip/screen-tests-in-playwright": "error",
+				// Imported for what they do: the styles, the fonts, and the parts of posthog-js the SDK would load later.
+				"import/no-unassigned-import": ["error", { "allow": ["**/*.css", "@fontsource/**", "posthog-js/dist/*"] }],
+				// Off, each for its reason:
+				// wrong with the automatic JSX runtime (`jsx: react-jsx`), and `settings.react.version` does not quiet it;
+				"react/react-in-jsx-scope": "off",
+				// they report the same calls as react-hooks/exhaustive-deps, which stays;
+				"react/exhaustive-effect-dependencies": "off",
+				"react/memo-dependencies": "off",
+				// it needs types, and Oxlint's JS plugins get none (`parserServices` is empty): it would never fire.
+				"@tanstack/query/no-void-query-fn": "off"
+			}
+		},
+		{
+			// The screen tests: Playwright's recommended rules and two more (ADR 0002, «Фронтенд»); not vitest's, which
+			// would take Playwright's `test` and `expect` for its own.
+			"files": ["web/e2e/**"],
+			"plugins": ["eslint", "typescript", "unicorn", "oxc", "import", "promise", "node"],
+			"jsPlugins": ["eslint-plugin-playwright"],
+			"rules": {
+				// The plugin's recommended set (`flat/recommended`), every rule an error; Oxlint cannot extend a plugin's preset.
+				// Time in a screen test is `page.clock`'s (CODING_STANDARDS.md, Tests): no-wait-for-timeout.
+				"playwright/consistent-spacing-between-blocks": "error",
+				"playwright/expect-expect": "error",
+				"playwright/max-nested-describe": "error",
+				"playwright/missing-playwright-await": "error",
+				"playwright/no-conditional-expect": "error",
+				"playwright/no-conditional-in-test": "error",
+				"playwright/no-duplicate-hooks": "error",
+				"playwright/no-duplicate-slow": "error",
+				"playwright/no-element-handle": "error",
+				"playwright/no-eval": "error",
+				"playwright/no-focused-test": "error",
+				"playwright/no-force-option": "error",
+				"playwright/no-identical-title": "error",
+				"playwright/no-nested-step": "error",
+				"playwright/no-networkidle": "error",
+				"playwright/no-page-pause": "error",
+				"playwright/no-skipped-test": "error",
+				"playwright/no-standalone-expect": "error",
+				"playwright/no-unnecessary-assertions": "error",
+				"playwright/no-unsafe-references": "error",
+				"playwright/no-unused-locators": "error",
+				"playwright/no-useless-await": "error",
+				"playwright/no-useless-not": "error",
+				"playwright/no-wait-for-navigation": "error",
+				"playwright/no-wait-for-selector": "error",
+				"playwright/no-wait-for-timeout": "error",
+				"playwright/prefer-hooks-in-order": "error",
+				"playwright/prefer-hooks-on-top": "error",
+				"playwright/prefer-locator": "error",
+				"playwright/prefer-to-have-count": "error",
+				"playwright/prefer-to-have-length": "error",
+				"playwright/prefer-web-first-assertions": "error",
+				"playwright/valid-describe-callback": "error",
+				"playwright/valid-expect": "error",
+				"playwright/valid-expect-in-promise": "error",
+				"playwright/valid-test-tags": "error",
+				"playwright/valid-title": "error",
+				// And two more: a count is checked by the locator, which retries; a locator by role or label, as a person finds it.
+				"playwright/prefer-native-locators": "error",
+				// A fixture that uses no other fixture takes `{}`, as Playwright asks (the preset turns it off too).
+				"eslint/no-empty-pattern": "off"
+			}
+		}
+	]
+}

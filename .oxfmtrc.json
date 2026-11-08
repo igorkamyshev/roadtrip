@@ -1,0 +1,17 @@
+{
+	"$schema": "./node_modules/oxfmt/configuration_schema.json",
+	"printWidth": 140,
+	"singleQuote": true,
+	"semi": true,
+	"useTabs": true,
+	"sortPackageJson": false,
+	"ignorePatterns": [
+		"pnpm-lock.yaml",
+		"pnpm-workspace.yaml",
+		"**/worker-configuration.d.ts",
+		"web/public/",
+		"dist/",
+		".wrangler/",
+		"test-results/"
+	]
+}

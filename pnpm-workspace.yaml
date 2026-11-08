@@ -5,6 +5,7 @@ packages:
   - error-tracking
   - worker
   - web
+  - lint
 # pnpm 10 runs no install scripts unless listed: wrangler needs workerd's and esbuild's.
 onlyBuiltDependencies:
   - esbuild
