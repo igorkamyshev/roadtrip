@@ -28,10 +28,15 @@
 			{ "ts-ignore": true, "ts-nocheck": true, "ts-expect-error": "allow-with-description", "minimumDescriptionLength": 10 }
 		],
 
-		// Conditions say what they check.
+		// Conditions say what they check. A lookup that can miss is typed so (`Partial<Record<…>>`, a Map): then checking
+		// for the miss is no unnecessary condition. `noUncheckedIndexedAccess` would say it of every typed array's index
+		// in the engine's loops too.
 		"typescript/strict-boolean-expressions": ["error", { "allowString": false, "allowNumber": false, "allowNullableObject": true }],
 		"typescript/switch-exhaustiveness-check": "error",
 		"typescript/no-unnecessary-condition": "error",
+		// An `undefined` nobody needs, but not an argument: TypeScript decides whether a `T | undefined` parameter may be
+		// left out (`setState(undefined)`, `startOnRoad`'s zone), and the rule's fix of one broke the types.
+		"unicorn/no-useless-undefined": ["error", { "checkArguments": false }],
 
 		// An exported function spells out its contract; local ones infer.
 		"typescript/explicit-module-boundary-types": "error",
@@ -80,6 +85,10 @@
 		"eslint/no-await-in-loop": "off",
 		// a comment at the end of a line is a fine place for a short note;
 		"eslint/no-inline-comments": "off",
+		// TypeScript's noImplicitReturns (every tsconfig) checks every path returns, with the types: it knows a switch
+		// over every member of a union ends, where this rule's path analysis asks for a `return undefined` after it,
+		// which unicorn/no-useless-undefined forbids;
+		"typescript/consistent-return": "off",
 		// the doubles of Sherpa and R2 branch on the request, and a sweep over a grid works out each cell's answer:
 		// that is what they are for.
 		"vitest/no-conditional-in-test": "off"

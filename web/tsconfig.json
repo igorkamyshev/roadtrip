@@ -9,6 +9,7 @@
 		"jsx": "react-jsx",
 		"noEmit": true,
 		"strict": true,
+		"noImplicitReturns": true,
 		"skipLibCheck": true,
 		"isolatedModules": true,
 		"verbatimModuleSyntax": true,
