@@ -19,7 +19,14 @@ export const EXEMPTION_VISAS: readonly ExemptionVisa[] = ['SCHENGEN', 'USA', 'GB
  * одной страны» lists all of them), by its code in `COUNTRIES`: alpha-3, `RKS`, `NX`. A Schengen country is held only
  * as Schengen.
  */
-export const HELD_VISAS: readonly string[] = [SCHENGEN, ...Object.keys(COUNTRIES).filter((code) => !SCHENGEN_AREA.includes(code))].sort();
+export const HELD_VISAS: readonly string[] = heldVisas();
+
+function heldVisas(): string[] {
+	const visas = [SCHENGEN, ...Object.keys(COUNTRIES).filter((code) => !SCHENGEN_AREA.includes(code))];
+	// In place, not toSorted: the client bundles this for browsers older than toSorted (es2022, web/vite.config.ts).
+	visas.sort();
+	return visas;
+}
 
 /**
  * The rows that act on `today` (YYYY-MM-DD, the date in UTC) for a person of `citizenships`: up to their last day
