@@ -24,12 +24,12 @@ export interface Traversal {
  * where the passage does not let a car go.
  */
 export function edgeTravelSeconds(graph: Graph, passage: Passage, from: number, edge: number): number {
-	const zone = graph.nodeZone[graph.edgeTarget[edge]];
+	const zone = passage.zone[graph.edgeTarget[edge]];
 	if (!passage.open[zone]) {
 		return Infinity;
 	}
 	const seconds = graph.edgeSeconds[edge] * TRAVEL_PER_DRIVING;
-	return zone === graph.nodeZone[from] ? seconds : seconds + (passage.borderSeconds.get(edge) ?? 0);
+	return zone === passage.zone[from] ? seconds : seconds + (passage.borderSeconds.get(edge) ?? 0);
 }
 
 /** Dijkstra by travel time from the seeds, up to `limitSeconds` of travel, where the passage lets it go. */

@@ -170,7 +170,7 @@ describe('a border', () => {
 		expect(maxHoursOf(2, rules({ pairs: [pair(status)] }))).toBe(1);
 	});
 
-	it('is not where a road leaves every zone’s polygon: a neighbour the extract does not hold, or a gap', () => {
+	it('is not where a road leaves every zone’s polygon for land that leads to no other country: a neighbour the extract does not hold', () => {
 		expect(maxHoursOf(4, rules())).toBe(3);
 	});
 
@@ -222,6 +222,30 @@ describe('a closed country', () => {
 			outcome: 'no_ring',
 			startCountry: 'BBB',
 		});
+	});
+});
+
+describe('land in no country’s polygon between two countries', () => {
+	const noZone = fixtureGraph('no-zone.osm');
+	/** maxHours of the empty 12 h ring from road 1's west (0.5°E) or east (2.9°E) end in no-zone.osm. */
+	const maxHoursFrom = (lon: number, table: BorderTable, closedCountries: string[] = []) => {
+		const result = computeRing(noZone, table, { ...request(0.5, lon, 12), closedCountries });
+		return result.outcome === 'empty' ? result.maxHours : result.outcome;
+	};
+	const atTheGap = crossing('gap', 0.5, 2, 'open');
+
+	it('is crossed into the country beyond it at the border, where the road leaves it', () => {
+		expect(maxHoursFrom(0.5, rules())).toBe(4);
+		expect(maxHoursFrom(0.5, rules({ crossings: [atTheGap] }))).toBe(7);
+	});
+
+	it('counts as the country most of its roads come from, so entering it from the other is the border', () => {
+		expect(maxHoursFrom(2.9, rules())).toBe(2);
+		expect(maxHoursFrom(2.9, rules({ crossings: [atTheGap] }))).toBe(7);
+	});
+
+	it('is closed with that country', () => {
+		expect(maxHoursFrom(2.9, rules({ crossings: [atTheGap] }), ['AAA'])).toBe(2);
 	});
 });
 

@@ -2,7 +2,7 @@
 // in; the outcome, the ring, maxHours, the start country and the timings out. Portable: no Node APIs, so it
 // can move to a Worker or a browser.
 import type { BorderTable } from 'rules';
-import { closedForEveryone, passage } from './borders.ts';
+import { borderZones, closedForEveryone, passage } from './borders.ts';
 import { OFF_ROAD_SECONDS_PER_METER, ringContour } from './contour.ts';
 import { E7 } from './geo.ts';
 import type { Graph } from './graph.ts';
@@ -58,7 +58,10 @@ export interface RingTimings {
 }
 
 interface Outcome {
-	/** The zone of the origin, or for an origin at sea, of the road it is snapped to; null when it has none. */
+	/**
+	 * The zone of the origin, or for an origin in no zone's polygon (at sea, the West Bank), the zone the road it is
+	 * snapped to counts as at a border (`borderZones`); null when it has none.
+	 */
 	readonly startCountry: string | null;
 	readonly timings: RingTimings;
 }
@@ -97,7 +100,7 @@ export function computeRing(graph: Graph, borderTable: BorderTable, request: Rin
 	if (snap === undefined) {
 		return { outcome: 'no_roads', startCountry: zoneCode(graph, originZone), timings: since(started, started) };
 	}
-	const startZone = originZone !== 0 ? originZone : graph.nodeZone[snap.fraction < 0.5 ? snap.a : snap.b];
+	const startZone = originZone !== 0 ? originZone : borderZones(graph)[snap.fraction < 0.5 ? snap.a : snap.b];
 	if (closed[startZone]) {
 		return { outcome: 'no_ring', startCountry: zoneCode(graph, startZone), timings: since(started, started) };
 	}
