@@ -10,6 +10,7 @@
 		"./contour": "./src/contour.ts",
 		"./geo": "./src/geo.ts",
 		"./graph": "./src/graph.ts",
+		"./json": "./src/json.ts",
 		"./protocol": "./src/protocol.ts",
 		"./server": "./server/engine-server.ts",
 		"./dataset": "./dataset/dataset.json",

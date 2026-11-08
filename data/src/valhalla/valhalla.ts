@@ -6,7 +6,7 @@ import { request as httpRequest } from 'node:http';
 import { setTimeout as sleep } from 'node:timers/promises';
 import type { LatLon, MultiPolygon } from 'engine';
 import { TRAVEL_PER_DRIVING } from 'engine/traverse';
-import { field, items } from '../json.ts';
+import { field, items } from 'engine/json';
 import type { RegionFiles, Tools } from './prepare.ts';
 
 export interface ValhallaService {

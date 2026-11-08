@@ -1,7 +1,7 @@
 // Sherpa's double for the handler (src/sherpa.ts): a faked `fetch` that answers `/v3/maps` in Sherpa's shape of
 // 2026-11-07 (research/sherpa-api, §3.3), as each test says.
 import { COUNTRIES } from 'rules';
-import { field } from '../src/json.ts';
+import { field } from 'engine/json';
 
 /** Sherpa's groups in `/v3/maps` (research/sherpa-api, §2.2). */
 export type SherpaGroup =

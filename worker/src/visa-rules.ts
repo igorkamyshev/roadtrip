@@ -12,7 +12,7 @@
 // to Sherpa to PostHog as `sherpa fetched`.
 import type { LogContext, Logger } from 'error-tracking/logger';
 import type { Analytics } from './analytics.ts';
-import { isRecord } from './json.ts';
+import { isRecord } from 'engine/json';
 import type { Kv } from './kv.ts';
 import {
 	failureReason,

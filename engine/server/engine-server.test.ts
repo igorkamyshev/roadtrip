@@ -5,6 +5,7 @@
 import type { Server } from 'node:http';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { MultiPolygon, RingRequest, RingResult } from '../src/index.ts';
+import { isRecord } from '../src/json.ts';
 import { COLD_START_HEADER } from '../src/protocol.ts';
 import { createEngineServer } from './engine-server.ts';
 import { listen } from './http.ts';
@@ -27,10 +28,6 @@ const RING: MultiPolygon = {
 /** A ring result of the engine that took `traversalMs` and `contourMs`. */
 function ringResult(traversalMs = 1200, contourMs = 300): RingResult {
 	return { outcome: 'ring', ring: structuredClone(RING), startCountry: 'AAA', timings: { traversalMs, contourMs } };
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null;
 }
 
 /** A calculation from `lat`, by default from 0° of longitude, for 3 h, with no closed countries. */

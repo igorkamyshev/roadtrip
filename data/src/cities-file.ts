@@ -2,7 +2,7 @@
 // Russian and local name, place, population and zone. `build-cities` writes it, the Worker serves it as a static
 // asset at `/data/cities.json`, and the screen picks the cities in the ring from it (web/src/cities/). Shared by the
 // builder and the client, so no Node APIs here.
-import { field, items } from './json.ts';
+import { field, items } from 'engine/json';
 
 /** The layout of the file; a change to the columns is a new one, and the client reads only its own. */
 export const CITIES_FORMAT = 1;

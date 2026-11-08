@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterAll, describe, expect, it } from 'vitest';
 import { decodeCities, parseCitiesFile } from '../src/cities-file.ts';
-import { field, items } from '../src/json.ts';
+import { field, items } from 'engine/json';
 import { fixturePath } from './fixture-graph.ts';
 
 const command = (name: string, ...args: string[]) =>

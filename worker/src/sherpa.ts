@@ -2,7 +2,7 @@
 // undocumented `POST /v3/maps`, which sorts ~230 countries into 7 groups. One request per citizenship; there is no
 // fallback to `/v3/trips`. An answer counts only when it passes the schema below and lists at least 200 countries:
 // anything else is a failure, and the copy in KV stays (visa-rules.ts).
-import { field, isRecord } from './json.ts';
+import { field, isRecord } from 'engine/json';
 
 const SHERPA_MAPS_URL = 'https://requirements-api.joinsherpa.com/v3/maps';
 

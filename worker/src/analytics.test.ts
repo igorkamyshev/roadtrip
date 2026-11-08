@@ -5,7 +5,7 @@ import { gunzipSync } from 'node:zlib';
 import { describe, expect, it } from 'vitest';
 import { objectContaining } from '../test/matchers.ts';
 import { type PostHogFetch, requestAnalytics } from './analytics.ts';
-import { field, isRecord } from './json.ts';
+import { field, isRecord } from 'engine/json';
 
 const TOKEN = 'phc_test';
 const BROWSER = '019a5f2c-0d4e-7c3b-9f1a-2b3c4d5e6f70';

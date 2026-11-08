@@ -5,7 +5,7 @@ import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { MultiPolygon } from 'engine';
 import { seconds } from '../cli/input.ts';
-import { field, items } from '../json.ts';
+import { field, items } from 'engine/json';
 import type { City } from './cities.ts';
 import type { StartPoint } from './places.ts';
 import { prepareValhalla, type RegionFiles, type Tools } from './prepare.ts';

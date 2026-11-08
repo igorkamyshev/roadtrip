@@ -2,6 +2,7 @@
 // the engine's result, the data version and the timings, or 500 with the error. Web-standard Request and Response
 // only: http.ts serves it under Node in the Container, and the Worker's tests call it in their own process.
 import type { RingResult } from '../src/index.ts';
+import { isRecord } from '../src/json.ts';
 import {
 	type Calculation,
 	CALCULATION_PATH,
@@ -104,10 +105,6 @@ function parseCalculation(body: string): CalculationRequest | undefined {
 		return undefined;
 	}
 	return { origin: { lat, lon }, hours, closedCountries };
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null;
 }
 
 function isCoordinate(value: unknown): value is number {

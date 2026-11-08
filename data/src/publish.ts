@@ -7,7 +7,7 @@ import { createHash } from 'node:crypto';
 import { createReadStream, existsSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { COUNTRIES } from 'rules/countries';
-import { field, items } from './json.ts';
+import { field, items } from 'engine/json';
 import { ZONELESS_COUNTRIES } from './zoneless.ts';
 
 /** The files of a dataset, as the world build writes them into one directory. */

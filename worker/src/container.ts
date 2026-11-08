@@ -1,7 +1,7 @@
 // The Container with the engine server, as GET /api/ring asks it (spec «Container и очередь», engine/protocol): the
 // calculation it posts, and the answer checked before the Worker serves or caches it.
 import { type Calculation, CALCULATION_PATH, type CalculationRequest, type CalculationTimings, type RingOutcome } from 'engine/protocol';
-import { isRecord } from './json.ts';
+import { isRecord } from 'engine/json';
 
 /** The Container with the engine server (engine/server): its answer to the request as it gave it. */
 export interface Container {

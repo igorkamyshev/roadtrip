@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest';
 import { api, closedCountriesOf, DAY, engineContainer, HOUR, MINUTE, recorded, SHERPA_API_KEY, START } from '../test/api.ts';
 import { anyString } from '../test/matchers.ts';
 import { SHERPA_COUNTRIES, SherpaDouble, sherpaMap } from '../test/sherpa-double.ts';
-import { field } from './json.ts';
+import { field } from 'engine/json';
 
 const straightRoad = fixtureGraph('straight-road.osm');
 

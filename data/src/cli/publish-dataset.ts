@@ -9,7 +9,7 @@
 // --trial says the dataset holds some parts of the world only, so its countries' zones are not checked.
 import { spawn } from 'node:child_process';
 import { parseArgs } from 'node:util';
-import { field } from '../json.ts';
+import { field } from 'engine/json';
 import { type DatasetStore, publishDataset } from '../publish.ts';
 import { log, userPath } from './input.ts';
 

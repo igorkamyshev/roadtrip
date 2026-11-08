@@ -8,7 +8,7 @@ import type { Graph } from 'engine/graph';
 import { createEngineServer } from 'engine/server';
 import { borderTable, VISA_EXEMPTIONS, type VisaExemption } from 'rules';
 import type { Container } from '../src/container.ts';
-import { field, isRecord } from '../src/json.ts';
+import { field, isRecord } from 'engine/json';
 import { handleRing, type RingDeps } from '../src/ring.ts';
 import { type AnalyticsDouble, analyticsDouble } from './analytics-double.ts';
 import { MemoryKv } from './memory-kv.ts';

@@ -2,7 +2,7 @@
 // GeoNames has no Russian name of. Wikidata is CC0. The Query Service lets a client one minute of processing a
 // minute and answers 429 past it (https://www.mediawiki.org/wiki/Wikidata_Query_Service/User_Manual), so the
 // queries go one after another and wait as long as it says.
-import { field, items } from './json.ts';
+import { field, items } from 'engine/json';
 
 const QUERY_SERVICE = 'https://query.wikidata.org/sparql';
 
