@@ -69,22 +69,15 @@ const refreshing = new Set<string>();
 export default {
 	async fetch(request, env, ctx) {
 		const { pathname } = new URL(request.url);
+		// A wrapper, not ctx.waitUntil itself: called as a method of deps it would lose its `this`.
+		const waitUntil = (promise: Promise<unknown>) => {
+			ctx.waitUntil(promise);
+		};
 		if (pathname === RING_PATH) {
-			const analytics = requestAnalytics(request, {
-				token: env.POSTHOG_API_KEY,
-				waitUntil: (promise) => {
-					ctx.waitUntil(promise);
-				},
-			});
+			const analytics = requestAnalytics(request, { token: env.POSTHOG_API_KEY, waitUntil });
 			const response = await handleRing(request, {
-				rings: {
-					get: (key) => env.RINGS.get(key, 'text'),
-					put: (key, value, options) => env.RINGS.put(key, value, options),
-				},
-				visaRules: {
-					get: (key) => env.VISA_RULES.get(key, 'text'),
-					put: (key, value, options) => env.VISA_RULES.put(key, value, options),
-				},
+				rings: env.RINGS,
+				visaRules: env.VISA_RULES,
 				refreshing,
 				visaExemptions: VISA_EXEMPTIONS,
 				container: getContainer(env.ENGINE),
@@ -96,9 +89,7 @@ export default {
 					new Promise((resolve) => {
 						setTimeout(resolve, ms);
 					}),
-				waitUntil: (promise) => {
-					ctx.waitUntil(promise);
-				},
+				waitUntil,
 				logger,
 				analytics,
 			});
@@ -110,9 +101,7 @@ export default {
 				bucket: env.BASEMAP,
 				archive: env.BASEMAP_ARCHIVE,
 				cache: caches.default,
-				waitUntil: (promise) => {
-					ctx.waitUntil(promise);
-				},
+				waitUntil,
 				logger,
 			});
 		}

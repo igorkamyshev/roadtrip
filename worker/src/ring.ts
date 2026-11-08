@@ -6,15 +6,10 @@ import { type Calculation, type CalculationFailure, CALCULATION_PATH, type Calcu
 import { reduceVisaRules, withStartCountry } from './access.ts';
 import { type Analytics, browserIds, type RingServed } from './analytics.ts';
 import type { RingError, RingQuery, RingResponse } from './api.ts';
+import type { Kv } from './kv.ts';
 import { parseRingQuery } from './query.ts';
 import { MAX_CACHED_BYTES, RING_TTL_SECONDS, ringKey, roundOrigin, workerDataVersion } from './ring-cache.ts';
-import { citizenshipsRules, type VisaRulesStore } from './visa-rules.ts';
-
-/** The ring cache: Workers KV. */
-export interface RingCache {
-	get(key: string): Promise<string | null>;
-	put(key: string, value: string, options: { expirationTtl: number }): Promise<void>;
-}
+import { citizenshipsRules } from './visa-rules.ts';
 
 /** The Container with the engine server (engine/server): its answer to the request as it gave it. */
 export interface Container {
@@ -22,9 +17,10 @@ export interface Container {
 }
 
 export interface RingDeps {
-	readonly rings: RingCache;
+	/** The ring cache. */
+	readonly rings: Kv;
 	/** Sherpa's copies, by citizenship (visa-rules.ts). */
-	readonly visaRules: VisaRulesStore;
+	readonly visaRules: Kv;
 	/** The citizenships whose stale copy this isolate is refreshing (visa-rules.ts). */
 	readonly refreshing: Set<string>;
 	/** The visa exemptions' table: rules' `VISA_EXEMPTIONS`, which deploys with the Worker. */
@@ -103,7 +99,7 @@ async function serve(
 	// Steps 4–5: the key, from the fields the calculation gets and the data version.
 	const calculation: CalculationRequest = { origin: roundOrigin(query.origin), hours: query.hours, closedCountries: closed };
 	const version = await workerDataVersion(deps.datasetVersion);
-	const key = await ringKey(version, calculation.origin, calculation.hours, calculation.closedCountries);
+	const key = await ringKey(version, calculation);
 	const cached = await deps.rings.get(key);
 	if (cached !== null) {
 		const outcome = JSON.parse(cached) as RingOutcome;

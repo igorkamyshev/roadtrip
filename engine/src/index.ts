@@ -17,8 +17,13 @@ import { latestArrival, traverse } from './traverse.ts';
 export const ENGINE_VERSION = 5;
 
 /** SHA-256 of the border table as JSON, in hex: any change to the table, a note included, changes it. */
-export async function borderTableHash(table: BorderTable): Promise<string> {
-	const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify(table)));
+export function borderTableHash(table: BorderTable): Promise<string> {
+	return sha256Hex(JSON.stringify(table));
+}
+
+/** SHA-256 of the text in UTF-8, in hex: for the data version here and the ring cache's key in the Worker. */
+export async function sha256Hex(text: string): Promise<string> {
+	const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
 	return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('');
 }
 

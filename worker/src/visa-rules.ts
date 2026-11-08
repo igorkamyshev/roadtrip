@@ -12,6 +12,7 @@
 // to Sherpa to PostHog as `sherpa fetched`.
 import type { LogContext, Logger } from 'error-tracking/logger';
 import type { Analytics } from './analytics.ts';
+import type { Kv } from './kv.ts';
 import { failureReason, fetchSherpaClasses, type SherpaClasses, type SherpaDeps, SherpaError, type SherpaFailure } from './sherpa.ts';
 
 /** A copy is fresh this long after it came from Sherpa. Sherpa advises an hour; we keep it longer on purpose (#11). */
@@ -20,15 +21,9 @@ export const FRESH_MS = 24 * 60 * 60 * 1000;
 /** After a failure, no new request to Sherpa for the citizenship this long. */
 export const RETRY_AFTER_SECONDS = 15 * 60;
 
-/** The visa rules' namespace in Workers KV (`roadtrip-visa-rules`). */
-export interface VisaRulesStore {
-	get(key: string): Promise<string | null>;
-	/** Without `expirationTtl` the entry stays for good. */
-	put(key: string, value: string, options?: { expirationTtl: number }): Promise<void>;
-}
-
 export interface VisaRulesDeps extends SherpaDeps {
-	readonly visaRules: VisaRulesStore;
+	/** The visa rules' namespace in Workers KV (`roadtrip-visa-rules`). */
+	readonly visaRules: Kv;
 	/**
 	 * The citizenships whose stale copy is being refreshed from this isolate (index.ts keeps one set per isolate), so
 	 * that the requests that meet the stale copy meanwhile start no refresh of their own.
