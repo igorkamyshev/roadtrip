@@ -21,12 +21,12 @@ import {
 	type RingGeometry,
 } from './overlay.ts';
 
-declare global {
-	interface Window {
-		/** The map, for the screen tests to read its sources (e2e/screen.ts). */
-		__roadtripMap?: MapLibre;
-	}
-}
+/**
+ * The event the map view announces its MapLibre map with, on `window`, once it is made. Nothing in the client listens
+ * and nothing keeps the map on `window`: the screen tests listen from an init script and read the map's sources
+ * through it (e2e/fixtures.ts, e2e/screen.ts), on the very build that is deployed.
+ */
+export const MAP_EVENT = 'roadtrip:map';
 
 /** Room around the ring for the phrase (top), the slider (right) and the carousel (bottom), as in the prototype. */
 export const MAP_PADDING = { top: 130, right: 74, bottom: 200, left: 16 } as const;
@@ -80,7 +80,7 @@ export function MapView({ origin, ring, striped, fit, pinning, closed, cities, o
 			...(start === undefined ? OVERVIEW : { center: [start.lon, start.lat], zoom: ORIGIN_ZOOM }),
 			attributionControl: { compact: true },
 		});
-		window.__roadtripMap = created;
+		window.dispatchEvent(new CustomEvent(MAP_EVENT, { detail: created }));
 		let removed = false;
 		created.once('load', () => {
 			addOverlay(created);

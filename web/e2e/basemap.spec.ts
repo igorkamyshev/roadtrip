@@ -68,3 +68,15 @@ test('the map credits OpenStreetMap and Protomaps', async ({ page }) => {
 	await expect(attribution).toContainText('Protomaps');
 	await expect(attribution.locator('a', { hasText: 'OpenStreetMap' })).toHaveAttribute('href', 'https://www.openstreetmap.org/copyright');
 });
+
+test('the client keeps its map off window: it only announces it, and these tests listen', async ({ browser, baseURL }) => {
+	// A context without the tests' listener, as a person's browser: the production build exposes nothing.
+	const context = await browser.newContext({ baseURL });
+	const page = await context.newPage();
+	await page.route(/^(?!http:\/\/localhost[:/])/u, (route) => route.abort('blockedbyclient'));
+	await page.goto('/');
+
+	await expect(page.locator('.maplibregl-canvas')).toBeVisible();
+	expect(await page.evaluate(() => Object.keys(window).filter((key) => key.toLowerCase().includes('roadtrip')))).toEqual([]);
+	await context.close();
+});

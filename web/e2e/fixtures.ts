@@ -218,6 +218,12 @@ export const test = base.extend<{ network: Network; ringApi: RingApi; posthog: P
 		async ({ context, baseURL }, use) => {
 			const network = new Network();
 			await cutOffTheNetwork(context, network, baseURL ?? '');
+			// The map the client announces (`MAP_EVENT` of src/map/map-view.tsx), kept for e2e/screen.ts.
+			await context.addInitScript(() => {
+				window.addEventListener('roadtrip:map', (event) => {
+					(window as unknown as { __roadtripMap?: unknown }).__roadtripMap = (event as CustomEvent).detail;
+				});
+			});
 			await use(network);
 		},
 		{ auto: true },

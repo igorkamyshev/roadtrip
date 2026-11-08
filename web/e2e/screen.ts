@@ -1,5 +1,5 @@
 // Reading the screen in its tests: the DOM by role and text, the map by its sources and layers (never pixels),
-// through the MapLibre map the client exposes as `window.__roadtripMap`.
+// through the MapLibre map the client announces, which the fixtures keep as `window.__roadtripMap` (e2e/fixtures.ts).
 import { expect, type Page } from '@playwright/test';
 import type { Feature, FeatureCollection, GeoJSON, Geometry } from 'geojson';
 
