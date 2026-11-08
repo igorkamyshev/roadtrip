@@ -9,21 +9,21 @@
 //
 // The tests read the sources `ring`, `start`, `zones` and `cities`, the hatching's filter and the layers'
 // visibility, never pixels.
-import type { FeatureCollection } from 'geojson';
+import type { FeatureCollection, GeoJSON } from 'geojson';
 import type { ExpressionSpecification, FilterSpecification, GeoJSONSource, Map as MapLibre } from 'maplibre-gl';
 import type { RingAnswer } from 'worker/api';
 import type { LatLon } from '../state/point.ts';
 
 export type RingGeometry = Extract<RingAnswer, { outcome: 'ring' }>['ring'];
 
-export const RING_SOURCE = 'ring';
-export const START_SOURCE = 'start';
-export const ZONES_SOURCE = 'zones';
-export const RING_LAYERS = { fill: 'ring-fill', stripes: 'ring-stripes', line: 'ring-line' } as const;
-export const START_LAYER = 'start';
-export const HATCH_LAYER = 'closed-hatch';
-export const CITIES_SOURCE = 'cities';
-export const CITY_LAYERS = { dots: 'city-dots', labels: 'city-labels' } as const;
+const RING_SOURCE = 'ring';
+const START_SOURCE = 'start';
+const ZONES_SOURCE = 'zones';
+const RING_LAYERS = { fill: 'ring-fill', stripes: 'ring-stripes', line: 'ring-line' } as const;
+const START_LAYER = 'start';
+const HATCH_LAYER = 'closed-hatch';
+const CITIES_SOURCE = 'cities';
+const CITY_LAYERS = { dots: 'city-dots', labels: 'city-labels' } as const;
 
 /** A city as the map shows it. */
 export interface MapCity {
@@ -37,7 +37,7 @@ export interface MapCity {
 }
 
 /** The zone outlines, a static asset of the Worker: the dataset's (data's `zoneOutlines`). */
-export const ZONE_OUTLINES_URL = '/data/zones.json';
+const ZONE_OUTLINES_URL = '/data/zones.json';
 
 const EMPTY: FeatureCollection = { type: 'FeatureCollection', features: [] };
 
@@ -65,7 +65,10 @@ interface OverlayColors {
 
 function colors(): OverlayColors {
 	const style = getComputedStyle(document.documentElement);
-	const read = (name: string, fallback: string) => style.getPropertyValue(name).trim() || fallback;
+	const read = (name: string, fallback: string): string => {
+		const value = style.getPropertyValue(name).trim();
+		return value === '' ? fallback : value;
+	};
 	return {
 		ring: read('--ring', '#1b5fd6'),
 		ringFill: read('--ring-fill', 'rgba(27, 95, 214, .24)'),
@@ -137,7 +140,7 @@ export function addOverlay(map: MapLibre): void {
 
 /** Shows `ring`, striped while a calculation is to replace it, or nothing. */
 export function showRing(map: MapLibre, ring: RingGeometry | undefined, striped: boolean): void {
-	source(map, RING_SOURCE).setData(ring === undefined ? EMPTY : { type: 'Feature', properties: {}, geometry: ring });
+	setData(map, RING_SOURCE, ring === undefined ? EMPTY : { type: 'Feature', properties: {}, geometry: ring });
 	map.setLayoutProperty(RING_LAYERS.fill, 'visibility', striped ? 'none' : 'visible');
 	map.setLayoutProperty(RING_LAYERS.stripes, 'visibility', striped ? 'visible' : 'none');
 	map.setPaintProperty(RING_LAYERS.line, 'line-dasharray', striped ? [2, 3] : undefined);
@@ -145,14 +148,16 @@ export function showRing(map: MapLibre, ring: RingGeometry | undefined, striped:
 
 /** Puts the marker exactly at the origin, wherever the engine snapped it to a road. */
 export function showStart(map: MapLibre, origin: LatLon | undefined): void {
-	source(map, START_SOURCE).setData(
+	setData(
+		map,
+		START_SOURCE,
 		origin === undefined ? EMPTY : { type: 'Feature', properties: {}, geometry: { type: 'Point', coordinates: [origin.lon, origin.lat] } },
 	);
 }
 
 /** Shows the ring's cities, biggest first: their dots, and the names of those with a label. */
 export function showCities(map: MapLibre, cities: readonly MapCity[]): void {
-	source(map, CITIES_SOURCE).setData({
+	setData(map, CITIES_SOURCE, {
 		type: 'FeatureCollection',
 		features: cities.map(({ id, name, lat, lon, label, chosen }, rank) => ({
 			type: 'Feature',
@@ -163,7 +168,7 @@ export function showCities(map: MapLibre, cities: readonly MapCity[]): void {
 }
 
 /** The city whose dot or label is nearest to a point of the map's canvas, within `radius` pixels. */
-export function cityAt(map: MapLibre, x: number, y: number, radius: number): number | undefined {
+export function cityAt(map: MapLibre, { x, y }: { readonly x: number; readonly y: number }, radius: number): number | undefined {
 	const near = map.queryRenderedFeatures(
 		[
 			[x - radius, y - radius],
@@ -190,7 +195,7 @@ export function cityAt(map: MapLibre, x: number, y: number, radius: number): num
 
 /** Puts the zone outlines on the map, for the hatching. */
 export function showOutlines(map: MapLibre, outlines: FeatureCollection): void {
-	source(map, ZONES_SOURCE).setData(outlines);
+	setData(map, ZONES_SOURCE, outlines);
 }
 
 /** Hatches the zones in `closed`: country codes and closed territories, as `access` names them. */
@@ -206,10 +211,23 @@ function closedFilter(closed: readonly string[]): FilterSpecification {
 export async function loadOutlines(): Promise<FeatureCollection> {
 	try {
 		const response = await fetch(ZONE_OUTLINES_URL);
-		return response.ok ? ((await response.json()) as FeatureCollection) : EMPTY;
+		const outlines: unknown = response.ok ? await response.json() : undefined;
+		return isFeatureCollection(outlines) ? outlines : EMPTY;
 	} catch {
 		return EMPTY;
 	}
+}
+
+/** A GeoJSON FeatureCollection; its features are then the outlines data's `zoneOutlines` writes. */
+function isFeatureCollection(value: unknown): value is FeatureCollection {
+	return (
+		typeof value === 'object' &&
+		value !== null &&
+		'type' in value &&
+		value.type === 'FeatureCollection' &&
+		'features' in value &&
+		Array.isArray(value.features)
+	);
 }
 
 /** Runs the stripes until the returned function stops them. Still stripes for those who reduce motion. */
@@ -228,12 +246,16 @@ export function runStripes(map: MapLibre): () => void {
 	};
 }
 
-function source(map: MapLibre, id: string): GeoJSONSource {
+/**
+ * Gives one of the overlay's sources its data. MapLibre applies it in its worker; the promise of that is not waited
+ * for, and a later call replaces the data anyway.
+ */
+function setData(map: MapLibre, id: string, data: GeoJSON): void {
 	const found = map.getSource<GeoJSONSource>(id);
 	if (found === undefined) {
 		throw new Error(`the overlay's source ${id} is not on the map`);
 	}
-	return found;
+	void found.setData(data);
 }
 
 function stripeImage(frame: number): string {

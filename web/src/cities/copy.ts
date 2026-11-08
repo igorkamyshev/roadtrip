@@ -2,7 +2,7 @@
 // the line on Russian plates, and the route in Google Maps.
 import { EU } from 'rules/eu';
 import { SCHENGEN } from 'rules/held-visas';
-import type { CountryAccess } from 'worker/api';
+import type { CountryAccess, EntryMode } from 'worker/api';
 import { visaName } from '../screen/countries.ts';
 import { pointText, type LatLon } from '../state/point.ts';
 import type { City } from './cities.ts';
@@ -15,26 +15,28 @@ export function populationText(population: number): string {
 	return population >= 999_500 ? `${ONE_DECIMAL.format(population / 1e6)} млн` : `${Math.round(population / 1000)} тыс.`;
 }
 
+interface EntryMark {
+	readonly text: string;
+	readonly kind: 'evisa' | 'held' | 'plain';
+}
+
+/** The marks that say only the mode; a country without a visa, or closed, has none. */
+const MARKS: Readonly<Partial<Record<EntryMode, EntryMark>>> = {
+	evisa: { text: 'оформить заранее', kind: 'evisa' },
+	visa_on_arrival: { text: 'виза на границе', kind: 'plain' },
+	start: { text: 'страна старта', kind: 'plain' },
+};
+
 /**
  * The mark of the entry mode: «оформить заранее» for an e-visa, «виза на границе» for a visa on arrival, «по визе
  * Шенгена» or «по визе: <страна>» for a held visa, «страна старта»; none without a visa.
  */
-export function entryMark(
-	access: CountryAccess | undefined,
-): { readonly text: string; readonly kind: 'evisa' | 'held' | 'plain' } | undefined {
-	switch (access?.mode) {
-		case 'evisa':
-			return { text: 'оформить заранее', kind: 'evisa' };
-		case 'visa_on_arrival':
-			return { text: 'виза на границе', kind: 'plain' };
-		case 'held_visa':
-			// The visa's name as the phrase says it (#31's `visaName`): «по визе: США».
-			return { text: access.visa === SCHENGEN ? 'по визе Шенгена' : `по визе: ${visaName(access.visa ?? '')}`, kind: 'held' };
-		case 'start':
-			return { text: 'страна старта', kind: 'plain' };
-		default:
-			return undefined;
+export function entryMark(access: CountryAccess | undefined): EntryMark | undefined {
+	if (access?.mode === 'held_visa') {
+		// The visa's name as the phrase says it (#31's `visaName`): «по визе: США».
+		return { text: access.visa === SCHENGEN ? 'по визе Шенгена' : `по визе: ${visaName(access.visa ?? '')}`, kind: 'held' };
 	}
+	return access === undefined ? undefined : MARKS[access.mode];
 }
 
 const EU_ZONES: ReadonlySet<string> = new Set(EU);

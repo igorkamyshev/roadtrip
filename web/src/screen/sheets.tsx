@@ -1,28 +1,51 @@
 // The sheets the phrase opens (spec «Экран»): «Гражданство», «Мои визы» and «Что важно знать». «Откуда едем»
 // (src/start/start-sheet.tsx) and the list of all cities (src/cities/cities-sheet.tsx) are `Sheet`s too.
-import { EXEMPTION_VISAS } from 'rules/held-visas';
-import { useId, useState, type ReactNode, type Ref } from 'react';
+import { EXEMPTION_VISAS, utcDate } from 'rules/held-visas';
+import { useId, useLayoutEffect, useRef, useState, type ReactElement, type ReactNode, type Ref, type RefObject } from 'react';
 import { searchable } from '../cities/search.ts';
+import { useMinute } from './clock.ts';
 import { CITIZENSHIP_CHOICES, countryName, DEFAULT_CITIZENSHIP, SINGLE_COUNTRY_VISAS, visaName } from './countries.ts';
 import { opensByRows, opensText } from './held-visas.ts';
 import { CheckIcon, CloseIcon, InfoIcon, SearchIcon, WarnIcon } from './icons.tsx';
 
 export interface SheetProps {
 	readonly title: string;
+	/** The sheet is closed: «Закрыть», the scrim or Esc. */
 	readonly onClose: () => void;
 	readonly children: ReactNode;
 	/** The sheet's body, which scrolls: for a virtual list inside it. */
 	readonly bodyRef?: Ref<HTMLDivElement>;
+	/** What has the focus when the sheet opens; by default the browser's choice, «Закрыть». */
+	readonly initialFocus?: RefObject<HTMLElement | null>;
 }
 
-export function Sheet({ title, onClose, children, bodyRef }: SheetProps) {
+/**
+ * A sheet: a native `<dialog>` opened modal, so the browser keeps the focus inside it, makes the screen under it inert
+ * and closes it on Esc. The dialog fills the screen (styles.css, `.sheet-dialog`) and holds the scrim and the sheet.
+ */
+export function Sheet({ title, onClose, children, bodyRef, initialFocus }: SheetProps): ReactElement {
+	const dialog = useRef<HTMLDialogElement>(null);
+	// Before the effects of what is inside: the virtual list of all cities measures the open sheet.
+	useLayoutEffect(() => {
+		const element = dialog.current;
+		if (element !== null && !element.open) {
+			element.showModal();
+			initialFocus?.current?.focus();
+		}
+	}, [initialFocus]);
+	// «Закрыть», the scrim and Esc all close the dialog, and its `close` closes the sheet: one way out, and the
+	// browser gives the focus back to what opened it.
+	const close = (): void => {
+		dialog.current?.close();
+	};
 	return (
-		<>
-			<div className="scrim" onClick={onClose} />
-			<div className="sheet" role="dialog" aria-label={title}>
+		<dialog ref={dialog} className="sheet-dialog" aria-label={title} onClose={onClose}>
+			{/* oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- the scrim is for a pointer: a keyboard closes the sheet with Esc or «Закрыть» */}
+			<div className="scrim" onClick={close} />
+			<div className="sheet">
 				<div className="sheet-head">
 					<h3>{title}</h3>
-					<button type="button" className="ico-btn" onClick={onClose} aria-label="Закрыть">
+					<button type="button" className="ico-btn" onClick={close} aria-label="Закрыть">
 						<CloseIcon />
 					</button>
 				</div>
@@ -30,7 +53,7 @@ export function Sheet({ title, onClose, children, bodyRef }: SheetProps) {
 					{children}
 				</div>
 			</div>
-		</>
+		</dialog>
 	);
 }
 
@@ -46,11 +69,11 @@ export interface CitizenshipSheetProps {
  * «Гражданство»: Sherpa's passports by name, Russian first «по умолчанию», with a filter by name. Several may be
  * chosen and at least one is: the last one chosen stays. Each change asks for its ring at once.
  */
-export function CitizenshipSheet({ citizenships, onChange, onClose }: CitizenshipSheetProps) {
+export function CitizenshipSheet({ citizenships, onChange, onClose }: CitizenshipSheetProps): ReactElement {
 	const [filter, setFilter] = useState('');
 	const wanted = searchable(filter);
 	const shown = CITIZENSHIP_CHOICES.filter((code) => searchable(countryName(code)).includes(wanted));
-	const toggle = (code: string) => {
+	const toggle = (code: string): void => {
 		if (!citizenships.includes(code)) {
 			onChange([...citizenships, code].sort());
 		} else if (citizenships.length > 1) {
@@ -94,8 +117,6 @@ export interface VisasSheetProps {
 	readonly visas: readonly string[];
 	/** The citizenships chosen: the rows for some citizenships count only for theirs. */
 	readonly citizenships: readonly string[];
-	/** Today's date in UTC, YYYY-MM-DD: the rows count up to their last day. */
-	readonly today: string;
 	/** With the new visas, sorted; none is fine. */
 	readonly onChange: (visas: readonly string[]) => void;
 	readonly onClose: () => void;
@@ -103,17 +124,19 @@ export interface VisasSheetProps {
 
 /**
  * «Мои визы»: first Schengen and the visas that open other countries, each with what the exemptions' rows acting
- * today open for these citizenships; then «Виза одной страны», every other country outside Schengen, with a filter
- * by name. Any number may be chosen, none too. Each change asks for its ring at once.
+ * today (in UTC: the rows count up to their last day) open for these citizenships; then «Виза одной страны», every
+ * other country outside Schengen, with a filter by name. Any number may be chosen, none too. Each change asks for
+ * its ring at once.
  */
-export function VisasSheet({ visas, citizenships, today, onChange, onClose }: VisasSheetProps) {
+export function VisasSheet({ visas, citizenships, onChange, onClose }: VisasSheetProps): ReactElement {
 	const [filter, setFilter] = useState('');
+	const today = utcDate(useMinute());
 	const wanted = searchable(filter);
 	const shown = SINGLE_COUNTRY_VISAS.filter((code) => searchable(countryName(code)).includes(wanted));
-	const toggle = (code: string) => {
+	const toggle = (code: string): void => {
 		onChange(visas.includes(code) ? visas.filter((held) => held !== code) : [...visas, code].sort());
 	};
-	const item = (code: string, sub?: string) => (
+	const item = (code: string, sub?: string): ReactElement => (
 		<PickItem
 			key={code}
 			name={visaName(code)}
@@ -160,7 +183,7 @@ function PickItem({
 	readonly sub: string | undefined;
 	readonly chosen: boolean;
 	readonly onToggle: () => void;
-}) {
+}): ReactElement {
 	return (
 		<button type="button" className={chosen ? 'pick-item on' : 'pick-item'} aria-pressed={chosen} onClick={onToggle}>
 			<span className="pick-box">{chosen ? <CheckIcon /> : null}</span>
@@ -178,7 +201,7 @@ function PickItem({
 }
 
 /** A titled part of a multiple-choice sheet: a region named by its title. */
-function PickSection({ title, children }: { readonly title: string; readonly children: ReactNode }) {
+function PickSection({ title, children }: { readonly title: string; readonly children: ReactNode }): ReactElement {
 	const id = useId();
 	return (
 		<section className="pick" aria-labelledby={id}>
@@ -191,7 +214,7 @@ function PickSection({ title, children }: { readonly title: string; readonly chi
 }
 
 /** ⓘ «Что важно знать»: the spec's list. */
-export function InfoSheet({ onClose }: { readonly onClose: () => void }) {
+export function InfoSheet({ onClose }: { readonly onClose: () => void }): ReactElement {
 	return (
 		<Sheet title="Что важно знать" onClose={onClose}>
 			<div className="info">

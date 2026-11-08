@@ -1,9 +1,9 @@
 // The city search of the sheet «Откуда едем» (spec «Экран», #33): the cities of the cities file by the start of their
 // Russian or local name, case and ё aside, a hyphen as a space; up to 8, bigger cities higher.
-import type { City } from './cities.ts';
+import { biggestFirst, type City } from './cities.ts';
 
 /** How many cities the search gives at most. */
-export const SEARCH_RESULTS = 8;
+const SEARCH_RESULTS = 8;
 
 /** A city with its names as the search compares them. */
 interface Entry {
@@ -39,7 +39,7 @@ export function searchCities(cities: readonly City[], text: string): City[] {
 	return entriesOf(cities)
 		.filter(({ names }) => names.some((name) => name.startsWith(wanted)))
 		.map(({ city }) => city)
-		.sort((one, two) => two.population - one.population || one.id - two.id)
+		.sort(biggestFirst)
 		.slice(0, SEARCH_RESULTS);
 }
 

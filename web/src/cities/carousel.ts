@@ -1,6 +1,6 @@
 // The carousel's link with the map (spec «Экран», «Карусель»): the card in its middle when it stops is the chosen
 // city, which the map goes to; a city tapped on the map scrolls its card into the middle.
-import { useEffect, useRef, type RefObject } from 'react';
+import { useEffect, useLayoutEffect, useRef, type RefObject } from 'react';
 
 /** How long the carousel stays still before its stop counts: a swipe scrolls in many steps, then snaps. */
 const STOP_AFTER_MS = 140;
@@ -10,8 +10,11 @@ const STOP_AFTER_MS = 140;
  * undefined for another card (the first one, «и ещё»).
  */
 export function useCarouselStops(carousel: RefObject<HTMLElement | null>, onStop: (city: number | undefined) => void): () => void {
+	// The latest handler, for the stop that comes after a render.
 	const latest = useRef(onStop);
-	latest.current = onStop;
+	useLayoutEffect(() => {
+		latest.current = onStop;
+	});
 	const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
 	useEffect(
 		() => () => {

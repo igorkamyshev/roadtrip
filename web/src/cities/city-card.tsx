@@ -1,5 +1,7 @@
 // The carousel's cards after the first one (spec «Экран», «Карусель», «Карточка города»): a card per city, made
-// for any point of interest, and the last card «и ещё K / Все города →». Time to the city is not on it (#19).
+// for any point of interest, and the last card «и ещё K / Все города →». Time to the city is not on it (#19). And
+// what a city says in a row of a list: the search's and the list of all.
+import type { ReactElement } from 'react';
 import type { Access } from 'worker/api';
 import { countryName } from '../screen/countries.ts';
 import { RouteIcon } from '../screen/icons.tsx';
@@ -17,7 +19,7 @@ export interface CityCardProps {
 	readonly chosen: boolean;
 }
 
-export function CityCard({ city, origin, access, citizenships, chosen }: CityCardProps) {
+export function CityCard({ city, origin, access, citizenships, chosen }: CityCardProps): ReactElement {
 	return (
 		<div
 			className={chosen ? 'c-card focus' : 'c-card'}
@@ -39,12 +41,23 @@ export function CityCard({ city, origin, access, citizenships, chosen }: CityCar
 }
 
 /** «Budapest · Венгрия · 1,7 млн»: the local name when it is not the name shown, the country, the population. */
-export function cityFacts(city: City): string {
+function cityFacts(city: City): string {
 	return [city.local, countryName(city.zone), populationText(city.population)].filter((part) => part !== undefined).join(' · ');
 }
 
+/** A city in a row of a list: its name, the local one next to it, and under them its country and population. */
+export function CityRowText({ city }: { readonly city: City }): ReactElement {
+	return (
+		<span className="row-main">
+			<span className="row-name">{city.name}</span>
+			{city.local === undefined ? null : <span className="row-alt"> {city.local}</span>}
+			<span className="row-sub">{cityFacts({ ...city, local: undefined })}</span>
+		</span>
+	);
+}
+
 /** The badge of the city's entry mode, or nothing for a country without a visa. */
-export function EntryMark({ city, access }: { readonly city: City; readonly access: Access }) {
+export function EntryMark({ city, access }: { readonly city: City; readonly access: Access }): ReactElement | null {
 	const mark = entryMark(access[city.zone]);
 	return mark === undefined ? null : (
 		<div>
@@ -54,7 +67,7 @@ export function EntryMark({ city, access }: { readonly city: City; readonly acce
 }
 
 /** «и ещё K / Все города →»: opens the list of all the ring's cities. */
-export function MoreCard({ more, onOpen }: { readonly more: number; readonly onOpen: () => void }) {
+export function MoreCard({ more, onOpen }: { readonly more: number; readonly onOpen: () => void }): ReactElement {
 	return (
 		<button type="button" className="c-card" onClick={onOpen}>
 			<span className="muted small">и ещё</span>

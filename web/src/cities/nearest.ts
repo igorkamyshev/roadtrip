@@ -12,7 +12,7 @@ export function nearestCity(cities: readonly City[], at: LatLon): City | undefin
 	let nearest: City | undefined;
 	let nearestDistance = Infinity;
 	for (const city of cities) {
-		const distance = haversine(at.lat, at.lon, city.lat, city.lon);
+		const distance = haversine(at, city);
 		if (distance < nearestDistance) {
 			nearest = city;
 			nearestDistance = distance;
@@ -24,8 +24,8 @@ export function nearestCity(cities: readonly City[], at: LatLon): City | undefin
 const RADIANS = Math.PI / 180;
 
 /** The haversine of the central angle between two points (degrees): grows with the distance, enough to compare. */
-function haversine(lat1: number, lon1: number, lat2: number, lon2: number): number {
-	const sinLat = Math.sin(((lat2 - lat1) * RADIANS) / 2);
-	const sinLon = Math.sin(((lon2 - lon1) * RADIANS) / 2);
-	return sinLat * sinLat + Math.cos(lat1 * RADIANS) * Math.cos(lat2 * RADIANS) * sinLon * sinLon;
+function haversine(one: LatLon, two: LatLon): number {
+	const sinLat = Math.sin(((two.lat - one.lat) * RADIANS) / 2);
+	const sinLon = Math.sin(((two.lon - one.lon) * RADIANS) / 2);
+	return sinLat * sinLat + Math.cos(one.lat * RADIANS) * Math.cos(two.lat * RADIANS) * sinLon * sinLon;
 }
