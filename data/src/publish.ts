@@ -1,10 +1,14 @@
 // The dataset in R2 (spec «Набор данных», «Выкладка»): each version's files under `<version>/`, and `current.json`,
 // the pointer to the current version, which the deploy reads (src/fetch-dataset.ts). The pointer moves only once every file of the
 // version is uploaded and its size checked, so a failed run leaves the version before it current. A version whose
-// manifest is in the bucket keeps its files: the same files again are a rerun, other files take a new version.
+// manifest is in the bucket keeps its files: the same files again are a rerun, other files take a new version. A
+// dataset of the world that lost a country's zone goes nowhere.
 import { createHash } from 'node:crypto';
 import { createReadStream, existsSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
+import { COUNTRIES } from 'rules/countries';
+import type { ZoneOutlines } from './outlines.ts';
+import { ZONELESS_COUNTRIES } from './zoneless.ts';
 
 /** The files of a dataset, as the world build writes them into one directory. */
 export const DATASET_FILES = ['graph.graph', 'zones.json', 'cities.json', 'dataset.json', 'report.md'] as const;
@@ -31,12 +35,14 @@ export interface DatasetStore {
 /**
  * Uploads the dataset in `directory` under its version (`dataset.json`), checks each object's size, writes the
  * version's manifest and then points `current.json` at it. Returns the manifest and the version that was current.
- * Uploads nothing when the version's manifest in the bucket has other files.
+ * Uploads nothing when a country with a zone in the world has none in the zone outlines, but in a trial, which
+ * holds some parts of the world only, or when the version's manifest in the bucket has other files.
  */
 export async function publishDataset(
 	store: DatasetStore,
 	directory: string,
 	log: (line: string) => void,
+	options: { readonly trial?: boolean } = {},
 ): Promise<{ manifest: Manifest; previous: string | undefined }> {
 	for (const name of DATASET_FILES) {
 		if (!existsSync(join(directory, name))) {
@@ -46,6 +52,15 @@ export async function publishDataset(
 	const { version } = JSON.parse(readFileSync(join(directory, 'dataset.json'), 'utf8')) as { version?: unknown };
 	if (typeof version !== 'string' || !/^[\w.-]+$/u.test(version)) {
 		throw new Error(`dataset.json in ${directory} names no version a key can hold: ${JSON.stringify(version)}`);
+	}
+	if (options.trial !== true) {
+		const lost = lostZones(JSON.parse(readFileSync(join(directory, 'zones.json'), 'utf8')) as ZoneOutlines);
+		if (lost.length > 0) {
+			throw new Error(
+				`zones.json in ${directory} has no zone for ${lost.join(', ')}, which the world has: a broken build, ` +
+					'or for a country OSM has no zone of any more, a line in data/src/zoneless.ts',
+			);
+		}
 	}
 	const files: Record<string, { size: number; sha256: string }> = {};
 	for (const name of DATASET_FILES) {
@@ -81,6 +96,12 @@ export async function publishDataset(
 	await store.write(POINTER, json);
 	log(`${POINTER} now points at ${version}${previous === undefined ? '' : `, was ${previous}`}`);
 	return { manifest, previous };
+}
+
+/** The countries of COUNTRIES with a zone in the world (not ZONELESS_COUNTRIES) that the outlines lack. */
+function lostZones(outlines: ZoneOutlines): string[] {
+	const zones = new Set(outlines.features.map((outline) => outline.properties.zone));
+	return Object.keys(COUNTRIES).filter((code) => !ZONELESS_COUNTRIES.has(code) && !zones.has(code));
 }
 
 /** The files one manifest has and the other lacks, or has with another SHA-256. */

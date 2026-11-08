@@ -38,7 +38,7 @@ The dataset build (spec «Набор данных»): the builder that turns an 
 
 `build-graph … --report <report.md>` also writes the build report as Markdown.
 
-`publish-dataset <dataset directory> [--bucket <name>] [--prefix <prefix>]` puts a dataset in R2 (below); it needs the aws CLI, `CLOUDFLARE_ACCOUNT_ID` and R2's S3 credentials in `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`.
+`publish-dataset <dataset directory> [--bucket <name>] [--prefix <prefix>] [--trial]` puts a dataset in R2 (below); it needs the aws CLI, `CLOUDFLARE_ACCOUNT_ID` and R2's S3 credentials in `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`. Before it uploads anything, it checks that `zones.json` has a zone for every country of `COUNTRIES` but `ZONELESS_COUNTRIES` (`src/zoneless.ts`: the 35 without one in the world of 2026-11-07, each with the outline that holds its land) and names those that lack one; `--trial` skips that, for a dataset of some parts of the world. A country that loses its zone in OSM for good joins the list.
 
 `fetch-dataset [--bucket <name>]` is the first step of the `roadtrip` Worker's deploy (`worker/README.md`, «Deploy»): `fetchDataset` (`src/fetch-dataset.ts`) reads the pointer, downloads its version's `graph.graph` and `dataset.json` into `engine/dataset/`, `zones.json` and `cities.json` into `web/public/data/`, each next to its place, and moves them in only once every file's size and SHA-256 match the pointer's, so a bad download leaves the files there were. It reads R2 through Cloudflare's API with `CLOUDFLARE_API_TOKEN` (Workers R2 Storage: Read) and `CLOUDFLARE_ACCOUNT_ID`, which Workers Builds gives the deploy.
 
@@ -63,7 +63,7 @@ The dataset in R2, bucket `roadtrip-datasets`:
 - `<version>/manifest.json`: the version and each file's size and SHA-256. Once it is there, the version keeps its files, so one version names one dataset: `publish-dataset` takes the same files again (a rerun) and refuses others before it uploads anything, which then go under a new version;
 - `current.json`: the pointer, a copy of the current version's manifest. It moves only once every file of the version is uploaded and its size checked, so a failed run leaves the version before it current. The deploy reads it (`fetch-dataset`, above), then takes the files under its version.
 
-A run of only some of the parts is a trial: it publishes under `trials/<run id>/` and deletes that at the end, so the current dataset stays.
+A run of only some of the parts is a trial: it publishes under `trials/<run id>/` with `--trial` and deletes that at the end, so the current dataset stays.
 
 ## Tests
 
@@ -76,6 +76,6 @@ The fixtures in `test/fixtures/` are hand-written OSM XML of a few countries and
 - `test/cities.test.ts`: the cities file from lines in GeoNames' formats, a double of Wikidata and the zones of `zones.osm`; `test/wikidata.test.ts`: the Wikidata client against a double of the Query Service.
 - `test/commands.test.ts`: the commands as processes; `build-cities` reads the small GeoNames files in `test/fixtures/geonames/`.
 - `test/zone-locator.test.ts`: `ZoneLocator` and the builder's `ZoneCells` on squares of whole degrees.
-- `test/publish.test.ts`: `publishDataset` against a double of R2: the pointer moves last, and not at all after a failed upload; nothing goes over a version published with other files.
+- `test/publish.test.ts`: `publishDataset` against a double of R2: the pointer moves last, and not at all after a failed upload; nothing goes over a version published with other files, nor anywhere when a country lost its zone, but in a trial; `ZONELESS_COUNTRIES` names countries of `COUNTRIES` only.
 - `test/fetch-dataset.test.ts`: `fetchDataset` against a double of R2: the files of the pointer's version take their places, and none does when one's SHA-256 is not the pointer's or the bucket lacks it.
 - `test/valhalla-metrics.test.ts`: the measures of the Valhalla comparison (ring area, the median time to cities, the tolerance); the comparison itself runs in no test.

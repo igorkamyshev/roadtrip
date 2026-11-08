@@ -266,11 +266,13 @@ jobs:
           echo "::add-mask::$secret"
           echo "AWS_ACCESS_KEY_ID=$id" >> "$GITHUB_ENV"
           echo "AWS_SECRET_ACCESS_KEY=$secret" >> "$GITHUB_ENV"
+      # It refuses a world without a country's zone, and other files under a version already published, before it
+      # uploads anything. A trial holds some parts of the world only: --trial skips the zones.
       - name: Publish to R2
         run: |
           # The step's default shell is `bash -e`: without pipefail, tee would hide a failed publish.
           set -o pipefail
-          node data/src/cli/publish-dataset.ts dataset --bucket "$BUCKET" --prefix "$PREFIX" 2>&1 | tee publish.log
+          node data/src/cli/publish-dataset.ts dataset --bucket "$BUCKET" --prefix "$PREFIX" ${PREFIX:+--trial} 2>&1 | tee publish.log
           {
             echo "### В R2"
             echo
