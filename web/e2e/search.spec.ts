@@ -26,7 +26,7 @@ async function reopen(page: Page, path: string): Promise<void> {
 }
 
 test.beforeEach(({ ringApi }) => {
-	ringApi.respond((call) => squareRing(Number(call.lat), Number(call.lon), 0, 0.5));
+	ringApi.respond((call) => squareRing(Number(call.lat), Number(call.lon), [0, 0.5]));
 });
 
 test.describe('the search', () => {
@@ -169,7 +169,7 @@ test.describe('«Город» on the first card', () => {
 	];
 	for (const { outcome, answer } of withoutRing) {
 		test(`opens «Откуда едем» from the card of ${outcome}, and a city found there is the new origin`, async ({ page, ringApi }) => {
-			ringApi.respond((call) => (call.lat === '44.80400' ? squareRing(44.804, 20.465, 0, 0.5) : answer));
+			ringApi.respond((call) => (call.lat === '44.80400' ? squareRing(44.804, 20.465, [0, 0.5]) : answer));
 			await page.goto('/#/?p=45.50000,22.50000&h=1');
 			await expect(firstCard(page).getByRole('button', { name: 'Город' })).toBeVisible();
 

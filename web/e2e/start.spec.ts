@@ -7,7 +7,7 @@ const BELGRADE = { lat: 44.8176, lon: 20.4573 };
 
 test('on the first visit the ring comes for where the person is, N = 1', async ({ page, context, ringApi }) => {
 	await allowGeolocation(context, BELGRADE);
-	ringApi.respond((call) => squareRing(Number(call.lat), Number(call.lon), 0, 0.5));
+	ringApi.respond((call) => squareRing(Number(call.lat), Number(call.lon), [0, 0.5]));
 
 	await page.goto('/');
 
@@ -16,7 +16,7 @@ test('on the first visit the ring comes for where the person is, N = 1', async (
 	// The origin's label is the nearest city of the cities file.
 	await expect(phrase(page)).toContainText('Из точки Белград, до 1 часа в пути.');
 	await expectRingCard(page, 'до 1 ч');
-	await expect.poll(() => ringOnMap(page)).toEqual([squareRing(BELGRADE.lat, BELGRADE.lon, 0, 0.5).ring]);
+	await expect.poll(() => ringOnMap(page)).toEqual([squareRing(BELGRADE.lat, BELGRADE.lon, [0, 0.5]).ring]);
 	expect(await startOnMap(page)).toEqual([BELGRADE.lon, BELGRADE.lat]);
 	expect(ringApi.calls).toHaveLength(1);
 });
@@ -45,7 +45,7 @@ test('the sheet «Откуда едем» says when the browser gave no position
 });
 
 test('«Где я» sets the origin once the browser gives the position', async ({ page, context, ringApi }) => {
-	ringApi.respond((call) => squareRing(Number(call.lat), Number(call.lon), 0, 0.5));
+	ringApi.respond((call) => squareRing(Number(call.lat), Number(call.lon), [0, 0.5]));
 	await page.goto('/');
 	await expect(firstCard(page)).toContainText('Браузер не дал доступ к геолокации.');
 
@@ -60,7 +60,7 @@ test('«Где я» sets the origin once the browser gives the position', async 
 
 test('the pin puts the origin under it, where the person moved the map, and the marker stays there', async ({ page, ringApi }) => {
 	// The engine snaps the origin to a road: the ring is around another point, the marker is not.
-	ringApi.respond((call) => squareRing(Number(call.lat) + 0.2, Number(call.lon) + 0.2, 0, 0.5));
+	ringApi.respond((call) => squareRing(Number(call.lat) + 0.2, Number(call.lon) + 0.2, [0, 0.5]));
 	await page.goto('/');
 	await firstCard(page).getByRole('button', { name: 'На карте' }).click();
 
@@ -84,7 +84,7 @@ test('the pin puts the origin under it, where the person moved the map, and the 
 
 test('«Отмена» leaves the pin mode and the origin as they were', async ({ page, context, ringApi }) => {
 	await allowGeolocation(context, BELGRADE);
-	ringApi.respond((call) => squareRing(Number(call.lat), Number(call.lon), 0, 0.5));
+	ringApi.respond((call) => squareRing(Number(call.lat), Number(call.lon), [0, 0.5]));
 	await page.goto('/');
 	await expectRingCard(page, 'до 1 ч');
 
