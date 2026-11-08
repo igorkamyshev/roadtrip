@@ -13,9 +13,9 @@ Read a package's `AGENTS.md` before working in it:
 
 `error-tracking` is the Tail Worker that turns the Workers' errors into PostHog `$exception` events, and the home of the logger they write with (`import { logger } from 'error-tracking/logger'`). Its `README.md` says how a Worker attaches it and writes `logger.error`.
 
-`worker` is the Worker `roadtrip`: `GET /api/ring` from the ring cache in KV or the Container with the engine, the visa rules from Sherpa with their copies in KV and their reduction, the `EngineContainer` class and the wrangler config. Its `README.md` says how a request goes, how the visa rules are loaded and kept, where the routes and `deps` are built, and how to run it locally with the Container.
+`worker` is the Worker `roadtrip`: `GET /api/ring` from the ring cache in KV or the Container with the engine, the visa rules from Sherpa with their copies in KV and their reduction, the Worker's events in PostHog (`ring served`, `sherpa fetched`), the `EngineContainer` class and the wrangler config. Its `README.md` says how a request goes, how the visa rules are loaded and kept, what the events say, where the routes and `deps` are built, and how to run it locally with the Container.
 
-`web` is the client, the one screen, built into the Worker's static assets. Its `README.md` says where the state, the ring requests, the map's layers and the phrase's slots are, and how the screen tests run (`pnpm e2e`, Playwright).
+`web` is the client, the one screen, built into the Worker's static assets. Its `README.md` says where the state, the ring requests, the map's layers, the phrase's slots and the events to PostHog are, how the source maps are uploaded, and how the screen tests run (`pnpm e2e`, Playwright).
 
 ## Agent skills
 
