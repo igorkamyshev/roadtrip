@@ -11,8 +11,18 @@ files=$(git diff --cached --name-only --diff-filter=ACMR | while read -r f; do [
 if [ -n "$files" ]; then
 	code=$(echo "$files" | grep -E '\.(ts|tsx|js|mjs|cjs)$' || true)
 	if [ -n "$code" ]; then
+		before=$(echo "$code" | xargs git hash-object)
 		# Errors that --fix cannot fix stop the commit.
 		echo "$code" | xargs pnpm exec oxlint --fix
+		# Some of Oxlint's fixes break types (ADR 0002): once one changed a file, the whole
+		# repository's types are checked, since a package's change can break its consumers.
+		if [ "$before" != "$(echo "$code" | xargs git hash-object)" ]; then
+			out=$(pnpm typecheck 2>&1) || {
+				echo "$out"
+				echo "Oxlint's fixes broke the types above: fix them, or undo the fix and disable the rule on its line with the reason."
+				exit 1
+			}
+		fi
 	fi
 	echo "$files" | xargs pnpm exec oxfmt --no-error-on-unmatched-pattern
 	echo "$files" | xargs git add

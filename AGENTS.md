@@ -21,12 +21,11 @@ Read a package's `AGENTS.md` before working in it:
 
 ## Checks
 
-Every finding of Oxlint, fallow and our own rules in `lint/` is an error ([ADR 0002](docs/adr/0002-strict-checks-oxlint-fallow-oxfmt.md)). A hook lints the source files you change once you move on, at your next shell command or when you stop; pre-commit formats, autofixes and checks the whole project; CI runs `.github/workflows/checks.yml`. The client's build fails when the first paint's JavaScript is over its budget (`web/vite.config.ts`).
+Every finding of Oxlint, fallow and our own rules in `lint/` is an error ([ADR 0002](docs/adr/0002-strict-checks-oxlint-fallow-oxfmt.md)). A hook lints the source files you change once you move on, at your next shell command or when you stop; pre-commit formats, autofixes (then typechecks, if a fix changed a file) and checks the whole project; CI runs `.github/workflows/checks.yml`. The client's build fails when the first paint's JavaScript is over its budget (`web/vite.config.ts`).
 
 - Fix the code until the checks pass: `pnpm format`, `pnpm lint`.
 - A rule that is wrong for one line is disabled on that line, by name, with the reason: `// oxlint-disable-next-line <rule> -- <why>`.
 - The rule set (`.oxlintrc.json`, `.fallowrc.jsonc`, `lint/`) is the Owner's call: propose a change with its reason instead of making it.
-- Pre-commit autofixes can break types: run `pnpm typecheck` before you push.
 - Before a refactor, `pnpm health` shows where complexity and churn pile up.
 
 ## Deploy and services
