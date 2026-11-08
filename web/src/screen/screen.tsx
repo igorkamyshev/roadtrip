@@ -223,6 +223,7 @@ export function Screen() {
 					<FirstCard
 						state={card}
 						actions={{
+							onSearch: openStart,
 							onPin: startPinning,
 							onLocate: locateHere,
 							onRetry: () => {

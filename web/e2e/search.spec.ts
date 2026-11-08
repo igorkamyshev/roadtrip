@@ -1,8 +1,10 @@
 // The sheet «Откуда едем» and the origin's label (spec «Экран»: the phrase, the sheet, the first card's table;
-// stories 2, 4, 5): the city search by the start of the Russian or local name, «Указать на карте» and «Где я», and
-// the label of each way to set the origin. The cities are `CITIES` of the fixtures, real ones around Belgrade.
+// stories 2, 4, 5): the city search by the start of the Russian or local name, «Указать на карте» and «Где я», «Город»
+// on the first card, and the label of each way to set the origin. The cities are `CITIES` of the fixtures, real ones
+// around Belgrade.
 import type { Page } from '@playwright/test';
-import { allowGeolocation, CITIES, expect, serveCities, squareRing, test } from './fixtures.ts';
+import type { RingResponse } from 'worker/api';
+import { allowGeolocation, CITIES, expect, serveCities, squareRing, test, visaRules } from './fixtures.ts';
 import { firstCard, phrase } from './screen.ts';
 
 const startSheet = (page: Page) => page.getByRole('dialog', { name: 'Откуда едем' });
@@ -108,6 +110,36 @@ test.describe('the sheet «Откуда едем»', () => {
 		await expect(startSheet(page)).toHaveCount(0);
 		await expect(phrase(page)).toContainText('Из точки Панчево, до 1 часа в пути.');
 	});
+});
+
+test.describe('«Город» on the first card', () => {
+	test('opens «Откуда едем» from «Откуда едем?», before «На карте» and «Где я»', async ({ page }) => {
+		await page.goto('/');
+
+		await expect(firstCard(page).getByRole('button')).toHaveText(['Город', 'На карте', '']);
+		await firstCard(page).getByRole('button', { name: 'Город' }).click();
+
+		await expect(startSheet(page).getByRole('searchbox', { name: 'Найти город' })).toBeFocused();
+	});
+
+	const withoutRing: readonly { outcome: string; answer: RingResponse }[] = [
+		{ outcome: 'no_roads', answer: { outcome: 'no_roads', startCountry: 'SRB', source: 'cache', ...visaRules() } },
+		{ outcome: 'no_ring', answer: { outcome: 'no_ring', startCountry: 'UKR', source: 'cache', ...visaRules() } },
+	];
+	for (const { outcome, answer } of withoutRing) {
+		test(`opens «Откуда едем» from the card of ${outcome}, and a city found there is the new origin`, async ({ page, ringApi }) => {
+			ringApi.respond((call) => (call.lat === '44.80400' ? squareRing(44.804, 20.465, 0, 0.5) : answer));
+			await page.goto('/#/?p=45.50000,22.50000&h=1');
+			await expect(firstCard(page).getByRole('button', { name: 'Город' })).toBeVisible();
+
+			await firstCard(page).getByRole('button', { name: 'Город' }).click();
+			await startSheet(page).getByRole('searchbox', { name: 'Найти город' }).fill('Белград');
+			await startSheet(page).getByRole('button', { name: /^Белград/u }).click();
+
+			await expect(firstCard(page)).toContainText('В кольце до 1 ч');
+			await expect(phrase(page)).toContainText('Из точки Белград, до 1 часа в пути.');
+		});
+	}
 });
 
 test.describe("the origin's label", () => {

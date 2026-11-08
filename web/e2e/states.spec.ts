@@ -19,13 +19,13 @@ const outcomes: readonly { outcome: string; answer: RingResponse; texts: readonl
 		outcome: 'no_roads',
 		answer: { outcome: 'no_roads', startCountry: 'SRB', source: 'cache', ...visaRules() },
 		texts: ['Рядом нет дорог', 'Точка дальше 50 км от дороги. Выберите другую.'],
-		buttons: ['На карте'],
+		buttons: ['Город', 'На карте'],
 	},
 	{
 		outcome: 'no_ring',
 		answer: { outcome: 'no_ring', startCountry: 'UKR', source: 'cache', ...visaRules() },
 		texts: ['Кольца нет', 'Отсюда посчитать не можем: эта страна или территория закрыта для всех.'],
-		buttons: ['На карте'],
+		buttons: ['Город', 'На карте'],
 	},
 ];
 
