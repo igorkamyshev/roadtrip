@@ -2,7 +2,8 @@
 // #11). A copy per citizenship holds only Sherpa's table «country → class» and when it came:
 //
 // - a copy is fresh for a day;
-// - a stale copy is served at once and refreshed in the background (`waitUntil`);
+// - a stale copy is served at once and refreshed in the background (`waitUntil`), by one request of an isolate at a
+//   time;
 // - without a copy, the request waits for Sherpa;
 // - a good copy is never deleted, and a failed load never overwrites it;
 // - after a failure, the next request to Sherpa for that citizenship waits 15 min: a mark in KV with a TTL.
@@ -28,6 +29,11 @@ export interface VisaRulesStore {
 
 export interface VisaRulesDeps extends SherpaDeps {
 	readonly visaRules: VisaRulesStore;
+	/**
+	 * The citizenships whose stale copy is being refreshed from this isolate (index.ts keeps one set per isolate), so
+	 * that the requests that meet the stale copy meanwhile start no refresh of their own.
+	 */
+	readonly refreshing: Set<string>;
 	/** Milliseconds since the epoch. */
 	readonly now: () => number;
 	readonly waitUntil: (promise: Promise<unknown>) => void;
@@ -70,8 +76,13 @@ async function visaRules(citizenship: string, deps: VisaRulesDeps, context: LogC
 	}
 	const failedRecently = (await deps.visaRules.get(failedKey(citizenship))) !== null;
 	if (copy !== undefined) {
-		if (!failedRecently) {
-			deps.waitUntil(load(citizenship, 'background', deps, context));
+		if (!failedRecently && !deps.refreshing.has(citizenship)) {
+			deps.refreshing.add(citizenship);
+			deps.waitUntil(
+				load(citizenship, 'background', deps, context).finally(() => {
+					deps.refreshing.delete(citizenship);
+				}),
+			);
 		}
 		return copy;
 	}

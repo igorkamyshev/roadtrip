@@ -63,6 +63,9 @@ export class EngineContainer extends Container<Env> {
 /** The tiles route, with the archive's header and directories kept by the isolate between requests. */
 const handleTiles = createTilesHandler();
 
+/** The citizenships whose stale visa rules a request of this isolate is refreshing. */
+const refreshing = new Set<string>();
+
 export default {
 	async fetch(request, env, ctx) {
 		const { pathname } = new URL(request.url);
@@ -82,6 +85,7 @@ export default {
 					get: (key) => env.VISA_RULES.get(key, 'text'),
 					put: (key, value, options) => env.VISA_RULES.put(key, value, options),
 				},
+				refreshing,
 				visaExemptions: VISA_EXEMPTIONS,
 				container: getContainer(env.ENGINE),
 				datasetVersion: dataset.version,

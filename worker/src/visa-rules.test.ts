@@ -173,6 +173,29 @@ describe("Sherpa's copies", () => {
 		expect(sherpa.passports).toEqual(['RUS', 'RUS']);
 	});
 
+	it('once stale are refreshed by one request at a time, however many come while it runs', async () => {
+		const { request, settle, get, clock, sherpa } = api({ container: await engineContainer(straightRoad) });
+		await get('lat=0&lon=0&hours=2&cit=RUS');
+		sherpa.hold();
+
+		clock.now = START + DAY;
+		await Promise.all([request('lat=0&lon=0&hours=2&cit=RUS'), request('lat=0&lon=0&hours=3&cit=RUS'), request('lat=0&lon=0&hours=4&cit=RUS')]);
+		expect(sherpa.passports).toEqual(['RUS', 'RUS']);
+		sherpa.release();
+		await settle();
+
+		// Once a refresh ended, the next stale copy is refreshed again: after one that came, and after one that failed,
+		// once the 15 min of the failure are over.
+		clock.now = START + 2 * DAY;
+		await get('lat=0&lon=0&hours=2&cit=RUS');
+		sherpa.answer(() => ({ status: 503 }));
+		clock.now = START + 3 * DAY;
+		await get('lat=0&lon=0&hours=2&cit=RUS');
+		clock.now = START + 3 * DAY + 15 * MINUTE;
+		await get('lat=0&lon=0&hours=2&cit=RUS');
+		expect(sherpa.passports).toEqual(['RUS', 'RUS', 'RUS', 'RUS', 'RUS']);
+	});
+
 	it('are waited for when there is none', async () => {
 		const { request, sherpa } = api({ container: await engineContainer(straightRoad) });
 		sherpa.hold();

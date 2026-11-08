@@ -284,6 +284,7 @@ export function api({
 	const deps: RingDeps = {
 		rings,
 		visaRules,
+		refreshing: new Set(),
 		visaExemptions,
 		container,
 		datasetVersion,

@@ -25,6 +25,8 @@ export interface RingDeps {
 	readonly rings: RingCache;
 	/** Sherpa's copies, by citizenship (visa-rules.ts). */
 	readonly visaRules: VisaRulesStore;
+	/** The citizenships whose stale copy this isolate is refreshing (visa-rules.ts). */
+	readonly refreshing: Set<string>;
 	/** The visa exemptions' table: rules' `VISA_EXEMPTIONS`, which deploys with the Worker. */
 	readonly visaExemptions: readonly VisaExemption[];
 	readonly container: Container;

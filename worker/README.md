@@ -44,7 +44,7 @@ The events, never with the origin:
 
 `src/visa-rules.ts` keeps a copy per citizenship in the KV namespace `roadtrip-visa-rules` (binding `VISA_RULES`): `visa-rules:<alpha-3>` → `{ loadedAt, classes }`, Sherpa's countries by group, with no expiry.
 
-- A copy is fresh for a day. A stale copy is served at once and refreshed through `waitUntil`; without a copy the request waits for Sherpa.
+- A copy is fresh for a day. A stale copy is served at once and refreshed through `waitUntil`, by one request of an isolate at a time: the isolate's set `refreshing` (in `deps`) keeps the requests that meet the copy meanwhile from starting refreshes of their own. Without a copy the request waits for Sherpa.
 - A failure never overwrites or deletes a copy. It writes `visa-rules-failed:<alpha-3>` for 15 min (KV's TTL), and while that mark is there Sherpa is not asked for that citizenship: a stale copy is served as it is, and without one the answer is `visa_rules_missing`.
 - Every failure goes to `logger.error` as a `SherpaError`, with `reason` (the HTTP status, `network`, `timeout` or `bad_response`), `citizenship`, `served` (`stale` or `error`) and `problem`, the detail. Every request to Sherpa, failed or not, is a `sherpa fetched` event (above).
 
