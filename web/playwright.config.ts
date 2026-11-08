@@ -2,6 +2,7 @@
 // answered by request interception (e2e/fixtures.ts), geolocation through the context's permissions, time
 // through `page.clock`.
 import { defineConfig } from '@playwright/test';
+import { OFFLINE } from './e2e/offline.ts';
 
 // Another port for a second checkout's tests at the same time (agents' worktrees): E2E_PORT=4180 pnpm e2e.
 const PORT = Number(process.env.E2E_PORT ?? 4173);
@@ -19,6 +20,8 @@ export default defineConfig({
 		viewport: { width: 390, height: 844 },
 		locale: 'ru-RU',
 		trace: 'off',
+		// Nothing a test runs reaches the network, PostHog's beacons included (e2e/offline.ts).
+		proxy: OFFLINE,
 	},
 	webServer: {
 		// The tests run against the build that the Worker serves, not the dev server.

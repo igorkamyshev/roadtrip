@@ -4,6 +4,7 @@
 import type { Page } from '@playwright/test';
 import type { StyleSpecification } from 'maplibre-gl';
 import { expect, test } from './fixtures.ts';
+import { OFFLINE } from './offline.ts';
 
 /** The label of the spec: `coalesce(name:ru, name)`. */
 const RUSSIAN_NAME = ['coalesce', ['get', 'name:ru'], ['get', 'name']];
@@ -71,7 +72,7 @@ test('the map credits OpenStreetMap and Protomaps', async ({ page }) => {
 
 test('the client keeps its map off window: it only announces it, and these tests listen', async ({ browser, baseURL }) => {
 	// A context without the tests' listener, as a person's browser: the production build exposes nothing.
-	const context = await browser.newContext({ baseURL });
+	const context = await browser.newContext({ baseURL, proxy: OFFLINE });
 	const page = await context.newPage();
 	await page.route(/^(?!http:\/\/localhost[:/])/u, (route) => route.abort('blockedbyclient'));
 	await page.goto('/');

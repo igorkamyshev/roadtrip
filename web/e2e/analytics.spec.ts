@@ -94,6 +94,33 @@ test('off the production host PostHog is not started: nothing goes to it', async
 	expect(ringApi.calls).toHaveLength(2);
 });
 
+test('no request of a test reaches PostHog: one no route answers, a beacon of a page going away included, is cut off', async ({
+	page,
+	context,
+}) => {
+	// As after a test, when the routes are gone and the page's beacons still leave.
+	await context.unrouteAll({ behavior: 'ignoreErrors' });
+	const failed: string[] = [];
+	const finished: string[] = [];
+	page.on('requestfailed', (request) => failed.push(`${request.url()} ${request.failure()?.errorText}`));
+	page.on('requestfinished', (request) => finished.push(request.url()));
+	// PostHog's proxy on our domain, and PostHog's own host.
+	const hosts = [POSTHOG_PROXY, 'https://us.i.posthog.com'];
+	await page.goto('about:blank');
+
+	await page.evaluate((urls) => {
+		for (const url of urls) {
+			navigator.sendBeacon(`${url}/e/`, '{}');
+		}
+		void fetch(`${urls[0]}/flags/`, { mode: 'no-cors' }).catch(() => undefined);
+	}, hosts);
+
+	await expect.poll(() => failed.toSorted()).toEqual(
+		[`${hosts[0]}/e/`, `${hosts[0]}/flags/`, `${hosts[1]}/e/`].map((url) => `${url} net::ERR_PROXY_CONNECTION_FAILED`),
+	);
+	expect(finished).toEqual([]);
+});
+
 test.describe('start set', () => {
 	test('on load from a link nothing was saved for: by link, with the nearest city and its country; and link opened', async ({ page, ringApi, posthog }) => {
 		ringApi.respond((call) => squareRing(BELGRADE.lat, BELGRADE.lon, call.hours - 1, call.hours));
