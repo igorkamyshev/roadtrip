@@ -4,6 +4,10 @@ import { type BorderTable, borderTable, borderTableProblems } from 'rules';
 import { describe, expect, it } from 'vitest';
 import { crossing, pair, rules } from './rules.ts';
 
+/** The shipped table's row of a pair, and of a crossing. */
+const shippedPair = (one: string, two: string) => borderTable.pairs.find(({ pair: [a, b] }) => a === one && b === two);
+const shippedCrossing = (id: string) => borderTable.crossings.find((row) => row.id === id);
+
 describe('the border table', () => {
 	it('as shipped has no problems', () => {
 		expect(borderTableProblems(borderTable)).toEqual([]);
@@ -22,9 +26,6 @@ describe('the border table', () => {
 	});
 
 	it('as shipped crosses a border that differs by citizenship as a citizen of Russia does (#13), and Narva only on foot', () => {
-		const shippedPair = (one: string, two: string) => borderTable.pairs.find(({ pair: [a, b] }) => a === one && b === two);
-		const shippedCrossing = (id: string) => borderTable.crossings.find((row) => row.id === id);
-
 		expect(shippedPair('BLR', 'RUS')).toMatchObject({ status: 'no_control' });
 		expect(shippedPair('BLR', 'RUS')?.borderHours).toBeUndefined();
 		expect(shippedPair('SYR', 'TUR')).toMatchObject({ status: 'closed' });
@@ -42,12 +43,12 @@ describe('the border table', () => {
 		['a border delay at a closed pair', rules({ pairs: [pair('closed', { borderHours: 1 })] }), 'no border delay'],
 		[
 			'a crossings_only pair with no open crossing',
-			rules({ pairs: [pair('crossings_only')], crossings: [crossing('shut', 0, 1, 'closed')] }),
+			rules({ pairs: [pair('crossings_only')], crossings: [crossing('shut', [0, 1], 'closed')] }),
 			'no open crossing',
 		],
-		['a crossing of a closed pair', rules({ pairs: [pair('closed')], crossings: [crossing('there', 0, 1, 'open')] }), 'changes nothing'],
-		['a crossing twice', rules({ crossings: [crossing('there', 0, 1, 'open'), crossing('there', 0.5, 1, 'open')] }), 'two rows'],
-		['a crossing off the globe', rules({ crossings: [crossing('there', 95, 1, 'open')] }), 'not coordinates'],
+		['a crossing of a closed pair', rules({ pairs: [pair('closed')], crossings: [crossing('there', [0, 1], 'open')] }), 'changes nothing'],
+		['a crossing twice', rules({ crossings: [crossing('there', [0, 1], 'open'), crossing('there', [0.5, 1], 'open')] }), 'two rows'],
+		['a crossing off the globe', rules({ crossings: [crossing('there', [95, 1], 'open')] }), 'not coordinates'],
 		['a date that is not one', rules({ pairs: [pair('closed', { checked: '07.11.2026' })] }), 'not a date'],
 		['a source that is not a link', rules({ pairs: [pair('closed', { sources: ['FCDO'] })] }), 'not a link'],
 		[

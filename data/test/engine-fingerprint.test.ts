@@ -13,8 +13,7 @@ const checkout = (path: string) => readFileSync(new URL(path, root), 'utf8');
 /** SHA-256 of the sources' texts one after another in the order of their paths, with LF line endings. */
 function fingerprint(read: (path: string) => string): Promise<string> {
 	return sha256Hex(
-		[...ENGINE_SOURCES]
-			.sort()
+		ENGINE_SOURCES.toSorted()
 			.map((path) => read(path).replaceAll(/\r\n?/gu, '\n'))
 			.join(''),
 	);
@@ -24,6 +23,7 @@ describe('the engine fingerprint', () => {
 	it('is the one recorded next to ENGINE_VERSION', async () => {
 		const sources = await fingerprint(checkout);
 
+		// oxlint-disable-next-line vitest/valid-expect -- vitest's expect takes a message, here the fingerprint to record
 		expect(
 			sources,
 			'A source of the ring’s answer changed (ENGINE_SOURCES in engine/src/version.ts). If the change can change ' +

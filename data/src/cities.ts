@@ -5,7 +5,7 @@ import { type Graph, ZoneLocator } from 'engine/graph';
 import { COUNTRIES } from 'rules/countries';
 import type { CityRow } from './cities-file.ts';
 
-export const MIN_POPULATION = 15_000;
+const MIN_POPULATION = 15_000;
 
 /**
  * GeoNames' feature codes left out (https://www.geonames.org/export/codes.html): a section of a populated place,
@@ -70,7 +70,7 @@ export async function buildCities(sources: CitiesSources): Promise<{ cities: Cit
 		zoneByPolygon += polygon === 0 ? 0 : 1;
 		zoned.push({ ...place, zone });
 	}
-	zoned.sort((one, two) => two.population - one.population || one.id - two.id);
+	zoned.sort((one, two) => (one.population === two.population ? one.id - two.id : two.population - one.population));
 
 	const geonames = await russianNames(sources.alternateNames, new Set(zoned.map((place) => place.id)));
 	const wikidata = await sources.wikidataLabels(zoned.filter((place) => !geonames.has(place.id)).map((place) => place.id));

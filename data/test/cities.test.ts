@@ -3,7 +3,7 @@
 // polygons. The inputs are lines in GeoNames' own formats (cities1000.txt, alternateNamesV2.txt) and a double of
 // Wikidata; the zones are those of zones.osm (its header has the squares).
 import { describe, expect, it } from 'vitest';
-import { type CityRow, decodeCities, encodeCities } from '../src/cities-file.ts';
+import { type CityRow, decodeCities, encodeCities, parseCitiesFile } from '../src/cities-file.ts';
 import { buildCities, type CitiesSources } from '../src/cities.ts';
 import { fixtureGraph } from './fixture-graph.ts';
 
@@ -42,30 +42,38 @@ interface AlternateName {
 
 let alternateNameId = 1;
 
+const flag = (set: boolean | undefined) => (set === true ? '1' : '');
+
 /** A line of alternateNamesV2.txt: 10 columns separated by tabs, the flags `1` or empty. */
 function nameLine({ id, name, language = 'ru', preferred, short, colloquial, historic, to = '' }: AlternateName): string {
-	const flag = (set: boolean | undefined) => (set ? '1' : '');
 	return [alternateNameId++, id, language, name, flag(preferred), flag(short), flag(colloquial), flag(historic), '', to].join('\t');
 }
 
-async function* lines(values: readonly string[]): AsyncIterable<string> {
-	yield* values;
-}
+/** The lines of a file, as the build reads them. */
+const lines = (values: readonly string[]): AsyncIterable<string> => ReadableStream.from(values);
 
 /** Wikidata with no Russian labels, recording what it is asked. */
 function noWikidata(asked: number[][] = []): CitiesSources['wikidataLabels'] {
-	return async (ids) => {
+	return (ids) => {
 		asked.push([...ids]);
-		return new Map();
+		return Promise.resolve(new Map());
 	};
 }
 
 function build(places: readonly Place[], names: readonly AlternateName[] = [], wikidataLabels = noWikidata()) {
-	return buildCities({ cities: lines(places.map(cityLine)), alternateNames: lines(names.map(nameLine)), wikidataLabels, graph: zones });
+	return buildCities({
+		cities: lines(places.map((place) => cityLine(place))),
+		alternateNames: lines(names.map((name) => nameLine(name))),
+		wikidataLabels,
+		graph: zones,
+	});
 }
 
 // A point inside Cyprus (2°–4°E) and outside Northern Cyprus (2.2°–2.8°E).
 const IN_CYPRUS = { lat: 0.5, lon: 3.5 };
+
+/** A city in Cyprus, the bigger the smaller its id. */
+const city = (id: number) => ({ id, name: `City ${id}`, ...IN_CYPRUS, population: 100_000 - id });
 
 describe('the cities', () => {
 	it('holds the places of 15 000 people and more, without sections of cities and vanished places', async () => {
@@ -103,7 +111,6 @@ describe('the cities', () => {
 	});
 
 	it("takes GeoNames' Russian name that is in use: preferred, then short, then the shortest; a colloquial one last", async () => {
-		const city = (id: number) => ({ id, name: `City ${id}`, ...IN_CYPRUS, population: 100_000 - id });
 		const { cities } = await build(
 			[city(1), city(2), city(3), city(4), city(5)],
 			[
@@ -133,7 +140,6 @@ describe('the cities', () => {
 	});
 
 	it('drops a qualifier in brackets from a Russian name, and takes a name in Cyrillic over one with Latin letters', async () => {
-		const city = (id: number) => ({ id, name: `City ${id}`, ...IN_CYPRUS, population: 100_000 - id });
 		const { cities } = await build(
 			[city(1), city(2), city(3)],
 			[
@@ -161,9 +167,9 @@ describe('the cities', () => {
 				{ id: 3, name: 'Paju', ...IN_CYPRUS, population: 50_000 },
 			],
 			[{ id: 2, name: 'Брюссель' }],
-			async (ids) => {
+			(ids) => {
 				asked.push([...ids]);
-				return new Map([[1, 'Алст']]);
+				return Promise.resolve(new Map([[1, 'Алст']]));
 			},
 		);
 
@@ -239,7 +245,7 @@ describe('the cities file', () => {
 	});
 
 	it('reads back the cities with their ids, biggest first', () => {
-		expect(decodeCities(JSON.parse(JSON.stringify(encodeCities(cities))))).toEqual([
+		expect(decodeCities(parseCitiesFile(JSON.parse(JSON.stringify(encodeCities(cities)))))).toEqual([
 			[792680, 'Белград', 'Belgrade', 44.804, 20.465, 1_273_651, 'SRB'],
 			[787657, 'Ниш', 'Niš', 43.325, 21.903, 250_000, 'SRB'],
 			[3194360, 'Нови-Сад', 'Novi Sad', 45.252, 19.837, 215_400, 'SRB'],
