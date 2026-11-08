@@ -27,13 +27,20 @@ export type SherpaClass = (typeof SHERPA_CLASSES)[number];
 /** One passport's table «country → class», as the countries of each class. A country in none is not listed. */
 export type SherpaClasses = Readonly<Partial<Record<SherpaClass, readonly string[]>>>;
 
-/** What a request to Sherpa came to: the `result` of #34's `sherpa fetched`, with the classes when it is `ok`. */
-export type SherpaResult =
+/**
+ * What a request to Sherpa came to: the `result` of `sherpa fetched`, with the classes when it is `ok`, and what is
+ * left of the quota when Sherpa's answer says it in a header (`QUOTA_HEADERS`; research/sherpa-api saw none).
+ */
+export type SherpaResult = (
 	| { readonly result: 'ok'; readonly status: number; readonly classes: SherpaClasses }
 	/** Sherpa answered another status, or no connection: `status` is absent. */
 	| { readonly result: 'http_error'; readonly status?: number; readonly problem: string }
 	| { readonly result: 'timeout'; readonly problem: string }
-	| { readonly result: 'bad_response'; readonly status: number; readonly problem: string };
+	| { readonly result: 'bad_response'; readonly status: number; readonly problem: string }
+) & { readonly quotaRemaining?: number };
+
+/** The headers that may say what is left of the quota, the usual one first, then the IETF draft's. */
+export const QUOTA_HEADERS = ['x-ratelimit-remaining', 'ratelimit-remaining'] as const;
 
 export type SherpaFailure = Exclude<SherpaResult, { result: 'ok' }>;
 
@@ -94,13 +101,25 @@ async function request(passport: string, deps: SherpaDeps, signal: AbortSignal):
 	} catch (error) {
 		return { result: 'http_error', problem: error instanceof Error ? error.message : String(error) };
 	}
+	const quota = quotaRemaining(response.headers);
 	if (!response.ok) {
-		return { result: 'http_error', status: response.status, problem: `Sherpa answered ${response.status}: ${text.slice(0, 200)}` };
+		return { result: 'http_error', status: response.status, problem: `Sherpa answered ${response.status}: ${text.slice(0, 200)}`, ...quota };
 	}
 	const classes = parseMap(text);
 	return typeof classes === 'string'
-		? { result: 'bad_response', status: response.status, problem: classes }
-		: { result: 'ok', status: response.status, classes };
+		? { result: 'bad_response', status: response.status, problem: classes, ...quota }
+		: { result: 'ok', status: response.status, classes, ...quota };
+}
+
+/** `{ quotaRemaining }` from the first of `QUOTA_HEADERS` that holds a whole number; nothing when none does. */
+function quotaRemaining(headers: Headers): { quotaRemaining?: number } {
+	for (const name of QUOTA_HEADERS) {
+		const value = headers.get(name)?.trim();
+		if (value !== undefined && /^\d+$/u.test(value)) {
+			return { quotaRemaining: Number(value) };
+		}
+	}
+	return {};
 }
 
 const CLASS_SET: ReadonlySet<string> = new Set(SHERPA_CLASSES);

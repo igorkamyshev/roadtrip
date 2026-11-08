@@ -83,7 +83,7 @@ Every push to the default branch deploys this worker through Cloudflare Workers 
 
 Its `deploy` script (`wrangler deploy`) is the whole deploy: wrangler bundles the worker itself.
 
-No secrets. One var, `POSTHOG_API_KEY` in `wrangler.jsonc`: the PostHog project key, which only writes events and is public. It is empty until the Owner creates the project, and then the worker prints the events instead of sending them. To keep `wrangler dev` from sending events once the key is set, put `POSTHOG_API_KEY=` in `.dev.vars`.
+No secrets. One var, `POSTHOG_API_KEY` in `wrangler.jsonc`: the key of the PostHog project `roadtrip` (id 718601), which only writes events and is public; the Worker `roadtrip` sends its own events with the same key. Empty, the worker prints the events instead of sending them: to keep `wrangler dev` from sending events, put `POSTHOG_API_KEY=` in `.dev.vars`.
 
 ## Develop
 

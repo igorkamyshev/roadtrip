@@ -420,3 +420,90 @@ describe('the citizenships', () => {
 		expect((await get('lat=0&lon=0&hours=2&cit=PSE,TWN,VAT')).status).toBe(200);
 	});
 });
+
+describe('sherpa fetched', () => {
+	afterEach(() => {
+		vi.useRealTimers();
+	});
+
+	it('tells each request to Sherpa a request waited for: the citizenship, the result, the status and how long it took', async () => {
+		const clock = { now: START };
+		const sherpa = new SherpaDouble();
+		sherpa.answer((passport) => {
+			clock.now += 480;
+			return { body: sherpaMap(passport) };
+		});
+		const { get, analytics } = api({ container: await engineContainer(straightRoad), sherpa, clock });
+
+		await get('lat=0&lon=0&hours=2&cit=RUS');
+		await get('lat=0&lon=0&hours=2&cit=RUS');
+
+		expect(analytics.named('sherpa fetched')).toEqual([{ citizenship: 'RUS', result: 'ok', status: 201, duration_ms: 480, mode: 'blocking' }]);
+	});
+
+	it('tells the background refresh of a stale copy', async () => {
+		const { get, clock, analytics } = api({ container: await engineContainer(straightRoad) });
+		await get('lat=0&lon=0&hours=2&cit=SRB');
+
+		clock.now = START + DAY;
+		await get('lat=0&lon=0&hours=2&cit=SRB');
+
+		expect(analytics.named('sherpa fetched')).toEqual([
+			expect.objectContaining({ citizenship: 'SRB', result: 'ok', mode: 'blocking' }),
+			{ citizenship: 'SRB', result: 'ok', status: 201, duration_ms: 0, mode: 'background' },
+		]);
+	});
+
+	it.each([
+		['another status', { status: 429 }, { result: 'http_error', status: 429 }],
+		['no connection', 'network error', { result: 'http_error' }],
+		['a broken answer', { text: '<html>Bad gateway</html>' }, { result: 'bad_response', status: 201 }],
+	] as const)('tells a failure: %s', async (_, reply, failure) => {
+		const sherpa = new SherpaDouble();
+		sherpa.answer(() => reply);
+		const { get, analytics } = api({ container: await engineContainer(straightRoad), sherpa });
+
+		await get('lat=0&lon=0&hours=2&cit=RUS');
+
+		expect(analytics.named('sherpa fetched')).toEqual([{ citizenship: 'RUS', ...failure, duration_ms: 0, mode: 'blocking' }]);
+	});
+
+	it('tells a timeout after 10 s, without a status', async () => {
+		vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+		const clock = { now: START };
+		const sherpa = new SherpaDouble();
+		sherpa.answer(() => {
+			clock.now += 10_000;
+			return 'no answer';
+		});
+		const { get, analytics } = api({ container: await engineContainer(straightRoad), sherpa, clock });
+
+		const answer = get('lat=0&lon=0&hours=2&cit=RUS');
+		await vi.advanceTimersByTimeAsync(10_000);
+		await answer;
+
+		expect(analytics.named('sherpa fetched')).toEqual([{ citizenship: 'RUS', result: 'timeout', duration_ms: 10_000, mode: 'blocking' }]);
+	});
+
+	it.each(['x-ratelimit-remaining', 'ratelimit-remaining'])('tells what is left of the quota when Sherpa says it in %s', async (header) => {
+		const sherpa = new SherpaDouble();
+		sherpa.answer((passport) => ({ body: sherpaMap(passport), headers: { [header]: '997' } }));
+		const { get, analytics } = api({ container: await engineContainer(straightRoad), sherpa });
+
+		await get('lat=0&lon=0&hours=2&cit=RUS');
+
+		expect(analytics.named('sherpa fetched')).toEqual([expect.objectContaining({ result: 'ok', quota_remaining: 997 })]);
+	});
+
+	it('is not sent while the copy is fresh, or while a failure holds the next request', async () => {
+		const sherpa = new SherpaDouble();
+		sherpa.answer((passport) => (passport === 'RUS' ? { status: 503 } : { body: sherpaMap(passport) }));
+		const { get, clock, analytics } = api({ container: await engineContainer(straightRoad), sherpa });
+
+		await get('lat=0&lon=0&hours=2&cit=RUS,SRB');
+		clock.now = START + 15 * MINUTE - 1;
+		await get('lat=0&lon=0&hours=2&cit=RUS,SRB');
+
+		expect(analytics.named('sherpa fetched').map(({ citizenship }) => citizenship).sort()).toEqual(['RUS', 'SRB']);
+	});
+});

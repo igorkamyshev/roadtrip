@@ -1,6 +1,6 @@
-// `GET /api/ring` from the browser: the one place a ring request starts and ends (#34 measures it here). An
-// answer 200 is data whatever its `outcome`; a block by the WAF (429) and anything else that is not 200, the
-// network's failure included, is a `RingRequestError` the first card shows.
+// `GET /api/ring` from the browser: the one place a ring request starts and ends. An answer 200 is data whatever its
+// `outcome`; a block by the WAF (429) and anything else that is not 200, the network's failure included, is a
+// `RingRequestError` the first card shows, and `ring result` tells (src/analytics/).
 import { RING_PATH, type RingQuery, type RingResponse } from 'worker/api';
 
 /** Why the ring did not come: Cloudflare's block for too many requests, or any other failure. */
@@ -24,7 +24,7 @@ export class RingRequestError extends Error {
 export async function fetchRing(query: RingQuery): Promise<RingResponse> {
 	let response: Response;
 	try {
-		// The global fetch, looked up at the call: posthog-js wraps it to add its tracing headers (#34).
+		// The global fetch, looked up at the call: posthog-js wraps it to add its tracing headers (src/analytics/posthog.ts).
 		response = await fetch(ringUrl(query));
 	} catch {
 		throw new RingRequestError('error');

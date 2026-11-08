@@ -1,4 +1,6 @@
-// The client's entry: the opening state (link, then saved, then defaults), then the screen.
+// The client's entry: PostHog on the production host, the opening state (link, then saved, then defaults), then
+// the screen.
+import { send, startAnalytics } from './analytics/posthog.ts';
 import '@fontsource/golos-text/400.css';
 import '@fontsource/golos-text/500.css';
 import '@fontsource/golos-text/600.css';
@@ -16,10 +18,16 @@ import { createScreenRouter } from './router.tsx';
 import { searchFromState, stateFromSearch } from './state/search.ts';
 import { hashSearch, readSaved, startup, writeSaved } from './state/startup.ts';
 
+// First, so that PostHog catches the errors of everything after it.
+startAnalytics(window.location.hostname);
+
 // MapLibre 6 looks for its worker next to its own module, which the bundle moves: point it at the worker's file.
 setWorkerUrl(mapWorkerUrl);
 
 const opening = startup(hashSearch(window.location.hash), readSaved());
+if (opening.source === 'link' && !opening.hadSaved) {
+	send('link opened', {});
+}
 const router = createScreenRouter({ opening: opening.source });
 if (opening.source !== 'default') {
 	// The link with its invalid values replaced, or the saved state put into the link.

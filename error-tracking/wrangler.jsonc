@@ -10,10 +10,10 @@
 	"workers_dev": false,
 	"preview_urls": false,
 	"vars": {
-		// Project key of the roadtrip PostHog project (org Roadtrip, US). It only writes events and is
-		// public, so it is not a secret. Empty until the Owner creates the project: the worker then
+		// Project key of the roadtrip PostHog project (org Roadtrip, US, id 718601). It only writes
+		// events and is public, so it is not a secret. Empty (as `.dev.vars` may set it), the worker
 		// prints the events instead of sending them.
-		"POSTHOG_API_KEY": "",
+		"POSTHOG_API_KEY": "phc_uvomseW3xjkV7pvWXexL6ERPQKN6P3KBQ2XXYCw83NAg",
 	},
 	"observability": {
 		"enabled": true,
