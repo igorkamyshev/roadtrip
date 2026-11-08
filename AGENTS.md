@@ -41,7 +41,7 @@ Reviewing a branch or merging a ticket's work: check the diff against `CODING_ST
 
 - While subagents run, ask the Owner in a plain message or a Things task, note the open question, and keep dispatching the work it does not block: a question prompt holds every subagent's report until the Owner answers.
 - In a worktree, give Bash one plain command with literal paths, edit files with Edit or Write, and run a script saved to a file with `python3 -I <file>`: the worktree guard refuses heredocs, `$VAR`, `$(…)`, loops and `cd … &&` chains.
-- A subagent's worktree starts from this checkout's HEAD (`worktree.baseRef` in `.claude/settings.json`): check out the branch the work builds on before launching it.
+- A subagent's worktree starts from this checkout's HEAD (`worktree.baseRef` in `.claude/settings.json`): check out the branch the work builds on before launching it. That holds only when Claude Code runs in this checkout: a session started in a folder above it (a cloud session with several repositories) loads none of this repository's `.claude/settings.json`, neither `baseRef` nor the hooks, and the worktree starts at `origin/main`. So the brief names the commit the work builds on, and the subagent first moves its branch there (`git merge --ff-only <commit>`).
 - Notes shared with subagents hold only what the repo's docs lack, and link the docs for the rest.
 
 ## Agent skills
