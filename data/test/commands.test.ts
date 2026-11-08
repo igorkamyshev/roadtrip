@@ -70,6 +70,22 @@ describe('the build-graph command', () => {
 		expect(markdown).toMatch(/6 узлов, 10 рёбер/u);
 	});
 
+	it('reports the zones left out and the zones kept without some of their rings', () => {
+		const report = join(directory, 'partial-zone.md');
+
+		const run = spawnSync(
+			process.execPath,
+			[fileURLToPath(new URL('../src/cli/build-graph.ts', import.meta.url)), fixturePath('partial-zone.osm'), join(directory, 'partial.graph'), '--report', report],
+			{ encoding: 'utf8' },
+		);
+
+		expect(run.stderr).toContain('kept without the rings the extract holds only in part: AAA');
+		expect(run.stderr).toContain('left out, as the extract holds no whole ring of them but holes: BBB');
+		const markdown = readFileSync(report, 'utf8');
+		expect(markdown).toContain('без колец, которые выгрузка держит не целиком: AAA');
+		expect(markdown).toContain('BBB');
+	});
+
 	it('writes the zone outlines with --outlines', () => {
 		const outlines = join(directory, 'zones.json');
 

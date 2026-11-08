@@ -6,8 +6,9 @@ set -euo pipefail
 
 name=$1
 path=$2
+# A connection that stalls (under 100 kB/s for 2 min) is dropped and resumed where it stopped.
 for attempt in 1 2 3 4 5 6; do
-	if curl -fsSL -C - -o "$path" "https://download.geofabrik.de/$name"; then
+	if curl -fsSL -C - --speed-limit 100000 --speed-time 120 -o "$path" "https://download.geofabrik.de/$name"; then
 		break
 	fi
 	echo "::warning::$name: attempt $attempt failed"

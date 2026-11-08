@@ -26,8 +26,13 @@ export interface BuildReport {
 	readonly zones: readonly string[];
 	/** The zones that are parts of countries (closed territories, Northern Cyprus), which win over their country. */
 	readonly parts: readonly string[];
-	/** Zones whose boundary the extract holds only in part: they are left out, their roads get no zone. */
+	/** Zones of which the extract holds no whole ring but holes: they are left out, their roads get no zone. */
 	readonly incompleteZones: readonly string[];
+	/**
+	 * Zones of which the extract holds some rings whole and not others, which are left out: the world's USA, whose
+	 * boundary around two remote atolls is in no part of Geofabrik's, or a neighbour at the edge of an extract.
+	 */
+	readonly partialZones: readonly string[];
 	/** What the border table lacks for this graph. */
 	readonly borders: BorderReport;
 }
@@ -42,7 +47,7 @@ export function buildGraph(source: OsmSource, borderTable: BorderTable = shipped
 		throw new Error(`The border table has problems:\n${problems.join('\n')}`);
 	}
 	const zoneRelations = readZoneRelations(source);
-	const boundaryWayIds = new Set(zoneRelations.flatMap((relation) => relation.wayIds));
+	const boundaryWayIds = new Set(zoneRelations.flatMap((relation) => relation.ways.map((way) => way.id)));
 	const roadNodeIds = new RepeatedIds();
 	let roadWays = 0;
 	const boundaryWays = new Map<number, OsmWay>();
@@ -91,34 +96,35 @@ export function buildGraph(source: OsmSource, borderTable: BorderTable = shipped
 		return true;
 	};
 
-	// Zones: the relations whose whole boundary the extract holds.
-	const ringsByZone = new Map<string, NonNullable<ReturnType<typeof joinRings>>>();
+	// Zones: the rings of each relation that the extract holds whole. A way the extract lacks, or one with a node it
+	// lacks, leaves its ring out; a zone of no ring but holes is left out.
+	const ringsByZone = new Map<string, ReturnType<typeof joinRings>['rings']>();
 	const incompleteZones = new Set<string>();
+	const partialZones = new Set<string>();
 	const point = new Int32Array(2);
 	for (const relation of zoneRelations) {
 		const ways: BoundaryWay[] = [];
-		for (const id of relation.wayIds) {
+		for (const { id, inner } of relation.ways) {
 			const way = boundaryWays.get(id);
-			if (way === undefined) {
-				break;
-			}
 			const lat: number[] = [];
 			const lon: number[] = [];
-			for (let index = 0; index < way.refs.length && locate(way, index, point); index++) {
+			for (let index = 0; way !== undefined && index < way.refs.length && locate(way, index, point); index++) {
 				lat.push(point[0]);
 				lon.push(point[1]);
 			}
-			if (lat.length < way.refs.length) {
-				break;
+			if (way !== undefined && lat.length === way.refs.length) {
+				ways.push({ refs: way.refs, lat, lon, inner });
 			}
-			ways.push({ refs: way.refs, lat, lon });
 		}
-		const rings = ways.length === relation.wayIds.length ? joinRings(ways) : undefined;
-		if (rings === undefined) {
+		const { rings, open } = joinRings(ways);
+		if (!rings.some((ring) => !ring.inner)) {
 			incompleteZones.add(relation.code);
-		} else {
-			ringsByZone.set(relation.code, [...(ringsByZone.get(relation.code) ?? []), ...rings]);
+			continue;
 		}
+		if (open > 0 || ways.length < relation.ways.length) {
+			partialZones.add(relation.code);
+		}
+		ringsByZone.set(relation.code, [...(ringsByZone.get(relation.code) ?? []), ...rings]);
 	}
 	boundaryWays.clear();
 	// Parts of countries first, so they win over the country around them.
@@ -150,18 +156,27 @@ export function buildGraph(source: OsmSource, borderTable: BorderTable = shipped
 			zones: zones.slice(1),
 			parts: codes.filter((code) => parts.has(code)),
 			incompleteZones: [...incompleteZones].filter((code) => !ringsByZone.has(code)).sort(),
+			partialZones: [...partialZones, ...[...incompleteZones].filter((code) => ringsByZone.has(code))].sort(),
 			borders: borderReport(graph, borderTable),
 		},
 	};
 }
 
-function readZoneRelations(source: OsmSource): { code: string; part: boolean; wayIds: number[] }[] {
-	const relations: { code: string; part: boolean; wayIds: number[] }[] = [];
+interface ZoneRelation {
+	readonly code: string;
+	readonly part: boolean;
+	/** The relation's ways, and whether each bounds a hole (role `inner`). */
+	readonly ways: readonly { readonly id: number; readonly inner: boolean }[];
+}
+
+function readZoneRelations(source: OsmSource): ZoneRelation[] {
+	const relations: ZoneRelation[] = [];
 	source.read({
 		relation(relation) {
 			const zone = zoneOf(relation);
 			if (zone !== undefined) {
-				relations.push({ ...zone, wayIds: relation.members.filter((member) => member.type === 'way').map((member) => member.ref) });
+				const ways = relation.members.filter((member) => member.type === 'way').map((member) => ({ id: member.ref, inner: member.role === 'inner' }));
+				relations.push({ ...zone, ways });
 			}
 		},
 	});

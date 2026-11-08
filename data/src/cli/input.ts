@@ -89,7 +89,8 @@ export function loadGraph(path: string): { graph: Graph; report?: BuildReport } 
 	log(
 		`built the graph of ${path} in ${seconds(started)}: ${report.roadWays} road ways, ${report.nodes} nodes, ${report.edges} edges; ` +
 			`zones ${report.zones.join(', ') || 'none'}` +
-			(report.incompleteZones.length > 0 ? `; left out, as the extract holds only part of them: ${report.incompleteZones.join(', ')}` : ''),
+			(report.partialZones.length > 0 ? `; kept without the rings the extract holds only in part: ${report.partialZones.join(', ')}` : '') +
+			(report.incompleteZones.length > 0 ? `; left out, as the extract holds no whole ring of them but holes: ${report.incompleteZones.join(', ')}` : ''),
 	);
 	const { pairsWithoutCrossings, crossingsNotFound } = report.borders;
 	if (pairsWithoutCrossings.length > 0) {

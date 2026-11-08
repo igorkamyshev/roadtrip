@@ -46,53 +46,71 @@ export function zoneOf(relation: OsmRelation): { code: string; part: boolean } |
 	return { code, part: false };
 }
 
-/** A way of a zone's boundary: its node ids and their coordinates (1e-7 degrees). */
+/** A way of a zone's boundary: its node ids and their coordinates (1e-7 degrees), and whether it bounds a hole. */
 export interface BoundaryWay {
 	readonly refs: readonly number[];
 	readonly lat: readonly number[];
 	readonly lon: readonly number[];
+	/** The way's role in the relation is `inner`. */
+	readonly inner: boolean;
 }
 
 interface Chain {
 	refs: number[];
 	lat: number[];
 	lon: number[];
+	/** Every way of the chain is `inner`: a hole, or an enclave inside one. */
+	inner: boolean;
 }
 
 /**
- * The closed rings the ways make when joined end to end, or undefined when some do not close: the extract holds
- * only part of the zone's boundary, as for a neighbour at the edge of a country's extract.
+ * The closed rings the ways make when joined end to end, and how many chains of ways do not close. Those are left
+ * out: the extract holds only part of the zone's boundary there, as for a neighbour at the edge of a country's
+ * extract, or for the USA, whose boundary around two remote atolls is in no part of the world.
  */
-export function joinRings(ways: readonly BoundaryWay[]): Chain[] | undefined {
+export function joinRings(ways: readonly BoundaryWay[]): { rings: Chain[]; open: number } {
 	const rings: Chain[] = [];
 	const open: Chain[] = [];
 	for (const way of ways) {
-		const chain = { refs: [...way.refs], lat: [...way.lat], lon: [...way.lon] };
+		const chain = { refs: [...way.refs], lat: [...way.lat], lon: [...way.lon], inner: way.inner };
 		(isClosed(chain) ? rings : open).push(chain);
 	}
 	const used = new Set<Chain>();
+	let unclosed = 0;
 	for (const start of open) {
 		if (used.has(start)) {
 			continue;
 		}
 		used.add(start);
-		const ring: Chain = { refs: [...start.refs], lat: [...start.lat], lon: [...start.lon] };
+		const ring: Chain = { refs: [...start.refs], lat: [...start.lat], lon: [...start.lon], inner: start.inner };
 		while (!isClosed(ring)) {
 			const end = ring.refs.at(-1);
 			const next = open.find((chain) => !used.has(chain) && (chain.refs[0] === end || chain.refs.at(-1) === end));
 			if (next === undefined) {
-				return undefined;
+				break;
 			}
 			used.add(next);
 			const reversed = next.refs[0] !== end;
 			const order = (values: number[]) => (reversed ? [...values].reverse() : values).slice(1);
-			ring.refs.push(...order(next.refs));
-			ring.lat.push(...order(next.lat));
-			ring.lon.push(...order(next.lon));
+			// A loop, not push(...): a chain of a country's ways can outgrow the argument limit.
+			for (const [values, more] of [
+				[ring.refs, order(next.refs)],
+				[ring.lat, order(next.lat)],
+				[ring.lon, order(next.lon)],
+			]) {
+				for (const value of more) {
+					values.push(value);
+				}
+			}
+			ring.inner &&= next.inner;
 		}
-		rings.push(ring);
+		if (isClosed(ring)) {
+			rings.push(ring);
+		} else {
+			unclosed++;
+		}
 	}
-	return rings;
+	return { rings, open: unclosed };
 }
 
 function isClosed(chain: Chain): boolean {

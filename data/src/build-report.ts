@@ -19,8 +19,11 @@ export function reportMarkdown(report: BuildReport): string {
 		'',
 		`Зоны (${report.zones.length}): ${report.zones.join(', ') || 'нет'}. Из них части стран: ${report.parts.join(', ') || 'нет'}.`,
 	];
+	if (report.partialZones.length > 0) {
+		lines.push('', `Зоны без колец, которые выгрузка держит не целиком: ${report.partialZones.join(', ')}.`);
+	}
 	if (report.incompleteZones.length > 0) {
-		lines.push('', `Выгрузка держит только часть границы, поэтому зоны нет и у дорог в ней нет зоны: ${report.incompleteZones.join(', ')}.`);
+		lines.push('', `Выгрузка не держит целиком ни одного кольца этих зон, кроме дыр, поэтому их нет и у их дорог нет зоны: ${report.incompleteZones.join(', ')}.`);
 	}
 	const { pairsWithoutCrossings, crossingsNotFound } = report.borders;
 	lines.push(
