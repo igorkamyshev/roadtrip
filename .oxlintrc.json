@@ -98,6 +98,11 @@
 			}
 		},
 		{
+			// The tables edited by hand (rules' border table and visa exemptions): data, not logic, long by nature.
+			"files": ["rules/src/border-table.ts", "rules/src/visa-exemptions.ts"],
+			"rules": { "eslint/max-lines": "off" }
+		},
+		{
 			// Command-line programs print to the terminal; the Container's server logs to its stdout; the screen tests'
 			// reporter prints to the console; the logger is where console is called on purpose.
 			"files": ["scripts/**", "lint/oxlint-overrides.ts", "engine/server/main.ts", "web/e2e/failures.ts", "error-tracking/src/logger.ts"],
