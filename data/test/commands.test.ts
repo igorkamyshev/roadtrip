@@ -58,6 +58,18 @@ describe('the build-graph command', () => {
 		expect(run.stderr).toContain('AAA–BBB (2 edges)');
 	});
 
+	it('writes the build report as Markdown with --report, for the summary of the world build', () => {
+		const report = join(directory, 'report.md');
+
+		command('build-graph', fixturePath('chains.osm'), join(directory, 'chains.graph'), '--report', report);
+
+		const markdown = readFileSync(report, 'utf8');
+		expect(markdown).toContain('Пары с паспортным контролем без пунктов пропуска');
+		expect(markdown).toContain('| AAA–BBB | 2 |');
+		expect(markdown).toMatch(/4 дороги/u);
+		expect(markdown).toMatch(/6 узлов, 10 рёбер/u);
+	});
+
 	it('writes the zone outlines with --outlines', () => {
 		const outlines = join(directory, 'zones.json');
 

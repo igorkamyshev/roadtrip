@@ -121,8 +121,17 @@ function readPrimitiveBlock(bytes: Uint8Array, visitor: OsmVisitor): void {
 		const e7 = coordinate(value);
 		return e7 === UNDEFINED_COORDINATE ? Number.NaN : e7;
 	};
-	const tags = (keys: number[], values: number[]): Tags =>
-		keys.length === 0 ? NO_TAGS : Object.fromEntries(keys.map((key, index) => [block.strings[key], block.strings[values[index]]]));
+	const tags = (keys: number[], values: number[]): Tags => {
+		if (keys.length === 0) {
+			return NO_TAGS;
+		}
+		// A loop, not Object.fromEntries: a quarter of a build's time went there, once per way.
+		const result: Record<string, string> = {};
+		for (let index = 0; index < keys.length; index++) {
+			result[block.strings[keys[index]]] = block.strings[values[index]];
+		}
+		return result;
+	};
 
 	for (const [start, end] of block.groups) {
 		pbf.pos = start;

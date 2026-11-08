@@ -1,6 +1,6 @@
 # data
 
-The dataset build (spec «Набор данных»). So far: the builder that turns one OSM extract into the road graph and its build report, the zone outlines and the cities file, and the commands around them. The monthly world build in GitHub Actions comes with #35.
+The dataset build (spec «Набор данных»): the builder that turns an OSM extract into the road graph and its build report, the zone outlines, the cities file, the commands around them, and the monthly world build in GitHub Actions that puts the dataset in R2.
 
 ## Builder
 
@@ -10,8 +10,9 @@ The dataset build (spec «Набор данных»). So far: the builder that t
 - Coordinates come from the ways when the file carries them (`osmium add-locations-to-ways`), otherwise from the file's nodes. An extract lacks nodes its ways refer to past its edge, so `add-locations-to-ways` runs with `--ignore-missing-nodes`: a road loses its segments to such a node, and a boundary with one is incomplete.
 - A zone is a relation with `boundary=administrative`, `admin_level=2` and `ISO3166-1:alpha3`, or one of `SPECIAL_ZONES` in `src/zones.ts`, the cases of #13 by relation id (the world build's `osmium tags-filter` keeps those too). A part of a country (a closed territory, Northern Cyprus) comes before the countries in the graph's zones, so it wins where it lies inside its country's polygon. A relation whose boundary the extract holds only in part (a neighbour at the edge of a country's extract) is left out and reported: its roads get no zone.
 - An edge across a border is marked when it passes within 2 km of a `barrier=border_control` node (`src/border-controls.ts`). That mark is all the graph holds of borders: the engine applies the border table in `rules` on every calculation, so a change to the table needs no new graph.
-- The build checks the border table first, and its report (`src/border-report.ts`) lists the pairs with passport control whose roads cross nowhere at a border crossing, and the table's open crossings near no road across their border. Both mean a crossing to add to or fix in the table.
-- Sized for a part of the world: node ids sit in a hash table and the ways, nodes and segments in typed arrays (`src/node-ids.ts`), outside the JS heap. Europe, ~95 M road nodes, builds on a GitHub runner (`docs/container-bench.md`); the world (~330 M) has not been tried.
+- The build checks the border table first, and its report (`src/border-report.ts`) lists the pairs with passport control whose roads cross nowhere at a border crossing, and the table's open crossings near no road across their border. Both mean a crossing to add to or fix in the table. `src/build-report.ts` writes the report as Markdown, in Russian, for the world build's summary.
+- Sized for the world, ~330 M road nodes before collapsing, in typed arrays outside the JS heap (`src/node-ids.ts`). No node is kept by its id but the ones that stay in the graph. The first pass over the ways puts every road node's id in `RepeatedIds` (sorted chunks, 8 bytes an id), which finds the ones at a junction. The second cuts each way into pieces at those, at its ends, at a node next to one the file lacks and wherever `collapse` keeps a node; only the pieces' end nodes get a number. `collapse` then joins the pieces across ways into edges. Without locations on the ways, the road nodes' coordinates are kept by id, as for a country's raw extract.
+- A road node's zone comes from `ZoneCells` (`src/zone-cells.ts`): once per 0.05° cell no zone boundary crosses, by `ZoneLocator` in the cells one does. `docs/world-build.md` has the world's numbers.
 
 ## Zone outlines
 
@@ -35,9 +36,32 @@ The dataset build (spec «Набор данных»). So far: the builder that t
 
 `pnpm --filter data ring <extract | graph file | URL> --lat <degrees> --lon <degrees> --hours <N> [--closed <alpha-3,…>] [--out <file.geojson>]` is the one-command check of the ticket: it builds the graph of an extract (for example `https://download.geofabrik.de/europe/andorra-latest.osm.pbf`), computes the ring and writes GeoJSON. `build-graph <extract> <out.graph> [--outlines <zones.json>]` writes the graph file, which `ring` also reads, and with `--outlines` the zone outlines, printing their size raw and in brotli. Both print the build report to stderr when they build. pnpm runs both in `data/`; they take a relative path from where pnpm started.
 
+`build-graph … --report <report.md>` also writes the build report as Markdown.
+
+`publish-dataset <dataset directory> [--bucket <name>] [--prefix <prefix>]` puts a dataset in R2 (below); it needs the aws CLI, `CLOUDFLARE_ACCOUNT_ID` and R2's S3 credentials in `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`.
+
 `build-cities <graph file | extract | URL> <out.json> [--cities <cities1000.zip | .txt | URL>] [--names <alternateNamesV2.zip | .txt | URL>,…] [--countries <alpha-2>,…] [--no-wikidata]` writes the cities file with the zones of the graph's polygons and prints how many cities, names and zones it got, and the size raw and in brotli. By default it downloads GeoNames' `cities1000.zip` and `alternateNamesV2.zip` (205 MB, streamed through `unzip -p`): that is the world build's call with the world graph. `--countries` keeps the cities of those GeoNames countries and takes their own files of alternate names (`alternatenames/<alpha-2>.zip`), for a region: `build-cities georgia.graph ../web/public/data/cities.json --countries GE,AM,AZ,TR` takes 5 s, Wikidata included. `--no-wikidata` skips Wikidata.
 
 `pnpm --filter data valhalla <work dir> [--report <file.md>] [--regions <id,…>] [--mirror <url>]` is the comparison with Valhalla on the full graph (#24; spec «Сверка с Valhalla»), a one-off check that CI does not run. The start points and their regions are in `src/valhalla/places.ts`. It needs osmium-tool, unzip and pyvalhalla's commands on PATH, a few GB of disk per region and ~10 GB of memory while Valhalla builds a region's tiles. Valhalla's results stay in the work directory, so after a change to the speeds a second run only recomputes ours. Its last report is `valhalla-report.md`, with conclusions written by hand; rerun it after a change to the speeds or the contour, and keep the conclusions.
+
+## The world build
+
+`.github/workflows/dataset.yml` builds the world's dataset on the 2nd of each month (spec «Набор данных», #14, #35), or when run by hand (`workflow_dispatch`, with the extracts' date and the parts to take). Its jobs:
+
+1. `plan` picks the date: the newest one every part's page at Geofabrik lists a dated extract of (`europe-261107.osm.pbf`). Geofabrik keeps those of the 1st of each month for months and the others for a week. The dataset's version is that date, `2026-11-07`.
+2. `extract`, one job per part of the world (Russia is none: the others cover it), downloads the part of that date, checks its MD5 and that it holds OSM of that date, then keeps with osmium what the builder reads: `tags-filter` of the roads from motorway to tertiary with their links, `barrier=border_control` and `admin_level=2` with their members, and `getid -r` of `SPECIAL_ZONES`.
+3. `build` merges the parts (two parts of one date hold one version of an object; the job fails otherwise), runs `add-locations-to-ways --ignore-missing-nodes`, then `build-graph` with `--outlines` and `--report`, and `build-cities` on the graph. The build report goes to the run's summary, the dataset to an artifact kept 14 days.
+4. `publish` puts the dataset in R2 with `publish-dataset` (`src/publish.ts`), with the S3 credentials R2 derives from the Cloudflare API token in the repository's secrets: its id, and the SHA-256 of its value.
+
+Every heavy step runs under `.github/dataset/measure.sh`, which puts its time, peak memory and the disk in use after it in the summary.
+
+The dataset in R2, bucket `roadtrip-datasets`:
+
+- `<version>/graph.graph`, `zones.json`, `cities.json`, `dataset.json` (`{ "version": "<version>" }`, as `engine/dataset/dataset.json`) and `report.md` (the build report);
+- `<version>/manifest.json`: the version and each file's size and SHA-256;
+- `current.json`: the pointer, a copy of the current version's manifest. It moves only once every file of the version is uploaded and its size checked, so a failed run leaves the version before it current. The deploy (#36) reads it, then takes the files under its version.
+
+A run of only some of the parts is a trial: it publishes under `trials/<run id>/` and deletes that at the end, so the current dataset stays.
 
 ## Tests
 
@@ -49,4 +73,6 @@ The fixtures in `test/fixtures/` are hand-written OSM XML of a few countries and
 - `test/border-table.test.ts` and `test/data-version.test.ts`: the border table's check and the data version, here because every package's tests run under `data`'s vitest and types.
 - `test/cities.test.ts`: the cities file from lines in GeoNames' formats, a double of Wikidata and the zones of `zones.osm`; `test/wikidata.test.ts`: the Wikidata client against a double of the Query Service.
 - `test/commands.test.ts`: the commands as processes; `build-cities` reads the small GeoNames files in `test/fixtures/geonames/`.
+- `test/zone-locator.test.ts`: `ZoneLocator` and the builder's `ZoneCells` on squares of whole degrees.
+- `test/publish.test.ts`: `publishDataset` against a double of R2: the pointer moves last, and not at all after a failed upload.
 - `test/valhalla-metrics.test.ts`: the measures of the Valhalla comparison (ring area, the median time to cities, the tolerance); the comparison itself runs in no test.

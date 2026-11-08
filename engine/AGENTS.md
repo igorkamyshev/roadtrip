@@ -14,6 +14,7 @@ The engine runs in a Container under Node today and may move to a Worker or a br
 - the ×1.2, the 30 km/h off-road, the 50 km snapping limit;
 - the contour: cell size, near-road radius, simplification, marching squares;
 - how the engine reads the border table (`src/borders.ts`), or the zones the builder makes (`data/src/zones.ts`). A change to the table's rows needs no bump: its hash is in the data version;
+- which nodes of the roads the builder keeps in the graph (`data/src/build-graph.ts`), as where it cuts a loop or a chain too long for an edge;
 - the result's format;
 - `GRAPH_FORMAT_VERSION` in `src/graph.ts`, which itself goes up when the graph file's arrays or their meaning change.
 
