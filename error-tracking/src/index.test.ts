@@ -25,7 +25,7 @@ function executionContext() {
 		waitUntil: (promise: Promise<unknown>) => {
 			background.push(promise);
 		},
-	} as unknown as ExecutionContext;
+	};
 	return { ctx, background };
 }
 
@@ -60,7 +60,7 @@ describe('the tail handler', () => {
 		expect(fetch).toHaveBeenCalledTimes(1);
 		const [url, init] = fetch.mock.calls[0] ?? [];
 		expect(url).toBe('https://us.i.posthog.com/batch/');
-		expect(JSON.parse(String(init?.body))).toMatchObject({
+		expect(JSON.parse(await new Response(init?.body).text())).toMatchObject({
 			api_key: 'phc_test',
 			batch: [{ event: '$exception', properties: { worker: 'roadtrip', $exception_list: [{ value: '[ring] the engine failed' }] } }],
 		});

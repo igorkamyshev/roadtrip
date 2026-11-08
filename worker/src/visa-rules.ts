@@ -12,14 +12,23 @@
 // to Sherpa to PostHog as `sherpa fetched`.
 import type { LogContext, Logger } from 'error-tracking/logger';
 import type { Analytics } from './analytics.ts';
+import { isRecord } from './json.ts';
 import type { Kv } from './kv.ts';
-import { failureReason, fetchSherpaClasses, type SherpaClasses, type SherpaDeps, SherpaError, type SherpaFailure } from './sherpa.ts';
+import {
+	failureReason,
+	fetchSherpaClasses,
+	isSherpaClasses,
+	type SherpaClasses,
+	type SherpaDeps,
+	SherpaError,
+	type SherpaFailure,
+} from './sherpa.ts';
 
 /** A copy is fresh this long after it came from Sherpa. Sherpa advises an hour; we keep it longer on purpose (#11). */
-export const FRESH_MS = 24 * 60 * 60 * 1000;
+const FRESH_MS = 24 * 60 * 60 * 1000;
 
 /** After a failure, no new request to Sherpa for the citizenship this long. */
-export const RETRY_AFTER_SECONDS = 15 * 60;
+const RETRY_AFTER_SECONDS = 15 * 60;
 
 export interface VisaRulesDeps extends SherpaDeps {
 	/** The visa rules' namespace in Workers KV (`roadtrip-visa-rules`). */
@@ -56,20 +65,32 @@ export async function citizenshipsRules(
 	context: LogContext,
 ): Promise<CitizenshipsRules> {
 	const copies = await Promise.all(citizenships.map((citizenship) => visaRules(citizenship, deps, context)));
-	const missing = citizenships.find((_, index) => copies[index] === undefined);
-	if (missing !== undefined) {
-		return { missing };
+	const found = new Map<string, VisaRulesCopy>();
+	for (const [index, citizenship] of citizenships.entries()) {
+		const copy = copies[index];
+		if (copy === undefined) {
+			return { missing: citizenship };
+		}
+		found.set(citizenship, copy);
 	}
-	return { copies: new Map(citizenships.map((citizenship, index) => [citizenship, copies[index]!])) };
+	return { copies: found };
 }
 
 const copyKey = (citizenship: string) => `visa-rules:${citizenship}`;
 const failedKey = (citizenship: string) => `visa-rules-failed:${citizenship}`;
 
+/** A copy as KV holds it; undefined for anything else, which counts as no copy. */
+function parseCopy(stored: string): VisaRulesCopy | undefined {
+	const copy: unknown = JSON.parse(stored);
+	return isRecord(copy) && typeof copy.loadedAt === 'string' && isSherpaClasses(copy.classes)
+		? { loadedAt: copy.loadedAt, classes: copy.classes }
+		: undefined;
+}
+
 /** One citizenship's copy, refreshed or loaded as the rules above say; undefined when there is none. */
 async function visaRules(citizenship: string, deps: VisaRulesDeps, context: LogContext): Promise<VisaRulesCopy | undefined> {
 	const stored = await deps.visaRules.get(copyKey(citizenship));
-	const copy = stored === null ? undefined : (JSON.parse(stored) as VisaRulesCopy);
+	const copy = stored === null ? undefined : parseCopy(stored);
 	if (copy !== undefined && deps.now() - Date.parse(copy.loadedAt) < FRESH_MS) {
 		return copy;
 	}
@@ -78,26 +99,28 @@ async function visaRules(citizenship: string, deps: VisaRulesDeps, context: LogC
 		if (!failedRecently && !deps.refreshing.has(citizenship)) {
 			deps.refreshing.add(citizenship);
 			deps.waitUntil(
-				load(citizenship, 'background', deps, context).finally(() => {
+				load({ citizenship, mode: 'background', context }, deps).finally(() => {
 					deps.refreshing.delete(citizenship);
 				}),
 			);
 		}
 		return copy;
 	}
-	return failedRecently ? undefined : load(citizenship, 'blocking', deps, context);
+	return failedRecently ? undefined : load({ citizenship, mode: 'blocking', context }, deps);
 }
 
 /**
- * Loads the citizenship's classes from Sherpa into a new copy, or marks the failure and logs it. `background`
- * refreshes a stale copy the person was served; `blocking` is waited for, as there was no copy.
+ * A load from Sherpa: the citizenship, its `mode` (`background` refreshes a stale copy the person was served;
+ * `blocking` is waited for, as there was no copy) and the context for `logger.error`.
  */
-async function load(
-	citizenship: string,
-	mode: 'background' | 'blocking',
-	deps: VisaRulesDeps,
-	context: LogContext,
-): Promise<VisaRulesCopy | undefined> {
+interface Load {
+	readonly citizenship: string;
+	readonly mode: 'background' | 'blocking';
+	readonly context: LogContext;
+}
+
+/** Loads the citizenship's classes from Sherpa into a new copy, or marks the failure and logs it. */
+async function load({ citizenship, mode, context }: Load, deps: VisaRulesDeps): Promise<VisaRulesCopy | undefined> {
 	const started = deps.now();
 	const result = await fetchSherpaClasses(citizenship, deps);
 	deps.analytics.capture('sherpa fetched', {
@@ -109,7 +132,7 @@ async function load(
 		...(result.quotaRemaining === undefined ? {} : { quota_remaining: result.quotaRemaining }),
 	});
 	if (result.result !== 'ok') {
-		failed(citizenship, result, mode === 'background' ? 'stale' : 'error', deps, context);
+		failed({ citizenship, failure: result, served: mode === 'background' ? 'stale' : 'error', context }, deps);
 		return undefined;
 	}
 	const copy: VisaRulesCopy = { loadedAt: new Date(deps.now()).toISOString(), classes: result.classes };
@@ -121,8 +144,16 @@ async function load(
 	return copy;
 }
 
+/** A failed load: the citizenship, Sherpa's failure, what the person was served, and the context for `logger.error`. */
+interface Failure {
+	readonly citizenship: string;
+	readonly failure: SherpaFailure;
+	readonly served: 'stale' | 'error';
+	readonly context: LogContext;
+}
+
 /** Logs Sherpa's failure and marks it, so that no request goes to Sherpa for the citizenship for 15 min. */
-function failed(citizenship: string, failure: SherpaFailure, served: 'stale' | 'error', deps: VisaRulesDeps, context: LogContext): void {
+function failed({ citizenship, failure, served, context }: Failure, deps: VisaRulesDeps): void {
 	const reason = failureReason(failure);
 	// The message is the reason alone, so that PostHog groups the failures by it; the detail goes with the context.
 	deps.logger.error('[visa rules] Sherpa failed', new SherpaError(`Sherpa's /v3/maps failed: ${reason}`), {

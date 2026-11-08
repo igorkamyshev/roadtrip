@@ -31,11 +31,11 @@ export interface Reduction {
 }
 
 /** A class's entry mode; the classes not here close the country, as does no class at all. */
-const MODE_OF_CLASS: Partial<Record<SherpaClass, EntryMode>> = {
-	NO_VISA_REQUIRED: 'visa_free',
-	VISA_ON_ARRIVAL_REQUIRED: 'visa_on_arrival',
-	EVISA_OR_ETA_REQUIRED: 'evisa',
-};
+const MODE_OF_CLASS: ReadonlyMap<SherpaClass, EntryMode> = new Map<SherpaClass, EntryMode>([
+	['NO_VISA_REQUIRED', 'visa_free'],
+	['VISA_ON_ARRIVAL_REQUIRED', 'visa_on_arrival'],
+	['EVISA_OR_ETA_REQUIRED', 'evisa'],
+]);
 
 /** Best first (rule 3). */
 const RANK: Readonly<Record<EntryMode, number>> = { visa_free: 0, start: 0, held_visa: 1, visa_on_arrival: 2, evisa: 3, closed: 4 };
@@ -57,42 +57,62 @@ const CLOSED_FOR_EVERYONE: CountryAccess = { mode: 'closed', closedForEveryone: 
  * Between sources that give the same mode the first stays: the citizenships in their order, then the country's own
  * visa or Schengen, then the rows of Schengen, the USA, the UK and Canada, in that order (`EXEMPTION_VISAS`).
  */
-export function reduceVisaRules({ citizenships, sherpa, heldVisas, exemptions, today }: VisaRulesInput): Reduction {
-	const best = new Map<string, CountryAccess>();
-	// A better mode replaces the one there; an equal one does not, so the first offered stays.
-	const offer = (country: string, entry: CountryAccess) => {
-		const current = best.get(country);
-		if (current === undefined || RANK[entry.mode] < RANK[current.mode]) {
-			best.set(country, entry);
-		}
-	};
+export function reduceVisaRules(input: VisaRulesInput): Reduction {
+	const best: Offers = new Map();
+	offerByCitizenships(best, input);
+	offerByHeldVisas(best, input.heldVisas);
+	offerByExemptions(best, input);
+	return reduction(best, input.citizenships);
+}
+
+/** The best mode offered for each country so far, and where it came from (rule 3). */
+type Offers = Map<string, CountryAccess>;
+
+/** A better mode replaces the one there; an equal one does not, so the first offered stays. */
+function offer(best: Offers, country: string, entry: CountryAccess): void {
+	const current = best.get(country);
+	if (current === undefined || RANK[entry.mode] < RANK[current.mode]) {
+		best.set(country, entry);
+	}
+}
+
+/** The citizenships' classes, in the citizenships' order. */
+function offerByCitizenships(best: Offers, { citizenships, sherpa }: VisaRulesInput): void {
 	for (const citizenship of citizenships) {
 		const classes = sherpa.get(citizenship) ?? {};
-		for (const [sherpaClass, countries] of Object.entries(classes) as [SherpaClass, readonly string[]][]) {
-			const mode = MODE_OF_CLASS[sherpaClass];
-			if (mode === undefined) {
-				continue;
-			}
-			for (const country of countries) {
-				offer(country, { mode, citizenship });
+		for (const [sherpaClass, mode] of MODE_OF_CLASS) {
+			for (const country of classes[sherpaClass] ?? []) {
+				offer(best, country, { mode, citizenship });
 			}
 		}
 	}
+}
+
+/** A held visa of a country opens it, `SCHENGEN` the whole Schengen area. */
+function offerByHeldVisas(best: Offers, heldVisas: readonly string[]): void {
 	for (const visa of heldVisas) {
 		for (const country of visa === SCHENGEN ? SCHENGEN_AREA : [visa]) {
-			offer(country, { mode: 'held_visa', visa });
+			offer(best, country, { mode: 'held_visa', visa });
 		}
 	}
+}
+
+/** The exemptions' rows acting today for one of the citizenships, by their visa in the order of `EXEMPTION_VISAS`. */
+function offerByExemptions(best: Offers, { citizenships, heldVisas, exemptions, today }: VisaRulesInput): void {
 	const acting = actingExemptions(exemptions, today, citizenships);
 	for (const visa of EXEMPTION_VISAS.filter((exemptionVisa) => heldVisas.includes(exemptionVisa))) {
 		for (const row of acting.filter((candidate) => candidate.visa === visa)) {
-			offer(row.country, { mode: row.gives === 'evisa' ? 'evisa' : 'held_visa', visa });
+			offer(best, row.country, { mode: row.gives === 'evisa' ? 'evisa' : 'held_visa', visa });
 		}
 	}
+}
+
+/** Rules 1 and 2 over the offers: the entry mode of every country and closed territory, and the closed countries. */
+function reduction(best: ReadonlyMap<string, CountryAccess>, citizenships: readonly string[]): Reduction {
 	const closedForEveryone = new Set(borderTable.closedForEveryone);
 	const access: Record<string, CountryAccess> = {};
 	const closed: string[] = [];
-	for (const country of Object.keys(COUNTRIES).sort()) {
+	for (const country of Object.keys(COUNTRIES).toSorted()) {
 		let entry: CountryAccess;
 		if (closedForEveryone.has(country)) {
 			entry = CLOSED_FOR_EVERYONE;

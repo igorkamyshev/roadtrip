@@ -21,9 +21,8 @@ export function parseRingQuery(params: URLSearchParams): RingQuery | { readonly 
 	if (lat === undefined || lon === undefined) {
 		return { problem: 'lat and lon are the origin in degrees, as -12.345' };
 	}
-	const hoursText = single('hours');
-	const hours = hoursText !== undefined && HOURS.test(hoursText) ? Number(hoursText) : 0;
-	if (hours < 1 || hours > 12) {
+	const hours = wholeHours(single('hours'));
+	if (hours === undefined) {
 		return { problem: 'hours is N, a whole number from 1 to 12' };
 	}
 	const citizenships = codes(single('cit'), (code) => PASSPORTS.has(code));
@@ -43,6 +42,15 @@ function degrees(text: string | undefined, limit: number): number | undefined {
 	}
 	const value = Number(text);
 	return Math.abs(value) <= limit ? value : undefined;
+}
+
+/** N: a whole number from 1 to 12. */
+function wholeHours(text: string | undefined): number | undefined {
+	if (text === undefined || !HOURS.test(text)) {
+		return undefined;
+	}
+	const hours = Number(text);
+	return hours >= 1 && hours <= 12 ? hours : undefined;
 }
 
 /** A comma-separated list of codes in strictly ascending order; [] for an empty text. */

@@ -1,26 +1,22 @@
 // The visa rules in the ring API (spec «Визовые правила и сведение», «API кольца», «Решения по тестам», seam 2; #11):
 // Sherpa's classes per citizenship, reduced to an entry mode per country, whose closed countries the calculation
-// avoids; Sherpa's copies in KV. Sherpa is a faked `fetch` (test/api.ts) answering in the shape of 2026-11-07.
+// avoids; Sherpa's copies in KV. Sherpa is a faked `fetch` (test/sherpa-double.ts) answering in the shape of 2026-11-07.
 import { fixtureGraph } from 'data/fixture-graph';
 import { describe, expect, it } from 'vitest';
-import {
-	api,
-	DAY,
-	engineContainer,
-	HOUR,
-	MINUTE,
-	recorded,
-	SHERPA_API_KEY,
-	SHERPA_COUNTRIES,
-	SherpaDouble,
-	sherpaMap,
-	START,
-} from '../test/api.ts';
+import { api, closedCountriesOf, DAY, engineContainer, HOUR, MINUTE, recorded, SHERPA_API_KEY, START } from '../test/api.ts';
+import { anyString } from '../test/matchers.ts';
+import { SHERPA_COUNTRIES, SherpaDouble, sherpaMap } from '../test/sherpa-double.ts';
+import { field } from './json.ts';
 
 const straightRoad = fixtureGraph('straight-road.osm');
 
 /** The countries closed for everyone (rules' border table), closed in every set. */
 const CLOSED_FOR_EVERYONE = ['AZE', 'BTN', 'CHN', 'MMR', 'RKS', 'UKR'];
+
+/** Sherpa closing Cyprus to every passport, with a visa on arrival to Northern Cyprus. */
+function cyprusClosed(passport: string) {
+	return { body: sherpaMap(passport, { groups: { CYP: 'PAPER_OR_EMBASSY_VISA_REQUIRED', NX: 'VISA_ON_ARRIVAL_REQUIRED' } }) };
+}
 
 describe('the visa rules', () => {
 	it('give each country Sherpa lists its entry mode, and close those it does not', async () => {
@@ -50,7 +46,7 @@ describe('the visa rules', () => {
 			ALB: { mode: 'evisa', citizenship: 'RUS' },
 		});
 		for (const closed of ['HRV', 'LBN', 'AFG', 'KIR', 'SYR', 'YEM']) {
-			expect((body.access as Record<string, unknown>)[closed]).toEqual({ mode: 'closed' });
+			expect(body.access).toHaveProperty(closed, { mode: 'closed' });
 		}
 		expect(container.bodies).toEqual([
 			expect.objectContaining({ closedCountries: ['AFG', 'AZE', 'BTN', 'CHN', 'HRV', 'KIR', 'LBN', 'MMR', 'RKS', 'SYR', 'UKR', 'YEM'] }),
@@ -79,7 +75,7 @@ describe('the visa rules', () => {
 
 		const { body } = await get('lat=0&lon=0&hours=2&cit=RUS,SRB');
 
-		expect(sherpa.passports.sort()).toEqual(['RUS', 'SRB']);
+		expect(sherpa.passports.toSorted()).toEqual(['RUS', 'SRB']);
 		expect(body.access).toMatchObject({
 			GEO: { mode: 'visa_free', citizenship: 'SRB' },
 			KHM: { mode: 'visa_on_arrival', citizenship: 'SRB' },
@@ -88,7 +84,7 @@ describe('the visa rules', () => {
 			HRV: { mode: 'closed' },
 			USA: { mode: 'closed' },
 		});
-		const { closedCountries } = container.bodies[0] as { closedCountries: string[] };
+		const closedCountries = closedCountriesOf(container.bodies[0]);
 		expect(closedCountries).toContain('HRV');
 		expect(closedCountries).not.toContain('GEO');
 		expect(closedCountries).not.toContain('KHM');
@@ -107,7 +103,7 @@ describe('the visa rules', () => {
 			SRB: { mode: 'visa_free', citizenship: 'SRB' },
 			BIH: { mode: 'closed' },
 		});
-		const { closedCountries } = container.bodies[0] as { closedCountries: string[] };
+		const closedCountries = closedCountriesOf(container.bodies[0]);
 		expect(closedCountries).toHaveLength(251 - 2);
 		expect(closedCountries).not.toContain('RUS');
 		expect(closedCountries).not.toContain('SRB');
@@ -157,7 +153,7 @@ describe('Sherpa', () => {
 					type: request.headers.get('content-type'),
 					body,
 				}))
-				.sort((one, two) => JSON.stringify(one.body).localeCompare(JSON.stringify(two.body))),
+				.toSorted((one, two) => JSON.stringify(one.body).localeCompare(JSON.stringify(two.body))),
 		).toEqual(
 			['RUS', 'SRB'].map((passport) => ({
 				method: 'POST',
@@ -320,7 +316,7 @@ describe('a failure of Sherpa', () => {
 			reason: '503',
 			citizenship: 'SRB',
 			served: 'error',
-			problem: expect.any(String),
+			problem: anyString,
 		});
 	});
 
@@ -366,7 +362,7 @@ describe('a failure of Sherpa', () => {
 
 		expect(stale.body).toMatchObject({ outcome: 'ring', visaRulesLoadedAt: '2026-11-07T00:00:00.000Z' });
 		expect(sherpa.passports).toEqual(['RUS', 'RUS', 'RUS']);
-		expect(errors.map(([message, error, context]) => [message, (error as Error).name, context])).toEqual([
+		expect(errors.map(([message, error, context]) => [message, field(error, 'name'), context])).toEqual([
 			['[visa rules] Sherpa failed', 'SherpaError', expect.objectContaining({ reason: 'network', citizenship: 'RUS', served: 'stale' })],
 			['[visa rules] Sherpa failed', 'SherpaError', expect.objectContaining({ reason: 'network', citizenship: 'RUS', served: 'stale' })],
 		]);
@@ -412,9 +408,6 @@ describe('visaRulesLoadedAt', () => {
 describe('the start country', () => {
 	// zones.osm: squares of the zones of #13 with no roads, so every origin there is no_roads or no_ring.
 	const zones = fixtureGraph('zones.osm');
-	const cyprusClosed = (passport: string) => ({
-		body: sherpaMap(passport, { groups: { CYP: 'PAPER_OR_EMBASSY_VISA_REQUIRED', NX: 'VISA_ON_ARRIVAL_REQUIRED' } }),
-	});
 
 	it('is open in access although the visa rules close it, from the ring cache too; the calculation gets it closed', async () => {
 		const sherpa = new SherpaDouble();
@@ -431,7 +424,7 @@ describe('the start country', () => {
 			expect(body.access).toMatchObject({ CYP: { mode: 'start' }, NX: { mode: 'visa_on_arrival', citizenship: 'RUS' } });
 		}
 		expect([calculated.body.source, cached.body.source]).toEqual(['calculation', 'cache']);
-		expect(container.bodies).toEqual([expect.objectContaining({ closedCountries: [...CLOSED_FOR_EVERYONE, 'CYP'].sort() })]);
+		expect(container.bodies).toEqual([expect.objectContaining({ closedCountries: [...CLOSED_FOR_EVERYONE, 'CYP'].toSorted() })]);
 	});
 
 	it('stays closed when it is closed for everyone', async () => {
@@ -568,7 +561,7 @@ describe('sherpa fetched', () => {
 			analytics
 				.named('sherpa fetched')
 				.map(({ citizenship }) => citizenship)
-				.sort(),
+				.toSorted(),
 		).toEqual(['RUS', 'SRB']);
 	});
 });
