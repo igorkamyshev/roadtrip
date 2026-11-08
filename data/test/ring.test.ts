@@ -69,6 +69,15 @@ describe('an origin off the road', () => {
 		expect(inRing(0.5, 0.8)).toBe(false);
 	});
 
+	it('snaps to a road from which at least 50 nodes are reachable, past a nearer one-way road that leads nowhere', () => {
+		const result = computeRing(fixtureGraph('dead-end.osm'), borderTable, request(0.15, 0.505, 2));
+
+		expect(result.outcome).toBe('ring');
+		const inRing = (lat: number, lon: number) => result.outcome === 'ring' && ringContains(result.ring, lat, lon);
+		expect(inRing(0, 0.8)).toBe(true); // 1.32 h
+		expect(inRing(0, 0.6)).toBe(false); // 0.88 h
+	});
+
 	it('has a road within 50 km', () => {
 		// 48.9 km north of the road.
 		expect(computeRing(straightRoad, borderTable, request(0.44, 1, 3))).toMatchObject({ outcome: 'ring', startCountry: 'AAA' });
