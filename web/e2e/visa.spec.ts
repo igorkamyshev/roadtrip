@@ -10,7 +10,7 @@ const LINK = '/#/?p=44.81760,20.45730&h=2';
 
 test.beforeEach(async ({ context, ringApi }) => {
 	await allowGeolocation(context, BELGRADE);
-	ringApi.respond((call) => squareRing(Number(call.lat), Number(call.lon), (call.hours - 1) / 10, call.hours / 10));
+	ringApi.respond((call) => squareRing(Number(call.lat), Number(call.lon), [(call.hours - 1) / 10, call.hours / 10]));
 });
 
 const sheet = (page: Page) => page.getByRole('dialog', { name: 'Гражданство' });
@@ -112,7 +112,7 @@ test.describe('the citizenships', () => {
 test.describe('the hatching', () => {
 	test('covers the closed countries and territories by access, over the zone outlines', async ({ page, ringApi }) => {
 		ringApi.respond((call) => ({
-			...squareRing(Number(call.lat), Number(call.lon), 0, call.hours / 10),
+			...squareRing(Number(call.lat), Number(call.lon), [0, call.hours / 10]),
 			...visaRules({
 				SRB: { mode: 'start' },
 				BIH: { mode: 'visa_free', citizenship: 'RUS' },
@@ -131,7 +131,7 @@ test.describe('the hatching', () => {
 	test('follows the answer shown, and is gone without visa rules', async ({ page, ringApi }) => {
 		ringApi.respond((call) =>
 			call.cit === 'RUS'
-				? { ...squareRing(Number(call.lat), Number(call.lon), 0, 0.1), ...visaRules({ HUN: { mode: 'closed' } }) }
+				? { ...squareRing(Number(call.lat), Number(call.lon), [0, 0.1]), ...visaRules({ HUN: { mode: 'closed' } }) }
 				: { outcome: 'visa_rules_missing', missingCitizenship: 'SRB' },
 		);
 		await page.goto(LINK);
@@ -152,7 +152,7 @@ test.describe('the visa rules', () => {
 
 	test('older than two days are dated under the phrase', async ({ page, ringApi }) => {
 		ringApi.respond((call) => ({
-			...squareRing(Number(call.lat), Number(call.lon), 0, call.hours / 10),
+			...squareRing(Number(call.lat), Number(call.lon), [0, call.hours / 10]),
 			...visaRules(undefined, call.hours === 2 ? '2026-11-05T11:59:00Z' : '2026-11-05T12:01:00Z'),
 		}));
 		await page.goto(LINK);
@@ -165,7 +165,7 @@ test.describe('the visa rules', () => {
 
 	test('of another year are dated with the year', async ({ page, ringApi }) => {
 		ringApi.respond((call) => ({
-			...squareRing(Number(call.lat), Number(call.lon), 0, 0.1),
+			...squareRing(Number(call.lat), Number(call.lon), [0, 0.1]),
 			...visaRules(undefined, '2025-12-30T09:00:00Z'),
 		}));
 		await page.goto(LINK);
@@ -179,10 +179,10 @@ test.describe('the visa rules', () => {
 
 		await expect(firstCard(page)).toContainText('Не удалось загрузить визовые правила для гражданства Сербия.');
 		await expect(firstCard(page)).toContainText('Попробуйте позже или уберите это гражданство');
-		expect(await firstCard(page).getByRole('button').allInnerTexts()).toEqual(['Гражданство']);
+		await expect(firstCard(page).getByRole('button')).toHaveText(['Гражданство'], { useInnerText: true });
 		expect(await ringOnMap(page)).toEqual([]);
 
-		ringApi.respond((call) => squareRing(Number(call.lat), Number(call.lon), 0, 0.2));
+		ringApi.respond((call) => squareRing(Number(call.lat), Number(call.lon), [0, 0.2]));
 		await firstCard(page).getByRole('button', { name: 'Гражданство' }).click();
 		await choice(page, 'Сербия').click();
 
@@ -194,7 +194,7 @@ test.describe('the visa rules', () => {
 		ringApi.respond((call) =>
 			call.cit === 'RUS,SRB' && call.hours === 2
 				? { outcome: 'visa_rules_missing', missingCitizenship: 'SRB' }
-				: squareRing(Number(call.lat), Number(call.lon), (call.hours - 1) / 10, call.hours / 10),
+				: squareRing(Number(call.lat), Number(call.lon), [(call.hours - 1) / 10, call.hours / 10]),
 		);
 		await page.goto(`${LINK}&cit=RUS,SRB`);
 		await expect(firstCard(page)).toContainText('Не удалось загрузить визовые правила для гражданства Сербия.');

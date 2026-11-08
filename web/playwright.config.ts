@@ -10,15 +10,16 @@ import { OFFLINE } from './e2e/offline.ts';
  * The preview server's port: `E2E_PORT`, else one of 20000–29999 that this checkout takes from its path, the same on
  * every run. Checkouts on one machine (agents' worktrees) then test their own builds at the same time.
  */
-const PORT = Number(
-	process.env.E2E_PORT ||
-		20_000 +
+const E2E_PORT = process.env.E2E_PORT ?? '';
+const PORT =
+	E2E_PORT === ''
+		? 20_000 +
 			(createHash('sha256')
 				.update(import.meta.dirname)
 				.digest()
 				.readUInt32BE(0) %
-				10_000),
-);
+				10_000)
+		: Number(E2E_PORT);
 
 /**
  * The list in the console; every failure in full in test-results/failures.md (e2e/failures.ts). On GitHub Actions,
@@ -28,7 +29,7 @@ const reporter: ReporterDescription[] = [
 	['list'],
 	['./e2e/failures.ts', { outputFile: join(import.meta.dirname, 'test-results', 'failures.md') }],
 ];
-if (process.env.GITHUB_ACTIONS) {
+if (process.env.GITHUB_ACTIONS === 'true') {
 	reporter.push(['github']);
 }
 

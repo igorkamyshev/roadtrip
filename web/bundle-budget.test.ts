@@ -33,7 +33,7 @@ async function buildWith(files: Record<string, string>, budgetKb: number): Promi
 		plugins: [bundleBudget(budgetKb)],
 		build: {
 			write: false,
-			rollupOptions: {
+			rolldownOptions: {
 				input: join(root, 'main.ts'),
 				output: { manualChunks: (id) => (id.endsWith('point.ts') ? 'point' : undefined) },
 			},

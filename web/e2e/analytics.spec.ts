@@ -11,11 +11,11 @@ import {
 	openInProduction,
 	POSTHOG_PROXY,
 	PRODUCTION,
-	type RingReply,
 	squareRing,
 	test,
 	visaRules,
 } from './fixtures.ts';
+import type { RingReply } from './ring-api.ts';
 import { dottedHours, dragSlider, expectRingCard, firstCard, leave, mapAtRest, phrase, slider } from './screen.ts';
 
 const BELGRADE = { lat: 44.8176, lon: 20.4573 };
@@ -46,7 +46,7 @@ async function runNowUntil(page: Page, done: () => Promise<boolean> | boolean): 
 const SENT = { timeout: 15_000 };
 
 test('one page view a load, and no URL PostHog gets has the link’s #…, however the state changes', async ({ page, ringApi, posthog }) => {
-	ringApi.respond((call) => squareRing(BELGRADE.lat, BELGRADE.lon, call.hours - 1, call.hours));
+	ringApi.respond((call) => squareRing(BELGRADE.lat, BELGRADE.lon, [call.hours - 1, call.hours]));
 
 	await openInProduction(page, LINK);
 	await expectRingCard(page, '2–3 ч');
@@ -62,24 +62,24 @@ test('one page view a load, and no URL PostHog gets has the link’s #…, howev
 });
 
 test("every ring request carries the browser's PostHog ids, the first one of the load too", async ({ page, ringApi, posthog }) => {
-	ringApi.respond((call) => squareRing(BELGRADE.lat, BELGRADE.lon, call.hours - 1, call.hours));
+	ringApi.respond((call) => squareRing(BELGRADE.lat, BELGRADE.lon, [call.hours - 1, call.hours]));
 
 	await openInProduction(page, LINK);
 	await expectRingCard(page, '2–3 ч');
 	await dragSlider(page, 5);
 	await expect.poll(() => posthog.named('ring result'), SENT).toHaveLength(2);
 
-	const [result] = posthog.events.filter((sent) => sent.event === 'ring result');
+	const [result] = posthog.named('ring result');
 	expect(ringApi.calls.map(({ headers }) => [headers['x-posthog-distinct-id'], headers['x-posthog-session-id']])).toEqual([
-		[result.properties.distinct_id, result.properties.$session_id],
-		[result.properties.distinct_id, result.properties.$session_id],
+		[result.distinct_id, result.$session_id],
+		[result.distinct_id, result.$session_id],
 	]);
-	expect(result.properties.distinct_id).toEqual(expect.any(String));
-	expect(result.properties.$session_id).toEqual(expect.any(String));
+	expect(result.distinct_id).toEqual(expect.any(String));
+	expect(result.$session_id).toEqual(expect.any(String));
 });
 
 test('an error the screen did not catch goes to PostHog', async ({ page, ringApi, posthog }) => {
-	ringApi.respond((call) => squareRing(BELGRADE.lat, BELGRADE.lon, call.hours - 1, call.hours));
+	ringApi.respond((call) => squareRing(BELGRADE.lat, BELGRADE.lon, [call.hours - 1, call.hours]));
 	await openInProduction(page, LINK);
 	await expectRingCard(page, '2–3 ч');
 
@@ -101,15 +101,12 @@ test('posthog-js comes after the screen, and still gets the errors thrown before
 	posthog,
 }) => {
 	// The chunk of posthog-js held until the screen is up and has thrown.
-	let release = () => {};
-	const held = new Promise<void>((resolve) => {
-		release = resolve;
-	});
+	const held = Promise.withResolvers<void>();
 	await context.route(/\/assets\/posthog-client-[\w-]+\.js$/u, async (route) => {
-		await held;
+		await held.promise;
 		await route.fallback();
 	});
-	ringApi.respond((call) => squareRing(BELGRADE.lat, BELGRADE.lon, call.hours - 1, call.hours));
+	ringApi.respond((call) => squareRing(BELGRADE.lat, BELGRADE.lon, [call.hours - 1, call.hours]));
 
 	await openInProduction(page, LINK);
 	await expect(phrase(page)).toContainText('2–3 часа в пути.');
@@ -118,9 +115,14 @@ test('posthog-js comes after the screen, and still gets the errors thrown before
 			throw new RangeError('broke before PostHog');
 		});
 	});
-	await page.evaluate(() => new Promise((resolve) => setTimeout(resolve, 0)));
+	await page.evaluate(
+		() =>
+			new Promise((resolve) => {
+				setTimeout(resolve, 0);
+			}),
+	);
 	expect(ringApi.calls).toEqual([]);
-	release();
+	held.resolve();
 
 	await expectRingCard(page, '2–3 ч');
 	expect(ringApi.calls[0].headers['x-posthog-distinct-id']).toEqual(expect.any(String));
@@ -138,7 +140,7 @@ test('off the production host PostHog is not started: nothing goes to it', async
 			toPostHog.push(request.url());
 		}
 	});
-	ringApi.respond((call) => squareRing(BELGRADE.lat, BELGRADE.lon, call.hours - 1, call.hours));
+	ringApi.respond((call) => squareRing(BELGRADE.lat, BELGRADE.lon, [call.hours - 1, call.hours]));
 
 	await page.goto(LINK);
 	await expectRingCard(page, '2–3 ч');
@@ -171,7 +173,7 @@ test('no request of a test reaches PostHog: one no route answers, a beacon of a 
 		for (const url of urls) {
 			navigator.sendBeacon(`${url}/e/`, '{}');
 		}
-		void fetch(`${urls[0]}/flags/`, { mode: 'no-cors' }).catch(() => undefined);
+		void fetch(`${urls[0]}/flags/`, { mode: 'no-cors' }).catch(() => {});
 	}, hosts);
 
 	await expect
@@ -186,7 +188,7 @@ test.describe('start set', () => {
 		ringApi,
 		posthog,
 	}) => {
-		ringApi.respond((call) => squareRing(BELGRADE.lat, BELGRADE.lon, call.hours - 1, call.hours));
+		ringApi.respond((call) => squareRing(BELGRADE.lat, BELGRADE.lon, [call.hours - 1, call.hours]));
 
 		await openInProduction(page, LINK);
 
@@ -203,7 +205,7 @@ test.describe('start set', () => {
 		ringApi,
 		posthog,
 	}) => {
-		ringApi.respond((call) => squareRing(BELGRADE.lat, BELGRADE.lon, call.hours - 1, call.hours));
+		ringApi.respond((call) => squareRing(BELGRADE.lat, BELGRADE.lon, [call.hours - 1, call.hours]));
 		await openInProduction(page, LINK);
 		await expect.poll(() => posthog.named('start set'), SENT).toHaveLength(1);
 
@@ -224,7 +226,7 @@ test.describe('start set', () => {
 
 	test('by geolocation on the first visit', async ({ page, context, ringApi, posthog }) => {
 		await allowGeolocation(context, { lat: 45.25, lon: 19.84 });
-		ringApi.respond((call) => squareRing(Number(call.lat), Number(call.lon), 0, 0.5));
+		ringApi.respond((call) => squareRing(Number(call.lat), Number(call.lon), [0, 0.5]));
 
 		await openInProduction(page);
 
@@ -235,7 +237,7 @@ test.describe('start set', () => {
 	});
 
 	test('by search: the city picked', async ({ page, ringApi, posthog }) => {
-		ringApi.respond((call) => squareRing(Number(call.lat), Number(call.lon), 0, 0.5));
+		ringApi.respond((call) => squareRing(Number(call.lat), Number(call.lon), [0, 0.5]));
 		await openInProduction(page);
 
 		await phrase(page).getByRole('button', { name: 'выберите' }).click();
@@ -251,7 +253,7 @@ test.describe('start set', () => {
 	});
 
 	test('by the pin: the city nearest to it', async ({ page, ringApi, posthog }) => {
-		ringApi.respond((call) => squareRing(Number(call.lat), Number(call.lon), 0, 0.5));
+		ringApi.respond((call) => squareRing(Number(call.lat), Number(call.lon), [0, 0.5]));
 		await openInProduction(page, LINK);
 		await expectRingCard(page, '2–3 ч');
 
@@ -269,7 +271,7 @@ test.describe('start set', () => {
 
 	test('without the cities file: only the method', async ({ page, ringApi, posthog }) => {
 		await page.route('**/data/cities.json', (route) => route.fulfill({ status: 404 }));
-		ringApi.respond((call) => squareRing(BELGRADE.lat, BELGRADE.lon, call.hours - 1, call.hours));
+		ringApi.respond((call) => squareRing(BELGRADE.lat, BELGRADE.lon, [call.hours - 1, call.hours]));
 
 		await openInProduction(page, LINK);
 
@@ -306,14 +308,14 @@ test.describe('geolocation failed', () => {
 	}
 });
 
-test.describe('ring result', () => {
-	/** Belgrade's ring 0–1.5° around it, Serbia and Hungary open: worked out from `CITIES`, 10 Serbian cities and Szeged. */
-	const belgradeRing = (source: RingSource = 'calculation'): RingResponse => ({
-		...squareRing(BELGRADE.lat, BELGRADE.lon, 0, 1.5),
-		...visaRules({ SRB: { mode: 'visa_free', citizenship: 'RUS' }, HUN: { mode: 'visa_free', citizenship: 'RUS' } }),
-		source,
-	});
+/** Belgrade's ring 0–1.5° around it, Serbia and Hungary open: worked out from `CITIES`, 10 Serbian cities and Szeged. */
+const belgradeRing = (source: RingSource = 'calculation'): RingResponse => ({
+	...squareRing(BELGRADE.lat, BELGRADE.lon, [0, 1.5]),
+	...visaRules({ SRB: { mode: 'visa_free', citizenship: 'RUS' }, HUN: { mode: 'visa_free', citizenship: 'RUS' } }),
+	source,
+});
 
+test.describe('ring result', () => {
 	test('tells the ring: N, the citizenships and held visas sorted, the place, the source, the wait and the cities', async ({
 		page,
 		ringApi,
@@ -381,16 +383,17 @@ test.describe('ring result', () => {
 		expect(ringApi.calls).toHaveLength(2);
 	});
 
-	const outcomes: [RingResultOutcome, RingReply, string][] = [
-		['empty', { outcome: 'empty', maxHours: 2, startCountry: 'SRB', source: 'cache', ...visaRules() }, 'Дальше 2 ч не уехать'],
-		['no_roads', { outcome: 'no_roads', startCountry: 'SRB', source: 'calculation', ...visaRules() }, 'Рядом нет дорог'],
-		['no_ring', { outcome: 'no_ring', startCountry: 'UKR', source: 'cache', ...visaRules() }, 'Кольца нет'],
-		['visa_rules_missing', { outcome: 'visa_rules_missing', missingCitizenship: 'RUS' }, 'визовые правила'],
-		['too_many_requests', { status: 429 }, 'Слишком много'],
-		['error', { status: 502 }, 'Не получилось'],
-		['error', 'network error', 'Не получилось'],
+	// The outcome, the Worker's reply, the card, and the source the event tells: the Worker's, when it answered.
+	const outcomes: [RingResultOutcome, RingReply, string, RingSource | undefined][] = [
+		['empty', { outcome: 'empty', maxHours: 2, startCountry: 'SRB', source: 'cache', ...visaRules() }, 'Дальше 2 ч не уехать', 'cache'],
+		['no_roads', { outcome: 'no_roads', startCountry: 'SRB', source: 'calculation', ...visaRules() }, 'Рядом нет дорог', 'calculation'],
+		['no_ring', { outcome: 'no_ring', startCountry: 'UKR', source: 'cache', ...visaRules() }, 'Кольца нет', 'cache'],
+		['visa_rules_missing', { outcome: 'visa_rules_missing', missingCitizenship: 'RUS' }, 'визовые правила', undefined],
+		['too_many_requests', { status: 429 }, 'Слишком много', undefined],
+		['error', { status: 502 }, 'Не получилось', undefined],
+		['error', 'network error', 'Не получилось', undefined],
 	];
-	for (const [outcome, reply, card] of outcomes) {
+	for (const [outcome, reply, card, source] of outcomes) {
 		test(`tells ${outcome}${reply === 'network error' ? ' when the network fails' : ''}`, async ({ page, ringApi, posthog }) => {
 			ringApi.respond(() => reply);
 
@@ -401,11 +404,8 @@ test.describe('ring result', () => {
 			const [result] = posthog.named('ring result');
 			expect(result).toMatchObject({ outcome, hours: 3, citizenships: ['RUS'], held_visas: [], start_city: 'Белград' });
 			expect(result).not.toHaveProperty('cities_count');
-			if (typeof reply === 'object' && 'source' in reply) {
-				expect(result.source).toBe(reply.source);
-			} else {
-				expect(result).not.toHaveProperty('source');
-			}
+			// The properties came as JSON, which has no undefined: an undefined source is none.
+			expect(result.source).toBe(source);
 		});
 	}
 
@@ -499,7 +499,7 @@ test('taps on the map are no dead clicks or rage clicks; a tap on text that does
 	posthog.remoteConfig = { ...posthog.remoteConfig, captureDeadClicks: true };
 	// PostHog waits a few seconds after a click for the page to change: the page's clock runs them.
 	await page.clock.install();
-	ringApi.respond((call) => squareRing(BELGRADE.lat, BELGRADE.lon, call.hours - 1, call.hours));
+	ringApi.respond((call) => squareRing(BELGRADE.lat, BELGRADE.lon, [call.hours - 1, call.hours]));
 	await openInProduction(page, LINK);
 	await expectRingCard(page, '2–3 ч');
 	await mapAtRest(page);

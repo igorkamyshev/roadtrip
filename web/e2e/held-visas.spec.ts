@@ -4,7 +4,7 @@
 // The counters come from the visa exemptions' table the client bundles (rules' VISA_EXEMPTIONS), on the date
 // `page.clock` sets: the tests below name the countries each count is made of, so a change of the table that
 // changes a count changes them too.
-import type { Page } from '@playwright/test';
+import type { Locator, Page } from '@playwright/test';
 import { allowGeolocation, expect, squareRing, test } from './fixtures.ts';
 import { expectRingCard, firstCard, phrase } from './screen.ts';
 
@@ -14,10 +14,16 @@ const LINK = '/#/?p=44.81760,20.45730&h=2';
 test.beforeEach(async ({ context, page, ringApi }) => {
 	await allowGeolocation(context, BELGRADE);
 	await page.clock.install({ time: new Date('2026-11-07T12:00:00Z') });
-	ringApi.respond((call) => squareRing(Number(call.lat), Number(call.lon), (call.hours - 1) / 10, call.hours / 10));
+	ringApi.respond((call) => squareRing(Number(call.lat), Number(call.lon), [(call.hours - 1) / 10, call.hours / 10]));
 });
 
 const sheet = (page: Page) => page.getByRole('dialog', { name: 'Мои визы' });
+const section = (page: Page, name: string) => sheet(page).getByRole('region', { name });
+/** A choice of `within` (the sheet or a section of it) by its name, without the counter under it. */
+const choiceIn = (within: Locator, name: string) =>
+	within.locator('.pick-item').filter({ has: within.page().locator('.pick-name', { hasText: new RegExp(`^${name}$`, 'u') }) });
+const choice = (page: Page, name: string) => choiceIn(sheet(page), name);
+const subOf = (page: Page, name: string) => choice(page, name).locator('.pick-sub');
 
 /** A new load of the page, as after closing the tab: the browser's storage stays. */
 async function reopen(page: Page, path: string): Promise<void> {
@@ -37,14 +43,6 @@ test.describe('the held visas', () => {
 });
 
 test.describe('the sheet «Мои визы»', () => {
-	const section = (page: Page, name: string) => sheet(page).getByRole('region', { name });
-	/** A choice of the sheet by its name, without the counter under it. */
-	const choice = (page: Page, name: string) =>
-		sheet(page)
-			.locator('.pick-item')
-			.filter({ has: page.locator('.pick-name', { hasText: new RegExp(`^${name}$`, 'u') }) });
-	const subOf = (page: Page, name: string) => choice(page, name).locator('.pick-sub');
-
 	test('lists Schengen and the visas that open other countries, with what each opens today, then the visa of one country', async ({
 		page,
 	}) => {
@@ -66,16 +64,24 @@ test.describe('the sheet «Мои визы»', () => {
 		]);
 
 		const one = section(page, 'Виза одной страны');
-		const names = await one.locator('.pick-name').allInnerTexts();
-		expect(names).toEqual(expect.arrayContaining(['Грузия', 'Андорра', 'Кипр', 'Ирландия', 'Турция', 'Китай']));
+		for (const country of ['Грузия', 'Андорра', 'Кипр', 'Ирландия', 'Турция', 'Китай']) {
+			await expect(choiceIn(one, country)).toHaveCount(1);
+		}
 		// Schengen's countries are held only as Schengen, and the four are above.
 		for (const held of ['Германия', 'Монако', 'Гибралтар', 'США', 'Соединенные Штаты', 'Великобритания', 'Канада']) {
-			expect(names).not.toContain(held);
+			await expect(choiceIn(one, held)).toHaveCount(0);
 		}
 		// Every country: ISO 3166-1's 249, Kosovo and Northern Cyprus, but the 33 in Schengen and the USA, the UK and Canada.
-		expect(names).toHaveLength(249 + 2 - 33 - 3);
-		expect(names).toEqual(expect.arrayContaining(['Гренландия', 'Северный Кипр', 'КНДР']));
-		expect(names).toEqual([...names].sort((a, b) => a.localeCompare(b, 'ru')));
+		await expect(one.locator('.pick-name')).toHaveCount(249 + 2 - 33 - 3);
+		for (const country of ['Гренландия', 'Северный Кипр', 'КНДР']) {
+			await expect(choiceIn(one, country)).toHaveCount(1);
+		}
+		// In the order of the Russian alphabet: the names as listed are those names sorted.
+		const names = await one.locator('.pick-name').allInnerTexts();
+		await expect(one.locator('.pick-name')).toHaveText(
+			names.toSorted((a, b) => a.localeCompare(b, 'ru')),
+			{ useInnerText: true },
+		);
 	});
 
 	test('counts only the rows acting today: none after its last day, and those for the citizenships chosen', async ({ page }) => {
@@ -158,7 +164,7 @@ test('«Мои визы» of the card `empty` opens the sheet, and a visa chosen
 					access: {},
 					visaRulesLoadedAt: new Date().toISOString(),
 				}
-			: squareRing(Number(call.lat), Number(call.lon), 0.1, 0.2),
+			: squareRing(Number(call.lat), Number(call.lon), [0.1, 0.2]),
 	);
 	await page.goto(LINK);
 	await expect(firstCard(page)).toContainText('Дальше 1 ч не уехать');

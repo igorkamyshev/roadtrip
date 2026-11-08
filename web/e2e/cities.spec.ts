@@ -49,7 +49,7 @@ const cityCards = (page: Page) => page.getByTestId('city-card');
 
 /** The ring 2–3 h as a band from 1° to 3° around Belgrade, with these entry modes. */
 function ringAroundBelgrade(access: Access) {
-	return { ...squareRing(BELGRADE.lat, BELGRADE.lon, 1, 3), ...visaRules(access) };
+	return { ...squareRing(BELGRADE.lat, BELGRADE.lon, [1, 3]), ...visaRules(access) };
 }
 
 /** What a person reads in an element: its inner text with the line breaks as spaces. */
@@ -74,7 +74,7 @@ test.describe('the first card', () => {
 
 	test('says «Городов в кольце нет» for a ring without cities of 15 000 people', async ({ page, ringApi }) => {
 		// From 0.02° to 0.1°: Belgrade, 0.01°, is in the hole, Pančevo, 0.18°, outside.
-		ringApi.respond(() => ({ ...squareRing(BELGRADE.lat, BELGRADE.lon, 0.02, 0.1), ...visaRules(RUSSIAN) }));
+		ringApi.respond(() => ({ ...squareRing(BELGRADE.lat, BELGRADE.lon, [0.02, 0.1]), ...visaRules(RUSSIAN) }));
 		await page.goto(LINK);
 
 		await expect.poll(() => read(firstCard(page))).toBe('Городов в кольце нет Показываем города больше 15 000 жителей.');
@@ -88,7 +88,7 @@ test.describe('the first card', () => {
 			[146412, 'Кирения', 'Kyrenia', 35.336, 33.317, 26_701, 'NX'],
 		]);
 		ringApi.respond((call) => ({
-			...squareRing(Number(call.lat), Number(call.lon), 0, 1),
+			...squareRing(Number(call.lat), Number(call.lon), [0, 1]),
 			...visaRules({ CYP: { mode: 'closed' }, NX: { mode: 'visa_free', citizenship: 'RUS' } }),
 		}));
 		await page.goto('/#/?p=35.20000,33.40000&h=2');
@@ -110,7 +110,7 @@ test.describe('the first card', () => {
 		const closedForEveryone: Access = { CRIMEA: { mode: 'closed', closedForEveryone: true } };
 		for (const crimea of [closedForEveryone, {}]) {
 			ringApi.respond((call) => ({
-				...squareRing(Number(call.lat), Number(call.lon), 0, 2),
+				...squareRing(Number(call.lat), Number(call.lon), [0, 2]),
 				...visaRules({ ...crimea, UKR: { mode: 'visa_free', citizenship: 'SRB' } }),
 			}));
 			await page.goto(`/#/?p=45.50000,33.50000&h=${'CRIMEA' in crimea ? 2 : 3}&cit=SRB`);
@@ -158,25 +158,26 @@ test.describe('the carousel', () => {
 	});
 });
 
-test.describe('the list of all cities', () => {
-	const sheet = (page: Page) => page.getByRole('dialog', { name: /в кольце/u });
-	const rows = (page: Page) => sheet(page).getByTestId('city-row');
+/** The sheet with the list of all cities of the ring, and its rows. */
+const allCities = (page: Page) => page.getByRole('dialog', { name: /в кольце/u });
+const rows = (page: Page) => allCities(page).getByTestId('city-row');
 
+test.describe('the list of all cities', () => {
 	test('lists every city of the ring, biggest first, with its country, population and entry mode', async ({ page, ringApi }) => {
 		ringApi.respond(() => ringAroundBelgrade(WITH_SCHENGEN_VISA));
 		await page.goto(LINK);
 		await page.getByRole('button', { name: /и ещё/u }).click();
 
 		await expect(rows(page)).toHaveCount(16);
-		expect(await Promise.all((await rows(page).all()).slice(0, 3).map(read))).toEqual([
+		expect(await Promise.all((await rows(page).all()).slice(0, 3).map((row) => read(row)))).toEqual([
 			'Будапешт Budapest Венгрия · 1,7 млн по визе Шенгена',
 			'Сараево Sarajevo Босния и Герцеговина · 697 тыс.',
 			'Ниш Niš Сербия · 250 тыс. страна старта',
 		]);
 		expect(await read(rows(page).last())).toBe('Ilidža Босния и Герцеговина · 71 тыс.');
 
-		await sheet(page).getByRole('button', { name: 'Закрыть' }).click();
-		await expect(sheet(page)).toHaveCount(0);
+		await allCities(page).getByRole('button', { name: 'Закрыть' }).click();
+		await expect(allCities(page)).toHaveCount(0);
 	});
 
 	test('keeps only the rows in view on the page, for the thousands of cities of a long ring', async ({ page, ringApi }) => {
@@ -205,7 +206,7 @@ test.describe('the list of all cities', () => {
 		await expect(rows(page).first()).toContainText('Город 1');
 		expect(await rows(page).count()).toBeLessThan(50);
 
-		await sheet(page)
+		await allCities(page)
 			.locator('.sheet-body')
 			.evaluate((body) => {
 				body.scrollTop = body.scrollHeight;
@@ -216,17 +217,35 @@ test.describe('the list of all cities', () => {
 	});
 });
 
-test.describe('the carousel and the map', () => {
-	/** The cards of the carousel, as the person scrolls it until the card is in the middle. */
-	async function scrollTo(page: Page, name: string): Promise<void> {
-		await cityCards(page)
-			.filter({ has: page.getByRole('heading', { name, exact: true }) })
-			.evaluate((card) => {
-				card.scrollIntoView({ inline: 'center', block: 'nearest' });
-			});
-	}
-	const chosenCard = (page: Page) => page.locator('[data-testid="city-card"][aria-current="true"]');
+/** The cards of the carousel, as the person scrolls it until the card is in the middle. */
+async function scrollTo(page: Page, name: string): Promise<void> {
+	await cityCards(page)
+		.filter({ has: page.getByRole('heading', { name, exact: true }) })
+		.evaluate((card) => {
+			card.scrollIntoView({ inline: 'center', block: 'nearest' });
+		});
+}
 
+/** The card of the chosen city: the carousel marks it current. */
+const chosenCard = (page: Page) => cityCards(page).and(page.locator('[aria-current="true"]'));
+
+/**
+ * Opens the list of all by «и ещё», at the carousel's end. Scrolling to it is a stop of the carousel, which chooses
+ * the city in its middle 140 ms later: the page's clock runs past that before the test picks a city, as a person's
+ * fingers would.
+ */
+async function openTheList(page: Page): Promise<void> {
+	await page.getByRole('button', { name: /и ещё/u }).click();
+	await page.clock.fastForward(1000);
+}
+
+/** How far the place is from the middle of the map once the camera went to it: past its easing, by the page's clock. */
+async function wentTo(page: Page, at: { readonly lat: number; readonly lon: number }): Promise<number> {
+	await page.clock.fastForward(EASING_PAST_MS);
+	return distanceFromTheMiddle(page, at);
+}
+
+test.describe('the carousel and the map', () => {
 	test.beforeEach(async ({ page, ringApi }) => {
 		// The page's clock, which the map's easing runs by: a test moves it past the easing, whatever the machine's load.
 		await page.clock.install();
@@ -236,22 +255,6 @@ test.describe('the carousel and the map', () => {
 		// The map is a chunk of its own: the carousel moves it once it is up and has fit the ring.
 		await mapAtRest(page);
 	});
-
-	/**
-	 * Opens the list of all by «и ещё», at the carousel's end. Scrolling to it is a stop of the carousel, which chooses
-	 * the city in its middle 140 ms later: the page's clock runs past that before the test picks a city, as a person's
-	 * fingers would.
-	 */
-	async function openTheList(page: Page): Promise<void> {
-		await page.getByRole('button', { name: /и ещё/u }).click();
-		await page.clock.fastForward(1000);
-	}
-
-	/** How far the place is from the middle of the map once the camera went to it: past its easing, by the page's clock. */
-	async function wentTo(page: Page, at: { readonly lat: number; readonly lon: number }): Promise<number> {
-		await page.clock.fastForward(EASING_PAST_MS);
-		return distanceFromTheMiddle(page, at);
-	}
 
 	test("the map labels the carousel's cities, and dots the others of the ring", async ({ page }) => {
 		await expect
@@ -331,10 +334,10 @@ test.describe('the carousel and the map', () => {
 	});
 });
 
-test.describe('a city card', () => {
-	/** The card of the city whose name is in its heading. */
-	const card = (page: Page, name: string) => cityCards(page).filter({ has: page.getByRole('heading', { name, exact: true }) });
+/** The card of the city whose name is in its heading. */
+const card = (page: Page, name: string) => cityCards(page).filter({ has: page.getByRole('heading', { name, exact: true }) });
 
+test.describe('a city card', () => {
 	test('says the name, the local name, the country and the population, and leads to Google Maps from the origin', async ({
 		page,
 		ringApi,
