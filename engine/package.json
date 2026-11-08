@@ -15,7 +15,8 @@
 		"./dataset": "./dataset/dataset.json",
 		"./snap": "./src/snap.ts",
 		"./start": "./src/start.ts",
-		"./traverse": "./src/traverse.ts"
+		"./traverse": "./src/traverse.ts",
+		"./version": "./src/version.ts"
 	},
 	"scripts": {
 		"start": "node server/main.ts",

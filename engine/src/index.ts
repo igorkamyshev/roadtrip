@@ -9,12 +9,9 @@ import type { Graph } from './graph.ts';
 import { ZoneLocator } from './zones.ts';
 import { startOnRoad } from './start.ts';
 import { latestArrival, traverse } from './traverse.ts';
+import { ENGINE_VERSION } from './version.ts';
 
-/**
- * The version of the engine's results. It is part of the data version in the ring cache key (spec «Кэш колец»),
- * so bump it by hand whenever the same input would give another result: see engine/AGENTS.md.
- */
-export const ENGINE_VERSION = 5;
+export { ENGINE_VERSION } from './version.ts';
 
 /** SHA-256 of the border table as JSON, in hex: any change to the table, a note included, changes it. */
 export function borderTableHash(table: BorderTable): Promise<string> {

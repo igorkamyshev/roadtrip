@@ -72,7 +72,7 @@ The fixtures in `test/fixtures/` are hand-written OSM XML of a few countries and
 - `test/ring.test.ts`: the engine's seam (spec «Решения по тестам», seam 1), borders included. Its border tests build their own small tables with `test/rules.ts`; the closed territories and the zones of #13 use the shipped table.
 - `test/build-graph.test.ts`: the graph itself, the PBF reader against the XML, the graph file, the build report.
 - `test/outlines.test.ts`: the zone outlines against the graph's `ZoneLocator` on `zones.osm`, and the simplification.
-- `test/border-table.test.ts` and `test/data-version.test.ts`: the border table's check and the data version, here because every package's tests run under `data`'s vitest and types.
+- `test/border-table.test.ts`, `test/data-version.test.ts` and `test/engine-fingerprint.test.ts`: the border table's check, the data version and the engine's fingerprint (`engine/AGENTS.md`), here because every package's tests run under `data`'s vitest and types.
 - `test/cities.test.ts`: the cities file from lines in GeoNames' formats, a double of Wikidata and the zones of `zones.osm`; `test/wikidata.test.ts`: the Wikidata client against a double of the Query Service.
 - `test/commands.test.ts`: the commands as processes; `build-cities` reads the small GeoNames files in `test/fixtures/geonames/`.
 - `test/zone-locator.test.ts`: `ZoneLocator` and the builder's `ZoneCells` on squares of whole degrees.

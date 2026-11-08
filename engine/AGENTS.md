@@ -8,17 +8,11 @@ The engine runs in a Container under Node today and may move to a Worker or a br
 
 ## Engine version
 
-`ENGINE_VERSION` in `src/index.ts` is part of the data version in the ring cache key (spec «Кэш колец»; `dataVersion` there, with the dataset's version and the border table's hash): an old ring stays cached under the old version. Bump it by one in the same change whenever the same input would give another result:
+`ENGINE_VERSION` in `src/version.ts` is part of the data version in the ring cache key (spec «Кэш колец»; `dataVersion` in `src/index.ts`, with the dataset's version and the border table's hash): an old ring stays cached under the old version. Bump it by one in the same change whenever the same input would give another result. A change to the border table's rows needs no bump: its hash is in the data version.
 
-- a speed in `data/src/roads.ts`, or which ways are roads;
-- the ×1.2, the 30 km/h off-road, the snapping (`src/snap.ts`: the 50 km limit, the 50 nodes reachable from the road);
-- the contour: cell size, near-road radius, simplification, marching squares;
-- how the engine reads the border table (`src/borders.ts`), or the zones the builder makes (`data/src/zones.ts`). A change to the table's rows needs no bump: its hash is in the data version;
-- which nodes of the roads the builder keeps in the graph (`data/src/build-graph.ts`), as where it cuts a loop or a chain too long for an edge;
-- the result's format;
-- `GRAPH_FORMAT_VERSION` in `src/graph.ts`, which itself goes up when the graph file's arrays or their meaning change.
+The sources such a change can be in, the engine's and the graph builder's, are `ENGINE_SOURCES` beside it, with what each holds, and their hash is `ENGINE_FINGERPRINT`. A change to any of them fails `data/test/engine-fingerprint.test.ts`, whose message prints the new fingerprint: bump the version if any ring can come out otherwise, and record the fingerprint either way. A new fingerprint with the same version says every ring stays as it was, as after a refactor. A new file the answer depends on joins `ENGINE_SOURCES`.
 
-A refactor that keeps every result keeps the version. `data/test/data-version.test.ts` spells the data version out, the engine's version with it, so a bump changes it there too.
+`data/test/data-version.test.ts` spells the data version out, the engine's version with it, so a bump changes it there too.
 
 ## The Container's server and image
 
