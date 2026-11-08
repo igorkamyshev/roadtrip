@@ -144,6 +144,9 @@
 				// Imported for what they do: the styles, the fonts, and the parts of posthog-js the SDK would load later.
 				"import/no-unassigned-import": ["error", { "allow": ["**/*.css", "@fontsource/**", "posthog-js/dist/*"] }],
 				// Off, each for its reason:
+				// its fix, `toSorted`, is ES2023: newer than the client's target (es2022, web/vite.config.ts), it is missing
+				// in Safari 15, so the screen sorts a copy (`[...codes].sort()`);
+				"unicorn/no-array-sort": "off",
 				// wrong with the automatic JSX runtime (`jsx: react-jsx`), and `settings.react.version` does not quiet it;
 				"react/react-in-jsx-scope": "off",
 				// they report the same calls as react-hooks/exhaustive-deps, which stays;
