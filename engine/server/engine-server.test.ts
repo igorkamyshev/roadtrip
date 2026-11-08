@@ -3,15 +3,15 @@
 // result with `joined`, and a failure answers 500 with the error. The calculations here are a double that ends when
 // the test says, on a clock the test moves; the engine itself on a graph file is in main.test.ts.
 import type { Server } from 'node:http';
-import type { AddressInfo } from 'node:net';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { RingRequest, RingResult } from '../src/index.ts';
+import type { MultiPolygon, RingRequest, RingResult } from '../src/index.ts';
+import { isRecord } from '../src/json.ts';
 import { COLD_START_HEADER } from '../src/protocol.ts';
 import { createEngineServer } from './engine-server.ts';
 import { listen } from './http.ts';
 
 const DATA_VERSION = '2026-11-01.0123456789abcdef.2';
-const RING = {
+const RING: MultiPolygon = {
 	type: 'MultiPolygon',
 	coordinates: [
 		[
@@ -23,14 +23,18 @@ const RING = {
 			],
 		],
 	],
-} as const;
+};
 
 /** A ring result of the engine that took `traversalMs` and `contourMs`. */
 function ringResult(traversalMs = 1200, contourMs = 300): RingResult {
-	return { outcome: 'ring', ring: structuredClone(RING) as never, startCountry: 'AAA', timings: { traversalMs, contourMs } };
+	return { outcome: 'ring', ring: structuredClone(RING), startCountry: 'AAA', timings: { traversalMs, contourMs } };
 }
 
-function request(lat: number, lon = 0, hours = 3, closedCountries: string[] = []): RingRequest {
+/** A calculation from `lat`, by default from 0° of longitude, for 3 h, with no closed countries. */
+function request(
+	lat: number,
+	{ lon = 0, hours = 3, closedCountries = [] }: { lon?: number; hours?: number; closedCountries?: string[] } = {},
+): RingRequest {
 	return { origin: { lat, lon }, hours, closedCountries };
 }
 
@@ -87,12 +91,20 @@ async function startServer() {
 		0,
 	);
 	servers.push(server);
-	const url = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+	const address = server.address();
+	if (address === null || typeof address === 'string') {
+		throw new Error(`the server listens on ${address ?? 'nothing'}, not on a TCP port`);
+	}
+	const url = `http://127.0.0.1:${address.port}`;
 
 	/** Posts `body` to the calculation path and resolves with the answer's status and JSON body. */
 	const send = async (body: string, headers: Record<string, string> = {}) => {
 		const response = await fetch(`${url}/ring`, { method: 'POST', body, headers });
-		return { status: response.status, body: (await response.json()) as Record<string, unknown> };
+		const answer: unknown = await response.json();
+		if (!isRecord(answer)) {
+			throw new Error(`the answer ${JSON.stringify(answer)} is not a JSON object`);
+		}
+		return { status: response.status, body: answer };
 	};
 	const post = (calculation: RingRequest, headers: Record<string, string> = {}) => send(JSON.stringify(calculation), headers);
 	/** Waits until the server has received `count` requests in all. */
@@ -107,7 +119,7 @@ describe('the engine server', () => {
 	it('answers a calculation with the engine’s result, the data version and the timings', async () => {
 		const { calculations, post } = await startServer();
 
-		const answer = post(request(0.5, 1.2, 3, ['AFG', 'PRK']));
+		const answer = post(request(0.5, { lon: 1.2, hours: 3, closedCountries: ['AFG', 'PRK'] }));
 		await vi.waitFor(() => {
 			expect(calculations.started).toHaveLength(1);
 		});
@@ -124,7 +136,7 @@ describe('the engine server', () => {
 				timings: { queueMs: 0, traversalMs: 1200, contourMs: 300 },
 			},
 		});
-		expect(calculations.started).toEqual([request(0.5, 1.2, 3, ['AFG', 'PRK'])]);
+		expect(calculations.started).toEqual([request(0.5, { lon: 1.2, hours: 3, closedCountries: ['AFG', 'PRK'] })]);
 	});
 
 	it('calculates one ring at a time, and the others wait in order and say for how long', async () => {
@@ -160,12 +172,12 @@ describe('the engine server', () => {
 	it('gives a request for a ring being calculated that calculation’s result, with joined', async () => {
 		const { calculations, clock, post, receivedAll } = await startServer();
 
-		const first = post(request(1, 0, 3, ['AFG', 'PRK']));
+		const first = post(request(1, { closedCountries: ['AFG', 'PRK'] }));
 		await vi.waitFor(() => {
 			expect(calculations.started).toHaveLength(1);
 		});
 		clock.now = 1000;
-		const same = post(request(1, 0, 3, ['AFG', 'PRK']));
+		const same = post(request(1, { closedCountries: ['AFG', 'PRK'] }));
 		await receivedAll(2);
 		clock.now = 4000;
 		calculations.finish(ringResult(3500, 500));

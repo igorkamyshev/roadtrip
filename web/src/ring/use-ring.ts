@@ -4,7 +4,7 @@
 // by itself, only «Повторить». While a ring comes, the previous ring of the same
 // origin stands in for it. Every change of what the screen asks for passes through `useRing` (`ring result`,
 // src/analytics/, tells an answer from memory as `source: memory`).
-import { hashKey, queryOptions, skipToken, useQuery, useQueryClient } from '@tanstack/react-query';
+import { queryOptions, skipToken, useQuery, useQueryClient, type QueryClient, type UseQueryResult } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useSyncExternalStore } from 'react';
 import type { RingResponse } from 'worker/api';
 import { pointText, type LatLon } from '../state/point.ts';
@@ -13,17 +13,15 @@ import type { Settings } from '../state/settings.ts';
 import { fetchRing, type RingRequestError } from './fetch-ring.ts';
 
 /** The query key of a ring: ['ring', origin, N, citizenships, visas]. */
-export function ringKey(origin: LatLon, hours: number, settings: Settings) {
-	return ['ring', pointText(origin), hours, settings.citizenships.join(','), settings.visas.join(',')] as const;
+export function ringKey(origin: LatLon, hours: number, settings: Settings): readonly ['ring', string, number, string, string] {
+	return ['ring', pointText(origin), hours, settings.citizenships.join(','), settings.visas.join(',')];
 }
 
 function ringQuery(origin: LatLon | undefined, hours: number, settings: Settings) {
 	return queryOptions<RingResponse, RingRequestError>({
 		queryKey: origin === undefined ? ['ring'] : ringKey(origin, hours, settings),
 		queryFn:
-			origin === undefined
-				? skipToken
-				: () => fetchRing({ origin, hours, citizenships: settings.citizenships, visas: settings.visas }),
+			origin === undefined ? skipToken : () => fetchRing({ origin, hours, citizenships: settings.citizenships, visas: settings.visas }),
 		staleTime: Infinity,
 		gcTime: Infinity,
 		retry: false,
@@ -35,26 +33,29 @@ function ringQuery(origin: LatLon | undefined, hours: number, settings: Settings
 	});
 }
 
-export function useRing(origin: LatLon | undefined, hours: number, settings: Settings) {
+/**
+ * The ring of the origin, N and settings. The origin and the settings are the same objects while they stay
+ * (useScreenState), and so is the query's key: the answer's memory is kept by it.
+ */
+export function useRing(origin: LatLon | undefined, hours: number, settings: Settings): UseQueryResult<RingResponse, RingRequestError> {
 	const client = useQueryClient();
-	const options = ringQuery(origin, hours, settings);
+	const options = useMemo(() => ringQuery(origin, hours, settings), [origin, hours, settings]);
 	const ring = useQuery(options);
 	// The visa rules missing is no ring to keep: the card says «Попробуйте позже», so once the screen asks for
 	// something else the answer is forgotten, and asking for it again asks the Worker.
 	const missing = !ring.isPlaceholderData && isMissing(ring.data);
 	const key = options.queryKey;
-	const keyHash = hashKey(key);
-	useEffect(() => {
-		if (!missing) {
-			return undefined;
-		}
-		return () => {
-			if (isMissing(client.getQueryData<RingResponse>(key))) {
-				client.removeQueries({ queryKey: key, exact: true });
-			}
-		};
-	}, [client, missing, keyHash]);
+	useEffect(() => (missing ? forgetMissing(client, key) : undefined), [client, missing, key]);
 	return ring;
+}
+
+/** The effect's cleanup that forgets the answer `visa_rules_missing` of `key` once the screen asks for something else. */
+function forgetMissing(client: QueryClient, key: readonly unknown[]): () => void {
+	return () => {
+		if (isMissing(client.getQueryData<RingResponse>(key))) {
+			client.removeQueries({ queryKey: key, exact: true });
+		}
+	};
 }
 
 function isMissing(answer: RingResponse | undefined): boolean {

@@ -2,7 +2,7 @@
 // of the Worker. Fetched once, when the screen first needs it, and kept for the session in TanStack Query.
 import { queryOptions, useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
-import { CITIES_FORMAT, CITIES_PATH, decodeCities, type CitiesFile } from 'data/cities-file';
+import { CITIES_PATH, decodeCities, parseCitiesFile } from 'data/cities-file';
 
 /** A city, a point of interest of the carousel (GLOSSARY «Точка интереса»). */
 export interface City {
@@ -25,11 +25,7 @@ async function loadCities(): Promise<readonly City[]> {
 	if (!response.ok) {
 		throw new Error(`${CITIES_PATH}: HTTP ${response.status}`);
 	}
-	const file = (await response.json()) as CitiesFile;
-	if (file.format !== CITIES_FORMAT) {
-		throw new Error(`${CITIES_PATH}: format ${String(file.format)}, not ${CITIES_FORMAT}`);
-	}
-	return decodeCities(file).map(([id, ru, local, lat, lon, population, zone]) => ({
+	return decodeCities(parseCitiesFile(await response.json())).map(([id, ru, local, lat, lon, population, zone]) => ({
 		id,
 		name: ru === '' ? local : ru,
 		local: ru === '' || ru === local ? undefined : local,
@@ -50,12 +46,10 @@ const citiesQuery = queryOptions({
 	refetchOnReconnect: false,
 });
 
-/** The cities, or undefined until they come (and if they cannot be had: the screen then counts none). */
-export function useCities(): readonly City[] | undefined {
-	return useQuery(citiesQuery).data;
-}
-
-/** The cities file as the events need it: whether it is settled, the cities once it came, none if it could not be had. */
+/**
+ * The cities file: whether it is settled (the events wait for it), and the cities once it came; undefined until then,
+ * and if it could not be had (the screen then counts none).
+ */
 export function useCitiesFile(): { readonly settled: boolean; readonly cities: readonly City[] | undefined } {
 	const { status, data } = useQuery(citiesQuery);
 	return useMemo(() => ({ settled: status !== 'pending', cities: data }), [status, data]);

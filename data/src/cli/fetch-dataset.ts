@@ -27,11 +27,16 @@ const PLACES = {
 };
 
 const { values } = parseArgs({ options: { bucket: { type: 'string', default: 'roadtrip-datasets' } } });
-const token = process.env.CLOUDFLARE_API_TOKEN;
-const account = process.env.CLOUDFLARE_ACCOUNT_ID;
-if (!token || !account) {
-	const missing = [!token && 'CLOUDFLARE_API_TOKEN', !account && 'CLOUDFLARE_ACCOUNT_ID'].filter(Boolean).join(' and ');
-	log(`${missing} not set. usage: CLOUDFLARE_API_TOKEN=… CLOUDFLARE_ACCOUNT_ID=… node data/src/cli/fetch-dataset.ts [--bucket <name>]`);
+// An empty variable is as good as none.
+const token = process.env.CLOUDFLARE_API_TOKEN ?? '';
+const account = process.env.CLOUDFLARE_ACCOUNT_ID ?? '';
+const missing = Object.entries({ CLOUDFLARE_API_TOKEN: token, CLOUDFLARE_ACCOUNT_ID: account })
+	.filter(([, value]) => value === '')
+	.map(([name]) => name);
+if (missing.length > 0) {
+	log(
+		`${missing.join(' and ')} not set. usage: CLOUDFLARE_API_TOKEN=… CLOUDFLARE_ACCOUNT_ID=… node data/src/cli/fetch-dataset.ts [--bucket <name>]`,
+	);
 	process.exit(2);
 }
 
@@ -40,14 +45,14 @@ const objects = `https://api.cloudflare.com/client/v4/accounts/${account}/r2/buc
 const r2: DatasetSource = {
 	async get(key) {
 		const response = await fetch(`${objects}/${key}`, { headers: { authorization: `Bearer ${token}` } });
-		if (response.status === 404) {
-			return undefined;
-		}
-		if (!response.ok || response.body === null) {
-			const why = response.status === 401 || response.status === 403 ? ' (the API token needs Workers R2 Storage: Read on the account)' : '';
+		// R2 answers 404 for a key the bucket lacks: no body. Any other answer is a failure unless it is OK, with a body.
+		const body = response.status === 404 ? undefined : response.body;
+		if (body === null || (body !== undefined && !response.ok)) {
+			const why =
+				response.status === 401 || response.status === 403 ? ' (the API token needs Workers R2 Storage: Read on the account)' : '';
 			throw new Error(`R2 answered ${response.status} to GET ${values.bucket}/${key}${why}: ${await response.text()}`);
 		}
-		return response.body;
+		return body;
 	},
 };
 

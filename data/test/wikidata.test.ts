@@ -12,18 +12,32 @@ interface Query {
 /** The query service: labels by GeoNames id (several items may share an id), or a status to answer with. */
 function queryService(labels: Record<number, string[]>, failures: { status: number; retryAfter?: string }[] = []) {
 	const queries: Query[] = [];
-	const fetch = async (input: string | URL | Request, init?: RequestInit) => {
-		const body = new URLSearchParams(String(init?.body));
+	const answer = (input: string | URL | Request, init?: RequestInit) => {
+		// The client posts the query as a form, in a string.
+		const body = new URLSearchParams(typeof init?.body === 'string' ? init.body : '');
 		const sparql = body.get('query') ?? '';
 		const ids = [...sparql.matchAll(/"(\d+)"/gu)].map((match) => Number(match[1]));
-		queries.push({ url: String(input), ids, userAgent: new Headers(init?.headers).get('user-agent') });
+		queries.push({
+			url: input instanceof Request ? input.url : input.toString(),
+			ids,
+			userAgent: new Headers(init?.headers).get('user-agent'),
+		});
 		const failure = failures.shift();
 		if (failure !== undefined) {
-			return new Response('busy', { status: failure.status, headers: failure.retryAfter === undefined ? {} : { 'retry-after': failure.retryAfter } });
+			return new Response('busy', {
+				status: failure.status,
+				headers: failure.retryAfter === undefined ? {} : { 'retry-after': failure.retryAfter },
+			});
 		}
-		const bindings = ids.flatMap((id) => (labels[id] ?? []).map((label) => ({ gn: { type: 'literal', value: String(id) }, l: { type: 'literal', 'xml:lang': 'ru', value: label } })));
+		const bindings = ids.flatMap((id) =>
+			(labels[id] ?? []).map((label) => ({
+				gn: { type: 'literal', value: String(id) },
+				l: { type: 'literal', 'xml:lang': 'ru', value: label },
+			})),
+		);
 		return Response.json({ head: { vars: ['gn', 'l'] }, results: { bindings } });
 	};
+	const fetch = (input: string | URL | Request, init?: RequestInit) => Promise.resolve(answer(input, init));
 	return { fetch, queries };
 }
 
@@ -31,8 +45,9 @@ function clock() {
 	const waits: number[] = [];
 	return {
 		waits,
-		sleep: async (ms: number) => {
+		sleep: (ms: number) => {
 			waits.push(ms);
+			return Promise.resolve();
 		},
 	};
 }
@@ -76,7 +91,10 @@ describe("Wikidata's Russian labels", () => {
 	});
 
 	it('fail the build when the query service keeps failing', async () => {
-		const service = queryService({}, Array.from({ length: 10 }, () => ({ status: 500 })));
+		const service = queryService(
+			{},
+			Array.from({ length: 10 }, () => ({ status: 500 })),
+		);
 
 		await expect(wikidataRussianLabels([1], { fetch: service.fetch, sleep: clock().sleep })).rejects.toThrow('Wikidata: HTTP 500');
 	});

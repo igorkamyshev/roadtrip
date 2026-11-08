@@ -1,9 +1,10 @@
 // The city search of the sheet «Откуда едем» (spec «Экран», #33): the cities of the cities file by the start of their
 // Russian or local name, case and ё aside, a hyphen as a space; up to 8, bigger cities higher.
+import { biggestFirst } from 'data/cities-file';
 import type { City } from './cities.ts';
 
 /** How many cities the search gives at most. */
-export const SEARCH_RESULTS = 8;
+const SEARCH_RESULTS = 8;
 
 /** A city with its names as the search compares them. */
 interface Entry {
@@ -17,7 +18,10 @@ const entries = new WeakMap<readonly City[], readonly Entry[]>();
 function entriesOf(cities: readonly City[]): readonly Entry[] {
 	let list = entries.get(cities);
 	if (list === undefined) {
-		list = cities.map((city) => ({ city, names: city.local === undefined ? [searchable(city.name)] : [searchable(city.name), searchable(city.local)] }));
+		list = cities.map((city) => ({
+			city,
+			names: city.local === undefined ? [searchable(city.name)] : [searchable(city.name), searchable(city.local)],
+		}));
 		entries.set(cities, list);
 	}
 	return list;
@@ -36,7 +40,7 @@ export function searchCities(cities: readonly City[], text: string): City[] {
 	return entriesOf(cities)
 		.filter(({ names }) => names.some((name) => name.startsWith(wanted)))
 		.map(({ city }) => city)
-		.sort((one, two) => two.population - one.population || one.id - two.id)
+		.sort(biggestFirst)
 		.slice(0, SEARCH_RESULTS);
 }
 
@@ -45,5 +49,9 @@ export function searchCities(cities: readonly City[], text: string): City[] {
  * («нови сад» is «Нови-Сад»), one space between words, none around.
  */
 export function searchable(text: string): string {
-	return text.toLowerCase().replaceAll('ё', 'е').replaceAll(/[-‐‑–—\s]+/gu, ' ').trim();
+	return text
+		.toLowerCase()
+		.replaceAll('ё', 'е')
+		.replaceAll(/[-‐‑–—\s]+/gu, ' ')
+		.trim();
 }

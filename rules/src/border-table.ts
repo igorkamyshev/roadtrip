@@ -44,21 +44,30 @@ export const borderTable: BorderTable = {
 			pair: ['BLR', 'LTU'],
 			status: 'crossings_only',
 			checked: CHECKED,
-			sources: [FCDO('lithuania'), 'https://vrm.lrv.lt/en/news/government-decides-to-reopen-salcininkai-and-medininkai-border-checkpoints-with-belarus-ODM1/'],
+			sources: [
+				FCDO('lithuania'),
+				'https://vrm.lrv.lt/en/news/government-decides-to-reopen-salcininkai-and-medininkai-border-checkpoints-with-belarus-ODM1/',
+			],
 			notes: 'Lavoriškės and Raigardas closed since 2024, Šumskas and Tverečius since 2023.',
 		},
 		{
 			pair: ['BLR', 'LVA'],
 			status: 'crossings_only',
 			checked: CHECKED,
-			sources: [FCDO('latvia'), 'https://www.iem.gov.lv/en/article/19-march-traffic-border-crossing-points-paternieki-terehova-and-grebneva-will-be-restricted'],
+			sources: [
+				FCDO('latvia'),
+				'https://www.iem.gov.lv/en/article/19-march-traffic-border-crossing-points-paternieki-terehova-and-grebneva-will-be-restricted',
+			],
 			notes: 'Paternieki is for vehicles only, with an electronic queue since 2025-10-15.',
 		},
 		{
 			pair: ['BLR', 'POL'],
 			status: 'crossings_only',
 			checked: CHECKED,
-			sources: [FCDO('poland'), 'https://www.polskieradio.pl/395/7785/Artykul/3608375,poland-reopens-two-key-border-crossings-with-belarus'],
+			sources: [
+				FCDO('poland'),
+				'https://www.polskieradio.pl/395/7785/Artykul/3608375,poland-reopens-two-key-border-crossings-with-belarus',
+			],
 		},
 		{
 			pair: ['BLR', 'RUS'],
@@ -86,7 +95,10 @@ export const borderTable: BorderTable = {
 			pair: ['LTU', 'RUS'],
 			status: 'crossings_only',
 			checked: CHECKED,
-			sources: ['https://www.lrt.lt/en/news-in-english/19/2704586/despite-tensions-people-commute-between-russian-kaliningrad-and-lithuania', 'https://russiable.com/border-kaliningrad-russia/'],
+			sources: [
+				'https://www.lrt.lt/en/news-in-english/19/2704586/despite-tensions-people-commute-between-russian-kaliningrad-and-lithuania',
+				'https://russiable.com/border-kaliningrad-russia/',
+			],
 			notes: 'Ramoniškiai–Pogranichny: status not found.',
 		},
 		{
@@ -97,7 +109,8 @@ export const borderTable: BorderTable = {
 				'https://www.iem.gov.lv/en/article/19-march-traffic-border-crossing-points-paternieki-terehova-and-grebneva-will-be-restricted',
 				'https://www.vid.gov.lv/en/article/operations-vientuli-border-crossing-point-latvian-border-russia-suspended-16-october',
 			],
-			notes: 'Vehicles only, with an electronic queue since 2025-10-15. Vientuļi–Ludonka closed since 2023-10-16; OSM has no car road there.',
+			notes:
+				'Vehicles only, with an electronic queue since 2025-10-15. Vientuļi–Ludonka closed since 2023-10-16; OSM has no car road there.',
 		},
 		{
 			pair: ['MNG', 'RUS'],
@@ -106,12 +119,21 @@ export const borderTable: BorderTable = {
 			sources: [FCDO('mongolia')],
 			notes: 'The road crossings to Russia open to foreigners; tell the tax authorities and border troops before driving in.',
 		},
-		{ pair: ['NOR', 'RUS'], status: 'crossings_only', checked: CHECKED, sources: ['https://www.regjeringen.no/en/aktuelt/norway-is-tightening-its-restrictive-measures-against-russia/id2996416'], notes: 'The only crossing.' },
+		{
+			pair: ['NOR', 'RUS'],
+			status: 'crossings_only',
+			checked: CHECKED,
+			sources: ['https://www.regjeringen.no/en/aktuelt/norway-is-tightening-its-restrictive-measures-against-russia/id2996416'],
+			notes: 'The only crossing.',
+		},
 		{
 			pair: ['POL', 'RUS'],
 			status: 'crossings_only',
 			checked: CHECKED,
-			sources: ['https://russiable.com/border-kaliningrad-russia/', 'https://notesfrompoland.com/2024/01/02/record-number-of-crossings-at-polands-border-with-russia-angering-local-poles/'],
+			sources: [
+				'https://russiable.com/border-kaliningrad-russia/',
+				'https://notesfrompoland.com/2024/01/02/record-number-of-crossings-at-polands-border-with-russia-angering-local-poles/',
+			],
 		},
 		// The Middle East.
 		{
@@ -130,7 +152,13 @@ export const borderTable: BorderTable = {
 		},
 		{ pair: ['ISR', 'LBN'], status: 'closed', checked: CHECKED, sources: [FCDO('israel')] },
 		{ pair: ['ISR', 'SYR'], status: 'closed', checked: CHECKED, sources: [FCDO('israel')] },
-		{ pair: ['SAU', 'YEM'], status: 'crossings_only', checked: CHECKED, sources: ['https://www.saigatours.com/article/A-guide-to-Yemens-land-border-crossings'], notes: 'The only official crossing.' },
+		{
+			pair: ['SAU', 'YEM'],
+			status: 'crossings_only',
+			checked: CHECKED,
+			sources: ['https://www.saigatours.com/article/A-guide-to-Yemens-land-border-crossings'],
+			notes: 'The only official crossing.',
+		},
 		{
 			pair: ['SYR', 'TUR'],
 			status: 'closed',
@@ -160,7 +188,10 @@ export const borderTable: BorderTable = {
 			pair: ['PRK', 'RUS'],
 			status: 'closed',
 			checked: CHECKED,
-			sources: [FCDO('north-korea'), 'https://abcnews.com/International/wireStory/russia-north-korea-open-road-link-shared-border-136254045'],
+			sources: [
+				FCDO('north-korea'),
+				'https://abcnews.com/International/wireStory/russia-north-korea-open-road-link-shared-border-136254045',
+			],
 			notes: 'The road bridge opened 2026-09-07; no word of private cars.',
 		},
 		// Africa.
@@ -205,7 +236,10 @@ export const borderTable: BorderTable = {
 			osm: 'way/489649852',
 			status: 'closed',
 			checked: CHECKED,
-			sources: [FCDO('lithuania'), 'https://www.euronews.com/2025/11/19/lithuania-reopens-border-crossings-with-belarus-after-tensions-over-smuggling-balloons'],
+			sources: [
+				FCDO('lithuania'),
+				'https://www.euronews.com/2025/11/19/lithuania-reopens-border-crossings-with-belarus-after-tensions-over-smuggling-balloons',
+			],
 			notes: 'Reopened 2025-11-20 by Lithuania, but FCDO (2026-08) says only Medininkai is open.',
 		},
 		{
@@ -217,7 +251,9 @@ export const borderTable: BorderTable = {
 			osm: 'way/23248726',
 			status: 'open',
 			checked: CHECKED,
-			sources: ['https://lvportals.lv/dienaskartiba/392883-noversti-tehniskie-traucejumi-paternieku-robezkontroles-punkta-informacijas-sistemu-darbiba-2026'],
+			sources: [
+				'https://lvportals.lv/dienaskartiba/392883-noversti-tehniskie-traucejumi-paternieku-robezkontroles-punkta-informacijas-sistemu-darbiba-2026',
+			],
 		},
 		{
 			id: 'silene',
@@ -297,7 +333,10 @@ export const borderTable: BorderTable = {
 			osm: 'way/1246405552',
 			status: 'pedestrian_only',
 			checked: CHECKED,
-			sources: [FCDO('russia'), 'https://www.themoscowtimes.com/2025/09/19/narva-border-crossing-will-stay-shut-to-vehicles-until-ukraine-war-ends-estonia-says-a90571'],
+			sources: [
+				FCDO('russia'),
+				'https://www.themoscowtimes.com/2025/09/19/narva-border-crossing-will-stay-shut-to-vehicles-until-ukraine-war-ends-estonia-says-a90571',
+			],
 			notes: 'Closed to cars since 2024-02-01.',
 		},
 		{
@@ -343,7 +382,9 @@ export const borderTable: BorderTable = {
 			osm: 'way/4420126',
 			status: 'open',
 			checked: CHECKED,
-			sources: ['https://www.iem.gov.lv/en/article/19-march-traffic-border-crossing-points-paternieki-terehova-and-grebneva-will-be-restricted'],
+			sources: [
+				'https://www.iem.gov.lv/en/article/19-march-traffic-border-crossing-points-paternieki-terehova-and-grebneva-will-be-restricted',
+			],
 		},
 		{
 			id: 'grebneva',
@@ -354,7 +395,9 @@ export const borderTable: BorderTable = {
 			osm: 'way/433837871',
 			status: 'open',
 			checked: CHECKED,
-			sources: ['https://www.iem.gov.lv/en/article/19-march-traffic-border-crossing-points-paternieki-terehova-and-grebneva-will-be-restricted'],
+			sources: [
+				'https://www.iem.gov.lv/en/article/19-march-traffic-border-crossing-points-paternieki-terehova-and-grebneva-will-be-restricted',
+			],
 		},
 		{
 			id: 'kyakhta',

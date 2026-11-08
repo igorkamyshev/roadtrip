@@ -1,20 +1,15 @@
 // GET /api/ring (spec «API кольца», «Кэш колец»): the ring from the ring cache in KV, or calculated by the engine
 // in the Container. Side effects come through `deps`, built at the entry (index.ts).
-import type { LogContext, Logger } from 'error-tracking/logger';
+import type { Logger } from 'error-tracking/logger';
 import { utcDate, type VisaExemption } from 'rules';
-import { type Calculation, type CalculationFailure, CALCULATION_PATH, type CalculationRequest, type RingOutcome } from 'engine/protocol';
 import { reduceVisaRules, withStartCountry } from './access.ts';
 import { type Analytics, browserIds, type RingServed } from './analytics.ts';
 import type { RingError, RingQuery, RingResponse } from './api.ts';
+import { calculate, type Container } from './container.ts';
 import type { Kv } from './kv.ts';
 import { parseRingQuery } from './query.ts';
-import { MAX_CACHED_BYTES, RING_TTL_SECONDS, ringKey, roundOrigin, workerDataVersion } from './ring-cache.ts';
+import { cachedRing, cacheRing, ringKey, roundOrigin, workerDataVersion } from './ring-cache.ts';
 import { citizenshipsRules } from './visa-rules.ts';
-
-/** The Container with the engine server (engine/server): its answer to the request as it gave it. */
-export interface Container {
-	fetch(request: Request): Promise<Response>;
-}
 
 export interface RingDeps {
 	/** The ring cache. */
@@ -92,26 +87,29 @@ async function serve(
 		exemptions: deps.visaExemptions,
 		today: utcDate(deps.now()),
 	});
-	const visaRulesLoadedAt = [...rules.copies.values()].map((copy) => copy.loadedAt).sort()[0];
+	const visaRulesLoadedAt = [...rules.copies.values()].map((copy) => copy.loadedAt).toSorted()[0];
 	// What the answer adds to the engine's outcome, the start country open in `access` (step 7).
-	const visa = (outcome: RingOutcome) => ({ access: withStartCountry(access, outcome.startCountry), visaRulesLoadedAt });
+	const visa = (startCountry: string | null) => ({ access: withStartCountry(access, startCountry), visaRulesLoadedAt });
 
 	// Steps 4–5: the key, from the fields the calculation gets and the data version.
-	const calculation: CalculationRequest = { origin: roundOrigin(query.origin), hours: query.hours, closedCountries: closed };
+	const calculation = { origin: roundOrigin(query.origin), hours: query.hours, closedCountries: closed };
 	const version = await workerDataVersion(deps.datasetVersion);
 	const key = await ringKey(version, calculation);
-	const cached = await deps.rings.get(key);
-	if (cached !== null) {
-		const outcome = JSON.parse(cached) as RingOutcome;
-		return { status: 200, body: { ...outcome, ...visa(outcome), source: 'cache' }, served: { source: 'cache', outcome: outcome.outcome } };
+	const cached = await cachedRing(deps.rings, key);
+	if (cached !== undefined) {
+		return {
+			status: 200,
+			body: { ...cached, ...visa(cached.startCountry), source: 'cache' },
+			served: { source: 'cache', outcome: cached.outcome },
+		};
 	}
 
 	// Step 6: the Container.
-	let calculated: Calculation;
-	try {
-		calculated = await calculate(calculation, deps.container);
-	} catch (error) {
+	const calculated = await calculate(calculation, deps.container).catch((error: unknown): undefined => {
 		deps.logger.error('[ring] the Container failed', error, context);
+		return undefined;
+	});
+	if (calculated === undefined) {
 		return { status: 502, body: { error: 'The engine failed' }, served: { source: 'calculation', outcome: 'error' } };
 	}
 	// Step 7: cache and answer, the start country open in `access`.
@@ -119,12 +117,12 @@ async function serve(
 	// A joined request got the result of another request's calculation, which caches it: a second write of the key
 	// at the same moment would only meet KV's limit of one write a second per key.
 	if (!joined) {
-		cache(key, outcome, { version, calculatedWith }, context, deps);
+		cacheRing({ key, outcome, version, calculatedWith, context }, deps);
 	}
 	const source = joined ? 'joined' : 'calculation';
 	return {
 		status: 200,
-		body: { ...outcome, ...visa(outcome), source },
+		body: { ...outcome, ...visa(outcome.startCountry), source },
 		// The engine measures in fractions of a millisecond.
 		served: {
 			source,
@@ -135,78 +133,6 @@ async function serve(
 			...(timings.coldStartMs === undefined ? {} : { cold_start_ms: Math.round(timings.coldStartMs) }),
 		},
 	};
-}
-
-/** A failure of the Container other than the engine's own error: it could not start, or answered something else. */
-export class ContainerError extends Error {
-	override name = 'ContainerError';
-}
-
-/** The Container's calculation; throws its failure as an Error with the engine's name, message and stack. */
-async function calculate(calculation: CalculationRequest, container: Container): Promise<Calculation> {
-	const response = await container.fetch(
-		new Request(`http://engine${CALCULATION_PATH}`, {
-			method: 'POST',
-			headers: { 'content-type': 'application/json' },
-			body: JSON.stringify(calculation),
-		}),
-	);
-	const text = await response.text();
-	if (response.status === 200) {
-		return JSON.parse(text) as Calculation;
-	}
-	throw engineError(response.status, text) ?? new ContainerError(`The Container answered ${response.status}: ${text.slice(0, 1000)}`);
-}
-
-/**
- * The engine's error from the engine server's 500 `{ name, message, stack }`, rebuilt into an Error: the Tail
- * Worker reads an Error's name, message and stack, not a plain object's (error-tracking/README.md).
- */
-function engineError(status: number, text: string): Error | undefined {
-	if (status !== 500) {
-		return undefined;
-	}
-	let failure: Partial<Record<keyof CalculationFailure, unknown>>;
-	try {
-		failure = JSON.parse(text) as typeof failure;
-	} catch {
-		return undefined;
-	}
-	const { name, message, stack } = failure;
-	return typeof name === 'string' && typeof message === 'string' && typeof stack === 'string'
-		? Object.assign(new Error(message), { name, stack })
-		: undefined;
-}
-
-/**
- * Writes the ring in the background, unless the Container calculated it with another data version than the
- * Worker's, as in a rollout (an old engine must not put its ring under a new key), or it is too big for KV.
- */
-function cache(
-	key: string,
-	outcome: RingOutcome,
-	versions: { version: string; calculatedWith: string },
-	context: LogContext,
-	deps: RingDeps,
-): void {
-	if (versions.calculatedWith !== versions.version) {
-		deps.logger.info('[ring] the Container calculated with another data version: the ring is not cached', {
-			worker: versions.version,
-			container: versions.calculatedWith,
-		});
-		return;
-	}
-	const value = JSON.stringify(outcome);
-	const bytes = new TextEncoder().encode(value).byteLength;
-	if (bytes > MAX_CACHED_BYTES) {
-		deps.logger.info('[ring] the ring is over 25 MiB: not cached', { bytes });
-		return;
-	}
-	deps.waitUntil(
-		deps.rings.put(key, value, { expirationTtl: RING_TTL_SECONDS }).catch((error: unknown) => {
-			deps.logger.error('[ring] the ring cache did not take the ring', error, context);
-		}),
-	);
 }
 
 function json(status: number, body: unknown): Response {

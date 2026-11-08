@@ -13,14 +13,13 @@ function outlinesAt(outlines: ZoneOutlines, lon: number, lat: number): string[] 
 	return outlines.features
 		.filter(({ geometry }) => {
 			let inside = false;
-			for (const polygon of geometry.coordinates) {
-				for (const ring of polygon) {
-					for (let point = 0, previous = ring.length - 1; point < ring.length; previous = point++) {
-						const [lon1, lat1] = ring[previous];
-						const [lon2, lat2] = ring[point];
-						if (lat1 > lat !== lat2 > lat && lon < lon1 + ((lon2 - lon1) * (lat - lat1)) / (lat2 - lat1)) {
-							inside = !inside;
-						}
+			// The rings of every polygon.
+			for (const ring of geometry.coordinates.flat()) {
+				for (let point = 0, previous = ring.length - 1; point < ring.length; previous = point++) {
+					const [lon1, lat1] = ring[previous];
+					const [lon2, lat2] = ring[point];
+					if (lat1 > lat !== lat2 > lat && lon < lon1 + ((lon2 - lon1) * (lat - lat1)) / (lat2 - lat1)) {
+						inside = !inside;
 					}
 				}
 			}
@@ -41,7 +40,12 @@ function rings(...zones: { zone: number; points: [number, number][] }[]): Graph[
 		}
 		start.push(lat.length);
 	}
-	return { zone: Uint8Array.from(zones, ({ zone }) => zone), start: Uint32Array.from(start), lat: Int32Array.from(lat), lon: Int32Array.from(lon) };
+	return {
+		zone: Uint8Array.from(zones, ({ zone }) => zone),
+		start: Uint32Array.from(start),
+		lat: Int32Array.from(lat),
+		lon: Int32Array.from(lon),
+	};
 }
 
 describe('the zone outlines', () => {
@@ -68,7 +72,9 @@ describe('the zone outlines', () => {
 			'UKR',
 			'WESTERN_SAHARA',
 		]);
-		expect(outlines.features.every(({ type, geometry }) => type === 'Feature' && geometry.type === 'MultiPolygon')).toBe(true);
+		expect(outlines.features.map(({ type, geometry }) => [type, geometry.type])).toEqual(
+			outlines.features.map(() => ['Feature', 'MultiPolygon']),
+		);
 	});
 
 	it("hold every point of their zone, and a part's points only in the part's outline, as the graph locates them", () => {
@@ -81,7 +87,9 @@ describe('the zone outlines', () => {
 				const held = outlinesAt(outlines, lon, lat);
 				const right = zone === '' ? held.length === 0 : held.includes(zone) && (!parts.has(zone) || held.length === 1);
 				if (!right) {
-					wrong.push(`${lon.toFixed(2)},${lat.toFixed(2)}: ${zone || 'none'}, outlines ${held.join(' ') || 'none'}`);
+					wrong.push(
+						`${lon.toFixed(2)},${lat.toFixed(2)}: ${zone === '' ? 'none' : zone}, outlines ${held.length === 0 ? 'none' : held.join(' ')}`,
+					);
 				}
 			}
 		}

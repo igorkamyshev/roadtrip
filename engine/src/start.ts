@@ -3,7 +3,7 @@
 // start here.
 import { OFF_ROAD_SECONDS_PER_METER } from './contour.ts';
 import type { Graph } from './graph.ts';
-import { edgeSecondsBetween, type OriginRoad, snapToRoad } from './snap.ts';
+import { edgeSecondsBetween, type OriginRoad, type SnapOrigin, snapToRoad } from './snap.ts';
 import { type Seed, TRAVEL_PER_DRIVING } from './traverse.ts';
 
 export interface Start extends OriginRoad {
@@ -12,12 +12,12 @@ export interface Start extends OriginRoad {
 }
 
 /**
- * The origin (1e-7 degrees) on its road, as `snapToRoad` picks it in `zone`, or in any zone when undefined. The origin
- * reaches the road in a straight line at 30 km/h of driving, then drives it to each end it may be driven to.
- * Undefined when there is no road within 50 km.
+ * The origin (1e-7 degrees) on its road, as `snapToRoad` picks it in the origin's zone, or in any zone when that is
+ * undefined. The origin reaches the road in a straight line at 30 km/h of driving, then drives it to each end it may
+ * be driven to. Undefined when there is no road within 50 km.
  */
-export function startOnRoad(graph: Graph, lat: number, lon: number, zone: number | undefined): Start | undefined {
-	const snap = snapToRoad(graph, lat, lon, zone);
+export function startOnRoad(graph: Graph, origin: SnapOrigin): Start | undefined {
+	const snap = snapToRoad(graph, origin);
 	if (snap === undefined) {
 		return undefined;
 	}

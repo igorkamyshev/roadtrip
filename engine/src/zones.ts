@@ -1,3 +1,4 @@
+import type { CellGrid } from './geo.ts';
 import type { ZoneRings } from './graph.ts';
 
 /** Edges of a ring per latitude band, so a lookup crosses only the edges at the point's latitude. */
@@ -42,10 +43,9 @@ export class ZoneLocator {
 
 	/** The zone of the point (1e-7 degrees): the lowest zone index whose polygon holds it, or 0 for none. */
 	zoneAt(lat: number, lon: number): number {
-		const { lat: ringLat, lon: ringLon } = this.#rings;
 		const grid = this.#grid;
-		const row = Math.floor(lat / GRID_CELL) - grid.firstRow;
-		const column = Math.floor(lon / GRID_CELL) - grid.firstColumn;
+		const row = rowOf(lat) - grid.firstRow;
+		const column = columnOf(lon) - grid.firstColumn;
 		if (row < 0 || row >= grid.rows || column < 0 || column >= grid.columns) {
 			return 0;
 		}
@@ -54,82 +54,100 @@ export class ZoneLocator {
 		parity.fill(0);
 		for (let slot = grid.cellStart[cell]; slot < grid.cellStart[cell + 1]; slot++) {
 			const ring = this.#indexed[grid.cellRings[slot]];
-			if (lat < ring.minLat || lat >= ring.maxLat || lon < ring.minLon || lon > ring.maxLon) {
-				continue;
-			}
-			const band = Math.min(ring.bandStart.length - 2, Math.floor((lat - ring.minLat) / ring.bandHeight));
-			let crossings = 0;
-			for (let edge = ring.bandStart[band]; edge < ring.bandStart[band + 1]; edge++) {
-				const point = ring.bandEdges[edge];
-				const lat1 = ringLat[point];
-				const lat2 = ringLat[point + 1];
-				if (lat1 > lat !== lat2 > lat) {
-					const lon1 = ringLon[point];
-					const crossLon = lon1 + ((ringLon[point + 1] - lon1) * (lat - lat1)) / (lat2 - lat1);
-					if (lon < crossLon) {
-						crossings++;
-					}
-				}
-			}
-			parity[ring.zone] ^= crossings & 1;
+			parity[ring.zone] ^= this.#crossingsEast(ring, lat, lon) & 1;
 		}
 		return Math.max(0, parity.indexOf(1));
 	}
 
 	/**
-	 * The zone of the centre of each cell of a grid, as `zoneAt` gives it, by scanlines: `rows` rows of `columns`
-	 * cells from the south-west corner (`minLat`, `minLon`), each `cellLat` by `cellLon` (1e-7 degrees), row by
-	 * row from the south.
+	 * The zone of the centre of each cell of a grid (1e-7 degrees), as `zoneAt` gives it, by scanlines, row by row
+	 * from the south.
 	 */
-	zonesOfCells(minLat: number, minLon: number, cellLat: number, cellLon: number, columns: number, rows: number): Uint8Array {
-		const { lat: ringLat, lon: ringLon } = this.#rings;
+	zonesOfCells(grid: CellGrid): Uint8Array {
+		const { minLat, minLon, cellLat, cellLon, columns, rows } = grid;
 		const cells = new Uint8Array(columns * rows);
 		const maxLat = minLat + rows * cellLat;
 		const maxLon = minLon + columns * cellLon;
-		const rings = this.#indexed
-			.filter((ring) => ring.maxLat > minLat && ring.minLat < maxLat && ring.maxLon > minLon && ring.minLon < maxLon)
-			.sort((one, two) => one.zone - two.zone);
+		// Zone by zone from the lowest, which wins where zones overlap: a cell keeps the first zone that holds it.
+		const byZone = Map.groupBy(
+			this.#indexed
+				.filter((ring) => ring.maxLat > minLat && ring.minLat < maxLat && ring.maxLon > minLon && ring.minLon < maxLon)
+				.toSorted((one, two) => one.zone - two.zone),
+			(ring) => ring.zone,
+		);
 		const crossings: number[] = [];
+		/** Inside the zone between each odd crossing and the next: an odd number of crossings east of the point. */
+		const fillRow = (row: number, zone: number) => {
+			for (let pair = 0; pair + 1 < crossings.length; pair += 2) {
+				const from = Math.max(0, Math.ceil((crossings[pair] - minLon) / cellLon - 0.5));
+				const to = Math.min(columns, Math.ceil((crossings[pair + 1] - minLon) / cellLon - 0.5));
+				for (let column = from; column < to; column++) {
+					const cell = row * columns + column;
+					if (cells[cell] === 0) {
+						cells[cell] = zone;
+					}
+				}
+			}
+		};
 		for (let row = 0; row < rows; row++) {
 			const lat = minLat + (row + 0.5) * cellLat;
-			// Zone by zone from the lowest, which wins where zones overlap: a cell keeps the first zone that holds it.
-			for (let first = 0; first < rings.length; ) {
-				const zone = rings[first].zone;
-				crossings.length = 0;
-				let ringIndex = first;
-				for (; ringIndex < rings.length && rings[ringIndex].zone === zone; ringIndex++) {
-					const ring = rings[ringIndex];
-					if (lat < ring.minLat || lat >= ring.maxLat) {
-						continue;
-					}
-					const band = Math.min(ring.bandStart.length - 2, Math.floor((lat - ring.minLat) / ring.bandHeight));
-					for (let slot = ring.bandStart[band]; slot < ring.bandStart[band + 1]; slot++) {
-						const point = ring.bandEdges[slot];
-						const lat1 = ringLat[point];
-						const lat2 = ringLat[point + 1];
-						if (lat1 > lat !== lat2 > lat) {
-							const lon1 = ringLon[point];
-							crossings.push(lon1 + ((ringLon[point + 1] - lon1) * (lat - lat1)) / (lat2 - lat1));
-						}
-					}
-				}
-				first = ringIndex;
+			for (const [zone, rings] of byZone) {
+				this.#crossingsAt(rings, lat, crossings);
 				crossings.sort((one, two) => one - two);
-				// Inside the zone between each odd crossing and the next: an odd number of crossings east of the point.
-				for (let pair = 0; pair + 1 < crossings.length; pair += 2) {
-					const from = Math.max(0, Math.ceil((crossings[pair] - minLon) / cellLon - 0.5));
-					const to = Math.min(columns, Math.ceil((crossings[pair + 1] - minLon) / cellLon - 0.5));
-					for (let column = from; column < to; column++) {
-						const cell = row * columns + column;
-						if (cells[cell] === 0) {
-							cells[cell] = zone;
-						}
-					}
-				}
+				fillRow(row, zone);
 			}
 		}
 		return cells;
 	}
+
+	/** How many edges of the ring cross the point's latitude east of it; 0 when the point is outside its box. */
+	#crossingsEast(ring: IndexedRing, lat: number, lon: number): number {
+		if (lat < ring.minLat || lat >= ring.maxLat || lon < ring.minLon || lon > ring.maxLon) {
+			return 0;
+		}
+		const band = bandAt(ring, lat);
+		let crossings = 0;
+		for (let slot = ring.bandStart[band]; slot < ring.bandStart[band + 1]; slot++) {
+			const crossLon = crossingLon(this.#rings, ring.bandEdges[slot], lat);
+			if (crossLon !== undefined && lon < crossLon) {
+				crossings++;
+			}
+		}
+		return crossings;
+	}
+
+	/** The longitudes where the edges of the rings cross the latitude, in `crossings`, which they replace. */
+	#crossingsAt(rings: readonly IndexedRing[], lat: number, crossings: number[]): void {
+		crossings.length = 0;
+		for (const ring of rings) {
+			if (lat < ring.minLat || lat >= ring.maxLat) {
+				continue;
+			}
+			const band = bandAt(ring, lat);
+			for (let slot = ring.bandStart[band]; slot < ring.bandStart[band + 1]; slot++) {
+				const crossLon = crossingLon(this.#rings, ring.bandEdges[slot], lat);
+				if (crossLon !== undefined) {
+					crossings.push(crossLon);
+				}
+			}
+		}
+	}
+}
+
+/** The band of the ring at the latitude; the last band holds its northernmost edge too. */
+function bandAt(ring: IndexedRing, lat: number): number {
+	return Math.min(ring.bandStart.length - 2, Math.floor((lat - ring.minLat) / ring.bandHeight));
+}
+
+/** The longitude where the ring edge from `point` to the next point crosses the latitude; undefined where it does not. */
+function crossingLon(rings: ZoneRings, point: number, lat: number): number | undefined {
+	const lat1 = rings.lat[point];
+	const lat2 = rings.lat[point + 1];
+	if (lat1 > lat === lat2 > lat) {
+		return undefined;
+	}
+	const lon1 = rings.lon[point];
+	return lon1 + ((rings.lon[point + 1] - lon1) * (lat - lat1)) / (lat2 - lat1);
 }
 
 interface RingGrid {
@@ -142,9 +160,15 @@ interface RingGrid {
 	readonly cellRings: Uint32Array;
 }
 
+function rowOf(lat: number): number {
+	return Math.floor(lat / GRID_CELL);
+}
+
+function columnOf(lon: number): number {
+	return Math.floor(lon / GRID_CELL);
+}
+
 function gridRings(rings: readonly IndexedRing[]): RingGrid {
-	const rowOf = (lat: number) => Math.floor(lat / GRID_CELL);
-	const columnOf = (lon: number) => Math.floor(lon / GRID_CELL);
 	if (rings.length === 0) {
 		return { firstRow: 0, firstColumn: 0, rows: 0, columns: 0, cellStart: new Uint32Array(1), cellRings: new Uint32Array(0) };
 	}
@@ -167,20 +191,33 @@ function gridRings(rings: readonly IndexedRing[]): RingGrid {
 	};
 	const cellStart = new Uint32Array(rows * columns + 1);
 	for (const ring of rings) {
-		eachCell(ring, (cell) => cellStart[cell + 1]++);
+		eachCell(ring, (cell) => {
+			cellStart[cell + 1]++;
+		});
 	}
 	for (let cell = 0; cell < rows * columns; cell++) {
 		cellStart[cell + 1] += cellStart[cell];
 	}
 	const cellRings = new Uint32Array(cellStart[rows * columns]);
 	const fill = cellStart.slice(0, rows * columns);
-	rings.forEach((ring, index) => eachCell(ring, (cell) => (cellRings[fill[cell]++] = index)));
+	rings.forEach((ring, index) => {
+		eachCell(ring, (cell) => {
+			cellRings[fill[cell]++] = index;
+		});
+	});
 	return { firstRow, firstColumn, rows, columns, cellStart, cellRings };
 }
 
-function indexRing(rings: ZoneRings, ring: number): IndexedRing {
-	const first = rings.start[ring];
-	const last = rings.start[ring + 1] - 1;
+/** A box in 1e-7 degrees. */
+export interface Bounds {
+	readonly minLat: number;
+	readonly maxLat: number;
+	readonly minLon: number;
+	readonly maxLon: number;
+}
+
+/** The box of the points `first` to `last` of `rings`; Infinity and -Infinity without a point. */
+export function pointsBounds(rings: ZoneRings, first: number, last: number): Bounds {
 	let minLat = Infinity;
 	let maxLat = -Infinity;
 	let minLon = Infinity;
@@ -191,30 +228,38 @@ function indexRing(rings: ZoneRings, ring: number): IndexedRing {
 		minLon = Math.min(minLon, rings.lon[point]);
 		maxLon = Math.max(maxLon, rings.lon[point]);
 	}
+	return { minLat, maxLat, minLon, maxLon };
+}
+
+function indexRing(rings: ZoneRings, ring: number): IndexedRing {
+	const first = rings.start[ring];
+	const last = rings.start[ring + 1] - 1;
+	const { minLat, maxLat, minLon, maxLon } = pointsBounds(rings, first, last);
 	const bands = Math.max(1, Math.min(MAX_BANDS, Math.ceil((last - first) / POINTS_PER_BAND)));
 	const bandHeight = Math.max(1, (maxLat - minLat) / bands);
 	const bandOf = (lat: number) => Math.min(bands - 1, Math.floor((lat - minLat) / bandHeight));
-	const counts = new Uint32Array(bands + 1);
-	for (let point = first; point < last; point++) {
-		const [low, high] = bandRange(rings.lat[point], rings.lat[point + 1], bandOf);
-		for (let band = low; band <= high; band++) {
-			counts[band + 1]++;
+	// Each edge in every band its latitudes span, from its first point.
+	const eachEdgeBand = (visit: (point: number, band: number) => void) => {
+		for (let point = first; point < last; point++) {
+			const lat1 = rings.lat[point];
+			const lat2 = rings.lat[point + 1];
+			const high = bandOf(Math.max(lat1, lat2));
+			for (let band = bandOf(Math.min(lat1, lat2)); band <= high; band++) {
+				visit(point, band);
+			}
 		}
-	}
+	};
+	const counts = new Uint32Array(bands + 1);
+	eachEdgeBand((_, band) => {
+		counts[band + 1]++;
+	});
 	for (let band = 0; band < bands; band++) {
 		counts[band + 1] += counts[band];
 	}
 	const bandStart = counts.slice();
 	const bandEdges = new Uint32Array(counts[bands]);
-	for (let point = first; point < last; point++) {
-		const [low, high] = bandRange(rings.lat[point], rings.lat[point + 1], bandOf);
-		for (let band = low; band <= high; band++) {
-			bandEdges[counts[band]++] = point;
-		}
-	}
+	eachEdgeBand((point, band) => {
+		bandEdges[counts[band]++] = point;
+	});
 	return { zone: rings.zone[ring], minLat, maxLat, minLon, maxLon, bandHeight, bandStart, bandEdges };
-}
-
-function bandRange(lat1: number, lat2: number, bandOf: (lat: number) => number): [number, number] {
-	return [bandOf(Math.min(lat1, lat2)), bandOf(Math.max(lat1, lat2))];
 }

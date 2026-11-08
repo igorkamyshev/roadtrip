@@ -1,17 +1,25 @@
 // The visa rules in the ring API (spec «Визовые правила и сведение», «API кольца», «Решения по тестам», seam 2; #11):
 // Sherpa's classes per citizenship, reduced to an entry mode per country, whose closed countries the calculation
-// avoids; Sherpa's copies in KV. Sherpa is a faked `fetch` (test/api.ts) answering in the shape of 2026-11-07.
+// avoids; Sherpa's copies in KV. Sherpa is a faked `fetch` (test/sherpa-double.ts) answering in the shape of 2026-11-07.
 import { fixtureGraph } from 'data/fixture-graph';
 import { describe, expect, it } from 'vitest';
-import { api, DAY, engineContainer, HOUR, MINUTE, recorded, SHERPA_API_KEY, SHERPA_COUNTRIES, SherpaDouble, sherpaMap, START } from '../test/api.ts';
+import { api, closedCountriesOf, DAY, engineContainer, HOUR, MINUTE, recorded, SHERPA_API_KEY, START } from '../test/api.ts';
+import { anyString } from '../test/matchers.ts';
+import { SHERPA_COUNTRIES, SherpaDouble, sherpaMap } from '../test/sherpa-double.ts';
+import { field } from 'engine/json';
 
 const straightRoad = fixtureGraph('straight-road.osm');
 
 /** The countries closed for everyone (rules' border table), closed in every set. */
 const CLOSED_FOR_EVERYONE = ['AZE', 'BTN', 'CHN', 'MMR', 'RKS', 'UKR'];
 
+/** Sherpa closing Cyprus to every passport, with a visa on arrival to Northern Cyprus. */
+function cyprusClosed(passport: string) {
+	return { body: sherpaMap(passport, { groups: { CYP: 'PAPER_OR_EMBASSY_VISA_REQUIRED', NX: 'VISA_ON_ARRIVAL_REQUIRED' } }) };
+}
+
 describe('the visa rules', () => {
-	it("give each country Sherpa lists its entry mode, and close those it does not", async () => {
+	it('give each country Sherpa lists its entry mode, and close those it does not', async () => {
 		const sherpa = new SherpaDouble();
 		sherpa.answer((passport) => ({
 			body: sherpaMap(passport, {
@@ -38,7 +46,7 @@ describe('the visa rules', () => {
 			ALB: { mode: 'evisa', citizenship: 'RUS' },
 		});
 		for (const closed of ['HRV', 'LBN', 'AFG', 'KIR', 'SYR', 'YEM']) {
-			expect((body.access as Record<string, unknown>)[closed]).toEqual({ mode: 'closed' });
+			expect(body.access).toHaveProperty(closed, { mode: 'closed' });
 		}
 		expect(container.bodies).toEqual([
 			expect.objectContaining({ closedCountries: ['AFG', 'AZE', 'BTN', 'CHN', 'HRV', 'KIR', 'LBN', 'MMR', 'RKS', 'SYR', 'UKR', 'YEM'] }),
@@ -47,15 +55,27 @@ describe('the visa rules', () => {
 
 	it('give each country the best mode among the citizenships, and the citizenship it comes from', async () => {
 		const sherpa = new SherpaDouble();
-		const russian = { GEO: 'EVISA_OR_ETA_REQUIRED', KHM: 'EVISA_OR_ETA_REQUIRED', THA: 'NO_VISA_REQUIRED', HRV: 'PAPER_OR_EMBASSY_VISA_REQUIRED' } as const;
-		const serbian = { GEO: 'NO_VISA_REQUIRED', KHM: 'VISA_ON_ARRIVAL_REQUIRED', THA: 'NO_VISA_REQUIRED', HRV: 'PAPER_OR_EMBASSY_VISA_REQUIRED' } as const;
-		sherpa.answer((passport) => ({ body: sherpaMap(passport, { groups: passport === 'RUS' ? russian : serbian, rest: 'UNKNOWN_VISA_INFO' }) }));
+		const russian = {
+			GEO: 'EVISA_OR_ETA_REQUIRED',
+			KHM: 'EVISA_OR_ETA_REQUIRED',
+			THA: 'NO_VISA_REQUIRED',
+			HRV: 'PAPER_OR_EMBASSY_VISA_REQUIRED',
+		} as const;
+		const serbian = {
+			GEO: 'NO_VISA_REQUIRED',
+			KHM: 'VISA_ON_ARRIVAL_REQUIRED',
+			THA: 'NO_VISA_REQUIRED',
+			HRV: 'PAPER_OR_EMBASSY_VISA_REQUIRED',
+		} as const;
+		sherpa.answer((passport) => ({
+			body: sherpaMap(passport, { groups: passport === 'RUS' ? russian : serbian, rest: 'UNKNOWN_VISA_INFO' }),
+		}));
 		const container = recorded(await engineContainer(straightRoad));
 		const { get } = api({ container, sherpa });
 
 		const { body } = await get('lat=0&lon=0&hours=2&cit=RUS,SRB');
 
-		expect(sherpa.passports.sort()).toEqual(['RUS', 'SRB']);
+		expect(sherpa.passports.toSorted()).toEqual(['RUS', 'SRB']);
 		expect(body.access).toMatchObject({
 			GEO: { mode: 'visa_free', citizenship: 'SRB' },
 			KHM: { mode: 'visa_on_arrival', citizenship: 'SRB' },
@@ -64,7 +84,7 @@ describe('the visa rules', () => {
 			HRV: { mode: 'closed' },
 			USA: { mode: 'closed' },
 		});
-		const { closedCountries } = container.bodies[0] as { closedCountries: string[] };
+		const closedCountries = closedCountriesOf(container.bodies[0]);
 		expect(closedCountries).toContain('HRV');
 		expect(closedCountries).not.toContain('GEO');
 		expect(closedCountries).not.toContain('KHM');
@@ -83,7 +103,7 @@ describe('the visa rules', () => {
 			SRB: { mode: 'visa_free', citizenship: 'SRB' },
 			BIH: { mode: 'closed' },
 		});
-		const { closedCountries } = container.bodies[0] as { closedCountries: string[] };
+		const closedCountries = closedCountriesOf(container.bodies[0]);
 		expect(closedCountries).toHaveLength(251 - 2);
 		expect(closedCountries).not.toContain('RUS');
 		expect(closedCountries).not.toContain('SRB');
@@ -124,13 +144,17 @@ describe('Sherpa', () => {
 
 		await get('lat=0&lon=0&hours=2&cit=RUS,SRB');
 
-		expect(sherpa.requests.map(({ request, body }) => ({
-			method: request.method,
-			url: request.url,
-			key: request.headers.get('x-api-key'),
-			type: request.headers.get('content-type'),
-			body,
-		})).sort((one, two) => JSON.stringify(one.body).localeCompare(JSON.stringify(two.body)))).toEqual(
+		expect(
+			sherpa.requests
+				.map(({ request, body }) => ({
+					method: request.method,
+					url: request.url,
+					key: request.headers.get('x-api-key'),
+					type: request.headers.get('content-type'),
+					body,
+				}))
+				.toSorted((one, two) => JSON.stringify(one.body).localeCompare(JSON.stringify(two.body))),
+		).toEqual(
 			['RUS', 'SRB'].map((passport) => ({
 				method: 'POST',
 				url: 'https://requirements-api.joinsherpa.com/v3/maps',
@@ -179,7 +203,11 @@ describe("Sherpa's copies", () => {
 		sherpa.hold();
 
 		clock.now = START + DAY;
-		await Promise.all([request('lat=0&lon=0&hours=2&cit=RUS'), request('lat=0&lon=0&hours=3&cit=RUS'), request('lat=0&lon=0&hours=4&cit=RUS')]);
+		await Promise.all([
+			request('lat=0&lon=0&hours=2&cit=RUS'),
+			request('lat=0&lon=0&hours=3&cit=RUS'),
+			request('lat=0&lon=0&hours=4&cit=RUS'),
+		]);
 		expect(sherpa.passports).toEqual(['RUS', 'RUS']);
 		sherpa.release();
 		await settle();
@@ -227,11 +255,20 @@ describe("Sherpa's copies", () => {
 
 	it.each([
 		['fewer than 200 countries', { body: sherpaMap('RUS', { absent: SHERPA_COUNTRIES.slice(199) }) }],
-		['a group Sherpa did not have', { body: { data: { attributes: { series: [{ type: 'VISA_FREE', data: SHERPA_COUNTRIES.map((id) => ({ id })) }] } } } }],
+		[
+			'a group Sherpa did not have',
+			{ body: { data: { attributes: { series: [{ type: 'VISA_FREE', data: SHERPA_COUNTRIES.map((id) => ({ id })) }] } } } },
+		],
 		['no series', { body: { data: { type: 'MAP', attributes: {} } } }],
 		[
 			'a country without its code',
-			{ body: { data: { attributes: { series: [{ type: 'NO_VISA_REQUIRED', data: [...SHERPA_COUNTRIES.map((id) => ({ id })), { name: 'Atlantis' }] }] } } } },
+			{
+				body: {
+					data: {
+						attributes: { series: [{ type: 'NO_VISA_REQUIRED', data: [...SHERPA_COUNTRIES.map((id) => ({ id })), { name: 'Atlantis' }] }] },
+					},
+				},
+			},
 		],
 		['not JSON', { text: '<html>Bad gateway</html>' }],
 	] as const)('are not overwritten by an answer with %s, a failure', async (_, reply) => {
@@ -279,7 +316,7 @@ describe('a failure of Sherpa', () => {
 			reason: '503',
 			citizenship: 'SRB',
 			served: 'error',
-			problem: expect.any(String),
+			problem: anyString,
 		});
 	});
 
@@ -325,7 +362,7 @@ describe('a failure of Sherpa', () => {
 
 		expect(stale.body).toMatchObject({ outcome: 'ring', visaRulesLoadedAt: '2026-11-07T00:00:00.000Z' });
 		expect(sherpa.passports).toEqual(['RUS', 'RUS', 'RUS']);
-		expect(errors.map(([message, error, context]) => [message, (error as Error).name, context])).toEqual([
+		expect(errors.map(([message, error, context]) => [message, field(error, 'name'), context])).toEqual([
 			['[visa rules] Sherpa failed', 'SherpaError', expect.objectContaining({ reason: 'network', citizenship: 'RUS', served: 'stale' })],
 			['[visa rules] Sherpa failed', 'SherpaError', expect.objectContaining({ reason: 'network', citizenship: 'RUS', served: 'stale' })],
 		]);
@@ -346,7 +383,9 @@ describe('a failure of Sherpa', () => {
 		await timers.advance(1);
 
 		expect((await answer).body).toEqual({ outcome: 'visa_rules_missing', missingCitizenship: 'RUS' });
-		expect(errors.map(([, , context]) => context)).toEqual([expect.objectContaining({ reason: 'timeout', citizenship: 'RUS', served: 'error' })]);
+		expect(errors.map(([, , context]) => context)).toEqual([
+			expect.objectContaining({ reason: 'timeout', citizenship: 'RUS', served: 'error' }),
+		]);
 		// The request itself was aborted.
 		expect(sherpa.requests[0].request.signal.aborted).toBe(true);
 	});
@@ -369,7 +408,6 @@ describe('visaRulesLoadedAt', () => {
 describe('the start country', () => {
 	// zones.osm: squares of the zones of #13 with no roads, so every origin there is no_roads or no_ring.
 	const zones = fixtureGraph('zones.osm');
-	const cyprusClosed = (passport: string) => ({ body: sherpaMap(passport, { groups: { CYP: 'PAPER_OR_EMBASSY_VISA_REQUIRED', NX: 'VISA_ON_ARRIVAL_REQUIRED' } }) });
 
 	it('is open in access although the visa rules close it, from the ring cache too; the calculation gets it closed', async () => {
 		const sherpa = new SherpaDouble();
@@ -386,7 +424,7 @@ describe('the start country', () => {
 			expect(body.access).toMatchObject({ CYP: { mode: 'start' }, NX: { mode: 'visa_on_arrival', citizenship: 'RUS' } });
 		}
 		expect([calculated.body.source, cached.body.source]).toEqual(['calculation', 'cache']);
-		expect(container.bodies).toEqual([expect.objectContaining({ closedCountries: [...CLOSED_FOR_EVERYONE, 'CYP'].sort() })]);
+		expect(container.bodies).toEqual([expect.objectContaining({ closedCountries: [...CLOSED_FOR_EVERYONE, 'CYP'].toSorted() })]);
 	});
 
 	it('stays closed when it is closed for everyone', async () => {
@@ -409,7 +447,11 @@ describe('the start country', () => {
 		const abkhazia = await get('lat=0.5&lon=13.5&hours=2&cit=RUS');
 
 		expect(northernCyprus.body).toMatchObject({ startCountry: 'NX', access: { NX: { mode: 'visa_on_arrival' }, CYP: { mode: 'closed' } } });
-		expect(abkhazia.body).toMatchObject({ outcome: 'no_ring', startCountry: 'ABKHAZIA', access: { ABKHAZIA: { mode: 'closed', closedForEveryone: true } } });
+		expect(abkhazia.body).toMatchObject({
+			outcome: 'no_ring',
+			startCountry: 'ABKHAZIA',
+			access: { ABKHAZIA: { mode: 'closed', closedForEveryone: true } },
+		});
 	});
 });
 
@@ -452,7 +494,9 @@ describe('sherpa fetched', () => {
 		await get('lat=0&lon=0&hours=2&cit=RUS');
 		await get('lat=0&lon=0&hours=2&cit=RUS');
 
-		expect(analytics.named('sherpa fetched')).toEqual([{ citizenship: 'RUS', result: 'ok', status: 201, duration_ms: 480, mode: 'blocking' }]);
+		expect(analytics.named('sherpa fetched')).toEqual([
+			{ citizenship: 'RUS', result: 'ok', status: 201, duration_ms: 480, mode: 'blocking' },
+		]);
 	});
 
 	it('tells the background refresh of a stale copy', async () => {
@@ -513,6 +557,11 @@ describe('sherpa fetched', () => {
 		clock.now = START + 15 * MINUTE - 1;
 		await get('lat=0&lon=0&hours=2&cit=RUS,SRB');
 
-		expect(analytics.named('sherpa fetched').map(({ citizenship }) => citizenship).sort()).toEqual(['RUS', 'SRB']);
+		expect(
+			analytics
+				.named('sherpa fetched')
+				.map(({ citizenship }) => citizenship)
+				.toSorted(),
+		).toEqual(['RUS', 'SRB']);
 	});
 });

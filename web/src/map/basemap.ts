@@ -27,7 +27,7 @@ export function basemapStyle(): StyleSpecification {
 			// To z15, as the world's archive; MapLibre overzooms beyond.
 			[SOURCE]: { type: 'vector', tiles: [`${origin}/tiles/{z}/{x}/{y}`], maxzoom: 15, attribution: ATTRIBUTION },
 		},
-		layers: (layers(SOURCE, namedFlavor(flavor), { lang: 'ru' }) as LayerSpecification[]).map(withRussianName),
+		layers: layers(SOURCE, namedFlavor(flavor), { lang: 'ru' }).map((layer) => withRussianName(layer)),
 	};
 }
 
@@ -45,6 +45,14 @@ function withRussianName(layer: LayerSpecification): LayerSpecification {
 	if (field === undefined || !JSON.stringify(field).includes('"name:ru"')) {
 		return layer;
 	}
-	const text = Array.isArray(field) && field[0] === 'step' ? ([...field.slice(0, -1), RUSSIAN_NAME] as ExpressionSpecification) : RUSSIAN_NAME;
+	const text = Array.isArray(field) && field[0] === 'step' ? withLastOutput(field, RUSSIAN_NAME) : RUSSIAN_NAME;
 	return { ...layer, layout: { ...layer.layout, 'text-field': text } };
+}
+
+type Step = Extract<ExpressionSpecification, readonly ['step', ...unknown[]]>;
+
+/** A `step` with `output` for its last output: the one of the highest zooms. */
+function withLastOutput(step: Step, output: ExpressionSpecification): ExpressionSpecification {
+	const [, input, first, ...stops] = step;
+	return stops.length === 0 ? output : ['step', input, first, ...stops.slice(0, -1), output];
 }

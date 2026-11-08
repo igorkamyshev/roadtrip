@@ -2,17 +2,18 @@
 // undocumented `POST /v3/maps`, which sorts ~230 countries into 7 groups. One request per citizenship; there is no
 // fallback to `/v3/trips`. An answer counts only when it passes the schema below and lists at least 200 countries:
 // anything else is a failure, and the copy in KV stays (visa-rules.ts).
+import { field, isRecord } from 'engine/json';
 
-export const SHERPA_MAPS_URL = 'https://requirements-api.joinsherpa.com/v3/maps';
+const SHERPA_MAPS_URL = 'https://requirements-api.joinsherpa.com/v3/maps';
 
 /** The whole request, the answer's body included, or it is a `timeout`. */
-export const SHERPA_TIMEOUT_MS = 10_000;
+const SHERPA_TIMEOUT_MS = 10_000;
 
 /** Fewer countries than this is a broken answer: a passport gets ~230. */
-export const MIN_COUNTRIES = 200;
+const MIN_COUNTRIES = 200;
 
 /** Sherpa's groups (`series[].type`), research/sherpa-api §2.2. */
-export const SHERPA_CLASSES = [
+const SHERPA_CLASSES = [
 	'NO_VISA_REQUIRED',
 	'VISA_ON_ARRIVAL_REQUIRED',
 	'EVISA_OR_ETA_REQUIRED',
@@ -40,7 +41,7 @@ export type SherpaResult = (
 ) & { readonly quotaRemaining?: number };
 
 /** The headers that may say what is left of the quota, the usual one first, then the IETF draft's. */
-export const QUOTA_HEADERS = ['x-ratelimit-remaining', 'ratelimit-remaining'] as const;
+const QUOTA_HEADERS = ['x-ratelimit-remaining', 'ratelimit-remaining'] as const;
 
 export type SherpaFailure = Exclude<SherpaResult, { result: 'ok' }>;
 
@@ -98,7 +99,12 @@ async function request(passport: string, deps: SherpaDeps, signal: AbortSignal):
 	}
 	const quota = quotaRemaining(response.headers);
 	if (!response.ok) {
-		return { result: 'http_error', status: response.status, problem: `Sherpa answered ${response.status}: ${text.slice(0, 200)}`, ...quota };
+		return {
+			result: 'http_error',
+			status: response.status,
+			problem: `Sherpa answered ${response.status}: ${text.slice(0, 200)}`,
+			...quota,
+		};
 	}
 	const classes = parseMap(text);
 	return typeof classes === 'string'
@@ -120,6 +126,21 @@ function quotaRemaining(headers: Headers): { quotaRemaining?: number } {
 const CLASS_SET: ReadonlySet<string> = new Set(SHERPA_CLASSES);
 const COUNTRY_CODE = /^[A-Z]{2,3}$/u;
 
+function isSherpaClass(value: unknown): value is SherpaClass {
+	return typeof value === 'string' && CLASS_SET.has(value);
+}
+
+/** Classes as a copy in KV holds them (visa-rules.ts): Sherpa's groups, each a list of codes. */
+export function isSherpaClasses(value: unknown): value is SherpaClasses {
+	return (
+		isRecord(value) &&
+		Object.entries(value).every(
+			([name, countries]) =>
+				isSherpaClass(name) && Array.isArray(countries) && countries.every((country: unknown) => typeof country === 'string'),
+		)
+	);
+}
+
 /**
  * The classes of an answer, or what is wrong with it. The schema is what the reduction reads: `data.attributes
  * .series[]`, each with a known `type` and `data[]` of `{ id }`, a country code; at least 200 countries in all.
@@ -139,26 +160,34 @@ function parseMap(text: string): SherpaClasses | string {
 	const classes: Partial<Record<SherpaClass, string[]>> = {};
 	const seen = new Set<string>();
 	for (const group of series) {
-		const type = field(group, 'type');
-		const data = field(group, 'data');
-		if (typeof type !== 'string' || !CLASS_SET.has(type) || !Array.isArray(data)) {
-			return `a series of type ${JSON.stringify(type)}`;
-		}
-		const countries: string[] = (classes[type as SherpaClass] ??= []);
-		for (const location of data) {
-			const id = field(location, 'id');
-			if (typeof id !== 'string' || !COUNTRY_CODE.test(id)) {
-				return `a country ${JSON.stringify(id)} in ${type}`;
-			}
-			if (!seen.has(id)) {
-				seen.add(id);
-				countries.push(id);
-			}
+		const problem = addSeries(group, classes, seen);
+		if (problem !== undefined) {
+			return problem;
 		}
 	}
 	return seen.size >= MIN_COUNTRIES ? classes : `${seen.size} countries, fewer than ${MIN_COUNTRIES}`;
 }
 
-function field(value: unknown, name: string): unknown {
-	return typeof value === 'object' && value !== null ? (value as Record<string, unknown>)[name] : undefined;
+/**
+ * Adds the countries of one of the answer's series to its class, but those `seen` in an earlier one; what is wrong
+ * with the series, or undefined.
+ */
+function addSeries(group: unknown, classes: Partial<Record<SherpaClass, string[]>>, seen: Set<string>): string | undefined {
+	const type = field(group, 'type');
+	const data = field(group, 'data');
+	if (!isSherpaClass(type) || !Array.isArray(data)) {
+		return `a series of type ${JSON.stringify(type)}`;
+	}
+	const countries = (classes[type] ??= []);
+	for (const location of data) {
+		const id = field(location, 'id');
+		if (typeof id !== 'string' || !COUNTRY_CODE.test(id)) {
+			return `a country ${JSON.stringify(id)} in ${type}`;
+		}
+		if (!seen.has(id)) {
+			seen.add(id);
+			countries.push(id);
+		}
+	}
+	return undefined;
 }

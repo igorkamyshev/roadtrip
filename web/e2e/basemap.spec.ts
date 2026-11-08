@@ -1,19 +1,20 @@
 // The basemap (spec «Экран», «Карта»): Protomaps' vector tiles from our own domain, `/tiles/{z}/{x}/{y}`, the
 // fonts and sprites from our static assets, the labels in Russian, else in the local language, and the
 // attribution. The map is read by its style and the requests it made, never by pixels.
-import type { Page } from '@playwright/test';
 import type { StyleSpecification } from 'maplibre-gl';
 import { expect, test } from './fixtures.ts';
 import { OFFLINE } from './offline.ts';
+import { loadedStyle } from './screen.ts';
 
 /** The label of the spec: `coalesce(name:ru, name)`. */
 const RUSSIAN_NAME = ['coalesce', ['get', 'name:ru'], ['get', 'name']];
 
-/** The map's style once it has loaded: its sprite, its fonts and the tiles of the view are in. */
-async function loadedStyle(page: Page): Promise<StyleSpecification> {
-	type MapForTests = { loaded(): boolean; getStyle(): StyleSpecification };
-	await expect.poll(() => page.evaluate(() => (window as unknown as { __roadtripMap?: MapForTests }).__roadtripMap?.loaded() ?? false)).toBe(true);
-	return page.evaluate(() => (window as unknown as { __roadtripMap: MapForTests }).__roadtripMap.getStyle());
+/** Where the style takes a font's glyphs of `range` from. */
+function glyphsUrl(style: StyleSpecification, font: string, range: string): string {
+	if (style.glyphs === undefined) {
+		throw new Error('the style names no glyphs');
+	}
+	return style.glyphs.replace('{fontstack}', font).replace('{range}', range);
 }
 
 test('the basemap comes from our own domain and reaches no other host', async ({ page, network }) => {
@@ -41,7 +42,7 @@ test('the basemap comes from our own domain and reaches no other host', async ({
 	const fonts = new Set(JSON.stringify(style.layers).match(/Noto Sans [A-Za-z ]+?(?=")/gu));
 	expect(fonts.size).toBeGreaterThan(0);
 	for (const font of fonts) {
-		const glyphs = await page.request.get(style.glyphs!.replace('{fontstack}', font).replace('{range}', '1024-1279'));
+		const glyphs = await page.request.get(glyphsUrl(style, font, '1024-1279'));
 		expect(glyphs.status(), font).toBe(200);
 		expect((await glyphs.body()).length, font).toBeGreaterThan(0);
 	}
@@ -57,8 +58,12 @@ test('the labels are in Russian, else in the local language, on one line', async
 	expect(label('places_locality')?.['text-field']).toEqual(RUSSIAN_NAME);
 	expect(label('places_country')?.['text-field']).toEqual(RUSSIAN_NAME);
 	// No label anywhere takes another name: not the English one, not a second line in the local language.
-	const names = new Set(JSON.stringify(style.layers.map((layer) => (layer.layout as Record<string, unknown> | undefined)?.['text-field'])).match(/"(pgf:)?name[^"]*"/gu));
-	expect([...names].sort()).toEqual(['"name"', '"name:ru"']);
+	const names = new Set(
+		JSON.stringify(style.layers.map((layer) => (layer.layout as Record<string, unknown> | undefined)?.['text-field'])).match(
+			/"(pgf:)?name[^"]*"/gu,
+		),
+	);
+	expect([...names].toSorted()).toEqual(['"name"', '"name:ru"']);
 });
 
 test('the map credits OpenStreetMap and Protomaps', async ({ page }) => {

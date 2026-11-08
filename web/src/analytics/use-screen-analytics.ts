@@ -37,20 +37,21 @@ export function useScreenAnalytics({ start, request, retries, hours, settings, r
 		}
 	}, [analytics, start]);
 
+	const { data, error, dataUpdatedAt, errorUpdatedAt, isFetching, isPlaceholderData } = ring;
 	// The answer the render shows for this request: its own, not a ring standing in for it, and no request under way.
-	const answered = !ring.isFetching && !ring.isPlaceholderData;
+	const answered = !isFetching && !isPlaceholderData;
 	const id = request === undefined ? undefined : `${request}#${retries}`;
 
-	// A new ask when the request or «Повторить» changes, and only then: the start, N and the settings are what the
-	// request was made of. Memory is an answer already there, with nothing under way.
+	// A new ask when the request or «Повторить» changes, and only then: `ringAsked` takes an id once, so the runs that
+	// follow as the answer comes add nothing, and the start, N and the settings are what the request was made of.
+	// Memory is an answer already there, with nothing under way.
 	useEffect(() => {
 		if (id !== undefined && start !== undefined) {
-			analytics.ringAsked({ id, start, hours, settings }, answered ? ring.data : undefined);
+			analytics.ringAsked({ id, start, hours, settings }, answered ? data : undefined);
 		}
-	}, [analytics, id]);
+	}, [analytics, id, start, hours, settings, answered, data]);
 
 	// Its answer, once it is there.
-	const { data, error, dataUpdatedAt, errorUpdatedAt } = ring;
 	useEffect(() => {
 		if (id === undefined || !answered) {
 			return;

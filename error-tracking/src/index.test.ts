@@ -25,7 +25,7 @@ function executionContext() {
 		waitUntil: (promise: Promise<unknown>) => {
 			background.push(promise);
 		},
-	} as unknown as ExecutionContext;
+	};
 	return { ctx, background };
 }
 
@@ -41,7 +41,7 @@ describe('the tail handler', () => {
 		const log = vi.spyOn(console, 'log').mockImplementation(() => {});
 		const { ctx, background } = executionContext();
 
-		void worker.tail([FAILED_RUN], { POSTHOG_API_KEY: '' }, ctx);
+		worker.tail([FAILED_RUN], { POSTHOG_API_KEY: '' }, ctx);
 
 		expect(fetch).not.toHaveBeenCalled();
 		expect(background).toEqual([]);
@@ -54,13 +54,13 @@ describe('the tail handler', () => {
 		vi.stubGlobal('fetch', fetch);
 		const { ctx, background } = executionContext();
 
-		void worker.tail([FAILED_RUN], { POSTHOG_API_KEY: 'phc_test' }, ctx);
+		worker.tail([FAILED_RUN], { POSTHOG_API_KEY: 'phc_test' }, ctx);
 		await Promise.all(background);
 
 		expect(fetch).toHaveBeenCalledTimes(1);
 		const [url, init] = fetch.mock.calls[0] ?? [];
 		expect(url).toBe('https://us.i.posthog.com/batch/');
-		expect(JSON.parse(String(init?.body))).toMatchObject({
+		expect(JSON.parse(await new Response(init?.body).text())).toMatchObject({
 			api_key: 'phc_test',
 			batch: [{ event: '$exception', properties: { worker: 'roadtrip', $exception_list: [{ value: '[ring] the engine failed' }] } }],
 		});
@@ -72,7 +72,7 @@ describe('the tail handler', () => {
 		const log = vi.spyOn(console, 'log').mockImplementation(() => {});
 		const { ctx, background } = executionContext();
 
-		void worker.tail([{ ...FAILED_RUN, logs: [] }], { POSTHOG_API_KEY: '' }, ctx);
+		worker.tail([{ ...FAILED_RUN, logs: [] }], { POSTHOG_API_KEY: '' }, ctx);
 
 		expect(fetch).not.toHaveBeenCalled();
 		expect(background).toEqual([]);

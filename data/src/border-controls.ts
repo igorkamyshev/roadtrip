@@ -22,22 +22,46 @@ export class BorderControls {
 	}
 
 	/** Whether one lies within BORDER_CROSSING_METERS of the segment between the two points. */
+	// oxlint-disable-next-line eslint/max-params -- a segment's ends, for each edge across a border of the world's graph: plain numbers, as the engine's distances take them
 	near(lat1: number, lon1: number, lat2: number, lon2: number): boolean {
 		const latReach = (BORDER_CROSSING_METERS / METERS_PER_DEGREE) * E7;
 		const cos = Math.max(0.01, Math.cos((Math.max(Math.abs(lat1), Math.abs(lat2)) / E7 + latReach / E7) * (Math.PI / 180)));
 		const lonReach = latReach / cos;
-		for (let row = Math.floor((Math.min(lat1, lat2) - latReach) / CELL); row <= Math.floor((Math.max(lat1, lat2) + latReach) / CELL); row++) {
-			for (let column = Math.floor((Math.min(lon1, lon2) - lonReach) / CELL); column <= Math.floor((Math.max(lon1, lon2) + lonReach) / CELL); column++) {
-				const points = this.#cells.get(cellKey(row, column)) ?? [];
-				for (let index = 0; index < points.length; index += 2) {
-					if (segmentMeters(points[index], points[index + 1], lat1, lon1, lat2, lon2) <= BORDER_CROSSING_METERS) {
-						return true;
-					}
+		const rows = cellSpan(Math.min(lat1, lat2) - latReach, Math.max(lat1, lat2) + latReach);
+		const columns = cellSpan(Math.min(lon1, lon2) - lonReach, Math.max(lon1, lon2) + lonReach);
+		for (const points of this.#cellsIn(rows, columns)) {
+			for (let index = 0; index < points.length; index += 2) {
+				if (segmentMeters(points[index], points[index + 1], lat1, lon1, lat2, lon2) <= BORDER_CROSSING_METERS) {
+					return true;
 				}
 			}
 		}
 		return false;
 	}
+
+	/** The points of the cells in the rows and columns, row by row. */
+	#cellsIn(rows: CellSpan, columns: CellSpan): (readonly number[])[] {
+		const cells: (readonly number[])[] = [];
+		for (let row = rows.first; row <= rows.last; row++) {
+			for (let column = columns.first; column <= columns.last; column++) {
+				const points = this.#cells.get(cellKey(row, column));
+				if (points !== undefined) {
+					cells.push(points);
+				}
+			}
+		}
+		return cells;
+	}
+}
+
+/** The first and last row (or column) of the cells between two coordinates. */
+interface CellSpan {
+	readonly first: number;
+	readonly last: number;
+}
+
+function cellSpan(from: number, to: number): CellSpan {
+	return { first: Math.floor(from / CELL), last: Math.floor(to / CELL) };
 }
 
 function cellKey(row: number, column: number): string {

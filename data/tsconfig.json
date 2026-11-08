@@ -8,6 +8,7 @@
 		"moduleResolution": "nodenext",
 		"noEmit": true,
 		"strict": true,
+		"noImplicitReturns": true,
 		"skipLibCheck": true,
 		"isolatedModules": true,
 		"verbatimModuleSyntax": true,

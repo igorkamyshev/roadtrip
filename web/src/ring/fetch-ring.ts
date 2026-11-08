@@ -1,6 +1,6 @@
 // `GET /api/ring` from the browser: the one place a ring request starts and ends. An answer 200 is data whatever its
-// `outcome`; a block by the WAF (429) and anything else that is not 200, the network's failure included, is a
-// `RingRequestError` the first card shows, and `ring result` tells (src/analytics/).
+// `outcome`; a block by the WAF (429), anything else that is not 200 or not an answer of the API, and the network's
+// failure are a `RingRequestError` the first card shows, and `ring result` tells (src/analytics/).
 import { RING_PATH, type RingQuery, type RingResponse } from 'worker/api';
 import { analyticsStarted } from '../analytics/posthog.ts';
 
@@ -38,11 +38,35 @@ export async function fetchRing(query: RingQuery): Promise<RingResponse> {
 	if (!response.ok) {
 		throw new RingRequestError('error', response.status);
 	}
-	return (await response.json()) as RingResponse;
+	const answer: unknown = await response.json();
+	if (!isRingResponse(answer)) {
+		throw new RingRequestError('error', response.status);
+	}
+	return answer;
+}
+
+/** Every `outcome` an answer 200 has (worker/api). */
+const OUTCOMES: Readonly<Record<RingResponse['outcome'], true>> = {
+	ring: true,
+	empty: true,
+	no_roads: true,
+	no_ring: true,
+	visa_rules_missing: true,
+};
+
+/** An answer 200 of the ring API: an object with one of its outcomes. The rest of its form is the Worker's (worker/api). */
+function isRingResponse(answer: unknown): answer is RingResponse {
+	return (
+		typeof answer === 'object' &&
+		answer !== null &&
+		'outcome' in answer &&
+		typeof answer.outcome === 'string' &&
+		Object.keys(OUTCOMES).includes(answer.outcome)
+	);
 }
 
 /** `/api/ring?lat=44.81760&lon=20.45730&hours=3&cit=RUS,SRB&visas=SCHENGEN`, `visas` left out when there are none. */
-export function ringUrl({ origin, hours, citizenships, visas }: RingQuery): string {
+function ringUrl({ origin, hours, citizenships, visas }: RingQuery): string {
 	const params = new URLSearchParams({
 		lat: origin.lat.toFixed(5),
 		lon: origin.lon.toFixed(5),

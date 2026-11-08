@@ -24,12 +24,12 @@ export interface ArchiveOptions {
 export function pmtilesArchive(tiles: readonly ArchiveTile[], { minZoom, maxZoom }: ArchiveOptions): Uint8Array {
 	const entries = tiles
 		.map((tile) => ({ tileId: zxyToTileId(tile.z, tile.x, tile.y), data: gzipSync(tile.data) }))
-		.sort((a, b) => a.tileId - b.tileId);
+		.toSorted((a, b) => a.tileId - b.tileId);
 	let offset = 0;
-	const placed = entries.map((entry) => {
+	const placed = entries.map(({ tileId, data }) => {
 		const at = offset;
-		offset += entry.data.length;
-		return { ...entry, offset: at };
+		offset += data.length;
+		return { tileId, data, offset: at };
 	});
 	const directory = gzipSync(serializeDirectory(placed));
 	const metadata = gzipSync(JSON.stringify({ name: 'fixture' }));
@@ -43,7 +43,9 @@ export function pmtilesArchive(tiles: readonly ArchiveTile[], { minZoom, maxZoom
 	const header = new DataView(new ArrayBuffer(HEADER_BYTES));
 	new TextEncoder().encodeInto('PMTiles', new Uint8Array(header.buffer));
 	header.setUint8(7, 3);
-	const u64 = (at: number, value: number) => header.setBigUint64(at, BigInt(value), true);
+	const u64 = (at: number, value: number) => {
+		header.setBigUint64(at, BigInt(value), true);
+	};
 	u64(8, rootOffset);
 	u64(16, directory.length);
 	u64(24, metadataOffset);

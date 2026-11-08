@@ -10,6 +10,11 @@ function count(value: number, forms: readonly [string, string, string]): string 
 	return `${value.toLocaleString('ru-RU')} ${form}`;
 }
 
+/** The codes one after another, or «нет» for none. */
+function listOrNone(codes: readonly string[]): string {
+	return codes.length > 0 ? codes.join(', ') : 'нет';
+}
+
 export function reportMarkdown(report: BuildReport): string {
 	const lines = [
 		'## Граф дорог',
@@ -17,13 +22,16 @@ export function reportMarkdown(report: BuildReport): string {
 		`${count(report.roadWays, ['дорога', 'дороги', 'дорог'])} OSM, в графе ${count(report.nodes, ['узел', 'узла', 'узлов'])}, ` +
 			`${count(report.edges, ['ребро', 'ребра', 'рёбер'])}.`,
 		'',
-		`Зоны (${report.zones.length}): ${report.zones.join(', ') || 'нет'}. Из них части стран: ${report.parts.join(', ') || 'нет'}.`,
+		`Зоны (${report.zones.length}): ${listOrNone(report.zones)}. Из них части стран: ${listOrNone(report.parts)}.`,
 	];
 	if (report.partialZones.length > 0) {
 		lines.push('', `Зоны без колец, которые выгрузка держит не целиком: ${report.partialZones.join(', ')}.`);
 	}
 	if (report.incompleteZones.length > 0) {
-		lines.push('', `Выгрузка не держит целиком ни одного кольца этих зон, кроме дыр, поэтому их нет и у их дорог нет зоны: ${report.incompleteZones.join(', ')}.`);
+		lines.push(
+			'',
+			`Выгрузка не держит целиком ни одного кольца этих зон, кроме дыр, поэтому их нет и у их дорог нет зоны: ${report.incompleteZones.join(', ')}.`,
+		);
 	}
 	const { pairsWithoutCrossings, crossingsNotFound } = report.borders;
 	lines.push(
@@ -37,7 +45,11 @@ export function reportMarkdown(report: BuildReport): string {
 	if (pairsWithoutCrossings.length === 0) {
 		lines.push('Нет.');
 	} else {
-		lines.push('| Пара | Рёбер через границу |', '| --- | --- |', ...pairsWithoutCrossings.map(({ pair, edges }) => `| ${pair} | ${edges} |`));
+		lines.push(
+			'| Пара | Рёбер через границу |',
+			'| --- | --- |',
+			...pairsWithoutCrossings.map(({ pair, edges }) => `| ${pair} | ${edges} |`),
+		);
 	}
 	lines.push(
 		'',

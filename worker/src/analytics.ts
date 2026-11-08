@@ -48,14 +48,14 @@ export type WorkerEvent = keyof WorkerEvents;
 
 /** The Worker's events of one request, tied to the browser that sent it. */
 export interface Analytics {
-	capture<Event extends WorkerEvent>(event: Event, properties: WorkerEvents[Event]): void;
+	readonly capture: <Event extends WorkerEvent>(event: Event, properties: WorkerEvents[Event]) => void;
 }
 
 /** Straight to PostHog's US cloud: the managed proxy is for browsers. */
-export const POSTHOG_HOST = 'https://us.i.posthog.com';
+const POSTHOG_HOST = 'https://us.i.posthog.com';
 
 /** Every event without the browser's distinct id has this one, a constant (decision #18). */
-export const SERVER_DISTINCT_ID = 'server';
+const SERVER_DISTINCT_ID = 'server';
 
 /** How long an id the browser sent may be, as the Tail Worker cuts them (error-tracking). */
 const MAX_ID_LENGTH = 1000;
@@ -77,7 +77,10 @@ export interface RequestAnalyticsOptions {
  * with its `X-POSTHOG-SESSION-ID`, and creates no person. Disabled off the production host. `shutdown` ends the
  * client once the answer is out; a background send after it, as a refresh from Sherpa's, still goes.
  */
-export function requestAnalytics(request: Request, { token, waitUntil, fetch }: RequestAnalyticsOptions): Analytics & { shutdown(): void } {
+export function requestAnalytics(
+	request: Request,
+	{ token, waitUntil, fetch }: RequestAnalyticsOptions,
+): Analytics & { readonly shutdown: () => void } {
 	const posthog = new PostHog(token, {
 		host: POSTHOG_HOST,
 		flushAt: 1,
@@ -118,5 +121,6 @@ export function browserIds(request: Request): { distinct_id?: string; session_id
 
 /** An id from a header without control characters, cut to 1000 characters. */
 function cleanId(id: string): string {
-	return id.replace(/[\u0000-\u001f\u007f]/gu, '').slice(0, MAX_ID_LENGTH);
+	// oxlint-disable-next-line no-control-regex -- the control characters are what this removes, as the Tail Worker does
+	return id.replaceAll(/[\u0000-\u001F\u007F]/gu, '').slice(0, MAX_ID_LENGTH);
 }

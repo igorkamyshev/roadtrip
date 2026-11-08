@@ -9,10 +9,15 @@ import { brotliCompressSync } from 'node:zlib';
 import { encodeGraph } from 'engine/graph';
 import { reportMarkdown } from '../build-report.ts';
 import { zoneOutlines } from '../outlines.ts';
-import { loadGraph, log, seconds, userPath, withLocalFile } from './input.ts';
+import { log, seconds, userPath, withLocalFile } from './input.ts';
+import { loadGraph } from './load-graph.ts';
 
-const { values, positionals } = parseArgs({ allowPositionals: true, options: { outlines: { type: 'string' }, report: { type: 'string' } } });
-const [extract, out] = positionals;
+const { values, positionals } = parseArgs({
+	allowPositionals: true,
+	options: { outlines: { type: 'string' }, report: { type: 'string' } },
+});
+const extract = positionals.at(0);
+const out = positionals.at(1);
 if (extract === undefined || out === undefined || extract.endsWith('.graph')) {
 	log('usage: pnpm --filter data build-graph <extract.osm.pbf | URL> <out.graph> [--outlines <zones.json>] [--report <report.md>]');
 	process.exit(2);

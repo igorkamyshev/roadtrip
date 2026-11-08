@@ -24,7 +24,17 @@ export function writePbf(source: OsmSource, path: string, options: PbfOptions): 
 	const nodes: OsmNode[] = [];
 	const ways: OsmWay[] = [];
 	const relations: OsmRelation[] = [];
-	source.read({ node: (node) => nodes.push(node), way: (way) => ways.push(way), relation: (relation) => relations.push(relation) });
+	source.read({
+		node: (node) => {
+			nodes.push(node);
+		},
+		way: (way) => {
+			ways.push(way);
+		},
+		relation: (relation) => {
+			relations.push(relation);
+		},
+	});
 	const coordinates = new Map(nodes.map((node) => [node.id, node]));
 
 	const header = new PbfWriter();
@@ -41,56 +51,115 @@ export function writePbf(source: OsmSource, path: string, options: PbfOptions): 
 		return index >= 0 ? index : strings.push(value) - 1;
 	};
 	const writeTags = (tags: Tags, pbf: PbfWriter) => {
-		pbf.writePackedVarint(2, Object.keys(tags).map(stringId));
-		pbf.writePackedVarint(3, Object.values(tags).map(stringId));
+		const entries = tagEntries(tags);
+		pbf.writePackedVarint(
+			2,
+			entries.map(([key]) => stringId(key)),
+		);
+		pbf.writePackedVarint(
+			3,
+			entries.map(([, value]) => stringId(value)),
+		);
 	};
-	const deltas = (values: readonly number[]) => values.map((value, index) => value - (index === 0 ? 0 : values[index - 1]));
 
 	const groups = new PbfWriter();
 	const keptNodes = options.locationsOnWays ? nodes.filter((node) => Object.keys(node.tags).length > 0) : nodes;
-	groups.writeMessage(2, (_, group) => {
-		group.writeMessage(2, (__, dense) => {
-			dense.writePackedSVarint(1, deltas(keptNodes.map((node) => node.id)));
-			dense.writePackedSVarint(8, deltas(keptNodes.map((node) => node.lat)));
-			dense.writePackedSVarint(9, deltas(keptNodes.map((node) => node.lon)));
-			dense.writePackedVarint(
-				10,
-				keptNodes.flatMap((node) => [...Object.entries(node.tags).flatMap(([key, value]) => [stringId(key), stringId(value)]), 0]),
+	// Each node's keys and values, one after the other, and a 0 after the node's last.
+	const keysValues: number[] = [];
+	for (const node of keptNodes) {
+		for (const [key, value] of tagEntries(node.tags)) {
+			keysValues.push(stringId(key), stringId(value));
+		}
+		keysValues.push(0);
+	}
+	groups.writeMessage(
+		2,
+		(_, group) => {
+			group.writeMessage(
+				2,
+				(__, dense) => {
+					dense.writePackedSVarint(1, deltas(keptNodes.map((node) => node.id)));
+					dense.writePackedSVarint(8, deltas(keptNodes.map((node) => node.lat)));
+					dense.writePackedSVarint(9, deltas(keptNodes.map((node) => node.lon)));
+					dense.writePackedVarint(10, keysValues);
+				},
+				null,
 			);
-		}, null);
-	}, null);
-	groups.writeMessage(2, (_, group) => {
-		for (const way of ways) {
-			group.writeMessage(3, (__, pbf) => {
-				pbf.writeVarintField(1, way.id);
-				writeTags(way.tags, pbf);
-				pbf.writePackedSVarint(8, deltas(way.refs));
-				if (options.locationsOnWays) {
-					pbf.writePackedSVarint(9, deltas(way.refs.map((ref) => coordinates.get(ref)?.lat ?? UNDEFINED_COORDINATE)));
-					pbf.writePackedSVarint(10, deltas(way.refs.map((ref) => coordinates.get(ref)?.lon ?? UNDEFINED_COORDINATE)));
-				}
-			}, null);
-		}
-	}, null);
-	groups.writeMessage(2, (_, group) => {
-		for (const relation of relations) {
-			group.writeMessage(4, (__, pbf) => {
-				pbf.writeVarintField(1, relation.id);
-				writeTags(relation.tags, pbf);
-				pbf.writePackedVarint(8, relation.members.map((member) => stringId(member.role)));
-				pbf.writePackedSVarint(9, deltas(relation.members.map((member) => member.ref)));
-				pbf.writePackedVarint(10, relation.members.map((member) => MEMBER_TYPES[member.type]));
-			}, null);
-		}
-	}, null);
+		},
+		null,
+	);
+	groups.writeMessage(
+		2,
+		(_, group) => {
+			for (const way of ways) {
+				group.writeMessage(
+					3,
+					(__, pbf) => {
+						pbf.writeVarintField(1, way.id);
+						writeTags(way.tags, pbf);
+						pbf.writePackedSVarint(8, deltas(way.refs));
+						if (options.locationsOnWays) {
+							pbf.writePackedSVarint(9, deltas(way.refs.map((ref) => coordinates.get(ref)?.lat ?? UNDEFINED_COORDINATE)));
+							pbf.writePackedSVarint(10, deltas(way.refs.map((ref) => coordinates.get(ref)?.lon ?? UNDEFINED_COORDINATE)));
+						}
+					},
+					null,
+				);
+			}
+		},
+		null,
+	);
+	groups.writeMessage(
+		2,
+		(_, group) => {
+			for (const relation of relations) {
+				group.writeMessage(
+					4,
+					(__, pbf) => {
+						pbf.writeVarintField(1, relation.id);
+						writeTags(relation.tags, pbf);
+						pbf.writePackedVarint(
+							8,
+							relation.members.map((member) => stringId(member.role)),
+						);
+						pbf.writePackedSVarint(9, deltas(relation.members.map((member) => member.ref)));
+						pbf.writePackedVarint(
+							10,
+							relation.members.map((member) => MEMBER_TYPES[member.type]),
+						);
+					},
+					null,
+				);
+			}
+		},
+		null,
+	);
 	const groupBytes = groups.finish();
 
 	const block = new PbfWriter();
-	block.writeMessage(1, (_, table) => strings.forEach((value) => table.writeStringField(1, value)), null);
+	block.writeMessage(
+		1,
+		(_, table) => {
+			for (const value of strings) {
+				table.writeStringField(1, value);
+			}
+		},
+		null,
+	);
 	// A PrimitiveBlock is its string table (field 1) and its groups (field 2), written above.
 	const blockBytes = Buffer.concat([block.finish(), groupBytes]);
 
 	writeFileSync(path, Buffer.concat([blob('OSMHeader', header.finish()), blob('OSMData', blockBytes)]));
+}
+
+/** Differences from the value before, the first from 0. */
+function deltas(values: readonly number[]): number[] {
+	return values.map((value, index) => value - (index === 0 ? 0 : values[index - 1]));
+}
+
+/** The tags an element has, as key and value. */
+function tagEntries(tags: Tags): [string, string][] {
+	return Object.entries(tags).flatMap(([key, value]): [string, string][] => (value === undefined ? [] : [[key, value]]));
 }
 
 function blob(type: string, data: Uint8Array): Buffer {

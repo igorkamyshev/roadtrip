@@ -1,5 +1,5 @@
 {
-	// The screen tests (Playwright) and the build configs: Node, plus the DOM for code that runs in the page.
+	// The screen tests (Playwright) and the build configs with the bundle budget's plugin: Node, plus the DOM for code that runs in the page.
 	"compilerOptions": {
 		"target": "es2022",
 		"lib": ["es2024", "dom"],
@@ -7,11 +7,12 @@
 		"moduleResolution": "bundler",
 		"noEmit": true,
 		"strict": true,
+		"noImplicitReturns": true,
 		"skipLibCheck": true,
 		"isolatedModules": true,
 		"verbatimModuleSyntax": true,
 		"allowImportingTsExtensions": true,
 		"types": ["node"]
 	},
-	"include": ["./**/*.ts", "../vite.config.ts", "../playwright.config.ts"]
+	"include": ["./**/*.ts", "../vite.config.ts", "../playwright.config.ts", "../bundle-budget.ts", "../bundle-budget.test.ts"]
 }

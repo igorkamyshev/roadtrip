@@ -4,8 +4,8 @@
 import { describe, expect, it } from 'vitest';
 import { areaKm2, cityMedians, envelopeKm2, ringVerdict, verdict } from '../src/valhalla/metrics.ts';
 
-/** A closed counter-clockwise lon/lat rectangle. */
-function rectangle(west: number, south: number, east: number, north: number): number[][] {
+/** A closed counter-clockwise lon/lat rectangle between its south-west and north-east corners, [lon, lat]. */
+function rectangle([west, south]: [number, number], [east, north]: [number, number]): number[][] {
 	return [
 		[west, south],
 		[east, south],
@@ -17,14 +17,14 @@ function rectangle(west: number, south: number, east: number, north: number): nu
 
 describe('the area of a ring', () => {
 	it('is the area on the sphere of a square degree at the equator', () => {
-		expect(areaKm2({ type: 'MultiPolygon', coordinates: [[rectangle(0, 0, 1, 1)]] })).toBeCloseTo(12_363.72, 1);
+		expect(areaKm2({ type: 'MultiPolygon', coordinates: [[rectangle([0, 0], [1, 1])]] })).toBeCloseTo(12_363.72, 1);
 	});
 
 	it('leaves out its holes, whichever way they run', () => {
 		// 12 363.72 km² less the half-degree square in its middle, 3 090.96 km².
-		const hole = rectangle(0.25, 0.25, 0.75, 0.75).reverse();
+		const hole = rectangle([0.25, 0.25], [0.75, 0.75]).toReversed();
 
-		expect(areaKm2({ type: 'MultiPolygon', coordinates: [[rectangle(0, 0, 1, 1), hole]] })).toBeCloseTo(9_272.76, 1);
+		expect(areaKm2({ type: 'MultiPolygon', coordinates: [[rectangle([0, 0], [1, 1]), hole]] })).toBeCloseTo(9_272.76, 1);
 	});
 });
 
@@ -33,7 +33,7 @@ describe('the envelope of a contour', () => {
 		// 12 363.72 km² with its hole filled, and 12 176.84 km² of two degrees by one at 60–61° N.
 		const contour = {
 			type: 'MultiPolygon' as const,
-			coordinates: [[rectangle(0, 0, 1, 1), rectangle(0.25, 0.25, 0.75, 0.75).reverse()], [rectangle(10, 60, 12, 61)]],
+			coordinates: [[rectangle([0, 0], [1, 1]), rectangle([0.25, 0.25], [0.75, 0.75]).toReversed()], [rectangle([10, 60], [12, 61])]],
 		};
 
 		expect(envelopeKm2(contour)).toBeCloseTo(24_540.55, 1);

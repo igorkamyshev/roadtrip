@@ -100,22 +100,22 @@ export function computeRing(graph: Graph, borderTable: BorderTable, request: Rin
 	const lon = Math.round(request.origin.lon * E7);
 	const originZone = zoneLocator(graph).zoneAt(lat, lon);
 	const closed = closedForEveryone(graph, borderTable);
-	if (closed[originZone]) {
+	if (closed[originZone] === 1) {
 		return { outcome: 'no_ring', startCountry: zoneCode(graph, originZone), timings: since(started, started) };
 	}
 	// On land the origin snaps to a road of its own zone; at sea, to any road.
-	const start = startOnRoad(graph, lat, lon, originZone === 0 ? undefined : originZone);
+	const start = startOnRoad(graph, { lat, lon, zone: originZone === 0 ? undefined : originZone });
 	if (start === undefined) {
 		return { outcome: 'no_roads', startCountry: zoneCode(graph, originZone), timings: since(started, started) };
 	}
 	const { snap } = start;
-	const startZone = originZone !== 0 ? originZone : borderZones(graph)[snap.fraction < 0.5 ? snap.a : snap.b];
-	if (closed[startZone]) {
+	const startZone = originZone === 0 ? borderZones(graph)[snap.fraction < 0.5 ? snap.a : snap.b] : originZone;
+	if (closed[startZone] === 1) {
 		return { outcome: 'no_ring', startCountry: zoneCode(graph, startZone), timings: since(started, started) };
 	}
 
-	const allowed = passage(graph, borderTable, request.closedCountries, startZone);
-	const traversal = traverse(graph, allowed, start.seeds, request.hours * 3600);
+	const allowed = passage(graph, borderTable, { closedCountries: request.closedCountries, startZone });
+	const traversal = traverse(graph, allowed, { seeds: start.seeds, limitSeconds: request.hours * 3600 });
 	const traversed = performance.now();
 	const startCountry = zoneCode(graph, startZone);
 
@@ -125,14 +125,14 @@ export function computeRing(graph: Graph, borderTable: BorderTable, request: Rin
 			return { outcome: 'empty', maxHours: Math.ceil(latestHours - 1e-9), startCountry, timings: since(started, traversed) };
 		}
 	}
-	const ring = ringContour(
+	const ring = ringContour({
 		graph,
-		allowed,
-		zoneLocator(graph),
-		{ ...start, seconds: traversal.seconds },
-		(request.hours - 1) * 3600,
-		request.hours * 3600,
-	);
+		passage: allowed,
+		locator: zoneLocator(graph),
+		reached: { ...start, seconds: traversal.seconds },
+		lowerSeconds: (request.hours - 1) * 3600,
+		upperSeconds: request.hours * 3600,
+	});
 	return { outcome: 'ring', ring, startCountry, timings: since(started, traversed) };
 }
 

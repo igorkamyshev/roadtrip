@@ -8,10 +8,9 @@
 // Needs osmium-tool, and Valhalla's commands on PATH (`pip install pyvalhalla` in an activated venv).
 import { execFileSync } from 'node:child_process';
 import { createWriteStream, existsSync, mkdirSync, renameSync, rmSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
-import type { ReadableStream } from 'node:stream/web';
 import { CLASS_SPEED_KMH } from '../roads.ts';
 import type { Region } from './places.ts';
 
@@ -34,7 +33,7 @@ export interface RegionFiles {
 	readonly tiles: string;
 }
 
-export function regionFiles(work: string, region: Region): RegionFiles {
+function regionFiles(work: string, region: Region): RegionFiles {
 	const directory = join(work, 'regions', region.id);
 	return {
 		directory,
@@ -55,70 +54,76 @@ export async function prepareRoads(work: string, region: Region, tools: Tools): 
 		const parts: string[] = [];
 		for (const path of region.extracts) {
 			const url = /^https?:\/\//u.test(path) ? path : `${tools.extractBase}/${path}-latest.osm.pbf`;
-			const name = path.split('/').at(-1)!.replace(/\.pbf$/u, '');
+			const name = basename(path).replace(/\.pbf$/u, '');
 			const raw = join(download, `${name}.osm.pbf`);
 			await fetchFile(url, raw, tools);
 			const part = join(download, `${name}-highways.osm.pbf`);
-			run('osmium', ['tags-filter', '--overwrite', '-o', part, raw, `w/highway=${CAR_HIGHWAYS.join(',')}`, 'r/type=restriction'], tools);
+			run(tools, ['osmium', 'tags-filter', '--overwrite', '-o', part, raw, `w/highway=${CAR_HIGHWAYS.join(',')}`, 'r/type=restriction']);
 			rmSync(raw);
 			parts.push(part);
 		}
-		run('osmium', ['merge', '--overwrite', '-f', 'pbf', '-o', `${files.highways}.part`, ...parts], tools);
+		run(tools, ['osmium', 'merge', '--overwrite', '-f', 'pbf', '-o', `${files.highways}.part`, ...parts]);
 		renameSync(`${files.highways}.part`, files.highways);
 		rmSync(download, { recursive: true });
 	}
 	if (!existsSync(files.roads)) {
-		run('osmium', ['tags-filter', '--overwrite', '-o', files.roads, files.highways, `w/highway=${Object.keys(CLASS_SPEED_KMH).join(',')}`], tools);
+		run(tools, [
+			'osmium',
+			'tags-filter',
+			'--overwrite',
+			'-o',
+			files.roads,
+			files.highways,
+			`w/highway=${Object.keys(CLASS_SPEED_KMH).join(',')}`,
+		]);
 	}
 	return files;
 }
 
 /** Writes Valhalla's config and builds its tiles of highways.osm.pbf, unless they are there. */
 export function prepareValhalla(files: RegionFiles, tools: Tools): void {
-	const config = JSON.parse(
-		run(
+	const config: unknown = JSON.parse(
+		run(tools, [
 			'valhalla_build_config',
-			[
-				'--mjolnir-tile-dir',
-				files.tiles,
-				'--mjolnir-tile-extract',
-				'',
-				'--mjolnir-traffic-extract',
-				'',
-				'--mjolnir-admin',
-				'',
-				'--mjolnir-timezone',
-				'',
-				'--httpd-service-listen',
-				`tcp://127.0.0.1:${tools.valhallaPort}`,
-				// A ring of 12 h is a contour of 600 min at the wheel; the cities of a start point are one matrix row.
-				'--service-limits-isochrone-max-time-contour',
-				'720',
-				'--service-limits-auto-max-matrix-distance',
-				'5000000',
-				'--service-limits-auto-max-matrix-location-pairs',
-				'100000',
-				// One source to many targets: one Dijkstra from the origin.
-				'--thor-source-to-target-algorithm',
-				'timedistancematrix',
-				// A city on an island of roads gets no time instead of failing the whole matrix.
-				'--loki-use-connectivity',
-				'False',
-			],
-			tools,
-		),
-	) as unknown;
+			'--mjolnir-tile-dir',
+			files.tiles,
+			'--mjolnir-tile-extract',
+			'',
+			'--mjolnir-traffic-extract',
+			'',
+			'--mjolnir-admin',
+			'',
+			'--mjolnir-timezone',
+			'',
+			'--httpd-service-listen',
+			`tcp://127.0.0.1:${tools.valhallaPort}`,
+			// A ring of 12 h is a contour of 600 min at the wheel; the cities of a start point are one matrix row.
+			'--service-limits-isochrone-max-time-contour',
+			'720',
+			'--service-limits-auto-max-matrix-distance',
+			'5000000',
+			'--service-limits-auto-max-matrix-location-pairs',
+			'100000',
+			// One source to many targets: one Dijkstra from the origin.
+			'--thor-source-to-target-algorithm',
+			'timedistancematrix',
+			// A city on an island of roads gets no time instead of failing the whole matrix.
+			'--loki-use-connectivity',
+			'False',
+		]),
+	);
 	writeFileSync(files.valhallaConfig, JSON.stringify(config, null, 2));
 	if (existsSync(join(files.tiles, '.built'))) {
 		return;
 	}
 	rmSync(files.tiles, { recursive: true, force: true });
 	tools.log(`building Valhalla's tiles of ${files.highways}`);
-	run('valhalla_build_tiles', ['-c', files.valhallaConfig, files.highways], tools, files.directory);
+	run(tools, ['valhalla_build_tiles', '-c', files.valhallaConfig, files.highways], files.directory);
 	writeFileSync(join(files.tiles, '.built'), '');
 }
 
-function run(command: string, args: string[], tools: Tools, cwd?: string): string {
+/** Runs a command, `[command, ...args]`, and gives its output. */
+function run(tools: Tools, [command, ...args]: readonly string[], cwd?: string): string {
 	const started = performance.now();
 	const output = execFileSync(command, args, { cwd, encoding: 'utf8', maxBuffer: 1 << 26, stdio: ['ignore', 'pipe', 'pipe'] });
 	tools.log(`${command} ${args.at(-1)}: ${((performance.now() - started) / 1000).toFixed(0)} s`);
@@ -131,6 +136,6 @@ async function fetchFile(url: string, path: string, tools: Tools): Promise<void>
 	if (!response.ok || response.body === null) {
 		throw new Error(`${url}: HTTP ${response.status}`);
 	}
-	await pipeline(Readable.fromWeb(response.body as ReadableStream), createWriteStream(path));
+	await pipeline(Readable.fromWeb(response.body), createWriteStream(path));
 	tools.log(`downloaded ${url} in ${((performance.now() - started) / 1000).toFixed(0)} s`);
 }

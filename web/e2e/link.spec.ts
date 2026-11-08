@@ -12,7 +12,7 @@ const NIS = '43.32470,21.90330';
 test.beforeEach(async ({ context, ringApi }) => {
 	// The person is in Belgrade and lets the site know: a link or the saved state must still win.
 	await allowGeolocation(context, BELGRADE);
-	ringApi.respond((call) => squareRing(Number(call.lat), Number(call.lon), 0, call.hours / 10));
+	ringApi.respond((call) => squareRing(Number(call.lat), Number(call.lon), [0, call.hours / 10]));
 });
 
 /** A new load of the page, as after closing the tab: the browser's storage stays, the memory of rings does not. */
@@ -92,8 +92,7 @@ for (const { link, becomes } of invalidLinks) {
 
 		await expect(page).toHaveURL((url) => url.hash === becomes);
 		const [call] = await ringApi.waitForCalls(1);
-		const [, p, h] = /p=([^&]+)&h=(\d+)/u.exec(becomes) ?? [];
-		const [lat, lon] = (p ?? '').split(',');
-		expect(call).toMatchObject({ lat, lon, hours: Number(h) });
+		const [, lat, lon, hours] = /p=([^,]+),([^&]+)&h=(\d+)/u.exec(becomes) ?? [];
+		expect(call).toMatchObject({ lat, lon, hours: Number(hours) });
 	});
 }

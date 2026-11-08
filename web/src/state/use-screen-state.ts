@@ -2,10 +2,10 @@
 // browser's history per change) and the same snapshot saved in the browser. How the origin was set is not in the
 // link: the screen remembers it for the session.
 import { useNavigate, useRouteContext, useSearch } from '@tanstack/react-router';
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { Start } from '../start/start.ts';
 import { pointText } from './point.ts';
-import { searchFromState, stateFromSearch, type ScreenState } from './search.ts';
+import { hoursFromSearch, originFromSearch, searchFromState, settingsFromSearch, type ScreenState } from './search.ts';
 import type { Settings } from './settings.ts';
 import { writeSaved } from './startup.ts';
 
@@ -27,13 +27,20 @@ export interface ScreenStateControls extends ScreenState {
 }
 
 export function useScreenState(): ScreenStateControls {
-	const search = useSearch({ from: '/' });
+	const { p, h, cit, visas } = useSearch({ from: '/' });
 	const opening = useRouteContext({ from: '/', select: (context) => context.opening });
 	const navigate = useNavigate();
-	const state = stateFromSearch(search);
+	// The link gives new values on every render; their text says when they change. So the origin is the same object
+	// while the point stays, and the settings while the lists do: the rings' memory and the map's camera follow them.
+	const origin = useMemo(() => originFromSearch(p), [p]);
+	const settings = useMemo(() => settingsFromSearch(cit, visas), [cit, visas]);
+	const hours = hoursFromSearch(h);
+	const state = useMemo((): ScreenState => ({ origin, hours, ...settings }), [origin, hours, settings]);
 	// The latest state, for a change that lands after a render, such as the position from geolocation.
 	const latest = useRef(state);
-	latest.current = state;
+	useLayoutEffect(() => {
+		latest.current = state;
+	}, [state]);
 
 	const change = useCallback(
 		(patch: Partial<ScreenState>) => {
@@ -48,16 +55,12 @@ export function useScreenState(): ScreenStateControls {
 
 	// How each origin of the session was set, by its text. The link catches up with a new origin after a render or
 	// so, and until it does, the origin it still names keeps its own method.
-	const [starts, setStarts] = useState<ReadonlyMap<string, Start>>(() => {
-		const { origin } = latest.current;
-		return origin === undefined || opening === 'default' ? new Map() : new Map([[pointText(origin), { method: opening, origin }]]);
-	});
-	const { origin } = state;
-	const originText = origin === undefined ? undefined : pointText(origin);
+	const [starts, setStarts] = useState<ReadonlyMap<string, Start>>(() =>
+		origin === undefined || opening === 'default' ? new Map() : new Map([[pointText(origin), { method: opening, origin }]]),
+	);
 	const start = useMemo(
-		(): Start | undefined => (origin === undefined || originText === undefined ? undefined : (starts.get(originText) ?? { method: 'link', origin })),
-		// Keyed by the origin's text: a new object for the same point is the same start.
-		[originText, starts],
+		(): Start | undefined => (origin === undefined ? undefined : (starts.get(pointText(origin)) ?? { method: 'link', origin })),
+		[origin, starts],
 	);
 
 	const setStart = useCallback(
@@ -67,29 +70,20 @@ export function useScreenState(): ScreenStateControls {
 		},
 		[change],
 	);
-	const setHours = useCallback(
-		(hours: number) => {
-			change({ hours });
-		},
-		[change],
-	);
-	const setCitizenships = useCallback(
-		(citizenships: readonly string[]) => {
-			change({ citizenships });
-		},
-		[change],
-	);
-	const setVisas = useCallback(
-		(visas: readonly string[]) => {
-			change({ visas });
-		},
+	const setters = useMemo(
+		() => ({
+			setHours: (next: number) => {
+				change({ hours: next });
+			},
+			setCitizenships: (next: readonly string[]) => {
+				change({ citizenships: next });
+			},
+			setVisas: (next: readonly string[]) => {
+				change({ visas: next });
+			},
+		}),
 		[change],
 	);
 
-	// The link gives new lists on every render; their text says when they change.
-	const citizenshipsText = state.citizenships.join(',');
-	const visasText = state.visas.join(',');
-	const settings = useMemo((): Settings => ({ citizenships: state.citizenships, visas: state.visas }), [citizenshipsText, visasText]);
-
-	return { ...state, start, settings, setStart, setHours, setCitizenships, setVisas };
+	return { ...state, start, settings, setStart, ...setters };
 }

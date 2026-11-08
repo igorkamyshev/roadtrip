@@ -2,7 +2,18 @@
 // браузера»: TanStack Query; stories 10–15, 22): a ring is asked for when the slider is let go, rings in memory
 // come back without a request, and a calculation keeps the old ring of the same origin, striped.
 import { allowGeolocation, expect, squareRing, test } from './fixtures.ts';
-import { dottedHours, dragMap, dragSlider, expectRingCard, firstCard, mapBounds, phrase, ringIsStriped, ringOnMap, slider } from './screen.ts';
+import {
+	dottedHours,
+	dragMap,
+	dragSlider,
+	expectRingCard,
+	firstCard,
+	mapBounds,
+	phrase,
+	ringIsStriped,
+	ringOnMap,
+	slider,
+} from './screen.ts';
 
 const BELGRADE = { lat: 44.8176, lon: 20.4573 };
 /** Where the page's clock starts in the tests that hold it, in ms since the epoch. */
@@ -11,7 +22,8 @@ const MINUTE = 60_000;
 const BELGRADE_CALL = { lat: '44.81760', lon: '20.45730' };
 
 /** A ring per N: a band from N − 1 to N tenths of a degree around the origin. */
-const ringFor = (call: { lat: string; lon: string; hours: number }) => squareRing(Number(call.lat), Number(call.lon), (call.hours - 1) / 10, call.hours / 10);
+const ringFor = (call: { lat: string; lon: string; hours: number }) =>
+	squareRing(Number(call.lat), Number(call.lon), [(call.hours - 1) / 10, call.hours / 10]);
 
 test.beforeEach(async ({ context }) => {
 	await allowGeolocation(context, BELGRADE);
@@ -54,7 +66,7 @@ test('a ring in memory comes back at once, without a request, and its hours have
 	await expectRingCard(page, '4–5 ч');
 	expect(await dottedHours(page)).toEqual([1, 5]);
 
-	ringApi.respond(() => undefined);
+	ringApi.hold();
 	await dragSlider(page, 1);
 
 	await expectRingCard(page, 'до 1 ч');
@@ -76,16 +88,16 @@ test('while a ring is calculated the old ring of the same origin stays, striped,
 	await expect.poll(() => ringIsStriped(page)).toBe(true);
 	expect(await ringOnMap(page)).toEqual([ringFor({ ...BELGRADE_CALL, hours: 1 }).ring]);
 
-	await ringApi.answer(squareRing(BELGRADE.lat, BELGRADE.lon, 0.4, 0.9), 3);
+	await ringApi.answer(squareRing(BELGRADE.lat, BELGRADE.lon, [0.4, 0.9]), 3);
 
 	await expectRingCard(page, '2–3 ч');
 	await expect(phrase(page).getByRole('status', { name: 'Считаем' })).toHaveCount(0);
-	await expect.poll(() => ringOnMap(page)).toEqual([squareRing(BELGRADE.lat, BELGRADE.lon, 0.4, 0.9).ring]);
+	await expect.poll(() => ringOnMap(page)).toEqual([squareRing(BELGRADE.lat, BELGRADE.lon, [0.4, 0.9]).ring]);
 	expect(await ringIsStriped(page)).toBe(false);
 });
 
 test('a new ring is shown whole', async ({ page, ringApi }) => {
-	ringApi.respond(() => squareRing(BELGRADE.lat, BELGRADE.lon, 1, 2));
+	ringApi.respond(() => squareRing(BELGRADE.lat, BELGRADE.lon, [1, 2]));
 	await page.goto('/');
 	await expectRingCard(page, 'до 1 ч');
 

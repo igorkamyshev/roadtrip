@@ -1,0 +1,17 @@
+{
+	"name": "lint",
+	"version": "0.0.0",
+	"private": true,
+	"type": "module",
+	"description": "roadtrip's own lint rules (an Oxlint JS plugin), the checks fallow cannot express, and the Claude Code hook that lints an agent's edits.",
+	"scripts": {
+		"test": "vitest run",
+		"typecheck": "tsc --noEmit"
+	},
+	"devDependencies": {
+		"@types/node": "^22.20.5",
+		"oxlint": "1.91.0",
+		"typescript": "^5.9.3",
+		"vitest": "^5.1.0"
+	}
+}

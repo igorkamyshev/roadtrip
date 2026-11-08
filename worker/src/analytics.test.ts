@@ -1,25 +1,48 @@
 // The Worker's PostHog client (spec «Аналитика и ошибки», «Worker»): posthog-node with the network under it doubled,
 // so a test sees the very batch PostHog would get. Which events and properties the routes send is in the routes' own
-// tests, against a recording double (test/api.ts).
+// tests, against a recording double (test/analytics-double.ts).
 import { gunzipSync } from 'node:zlib';
 import { describe, expect, it } from 'vitest';
+import { objectContaining } from '../test/matchers.ts';
 import { type PostHogFetch, requestAnalytics } from './analytics.ts';
+import { field, isRecord } from 'engine/json';
 
 const TOKEN = 'phc_test';
 const BROWSER = '019a5f2c-0d4e-7c3b-9f1a-2b3c4d5e6f70';
 const SESSION = '019a5f2c-1a2b-7c3d-8e4f-5a6b7c8d9e0f';
 const served = { source: 'cache', outcome: 'ring', hours: 3, duration_ms: 41 } as const;
 
+/** An event of a batch, as PostHog's capture API gets it. */
+interface SentEvent {
+	readonly event: string;
+	readonly distinct_id: string;
+	readonly properties: Readonly<Record<string, unknown>>;
+}
+
+/** A batch's project token and events; it throws on a body of another shape, which fails the test. */
+function parseBatch(text: string): { apiKey: string; batch: SentEvent[] } {
+	const body: unknown = JSON.parse(text);
+	const apiKey = field(body, 'api_key');
+	const batch = field(body, 'batch');
+	if (typeof apiKey !== 'string' || !Array.isArray(batch) || !batch.every((event: unknown) => isSentEvent(event))) {
+		throw new TypeError(`Not a batch: ${text}`);
+	}
+	return { apiKey, batch };
+}
+
+function isSentEvent(value: unknown): value is SentEvent {
+	return isRecord(value) && typeof value.event === 'string' && typeof value.distinct_id === 'string' && isRecord(value.properties);
+}
+
 /** PostHog's capture API: keeps each request and the events of its batch. */
 function postHogDouble() {
-	const requests: { url: string; apiKey: string; batch: { event: string; distinct_id: string; properties: Record<string, unknown> }[] }[] = [];
+	const requests: { url: string; apiKey: string; batch: SentEvent[] }[] = [];
 	const fetch: PostHogFetch = async (url, options) => {
 		const body = options.body instanceof Blob ? new Uint8Array(await options.body.arrayBuffer()) : options.body;
 		const bytes = typeof body === 'string' ? new TextEncoder().encode(body) : (body ?? new Uint8Array());
 		const text = new TextDecoder().decode(options.headers['Content-Encoding'] === 'gzip' ? gunzipSync(bytes) : bytes);
-		const { api_key: apiKey, batch } = JSON.parse(text) as { api_key: string; batch: (typeof requests)[number]['batch'] };
-		requests.push({ url, apiKey, batch });
-		return { status: 200, text: async () => '{"status":"Ok"}', json: async () => ({ status: 'Ok' }) };
+		requests.push({ url, ...parseBatch(text) });
+		return { status: 200, text: () => Promise.resolve('{"status":"Ok"}'), json: () => Promise.resolve({ status: 'Ok' }) };
 	};
 	return { fetch, requests };
 }
@@ -51,7 +74,9 @@ describe("the Worker's analytics", () => {
 		expect(background).toHaveLength(2);
 		await settle();
 
-		expect(requests).toEqual([{ url: 'https://us.i.posthog.com/batch/', apiKey: TOKEN, batch: [expect.objectContaining({ event: 'ring served' })] }]);
+		expect(requests).toEqual([
+			{ url: 'https://us.i.posthog.com/batch/', apiKey: TOKEN, batch: [expect.objectContaining({ event: 'ring served' })] },
+		]);
 	});
 
 	it("tie each event to the browser's distinct_id and session, and create no person", async () => {
@@ -70,12 +95,12 @@ describe("the Worker's analytics", () => {
 			{
 				event: 'ring served',
 				distinct_id: BROWSER,
-				properties: expect.objectContaining({ ...served, $session_id: SESSION, $process_person_profile: false }),
+				properties: objectContaining({ ...served, $session_id: SESSION, $process_person_profile: false }),
 			},
 			{
 				event: 'sherpa fetched',
 				distinct_id: BROWSER,
-				properties: expect.objectContaining({ citizenship: 'RUS', result: 'ok', $session_id: SESSION, $process_person_profile: false }),
+				properties: objectContaining({ citizenship: 'RUS', result: 'ok', $session_id: SESSION, $process_person_profile: false }),
 			},
 		]);
 		// Not even the request's URL, which holds the origin.

@@ -12,21 +12,19 @@ const GRAPH = { text: 'RTGRAPH\ngraph bytes', sha256: '0de73e4d4e4c8cbb05718b4b1
 const CITIES = { text: '{"format":1,"cities":[]}', sha256: '164478e79b3b149316289102966790c71cba7bf3b8d1ee28ddd19f1d101efdf4' };
 
 /** R2 in memory, holding `objects`, each served in chunks of 4 bytes as Cloudflare's API streams a body. */
-function memorySource(objects: Record<string, string>): DatasetSource {
+function memorySource(objects: Readonly<Partial<Record<string, string>>>): DatasetSource {
 	return {
-		async get(key) {
+		get: (key) => {
 			const text = objects[key];
-			if (text === undefined) {
-				return undefined;
-			}
-			const bytes = new TextEncoder().encode(text);
-			return (async function* () {
-				for (let start = 0; start < bytes.length; start += 4) {
-					yield bytes.subarray(start, start + 4);
-				}
-			})();
+			return Promise.resolve(text === undefined ? undefined : ReadableStream.from(chunks(new TextEncoder().encode(text))));
 		},
 	};
+}
+
+function* chunks(bytes: Uint8Array): Generator<Uint8Array> {
+	for (let start = 0; start < bytes.length; start += 4) {
+		yield bytes.subarray(start, start + 4);
+	}
 }
 
 /** The pointer the world build writes (data/src/publish.ts) for these files of 2026-11-07. */
@@ -44,7 +42,9 @@ describe('taking the current dataset for the deploy', () => {
 	beforeEach(() => {
 		directory = mkdtempSync(join(tmpdir(), 'roadtrip-deploy-'));
 	});
-	afterEach(() => rmSync(directory, { recursive: true }));
+	afterEach(() => {
+		rmSync(directory, { recursive: true });
+	});
 
 	it('puts each file of the version current.json points at in its place', async () => {
 		const r2 = memorySource({

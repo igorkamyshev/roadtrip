@@ -3,9 +3,9 @@
 // (CC0), and the zone by the graph's polygons. The format is `cities-file.ts`.
 import { type Graph, ZoneLocator } from 'engine/graph';
 import { COUNTRIES } from 'rules/countries';
-import type { CityRow } from './cities-file.ts';
+import { biggestFirst, type CityRow } from './cities-file.ts';
 
-export const MIN_POPULATION = 15_000;
+const MIN_POPULATION = 15_000;
 
 /**
  * GeoNames' feature codes left out (https://www.geonames.org/export/codes.html): a section of a populated place,
@@ -70,7 +70,7 @@ export async function buildCities(sources: CitiesSources): Promise<{ cities: Cit
 		zoneByPolygon += polygon === 0 ? 0 : 1;
 		zoned.push({ ...place, zone });
 	}
-	zoned.sort((one, two) => two.population - one.population || one.id - two.id);
+	zoned.sort(biggestFirst);
 
 	const geonames = await russianNames(sources.alternateNames, new Set(zoned.map((place) => place.id)));
 	const wikidata = await sources.wikidataLabels(zoned.filter((place) => !geonames.has(place.id)).map((place) => place.id));
@@ -185,7 +185,14 @@ async function readPlaces(lines: AsyncIterable<string>): Promise<{ places: Place
 		if (columns[6] !== 'P' || LEFT_OUT.has(columns[7]) || !(population >= MIN_POPULATION)) {
 			continue;
 		}
-		places.push({ id: Number(columns[0]), name: columns[1], lat: Number(columns[4]), lon: Number(columns[5]), population, country: columns[8] });
+		places.push({
+			id: Number(columns[0]),
+			name: columns[1],
+			lat: Number(columns[4]),
+			lon: Number(columns[5]),
+			population,
+			country: columns[8],
+		});
 	}
 	return { places, read };
 }

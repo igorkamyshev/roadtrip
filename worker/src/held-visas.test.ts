@@ -1,11 +1,14 @@
 // The held visas in the ring API (spec «Визовые правила и сведение», «API кольца», «Решения по тестам», seam 2;
 // #11, #31): a country's visa opens the country, SCHENGEN all of Schengen, and the visa exemptions' rows open more,
-// by today's UTC date and the citizenships. Sherpa is a faked `fetch` (test/api.ts); the exemptions' rows are the
-// test's own, so that the Owner's monthly edits of the table never touch these tests.
+// by today's UTC date and the citizenships. Sherpa is a faked `fetch` (test/sherpa-double.ts); the exemptions' rows
+// are the test's own, so that the Owner's monthly edits of the table never touch these tests.
 import { fixtureGraph } from 'data/fixture-graph';
 import type { ExemptionVisa, VisaExemption } from 'rules';
 import { describe, expect, it } from 'vitest';
-import { api, counted, engineContainer, recorded, SherpaDouble, sherpaMap, type SherpaGroup } from '../test/api.ts';
+import { api, closedCountriesOf, counted, engineContainer, recorded } from '../test/api.ts';
+import { stringContaining } from '../test/matchers.ts';
+import { SherpaDouble, sherpaMap, type SherpaGroup } from '../test/sherpa-double.ts';
+import { field, isRecord } from 'engine/json';
 
 const straightRoad = fixtureGraph('straight-road.osm');
 
@@ -29,8 +32,9 @@ function exemption(country: string, visa: ExemptionVisa, fields: Partial<VisaExe
 	};
 }
 
-async function closedCountries(container: { bodies: unknown[] }): Promise<string[]> {
-	return (container.bodies.at(-1) as { closedCountries: string[] }).closedCountries;
+/** The closed countries of the last calculation the Container got. */
+function closedCountries(container: { bodies: unknown[] }): string[] {
+	return closedCountriesOf(container.bodies.at(-1));
 }
 
 describe('a held visa', () => {
@@ -41,8 +45,8 @@ describe('a held visa', () => {
 		const { body } = await get('lat=0&lon=0&hours=2&cit=RUS&visas=GEO');
 
 		expect(body.access).toMatchObject({ GEO: { mode: 'held_visa', visa: 'GEO' }, ARM: { mode: 'closed' } });
-		expect(await closedCountries(container)).not.toContain('GEO');
-		expect(await closedCountries(container)).toContain('ARM');
+		expect(closedCountries(container)).not.toContain('GEO');
+		expect(closedCountries(container)).toContain('ARM');
 	});
 
 	it('of any country outside Schengen opens it, one without a passport of Sherpa’s too', async () => {
@@ -52,7 +56,7 @@ describe('a held visa', () => {
 		const { body } = await get('lat=0&lon=0&hours=2&cit=RUS&visas=GRL,NX');
 
 		expect(body.access).toMatchObject({ GRL: { mode: 'held_visa', visa: 'GRL' }, NX: { mode: 'held_visa', visa: 'NX' } });
-		expect(await closedCountries(container)).not.toContain('GRL');
+		expect(closedCountries(container)).not.toContain('GRL');
 	});
 
 	it('SCHENGEN opens all of Schengen with the four entered through it, and no country beyond without a row', async () => {
@@ -63,19 +67,48 @@ describe('a held visa', () => {
 
 		// The 29 states (home-affairs.ec.europa.eu, 2026-11-07), then Gibraltar, Monaco, San Marino and the Vatican.
 		const schengen = [
-			'AUT', 'BEL', 'BGR', 'CHE', 'CZE', 'DEU', 'DNK', 'ESP', 'EST', 'FIN', 'FRA', 'GRC', 'HRV', 'HUN', 'ISL', 'ITA', 'LIE',
-			'LTU', 'LUX', 'LVA', 'MLT', 'NLD', 'NOR', 'POL', 'PRT', 'ROU', 'SVK', 'SVN', 'SWE', 'GIB', 'MCO', 'SMR', 'VAT',
+			'AUT',
+			'BEL',
+			'BGR',
+			'CHE',
+			'CZE',
+			'DEU',
+			'DNK',
+			'ESP',
+			'EST',
+			'FIN',
+			'FRA',
+			'GRC',
+			'HRV',
+			'HUN',
+			'ISL',
+			'ITA',
+			'LIE',
+			'LTU',
+			'LUX',
+			'LVA',
+			'MLT',
+			'NLD',
+			'NOR',
+			'POL',
+			'PRT',
+			'ROU',
+			'SVK',
+			'SVN',
+			'SWE',
+			'GIB',
+			'MCO',
+			'SMR',
+			'VAT',
 		];
-		const access = body.access as Record<string, unknown>;
-		for (const country of schengen) {
-			expect(access[country], country).toEqual({ mode: 'held_visa', visa: 'SCHENGEN' });
-		}
-		expect(Object.keys(access).filter((country) => (access[country] as { mode: string }).mode === 'held_visa').sort()).toEqual(
-			[...schengen].sort(),
+		// Every country held by a visa: all of these by Schengen's, and no other.
+		const held = Object.entries(isRecord(body.access) ? body.access : {}).filter(([, entry]) => field(entry, 'mode') === 'held_visa');
+		expect(Object.fromEntries(held)).toEqual(
+			Object.fromEntries(schengen.map((country) => [country, { mode: 'held_visa', visa: 'SCHENGEN' }])),
 		);
 		// Cyprus and Ireland are in the EU, not in Schengen.
-		expect(access).toMatchObject({ CYP: { mode: 'closed' }, IRL: { mode: 'closed' } });
-		const closed = await closedCountries(container);
+		expect(body.access).toMatchObject({ CYP: { mode: 'closed' }, IRL: { mode: 'closed' } });
+		const closed = closedCountries(container);
 		expect(closed.filter((country) => schengen.includes(country))).toEqual([]);
 	});
 });
@@ -92,8 +125,8 @@ describe("the visa exemptions' rows", () => {
 		const { body } = await get('lat=0&lon=0&hours=2&cit=RUS&visas=SCHENGEN');
 
 		expect(body.access).toMatchObject({ MNE: { mode: 'held_visa', visa: 'SCHENGEN' }, MEX: { mode: 'closed' } });
-		expect(await closedCountries(container)).not.toContain('MNE');
-		expect(await closedCountries(container)).toContain('MEX');
+		expect(closedCountries(container)).not.toContain('MNE');
+		expect(closedCountries(container)).toContain('MEX');
 	});
 
 	it('act up to their last day by the date in UTC, and not after it', async () => {
@@ -110,9 +143,11 @@ describe("the visa exemptions' rows", () => {
 		expect((await get('lat=0&lon=0&hours=2&cit=RUS&visas=USA')).body.access).toMatchObject({ MKD: { mode: 'held_visa', visa: 'USA' } });
 		clock.now = Date.parse('2027-01-01T00:00:00Z');
 		expect((await get('lat=0&lon=0&hours=2&cit=RUS&visas=USA')).body.access).toMatchObject({ MKD: { mode: 'closed' } });
-		expect(await closedCountries(container)).toContain('MKD');
+		expect(closedCountries(container)).toContain('MKD');
 		// A row without a last day goes on.
-		expect((await get('lat=0&lon=0&hours=2&cit=RUS&visas=SCHENGEN')).body.access).toMatchObject({ MKD: { mode: 'held_visa', visa: 'SCHENGEN' } });
+		expect((await get('lat=0&lon=0&hours=2&cit=RUS&visas=SCHENGEN')).body.access).toMatchObject({
+			MKD: { mode: 'held_visa', visa: 'SCHENGEN' },
+		});
 	});
 
 	it('that name citizenships act only for a person of one of them', async () => {
@@ -127,10 +162,10 @@ describe("the visa exemptions' rows", () => {
 			COL: { mode: 'closed' },
 			MEX: { mode: 'held_visa', visa: 'USA' },
 		});
-		expect(await closedCountries(container)).toContain('COL');
+		expect(closedCountries(container)).toContain('COL');
 		// One of the citizenships is enough.
 		expect((await get('lat=0&lon=0&hours=2&cit=IND,RUS&visas=USA')).body.access).toMatchObject({ COL: { mode: 'held_visa', visa: 'USA' } });
-		expect(await closedCountries(container)).not.toContain('COL');
+		expect(closedCountries(container)).not.toContain('COL');
 	});
 
 	it('that give an e-visa make their country one of an e-visa, by their visa', async () => {
@@ -140,7 +175,7 @@ describe("the visa exemptions' rows", () => {
 		const { body } = await get('lat=0&lon=0&hours=2&cit=RUS&visas=SCHENGEN');
 
 		expect(body.access).toMatchObject({ MAR: { mode: 'evisa', visa: 'SCHENGEN' } });
-		expect(await closedCountries(container)).not.toContain('MAR');
+		expect(closedCountries(container)).not.toContain('MAR');
 	});
 });
 
@@ -186,7 +221,7 @@ describe('the entry mode', () => {
 			MNE: { mode: 'held_visa', visa: 'MNE' },
 			ARM: { mode: 'closed' },
 		});
-		expect((body.access as Record<string, object>).OMN).toEqual({ mode: 'evisa', visa: 'SCHENGEN' });
+		expect(body.access).toHaveProperty('OMN', { mode: 'evisa', visa: 'SCHENGEN' });
 	});
 
 	it('of a row with two held visas is by the first of Schengen, the USA, the UK and Canada', async () => {
@@ -212,7 +247,7 @@ describe('the entry mode', () => {
 			UKR: { mode: 'closed', closedForEveryone: true },
 			SRB: { mode: 'visa_free', citizenship: 'SRB' },
 		});
-		expect(await closedCountries(container)).toContain('UKR');
+		expect(closedCountries(container)).toContain('UKR');
 	});
 });
 
@@ -228,7 +263,7 @@ describe('the held visas of a request', () => {
 		const { status, body } = await get(`lat=0&lon=0&hours=2&cit=RUS&visas=${visas}`);
 
 		expect(status).toBe(400);
-		expect(body).toEqual({ error: expect.stringContaining('visas') });
+		expect(body).toEqual({ error: stringContaining('visas') });
 		expect(container.calls).toBe(0);
 	});
 
@@ -236,13 +271,9 @@ describe('the held visas of a request', () => {
 		['Schengen and the four', 'CAN,GBR,SCHENGEN,USA'],
 		['countries outside Schengen', 'AND,CYP,GEO,IRL,RKS,TUR'],
 		['countries without a passport of Sherpa’s: territories, North Korea, Northern Cyprus', 'GRL,NX,PRI,PRK'],
-	])(
-		'with %s is answered',
-		async (_, visas) => {
-			const { get } = api({ container: await engineContainer(straightRoad) });
+	])('with %s is answered', async (_, visas) => {
+		const { get } = api({ container: await engineContainer(straightRoad) });
 
-			expect((await get(`lat=0&lon=0&hours=2&cit=RUS&visas=${visas}`)).status).toBe(200);
-		},
-	);
+		expect((await get(`lat=0&lon=0&hours=2&cit=RUS&visas=${visas}`)).status).toBe(200);
+	});
 });
-

@@ -246,6 +246,25 @@ a {
 	gap: 6px;
 	margin: 10px 0;
 }
+/* A sheet's native <dialog>, opened modal (src/screen/sheets.tsx): above the screen in the top layer, it fills it
+   and holds the scrim and the sheet; the browser's own frame, padding and backdrop are off. */
+.sheet-dialog {
+	position: fixed;
+	inset: 0;
+	width: 100%;
+	height: 100%;
+	max-width: none;
+	max-height: none;
+	margin: 0;
+	padding: 0;
+	border: 0;
+	background: none;
+	color: inherit;
+	overflow: hidden;
+}
+.sheet-dialog::backdrop {
+	background: none;
+}
 .scrim {
 	position: absolute;
 	inset: 0;

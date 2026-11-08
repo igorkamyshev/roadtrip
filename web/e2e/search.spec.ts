@@ -26,14 +26,16 @@ async function reopen(page: Page, path: string): Promise<void> {
 }
 
 test.beforeEach(({ ringApi }) => {
-	ringApi.respond((call) => squareRing(Number(call.lat), Number(call.lon), 0, 0.5));
+	ringApi.respond((call) => squareRing(Number(call.lat), Number(call.lon), [0, 0.5]));
 });
 
 test.describe('the search', () => {
 	test('a city found by the start of its Russian name becomes the origin, and the phrase names it', async ({ page, ringApi }) => {
 		await page.goto('/');
 		await search(page, 'выберите', 'бел');
-		await startSheet(page).getByRole('button', { name: /^Белград/u }).click();
+		await startSheet(page)
+			.getByRole('button', { name: /^Белград/u })
+			.click();
 
 		const [call] = await ringApi.waitForCalls(1);
 		expect(call).toMatchObject({ lat: '44.80400', lon: '20.46500', hours: 1 });
@@ -84,12 +86,24 @@ test.describe('the search', () => {
 	});
 
 	test('shows the 8 biggest at most', async ({ page }) => {
-		const cities = Array.from({ length: 10 }, (_, index) => [9000 + index, `Сити ${index}`, `City ${index}`, 44.8, 20.4 + index / 100, 20_000 + index * 1000, 'SRB'] as const);
+		const cities = Array.from(
+			{ length: 10 },
+			(_, index) => [9000 + index, `Сити ${index}`, `City ${index}`, 44.8, 20.4 + index / 100, 20_000 + index * 1000, 'SRB'] as const,
+		);
 		await serveCities(page, cities);
 		await page.goto('/');
 		await search(page, 'выберите', 'сити');
 
-		await expect(found(page).locator('.row-name')).toHaveText(['Сити 9', 'Сити 8', 'Сити 7', 'Сити 6', 'Сити 5', 'Сити 4', 'Сити 3', 'Сити 2']);
+		await expect(found(page).locator('.row-name')).toHaveText([
+			'Сити 9',
+			'Сити 8',
+			'Сити 7',
+			'Сити 6',
+			'Сити 5',
+			'Сити 4',
+			'Сити 3',
+			'Сити 2',
+		]);
 	});
 
 	test('says when the list has no such city', async ({ page }) => {
@@ -155,13 +169,15 @@ test.describe('«Город» on the first card', () => {
 	];
 	for (const { outcome, answer } of withoutRing) {
 		test(`opens «Откуда едем» from the card of ${outcome}, and a city found there is the new origin`, async ({ page, ringApi }) => {
-			ringApi.respond((call) => (call.lat === '44.80400' ? squareRing(44.804, 20.465, 0, 0.5) : answer));
+			ringApi.respond((call) => (call.lat === '44.80400' ? squareRing(44.804, 20.465, [0, 0.5]) : answer));
 			await page.goto('/#/?p=45.50000,22.50000&h=1');
 			await expect(firstCard(page).getByRole('button', { name: 'Город' })).toBeVisible();
 
 			await firstCard(page).getByRole('button', { name: 'Город' }).click();
 			await startSheet(page).getByRole('searchbox', { name: 'Найти город' }).fill('Белград');
-			await startSheet(page).getByRole('button', { name: /^Белград/u }).click();
+			await startSheet(page)
+				.getByRole('button', { name: /^Белград/u })
+				.click();
 
 			await expectRingCard(page, 'до 1 ч');
 			await expect(phrase(page)).toContainText('Из точки Белград, до 1 часа в пути.');
@@ -222,7 +238,9 @@ test.describe("the origin's label", () => {
 		await page.goto('/#/?p=43.30000,21.90000&h=1');
 		await expect(phrase(page)).toContainText('Из точки Ниш,');
 		await search(page, 'Ниш', 'Ilid');
-		await startSheet(page).getByRole('button', { name: /^Ilidža/u }).click();
+		await startSheet(page)
+			.getByRole('button', { name: /^Ilidža/u })
+			.click();
 		await expect(phrase(page)).toContainText('Из точки Ilidža,');
 
 		await reopen(page, '/');
@@ -234,7 +252,9 @@ test.describe("the origin's label", () => {
 	test('is the nearest city of a link the person puts into the open page', async ({ page }) => {
 		await page.goto('/#/?p=44.80400,20.46500&h=1');
 		await search(page, 'Белград', 'Сараево');
-		await startSheet(page).getByRole('button', { name: /^Сараево/u }).click();
+		await startSheet(page)
+			.getByRole('button', { name: /^Сараево/u })
+			.click();
 		await expect(phrase(page)).toContainText('Из точки Сараево,');
 
 		await page.evaluate(() => {

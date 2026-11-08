@@ -3,4 +3,25 @@
 # and in cloud sessions by .claude/hooks/session-start.sh.
 set -e
 node scripts/agents-symlinks.ts --stage
-node lint/agents-pointers.ts
+
+# Fix, then format the staged files, and stage the result: formatting goes last
+# because Oxlint's fixes are not formatted. Symlinks are skipped: oxfmt would
+# format the file a CLAUDE.md symlink points at, which is staged on its own.
+files=$(git diff --cached --name-only --diff-filter=ACMR | while read -r f; do [ -L "$f" ] || echo "$f"; done)
+if [ -n "$files" ]; then
+	code=$(echo "$files" | grep -E '\.(ts|tsx|js|mjs|cjs)$' || true)
+	if [ -n "$code" ]; then
+		# Errors that --fix cannot fix stop the commit.
+		echo "$code" | xargs pnpm exec oxlint --fix
+	fi
+	echo "$files" | xargs pnpm exec oxfmt --no-error-on-unmatched-pattern
+	echo "$files" | xargs git add
+fi
+
+# The project as a whole: dead code, architecture, duplication, cognitive complexity, the
+# overrides' files and the pointers to the packages' AGENTS.md (lint/agents-pointers.ts).
+# Its report shows only when it fails: a clean run is twenty lines of banners.
+out=$(pnpm --silent lint:project 2>&1) || {
+	echo "$out"
+	exit 1
+}

@@ -5,7 +5,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterAll, describe, expect, it } from 'vitest';
-import { decodeCities } from '../src/cities-file.ts';
+import { decodeCities, parseCitiesFile } from '../src/cities-file.ts';
+import { field, items } from 'engine/json';
 import { fixturePath } from './fixture-graph.ts';
 
 const command = (name: string, ...args: string[]) =>
@@ -14,12 +15,25 @@ const command = (name: string, ...args: string[]) =>
 		stdio: ['ignore', 'pipe', 'pipe'],
 	});
 
+/** The geometry of the one feature of the ring command's GeoJSON. */
+function ringGeometry(output: string): unknown {
+	const [feature] = items(field(JSON.parse(output), 'features'), 'the features');
+	return field(feature, 'geometry');
+}
+
+const geonames = (name: string) => fixturePath(`geonames/${name}`);
+
+/** The cities file a command wrote, its cities biggest first. */
+const writtenCities = (path: string) => decodeCities(parseCitiesFile(JSON.parse(readFileSync(path, 'utf8'))));
+
 describe('the ring command', () => {
 	const directory = mkdtempSync(join(tmpdir(), 'roadtrip-commands-'));
-	afterAll(() => rmSync(directory, { recursive: true }));
+	afterAll(() => {
+		rmSync(directory, { recursive: true });
+	});
 
 	it('writes the ring of an extract as GeoJSON', () => {
-		const geojson = JSON.parse(command('ring', fixturePath('straight-road.osm'), '--lat', '0', '--lon', '0', '--hours', '2'));
+		const geojson: unknown = JSON.parse(command('ring', fixturePath('straight-road.osm'), '--lat', '0', '--lon', '0', '--hours', '2'));
 
 		expect(geojson).toMatchObject({
 			type: 'FeatureCollection',
@@ -31,27 +45,35 @@ describe('the ring command', () => {
 		const graph = join(directory, 'straight-road.graph');
 		command('build-graph', fixturePath('straight-road.osm'), graph);
 
-		const fromGraph = JSON.parse(command('ring', graph, '--lat', '0', '--lon', '0', '--hours', '2'));
-		const fromExtract = JSON.parse(command('ring', fixturePath('straight-road.osm'), '--lat', '0', '--lon', '0', '--hours', '2'));
-		expect(fromGraph.features[0].geometry).toEqual(fromExtract.features[0].geometry);
+		const fromGraph = ringGeometry(command('ring', graph, '--lat', '0', '--lon', '0', '--hours', '2'));
+		const fromExtract = ringGeometry(command('ring', fixturePath('straight-road.osm'), '--lat', '0', '--lon', '0', '--hours', '2'));
+		expect(fromGraph).toEqual(fromExtract);
 	});
 
 	it('takes the closed countries', () => {
 		// Road 3 of borders.osm, from its west end, stops before BBB (the fixture's header).
-		const geojson = JSON.parse(command('ring', fixturePath('borders.osm'), '--lat', '0.3', '--lon', '0.5', '--hours', '12', '--closed', 'BBB'));
+		const geojson: unknown = JSON.parse(
+			command('ring', fixturePath('borders.osm'), '--lat', '0.3', '--lon', '0.5', '--hours', '12', '--closed', 'BBB'),
+		);
 
-		expect(geojson.features[0].properties).toMatchObject({ outcome: 'empty', maxHours: 2, closedCountries: ['BBB'] });
+		expect(geojson).toMatchObject({ features: [{ properties: { outcome: 'empty', maxHours: 2, closedCountries: ['BBB'] } }] });
 	});
 });
 
 describe('the build-graph command', () => {
 	const directory = mkdtempSync(join(tmpdir(), 'roadtrip-commands-'));
-	afterAll(() => rmSync(directory, { recursive: true }));
+	afterAll(() => {
+		rmSync(directory, { recursive: true });
+	});
 
 	it('reports the pairs with passport control and no border crossing on their roads', () => {
-		const run = spawnSync(process.execPath, [fileURLToPath(new URL('../src/cli/build-graph.ts', import.meta.url)), fixturePath('chains.osm'), join(directory, 'chains.graph')], {
-			encoding: 'utf8',
-		});
+		const run = spawnSync(
+			process.execPath,
+			[fileURLToPath(new URL('../src/cli/build-graph.ts', import.meta.url)), fixturePath('chains.osm'), join(directory, 'chains.graph')],
+			{
+				encoding: 'utf8',
+			},
+		);
 
 		expect(run.status).toBe(0);
 		expect(run.stderr).toContain('pairs with passport control and no border crossing on their roads');
@@ -75,7 +97,13 @@ describe('the build-graph command', () => {
 
 		const run = spawnSync(
 			process.execPath,
-			[fileURLToPath(new URL('../src/cli/build-graph.ts', import.meta.url)), fixturePath('partial-zone.osm'), join(directory, 'partial.graph'), '--report', report],
+			[
+				fileURLToPath(new URL('../src/cli/build-graph.ts', import.meta.url)),
+				fixturePath('partial-zone.osm'),
+				join(directory, 'partial.graph'),
+				'--report',
+				report,
+			],
 			{ encoding: 'utf8' },
 		);
 
@@ -91,16 +119,17 @@ describe('the build-graph command', () => {
 
 		command('build-graph', fixturePath('zones.osm'), join(directory, 'zones.graph'), '--outlines', outlines);
 
-		const written = JSON.parse(readFileSync(outlines, 'utf8')) as { type: string; features: { properties: { zone: string } }[] };
-		expect(written.type).toBe('FeatureCollection');
-		expect(written.features.map(({ properties }) => properties.zone)).toContain('NX');
+		const written: unknown = JSON.parse(readFileSync(outlines, 'utf8'));
+		expect(written).toMatchObject({ type: 'FeatureCollection' });
+		expect(items(field(written, 'features'), 'the features').map((feature) => field(field(feature, 'properties'), 'zone'))).toContain('NX');
 	});
 });
 
 describe('the build-cities command', () => {
 	const directory = mkdtempSync(join(tmpdir(), 'roadtrip-commands-'));
-	afterAll(() => rmSync(directory, { recursive: true }));
-	const geonames = (name: string) => fixturePath(`geonames/${name}`);
+	afterAll(() => {
+		rmSync(directory, { recursive: true });
+	});
 
 	it("writes the cities file of GeoNames' files, the zones by the polygons of a graph", () => {
 		const out = join(directory, 'cities.json');
@@ -122,7 +151,7 @@ describe('the build-cities command', () => {
 
 		expect(run.status).toBe(0);
 		// The fixtures' cities in the squares of zones.osm: Kyrenia and Famagusta in Northern Cyprus.
-		expect(decodeCities(JSON.parse(readFileSync(out, 'utf8')))).toEqual([
+		expect(writtenCities(out)).toEqual([
 			[146268, 'Никосия', 'Nicosia', 0.5, 3.5, 200_452, 'CYP'],
 			[786714, 'Приштина', 'Pristina', 0.5, 0.5, 161_751, 'RKS'],
 			[617239, 'Тирасполь', 'Tiraspol', 0.5, 7.5, 157_000, 'MDA'],
@@ -138,8 +167,19 @@ describe('the build-cities command', () => {
 	it('takes the cities of the countries given', () => {
 		const out = join(directory, 'cyprus.json');
 
-		command('build-cities', fixturePath('zones.osm'), out, '--cities', geonames('cities1000.txt'), '--names', geonames('alternateNamesV2.txt'), '--countries', 'CY', '--no-wikidata');
+		command(
+			'build-cities',
+			fixturePath('zones.osm'),
+			out,
+			'--cities',
+			geonames('cities1000.txt'),
+			'--names',
+			geonames('alternateNamesV2.txt'),
+			'--countries',
+			'CY',
+			'--no-wikidata',
+		);
 
-		expect(decodeCities(JSON.parse(readFileSync(out, 'utf8'))).map(([, , local]) => local)).toEqual(['Nicosia', 'Limassol', 'Famagusta', 'Kyrenia']);
+		expect(writtenCities(out).map(([, , local]) => local)).toEqual(['Nicosia', 'Limassol', 'Famagusta', 'Kyrenia']);
 	});
 });

@@ -1,7 +1,8 @@
 // What the builder reads from an OSM file, whatever its format (XML or PBF). Coordinates are integers in
 // 1e-7 degrees, OSM's own precision, as in the graph.
 
-export type Tags = Readonly<Record<string, string>>;
+/** An element's tags by key: a key the element lacks is undefined. */
+export type Tags = Readonly<Partial<Record<string, string>>>;
 
 export interface OsmNode {
 	readonly id: number;
@@ -35,12 +36,12 @@ export interface OsmRelation {
 
 /** Called for each element of the file; an element type without a callback may be skipped unread. */
 export interface OsmVisitor {
-	node?(node: OsmNode): void;
-	way?(way: OsmWay): void;
-	relation?(relation: OsmRelation): void;
+	readonly node?: (node: OsmNode) => void;
+	readonly way?: (way: OsmWay) => void;
+	readonly relation?: (relation: OsmRelation) => void;
 }
 
 /** An OSM file. The builder reads it in several passes, one element type each. */
 export interface OsmSource {
-	read(visitor: OsmVisitor): void;
+	readonly read: (visitor: OsmVisitor) => void;
 }

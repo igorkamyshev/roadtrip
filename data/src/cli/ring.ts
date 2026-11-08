@@ -10,7 +10,8 @@ import { writeFileSync } from 'node:fs';
 import { parseArgs } from 'node:util';
 import { computeRing, ENGINE_VERSION } from 'engine';
 import { borderTable } from 'rules';
-import { loadGraph, log, userPath, withLocalFile } from './input.ts';
+import { log, userPath, withLocalFile } from './input.ts';
+import { loadGraph } from './load-graph.ts';
 
 const { values, positionals } = parseArgs({
 	allowPositionals: true,
@@ -22,9 +23,9 @@ const { values, positionals } = parseArgs({
 		out: { type: 'string' },
 	},
 });
-const [input] = positionals;
+const input = positionals.at(0);
 const [lat, lon, hours] = [values.lat, values.lon, values.hours].map(Number);
-if (input === undefined || ![lat, lon, hours].every(Number.isFinite)) {
+if (input === undefined || ![lat, lon, hours].every((value) => Number.isFinite(value))) {
 	log(
 		'usage: pnpm --filter data ring <extract.osm.pbf | graph file | URL> --lat <degrees> --lon <degrees> --hours <N> ' +
 			'[--closed <alpha-3,alpha-3,…>] [--out <file.geojson>]',

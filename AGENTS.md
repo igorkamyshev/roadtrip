@@ -17,6 +17,18 @@ Read a package's `AGENTS.md` before working in it:
 
 `web` is the client, the one screen, built into the Worker's static assets. Its `README.md` says where the state, the ring requests, the map's layers, the phrase's slots and the events to PostHog are, how the source maps are uploaded, and how the screen tests run (`pnpm e2e`, Playwright).
 
+`lint` holds roadtrip's own lint rules (an Oxlint JS plugin, `lint/plugin.ts`, each rule in `lint/rules/` with its tests), the checks of the project that fallow cannot express, fallow's policy pack, and the Claude Code hook that lints an agent's edits.
+
+## Checks
+
+Every finding of Oxlint, fallow and our own rules in `lint/` is an error ([ADR 0002](docs/adr/0002-strict-checks-oxlint-fallow-oxfmt.md)). A hook lints the source files you change once you move on, at your next shell command or when you stop; pre-commit formats, autofixes and checks the whole project; CI runs `.github/workflows/checks.yml`. The client's build fails when the first paint's JavaScript is over its budget (`web/vite.config.ts`).
+
+- Fix the code until the checks pass: `pnpm format`, `pnpm lint`.
+- A rule that is wrong for one line is disabled on that line, by name, with the reason: `// oxlint-disable-next-line <rule> -- <why>`.
+- The rule set (`.oxlintrc.json`, `.fallowrc.jsonc`, `lint/`) is the Owner's call: propose a change with its reason instead of making it.
+- Pre-commit autofixes can break types: run `pnpm typecheck` before you push.
+- Before a refactor, `pnpm health` shows where complexity and churn pile up.
+
 ## Deploy and services
 
 A merge to `main` deploys both Workers through Cloudflare Workers Builds, and the monthly world build deploys each new dataset the same way. Deploys, checking and rerunning a build, a new worker, secrets and vars, the logs of every run, waiting for a GitHub Actions run, PostHog: read `docs/agents/infrastructure.md` before the first call. What only the Owner sets is in `worker/README.md`, «Deploy».
@@ -29,7 +41,7 @@ Reviewing a branch or merging a ticket's work: check the diff against `CODING_ST
 
 - While subagents run, ask the Owner in a plain message or a Things task, note the open question, and keep dispatching the work it does not block: a question prompt holds every subagent's report until the Owner answers.
 - In a worktree, give Bash one plain command with literal paths, edit files with Edit or Write, and run a script saved to a file with `python3 -I <file>`: the worktree guard refuses heredocs, `$VAR`, `$(…)`, loops and `cd … &&` chains.
-- A subagent's worktree starts from this checkout's HEAD (`worktree.baseRef` in `.claude/settings.json`): check out the branch the work builds on before launching it.
+- A subagent's worktree starts from this checkout's HEAD (`worktree.baseRef` in `.claude/settings.json`): check out the branch the work builds on before launching it. That holds only when Claude Code runs in this checkout: a session started in a folder above it (a cloud session with several repositories) loads none of this repository's `.claude/settings.json`, neither `baseRef` nor the hooks, and the worktree starts at `origin/main`. So the brief names the commit the work builds on, and the subagent first moves its branch there (`git merge --ff-only <commit>`).
 - Notes shared with subagents hold only what the repo's docs lack, and link the docs for the rest.
 
 ## Agent skills

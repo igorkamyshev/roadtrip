@@ -117,11 +117,13 @@ Open `http://localhost:8787/#/?p=42.44100,19.26300&h=3`: the labels are Russian 
 
 ```bash
 pnpm test        # at the root; this package's tests are src/*.test.ts
-pnpm typecheck   # the Worker against `wrangler types`, the tests against Node's
+pnpm typecheck   # the Worker against `wrangler types` (tsconfig.worker.json), the tests against Node's (tsconfig.test.json)
 pnpm cf-typegen  # after changing wrangler.jsonc
 ```
 
-The tests never import `src/index.ts`: Node cannot load `cloudflare:workers`. They call `handleRing` (`test/api.ts`) with doubles for both KV namespaces and the timers of `deps.sleep` (Sherpa's timeout) on one clock, a faked `fetch` for Sherpa (`SherpaDouble`, `sherpaMap` in Sherpa's shape), the Container and PostHog (`AnalyticsDouble`, which records the events), and the engine server in-process on `data`'s fixture graphs: `src/ring.test.ts` covers the ring, its cache and `ring served`, `src/visa-rules.test.ts` the visa rules and `sherpa fetched`, `src/analytics.test.ts` the PostHog client of a request with PostHog's capture API doubled under `posthog-node`, `src/held-visas.test.ts` the held visas with exemption rows of its own (so the table's monthly edits never touch it), and `src/visa-exemptions.test.ts` the shipped table's check. And the tiles route with an R2 double holding a small archive that `test/pmtiles-archive.ts` writes, and a Cache API double.
+`tsconfig.json` only references those two programs, so that editors and Oxlint's type-aware rules give each file its own.
+
+The tests never import `src/index.ts`: Node cannot load `cloudflare:workers`. They call `handleRing` (`api` in `test/api.ts`) with doubles for both KV namespaces (`test/memory-kv.ts`) and the timers of `deps.sleep` (Sherpa's timeout, `test/timers.ts`) on one clock, a faked `fetch` for Sherpa (`SherpaDouble`, `sherpaMap` in Sherpa's shape, `test/sherpa-double.ts`), the Container and PostHog (`analyticsDouble`, which records the events, `test/analytics-double.ts`), and the engine server in-process on `data`'s fixture graphs: `src/ring.test.ts` covers the ring, its cache and `ring served`, `src/visa-rules.test.ts` the visa rules and `sherpa fetched`, `src/analytics.test.ts` the PostHog client of a request with PostHog's capture API doubled under `posthog-node`, `src/held-visas.test.ts` the held visas with exemption rows of its own (so the table's monthly edits never touch it), and `src/visa-exemptions.test.ts` the shipped table's check. And the tiles route with an R2 double holding a small archive that `test/pmtiles-archive.ts` writes, and a Cache API double.
 
 ## Deploy
 

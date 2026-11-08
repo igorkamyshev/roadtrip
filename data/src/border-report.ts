@@ -25,14 +25,14 @@ export function borderReport(graph: Graph, table: BorderTable): BorderReport {
 	const pairsWithoutCrossings: { pair: string; edges: number }[] = [];
 	for (const [pair, edges] of byPair) {
 		const [{ row, from, to }] = edges;
-		const shut = closed[graph.nodeZone[from]] || closed[graph.nodeZone[to]] || (row !== undefined && BLOCKING.has(row.status));
+		const shut = closed[graph.nodeZone[from]] === 1 || closed[graph.nodeZone[to]] === 1 || (row !== undefined && BLOCKING.has(row.status));
 		if (!shut && edges.every((edge) => edge.seconds === Infinity)) {
 			pairsWithoutCrossings.push({ pair, edges: edges.length });
 		}
 	}
 	const found = new Set([...byPair.values()].flat().map((edge) => edge.crossing?.id));
 	return {
-		pairsWithoutCrossings: pairsWithoutCrossings.sort((one, two) => one.pair.localeCompare(two.pair)),
+		pairsWithoutCrossings: pairsWithoutCrossings.toSorted((one, two) => one.pair.localeCompare(two.pair)),
 		crossingsNotFound: table.crossings
 			.filter((crossing) => crossing.status === 'open' && byPair.has(crossing.pair.join('–')) && !found.has(crossing.id))
 			.map((crossing) => crossing.id),

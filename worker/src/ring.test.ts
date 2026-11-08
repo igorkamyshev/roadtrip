@@ -5,7 +5,10 @@ import { fixtureGraph } from 'data/fixture-graph';
 import { dataVersion } from 'engine';
 import { borderTable } from 'rules';
 import { describe, expect, it } from 'vitest';
-import { answering, api, counted, DATASET, DAY, engineContainer, MemoryKv, MINUTE, recorded, SherpaDouble, sherpaMap, START, taking } from '../test/api.ts';
+import { answering, api, counted, DATASET, DAY, engineContainer, MINUTE, recorded, START, taking } from '../test/api.ts';
+import { anyObject, anyString, objectContaining } from '../test/matchers.ts';
+import { MemoryKv } from '../test/memory-kv.ts';
+import { SherpaDouble, sherpaMap } from '../test/sherpa-double.ts';
 import { handleRing } from './ring.ts';
 
 const straightRoad = fixtureGraph('straight-road.osm');
@@ -13,9 +16,27 @@ const straightRoad = fixtureGraph('straight-road.osm');
 /** The countries closed for everyone (rules' border table), closed in every set. */
 const CLOSED_FOR_EVERYONE = ['AZE', 'BTN', 'CHN', 'MMR', 'RKS', 'UKR'];
 
+/** What an answer says of the ring itself, and where it came from. */
+function ringOf({ body: { outcome, ring, startCountry, source } }: { body: Readonly<Record<string, unknown>> }) {
+	return { outcome, ring, startCountry, source };
+}
+
 describe('GET /api/ring', () => {
 	it("answers the Container's ring with the entry modes and the date of the visa rules, without the calculation's own fields", async () => {
-		const ring = { type: 'MultiPolygon', coordinates: [[[[0.6, -0.01], [0.8, -0.01], [0.8, 0.01], [0.6, 0.01], [0.6, -0.01]]]] };
+		const ring = {
+			type: 'MultiPolygon',
+			coordinates: [
+				[
+					[
+						[0.6, -0.01],
+						[0.8, -0.01],
+						[0.8, 0.01],
+						[0.6, 0.01],
+						[0.6, -0.01],
+					],
+				],
+			],
+		};
 		const { get } = api({ container: await answering(200, { outcome: 'ring', ring, startCountry: 'AAA' }) });
 
 		const { status, body } = await get('lat=0&lon=0&hours=2&cit=RUS');
@@ -25,13 +46,13 @@ describe('GET /api/ring', () => {
 			outcome: 'ring',
 			ring,
 			startCountry: 'AAA',
-			access: expect.objectContaining({ SRB: { mode: 'visa_free', citizenship: 'RUS' }, RUS: { mode: 'visa_free', citizenship: 'RUS' } }),
+			access: objectContaining({ SRB: { mode: 'visa_free', citizenship: 'RUS' }, RUS: { mode: 'visa_free', citizenship: 'RUS' } }),
 			visaRulesLoadedAt: '2026-11-07T00:00:00.000Z',
 			source: 'calculation',
 		});
 	});
 
-	it.each([
+	it.for([
 		['ring', 'straight-road.osm', 'lat=0&lon=0&hours=2', { outcome: 'ring', startCountry: 'AAA' }],
 		// The whole road takes 4.45 h of travel.
 		['empty', 'straight-road.osm', 'lat=0&lon=0&hours=6', { outcome: 'empty', maxHours: 5, startCountry: 'AAA' }],
@@ -39,17 +60,20 @@ describe('GET /api/ring', () => {
 		['no_roads', 'straight-road.osm', 'lat=0.46&lon=1&hours=3', { outcome: 'no_roads', startCountry: 'AAA' }],
 		// In Abkhazia, closed for everyone.
 		['no_ring', 'closed-territory.osm', 'lat=0.5&lon=1.2&hours=2', { outcome: 'no_ring', startCountry: 'ABKHAZIA' }],
-	])('caches the outcome %s: the same request again comes from the ring cache, without the Container', async (_, fixture, query, outcome) => {
-		const container = counted(await engineContainer(fixtureGraph(fixture)));
-		const { get } = api({ container });
+	] as const)(
+		'caches the outcome %s: the same request again comes from the ring cache, without the Container',
+		async ([, fixture, query, outcome]) => {
+			const container = counted(await engineContainer(fixtureGraph(fixture)));
+			const { get } = api({ container });
 
-		const first = await get(`${query}&cit=RUS`);
-		const again = await get(`${query}&cit=RUS`);
+			const first = await get(`${query}&cit=RUS`);
+			const again = await get(`${query}&cit=RUS`);
 
-		expect(first).toMatchObject({ status: 200, body: { ...outcome, source: 'calculation' } });
-		expect(again).toEqual({ status: 200, body: { ...first.body, source: 'cache' } });
-		expect(container.calls).toBe(1);
-	});
+			expect(first).toMatchObject({ status: 200, body: { ...outcome, source: 'calculation' } });
+			expect(again).toEqual({ status: 200, body: { ...first.body, source: 'cache' } });
+			expect(container.calls).toBe(1);
+		},
+	);
 });
 
 describe('the ring cache', () => {
@@ -75,7 +99,6 @@ describe('the ring cache', () => {
 			body: sherpaMap(passport, { groups: passport === 'TUR' ? {} : { HRV: 'PAPER_OR_EMBASSY_VISA_REQUIRED' } }),
 		}));
 		const { get } = api({ container, sherpa });
-		const ringOf = ({ body: { outcome, ring, startCountry, source } }: { body: Record<string, unknown> }) => ({ outcome, ring, startCountry, source });
 
 		const serbian = await get('lat=0&lon=0&hours=2&cit=SRB');
 		const montenegrin = await get('lat=0&lon=0&hours=2&cit=MNE');
@@ -145,7 +168,7 @@ describe('the ring cache', () => {
 			timings: { queueMs: 0, traversalMs: 2900, contourMs: 900 },
 		});
 		expect(answer.length).toBeGreaterThan(25 * 1024 * 1024 + 200); // all ASCII: characters are bytes
-		const container = counted({ fetch: async () => new Response(answer) });
+		const container = counted({ fetch: () => Promise.resolve(new Response(answer)) });
 		const { get } = api({ container });
 
 		const first = await get('lat=45.679&lon=12.346&hours=12&cit=RUS');
@@ -153,8 +176,8 @@ describe('the ring cache', () => {
 
 		expect(first).toMatchObject({ status: 200, body: { outcome: 'ring', startCountry: 'AAA', source: 'calculation' } });
 		// The ring passes whole; a deep comparison of its points would take seconds.
-		expect((first.body.ring as typeof ring).coordinates[0][0]).toHaveLength(points);
-		expect((first.body.ring as typeof ring).coordinates[0][0][points - 1]).toEqual(ring.coordinates[0][0][points - 1]);
+		expect(first.body).toHaveProperty(['ring', 'coordinates', 0, 0, 'length'], points);
+		expect(first.body).toHaveProperty(['ring', 'coordinates', 0, 0, points - 1], ring.coordinates[0][0][points - 1]);
 		expect(again.body.source).toBe('calculation');
 		expect(container.calls).toBe(2);
 	});
@@ -167,22 +190,26 @@ describe('the Container', () => {
 
 		expect(await get('lat=0&lon=0&hours=6&cit=RUS')).toEqual({
 			status: 200,
-			body: { outcome: 'empty', maxHours: 5, startCountry: 'AAA', access: expect.any(Object), visaRulesLoadedAt: expect.any(String), source: 'joined' },
+			body: {
+				outcome: 'empty',
+				maxHours: 5,
+				startCountry: 'AAA',
+				access: anyObject,
+				visaRulesLoadedAt: anyString,
+				source: 'joined',
+			},
 		});
 		expect((await get('lat=0&lon=0&hours=6&cit=RUS')).body.source).toBe('joined');
 		expect(container.calls).toBe(2);
 	});
 
 	it('is waited for as long as its queue takes', async () => {
-		let release = () => {};
-		const queued = new Promise<void>((resolve) => {
-			release = resolve;
-		});
+		const queued = Promise.withResolvers<void>();
 		const engine = await engineContainer(straightRoad);
 		const { get, timers } = api({
 			container: {
 				fetch: async (request) => {
-					await queued;
+					await queued.promise;
 					return engine.fetch(request);
 				},
 			},
@@ -190,7 +217,7 @@ describe('the Container', () => {
 
 		const answer = get('lat=0&lon=0&hours=2&cit=RUS');
 		await timers.advance(30 * MINUTE);
-		release();
+		queued.resolve();
 
 		expect(await answer).toMatchObject({ status: 200, body: { outcome: 'ring', source: 'calculation' } });
 	});
@@ -227,7 +254,9 @@ describe('the Container', () => {
 	});
 
 	it('that answered something else answers 502, and logger.error gets the status and the text', async () => {
-		const container = { fetch: async () => new Response('There is no Container instance available at this time.', { status: 503 }) };
+		const container = {
+			fetch: () => Promise.resolve(new Response('There is no Container instance available at this time.', { status: 503 })),
+		};
 		const { get, errors } = api({ container });
 
 		expect((await get('lat=0&lon=0&hours=2&cit=RUS')).status).toBe(502);
@@ -270,7 +299,7 @@ describe('a request', () => {
 		const { status, body } = await get(query);
 
 		expect(status).toBe(400);
-		expect(body).toEqual({ error: expect.any(String) });
+		expect(body).toEqual({ error: anyString });
 		expect(container.calls).toBe(0);
 	});
 
@@ -287,9 +316,12 @@ describe('a request', () => {
 
 	it('other than GET is 405', async () => {
 		const container = counted(await engineContainer(straightRoad));
-		const response = await handleRing(new Request('https://roadtrip.kamyshev.me/api/ring?lat=0&lon=0&hours=2&cit=RUS', { method: 'POST' }), {
-			...api({ container }).deps,
-		});
+		const response = await handleRing(
+			new Request('https://roadtrip.kamyshev.me/api/ring?lat=0&lon=0&hours=2&cit=RUS', { method: 'POST' }),
+			{
+				...api({ container }).deps,
+			},
+		);
 
 		expect(response.status).toBe(405);
 		expect(response.headers.get('allow')).toBe('GET');
@@ -342,13 +374,32 @@ describe('ring served', () => {
 		await get('lat=0&lon=0&hours=2&cit=RUS');
 
 		expect(analytics.named('ring served')).toEqual([
-			{ source: 'calculation', outcome: 'no_roads', hours: 2, duration_ms: 0, queue_ms: 400, traversal_ms: 1200, contour_ms: 300, cold_start_ms: 14250 },
+			{
+				source: 'calculation',
+				outcome: 'no_roads',
+				hours: 2,
+				duration_ms: 0,
+				queue_ms: 400,
+				traversal_ms: 1200,
+				contour_ms: 300,
+				cold_start_ms: 14250,
+			},
 		]);
 	});
 
 	it('tells a request joined to a calculation, with the timings of that calculation', async () => {
 		const clock = { now: START };
-		const container = taking(800, clock, await answering(200, { outcome: 'ring', ring: { type: 'MultiPolygon', coordinates: [] }, startCountry: 'AAA', joined: true, timings }));
+		const container = taking(
+			800,
+			clock,
+			await answering(200, {
+				outcome: 'ring',
+				ring: { type: 'MultiPolygon', coordinates: [] },
+				startCountry: 'AAA',
+				joined: true,
+				timings,
+			}),
+		);
 		const { get, analytics } = api({ container, clock });
 
 		await get('lat=0&lon=0&hours=3&cit=RUS');
@@ -403,12 +454,18 @@ describe('ring served', () => {
 	});
 
 	it("rounds the Container's timings to whole milliseconds", async () => {
-		const container = await answering(200, { outcome: 'no_roads', startCountry: 'AAA', timings: { queueMs: 0.12, traversalMs: 1200.5, contourMs: 299.7, coldStartMs: 14250.4 } });
+		const container = await answering(200, {
+			outcome: 'no_roads',
+			startCountry: 'AAA',
+			timings: { queueMs: 0.12, traversalMs: 1200.5, contourMs: 299.7, coldStartMs: 14250.4 },
+		});
 		const { get, analytics } = api({ container });
 
 		await get('lat=0&lon=0&hours=2&cit=RUS');
 
-		expect(analytics.named('ring served')).toEqual([expect.objectContaining({ queue_ms: 0, traversal_ms: 1201, contour_ms: 300, cold_start_ms: 14250 })]);
+		expect(analytics.named('ring served')).toEqual([
+			expect.objectContaining({ queue_ms: 0, traversal_ms: 1201, contour_ms: 300, cold_start_ms: 14250 }),
+		]);
 	});
 
 	it('never carries the origin, not even rounded', async () => {

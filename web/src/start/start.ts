@@ -13,7 +13,7 @@ export type Start =
 	| { readonly method: Exclude<StartMethod, 'search'>; readonly origin: LatLon };
 
 /** The label of a point on the map: the pin's, and any origin's until the cities file comes or if it cannot. */
-export const ON_THE_MAP = 'на карте';
+const ON_THE_MAP = 'на карте';
 
 /**
  * The origin's label in the phrase: the city picked in the search, «на карте» for the pin, the nearest city of the
@@ -23,12 +23,11 @@ export function startLabel(start: Start | undefined, cities: readonly City[] | u
 	if (start === undefined) {
 		return undefined;
 	}
-	switch (start.method) {
-		case 'search':
-			return start.city.name;
-		case 'pin':
-			return ON_THE_MAP;
-		default:
-			return (cities === undefined ? undefined : nearestCity(cities, start.origin)?.name) ?? ON_THE_MAP;
+	if (start.method === 'search') {
+		return start.city.name;
 	}
+	if (start.method === 'pin') {
+		return ON_THE_MAP;
+	}
+	return (cities === undefined ? undefined : nearestCity(cities, start.origin)?.name) ?? ON_THE_MAP;
 }

@@ -15,7 +15,8 @@ import { brotliCompressSync } from 'node:zlib';
 import { encodeCities } from '../cities-file.ts';
 import { buildCities } from '../cities.ts';
 import { wikidataRussianLabels } from '../wikidata.ts';
-import { fileLines, loadGraph, log, seconds, userPath, withLocalFile } from './input.ts';
+import { fileLines, log, seconds, userPath, withLocalFile } from './input.ts';
+import { loadGraph } from './load-graph.ts';
 
 const DUMP = 'https://download.geonames.org/export/dump';
 
@@ -28,7 +29,8 @@ const { values, positionals } = parseArgs({
 		'no-wikidata': { type: 'boolean', default: false },
 	},
 });
-const [graphFile, out] = positionals;
+const graphFile = positionals.at(0);
+const out = positionals.at(1);
 if (graphFile === undefined || out === undefined) {
 	log(
 		'usage: pnpm --filter data build-cities <graph file | extract | URL> <out.json> [--cities <cities1000.zip | .txt | URL>] ' +
@@ -36,9 +38,11 @@ if (graphFile === undefined || out === undefined) {
 	);
 	process.exit(2);
 }
-const countries = values.countries === undefined ? undefined : new Set(values.countries.split(',').map((code) => code.trim().toUpperCase()));
+const countries =
+	values.countries === undefined ? undefined : new Set(values.countries.split(',').map((code) => code.trim().toUpperCase()));
 const names =
-	values.names?.split(',') ?? (countries === undefined ? [`${DUMP}/alternateNamesV2.zip`] : [...countries].map((code) => `${DUMP}/alternatenames/${code}.zip`));
+	values.names?.split(',') ??
+	(countries === undefined ? [`${DUMP}/alternateNamesV2.zip`] : [...countries].map((code) => `${DUMP}/alternatenames/${code}.zip`));
 
 const { graph } = await withLocalFile(graphFile, loadGraph);
 const started = performance.now();
@@ -46,7 +50,7 @@ const { cities, report } = await buildCities({
 	cities: ofCountries(fileLines(values.cities)),
 	alternateNames: concat(names.map((name) => () => fileLines(name))),
 	wikidataLabels: values['no-wikidata']
-		? async () => new Map()
+		? () => Promise.resolve(new Map<number, string>())
 		: (ids) => {
 				log(`Wikidata: asking for the Russian labels of ${ids.length} cities`);
 				return wikidataRussianLabels(ids, { fetch, sleep, log });
@@ -56,8 +60,12 @@ const { cities, report } = await buildCities({
 const json = JSON.stringify(encodeCities(cities));
 writeFileSync(userPath(out), json);
 
-log(`${report.cities} cities of ${report.read} lines of ${values.cities}${countries === undefined ? '' : ` in ${[...countries].join(', ')}`}, in ${seconds(started)}`);
-log(`Russian names: ${report.russianFromGeoNames} from GeoNames, ${report.russianFromWikidata} from Wikidata, ${report.withoutRussian} without`);
+log(
+	`${report.cities} cities of ${report.read} lines of ${values.cities}${countries === undefined ? '' : ` in ${[...countries].join(', ')}`}, in ${seconds(started)}`,
+);
+log(
+	`Russian names: ${report.russianFromGeoNames} from GeoNames, ${report.russianFromWikidata} from Wikidata, ${report.withoutRussian} without`,
+);
 log(`zones: ${report.zoneByPolygon} by the graph's polygons, ${report.zoneByCountry} outside every polygon by their GeoNames country`);
 if (report.withoutZone.length > 0) {
 	log(`left out, outside every polygon and in a country that is no zone: ${report.withoutZone.join('; ')}`);

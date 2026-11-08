@@ -1,7 +1,7 @@
 // The zone of every road node of an extract, the world's ~360 M included (#35), without a polygon test for each:
 // a node in a cell of a fine grid that no zone boundary crosses has the zone of the cell, looked up once; only a
 // node in a cell a boundary crosses asks the zone polygons.
-import type { ZoneLocator, ZoneRings } from 'engine/graph';
+import { pointsBounds, type ZoneLocator, type ZoneRings } from 'engine/graph';
 
 /** Cells of 0.05° (~5.5 km), in 1e-7 degrees: the world is 3 600 × 7 200 cells, 52 MB. */
 const CELL = 500_000;
@@ -21,13 +21,7 @@ export class ZoneCells {
 
 	constructor(locator: ZoneLocator, rings: ZoneRings) {
 		this.#locator = locator;
-		let [minLat, minLon, maxLat, maxLon] = [Infinity, Infinity, -Infinity, -Infinity];
-		for (let point = 0; point < rings.lat.length; point++) {
-			minLat = Math.min(minLat, rings.lat[point]);
-			maxLat = Math.max(maxLat, rings.lat[point]);
-			minLon = Math.min(minLon, rings.lon[point]);
-			maxLon = Math.max(maxLon, rings.lon[point]);
-		}
+		const { minLat, minLon, maxLat, maxLon } = pointsBounds(rings, 0, rings.lat.length - 1);
 		const empty = rings.lat.length === 0;
 		this.#firstRow = empty ? 0 : Math.floor((minLat - 1) / CELL);
 		this.#firstColumn = empty ? 0 : Math.floor((minLon - 1) / CELL);
@@ -36,7 +30,7 @@ export class ZoneCells {
 		this.#cells = new Uint16Array(this.#rows * this.#columns).fill(UNKNOWN);
 		for (let ring = 0; ring < rings.zone.length; ring++) {
 			for (let point = rings.start[ring]; point < rings.start[ring + 1] - 1; point++) {
-				this.#cross(rings.lat[point], rings.lon[point], rings.lat[point + 1], rings.lon[point + 1]);
+				this.#cross(rings, point);
 			}
 		}
 	}
@@ -62,10 +56,15 @@ export class ZoneCells {
 	}
 
 	/**
-	 * Marks the cells the boundary edge between the two points touches, and more: the edge in steps of at most half a
-	 * cell, each marking the cells of its box widened by a unit, so an edge along a grid line marks both sides.
+	 * Marks the cells the boundary edge from point `point` of the rings to the next touches, and more: the edge in
+	 * steps of at most half a cell, each marking the cells of its box widened by a unit, so an edge along a grid line
+	 * marks both sides.
 	 */
-	#cross(lat1: number, lon1: number, lat2: number, lon2: number): void {
+	#cross(rings: ZoneRings, point: number): void {
+		const lat1 = rings.lat[point];
+		const lon1 = rings.lon[point];
+		const lat2 = rings.lat[point + 1];
+		const lon2 = rings.lon[point + 1];
 		const steps = Math.max(1, Math.ceil(Math.max(Math.abs(lat2 - lat1), Math.abs(lon2 - lon1)) / (CELL / 2)));
 		for (let step = 0; step < steps; step++) {
 			const fromLat = lat1 + ((lat2 - lat1) * step) / steps;

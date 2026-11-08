@@ -31,7 +31,11 @@ export const REGIONS: readonly Region[] = [
 	{
 		id: 'central-asia',
 		// Geofabrik's asia/kazakhstan, asia/uzbekistan and asia/kyrgyzstan, from geo2day's daily extracts.
-		extracts: ['https://geo2day.com/asia/kazakhstan.pbf', 'https://geo2day.com/asia/uzbekistan.pbf', 'https://geo2day.com/asia/kyrgyzstan.pbf'],
+		extracts: [
+			'https://geo2day.com/asia/kazakhstan.pbf',
+			'https://geo2day.com/asia/uzbekistan.pbf',
+			'https://geo2day.com/asia/kyrgyzstan.pbf',
+		],
 	},
 	{ id: 'mexico', extracts: ['north-america/mexico'] },
 	{ id: 'southern-cone', extracts: ['south-america/chile', 'south-america/argentina'] },

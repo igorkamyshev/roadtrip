@@ -272,7 +272,8 @@ function parseBrowserId(value: unknown): string | undefined {
 	if (typeof value !== 'string') {
 		return undefined;
 	}
-	const id = value.replaceAll(/[\u0000-\u001f\u007f]/gu, '').slice(0, MAX_ID_LENGTH);
+	// oxlint-disable-next-line no-control-regex -- the control characters are what this removes from the header's id
+	const id = value.replaceAll(/[\u0000-\u001F\u007F]/gu, '').slice(0, MAX_ID_LENGTH);
 	return id === '' ? undefined : id;
 }
 

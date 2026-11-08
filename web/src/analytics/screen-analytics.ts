@@ -95,7 +95,7 @@ export class ScreenAnalytics {
 		if (memory === undefined) {
 			this.#pending = { ask, askedAt };
 		} else {
-			this.#ringResult(ask, { answer: memory, memory: true }, 0, askedAt);
+			this.#ringResult(ask, { answer: memory, memory: true }, { waitMs: 0, at: askedAt });
 		}
 	}
 
@@ -107,7 +107,10 @@ export class ScreenAnalytics {
 		}
 		this.#pending = undefined;
 		// The answer may be stamped a moment before the screen noted the ask.
-		this.#ringResult(pending.ask, 'answer' in ending ? { answer: ending.answer, memory: false } : ending, Math.max(0, at - pending.askedAt), at);
+		this.#ringResult(pending.ask, 'answer' in ending ? { answer: ending.answer, memory: false } : ending, {
+			waitMs: Math.max(0, at - pending.askedAt),
+			at,
+		});
 	}
 
 	/** The request under way, if any, ends `abandoned` now. */
@@ -118,7 +121,7 @@ export class ScreenAnalytics {
 		}
 		this.#pending = undefined;
 		const now = this.now();
-		this.#ringResult(pending.ask, 'abandoned', now - pending.askedAt, now);
+		this.#ringResult(pending.ask, 'abandoned', { waitMs: now - pending.askedAt, at: now });
 	}
 
 	/**
@@ -135,17 +138,23 @@ export class ScreenAnalytics {
 		}
 	}
 
-	#ringResult(ask: RingAsk, ending: Ending, waitMs: number, at: number): void {
-		const asked = { hours: ask.hours, citizenships: ask.settings.citizenships, held_visas: ask.settings.visas, wait_ms: Math.round(waitMs) };
-		this.#emit(
-			'ring result',
-			(cities): RingResult => ({ ...outcomeOf(ending, cities), ...asked, ...placeOf(ask.start, cities) }),
-			at,
-		);
+	/** `ring result` of `ask`: how it ended, how long the person waited, and when (ms since the epoch). */
+	#ringResult(ask: RingAsk, ending: Ending, { waitMs, at }: { readonly waitMs: number; readonly at: number }): void {
+		const asked = {
+			hours: ask.hours,
+			citizenships: ask.settings.citizenships,
+			held_visas: ask.settings.visas,
+			wait_ms: Math.round(waitMs),
+		};
+		this.#emit('ring result', (cities): RingResult => ({ ...outcomeOf(ending, cities), ...asked, ...placeOf(ask.start, cities) }), at);
 	}
 
 	/** Sends the event now if the cities are known, else when they are. */
-	#emit<Event extends BrowserEvent>(event: Event, properties: (cities: readonly City[] | undefined) => BrowserEvents[Event], at: number): void {
+	#emit<Event extends BrowserEvent>(
+		event: Event,
+		properties: (cities: readonly City[] | undefined) => BrowserEvents[Event],
+		at: number,
+	): void {
 		if (this.#cities.settled) {
 			this.send(event, properties(this.#cities.cities), this.#leaving ? { beacon: true } : undefined);
 		} else {
@@ -155,7 +164,10 @@ export class ScreenAnalytics {
 }
 
 /** The outcome, the source and, for a ring once the cities are known, its cities and their countries. */
-function outcomeOf(ending: Ending, cities: readonly City[] | undefined): Pick<RingResult, 'outcome' | 'source' | 'cities_count' | 'countries_count'> {
+function outcomeOf(
+	ending: Ending,
+	cities: readonly City[] | undefined,
+): Pick<RingResult, 'outcome' | 'source' | 'cities_count' | 'countries_count'> {
 	if (ending === 'abandoned') {
 		return { outcome: 'abandoned' };
 	}
@@ -176,7 +188,7 @@ function outcomeOf(ending: Ending, cities: readonly City[] | undefined): Pick<Ri
 }
 
 /** Where the origin is: the city picked in the search, else the nearest city of the file; nothing without the file. */
-export function placeOf(start: Start, cities: readonly City[] | undefined): Place {
+function placeOf(start: Start, cities: readonly City[] | undefined): Place {
 	const city = start.method === 'search' ? start.city : cities === undefined ? undefined : nearestCity(cities, start.origin);
 	return city === undefined ? {} : { start_country: city.zone, start_city: city.name, start_city_id: city.id };
 }

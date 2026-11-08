@@ -11,11 +11,11 @@ import {
 	openInProduction,
 	POSTHOG_PROXY,
 	PRODUCTION,
-	type RingReply,
 	squareRing,
 	test,
 	visaRules,
 } from './fixtures.ts';
+import type { RingReply } from './ring-api.ts';
 import { dottedHours, dragSlider, expectRingCard, firstCard, leave, mapAtRest, phrase, slider } from './screen.ts';
 
 const BELGRADE = { lat: 44.8176, lon: 20.4573 };
@@ -46,7 +46,7 @@ async function runNowUntil(page: Page, done: () => Promise<boolean> | boolean): 
 const SENT = { timeout: 15_000 };
 
 test('one page view a load, and no URL PostHog gets has the link’s #…, however the state changes', async ({ page, ringApi, posthog }) => {
-	ringApi.respond((call) => squareRing(BELGRADE.lat, BELGRADE.lon, call.hours - 1, call.hours));
+	ringApi.respond((call) => squareRing(BELGRADE.lat, BELGRADE.lon, [call.hours - 1, call.hours]));
 
 	await openInProduction(page, LINK);
 	await expectRingCard(page, '2–3 ч');
@@ -62,24 +62,24 @@ test('one page view a load, and no URL PostHog gets has the link’s #…, howev
 });
 
 test("every ring request carries the browser's PostHog ids, the first one of the load too", async ({ page, ringApi, posthog }) => {
-	ringApi.respond((call) => squareRing(BELGRADE.lat, BELGRADE.lon, call.hours - 1, call.hours));
+	ringApi.respond((call) => squareRing(BELGRADE.lat, BELGRADE.lon, [call.hours - 1, call.hours]));
 
 	await openInProduction(page, LINK);
 	await expectRingCard(page, '2–3 ч');
 	await dragSlider(page, 5);
 	await expect.poll(() => posthog.named('ring result'), SENT).toHaveLength(2);
 
-	const [result] = posthog.events.filter((sent) => sent.event === 'ring result');
+	const [result] = posthog.named('ring result');
 	expect(ringApi.calls.map(({ headers }) => [headers['x-posthog-distinct-id'], headers['x-posthog-session-id']])).toEqual([
-		[result.properties.distinct_id, result.properties.$session_id],
-		[result.properties.distinct_id, result.properties.$session_id],
+		[result.distinct_id, result.$session_id],
+		[result.distinct_id, result.$session_id],
 	]);
-	expect(result.properties.distinct_id).toEqual(expect.any(String));
-	expect(result.properties.$session_id).toEqual(expect.any(String));
+	expect(result.distinct_id).toEqual(expect.any(String));
+	expect(result.$session_id).toEqual(expect.any(String));
 });
 
 test('an error the screen did not catch goes to PostHog', async ({ page, ringApi, posthog }) => {
-	ringApi.respond((call) => squareRing(BELGRADE.lat, BELGRADE.lon, call.hours - 1, call.hours));
+	ringApi.respond((call) => squareRing(BELGRADE.lat, BELGRADE.lon, [call.hours - 1, call.hours]));
 	await openInProduction(page, LINK);
 	await expectRingCard(page, '2–3 ч');
 
@@ -89,9 +89,9 @@ test('an error the screen did not catch goes to PostHog', async ({ page, ringApi
 		});
 	});
 
-	await expect.poll(() => posthog.named('$exception'), SENT).toEqual([
-		expect.objectContaining({ $exception_list: [expect.objectContaining({ type: 'TypeError', value: 'the screen broke' })] }),
-	]);
+	await expect
+		.poll(() => posthog.named('$exception'), SENT)
+		.toEqual([expect.objectContaining({ $exception_list: [expect.objectContaining({ type: 'TypeError', value: 'the screen broke' })] })]);
 });
 
 test('posthog-js comes after the screen, and still gets the errors thrown before it came, and the ring waits for its ids', async ({
@@ -101,15 +101,12 @@ test('posthog-js comes after the screen, and still gets the errors thrown before
 	posthog,
 }) => {
 	// The chunk of posthog-js held until the screen is up and has thrown.
-	let release = () => {};
-	const held = new Promise<void>((resolve) => {
-		release = resolve;
-	});
+	const held = Promise.withResolvers<void>();
 	await context.route(/\/assets\/posthog-client-[\w-]+\.js$/u, async (route) => {
-		await held;
+		await held.promise;
 		await route.fallback();
 	});
-	ringApi.respond((call) => squareRing(BELGRADE.lat, BELGRADE.lon, call.hours - 1, call.hours));
+	ringApi.respond((call) => squareRing(BELGRADE.lat, BELGRADE.lon, [call.hours - 1, call.hours]));
 
 	await openInProduction(page, LINK);
 	await expect(phrase(page)).toContainText('2–3 часа в пути.');
@@ -118,15 +115,22 @@ test('posthog-js comes after the screen, and still gets the errors thrown before
 			throw new RangeError('broke before PostHog');
 		});
 	});
-	await page.evaluate(() => new Promise((resolve) => setTimeout(resolve, 0)));
+	await page.evaluate(
+		() =>
+			new Promise((resolve) => {
+				setTimeout(resolve, 0);
+			}),
+	);
 	expect(ringApi.calls).toEqual([]);
-	release();
+	held.resolve();
 
 	await expectRingCard(page, '2–3 ч');
 	expect(ringApi.calls[0].headers['x-posthog-distinct-id']).toEqual(expect.any(String));
-	await expect.poll(() => posthog.named('$exception'), SENT).toEqual([
-		expect.objectContaining({ $exception_list: [expect.objectContaining({ type: 'RangeError', value: 'broke before PostHog' })] }),
-	]);
+	await expect
+		.poll(() => posthog.named('$exception'), SENT)
+		.toEqual([
+			expect.objectContaining({ $exception_list: [expect.objectContaining({ type: 'RangeError', value: 'broke before PostHog' })] }),
+		]);
 });
 
 test('off the production host PostHog is not started: nothing goes to it', async ({ page, context, ringApi, posthog }) => {
@@ -136,7 +140,7 @@ test('off the production host PostHog is not started: nothing goes to it', async
 			toPostHog.push(request.url());
 		}
 	});
-	ringApi.respond((call) => squareRing(BELGRADE.lat, BELGRADE.lon, call.hours - 1, call.hours));
+	ringApi.respond((call) => squareRing(BELGRADE.lat, BELGRADE.lon, [call.hours - 1, call.hours]));
 
 	await page.goto(LINK);
 	await expectRingCard(page, '2–3 ч');
@@ -169,18 +173,22 @@ test('no request of a test reaches PostHog: one no route answers, a beacon of a 
 		for (const url of urls) {
 			navigator.sendBeacon(`${url}/e/`, '{}');
 		}
-		void fetch(`${urls[0]}/flags/`, { mode: 'no-cors' }).catch(() => undefined);
+		void fetch(`${urls[0]}/flags/`, { mode: 'no-cors' }).catch(() => {});
 	}, hosts);
 
-	await expect.poll(() => failed.toSorted()).toEqual(
-		[`${hosts[0]}/e/`, `${hosts[0]}/flags/`, `${hosts[1]}/e/`].map((url) => `${url} net::ERR_PROXY_CONNECTION_FAILED`),
-	);
+	await expect
+		.poll(() => failed.toSorted())
+		.toEqual([`${hosts[0]}/e/`, `${hosts[0]}/flags/`, `${hosts[1]}/e/`].map((url) => `${url} net::ERR_PROXY_CONNECTION_FAILED`));
 	expect(finished).toEqual([]);
 });
 
 test.describe('start set', () => {
-	test('on load from a link nothing was saved for: by link, with the nearest city and its country; and link opened', async ({ page, ringApi, posthog }) => {
-		ringApi.respond((call) => squareRing(BELGRADE.lat, BELGRADE.lon, call.hours - 1, call.hours));
+	test('on load from a link nothing was saved for: by link, with the nearest city and its country; and link opened', async ({
+		page,
+		ringApi,
+		posthog,
+	}) => {
+		ringApi.respond((call) => squareRing(BELGRADE.lat, BELGRADE.lon, [call.hours - 1, call.hours]));
 
 		await openInProduction(page, LINK);
 
@@ -192,8 +200,12 @@ test.describe('start set', () => {
 		expect(posthog.named('link opened')).toEqual([expect.not.objectContaining({ method: expect.anything() })]);
 	});
 
-	test('on load from the saved state: by saved, and no link opened; a link opened over a saved state: by link', async ({ page, ringApi, posthog }) => {
-		ringApi.respond((call) => squareRing(BELGRADE.lat, BELGRADE.lon, call.hours - 1, call.hours));
+	test('on load from the saved state: by saved, and no link opened; a link opened over a saved state: by link', async ({
+		page,
+		ringApi,
+		posthog,
+	}) => {
+		ringApi.respond((call) => squareRing(BELGRADE.lat, BELGRADE.lon, [call.hours - 1, call.hours]));
 		await openInProduction(page, LINK);
 		await expect.poll(() => posthog.named('start set'), SENT).toHaveLength(1);
 
@@ -214,31 +226,34 @@ test.describe('start set', () => {
 
 	test('by geolocation on the first visit', async ({ page, context, ringApi, posthog }) => {
 		await allowGeolocation(context, { lat: 45.25, lon: 19.84 });
-		ringApi.respond((call) => squareRing(Number(call.lat), Number(call.lon), 0, 0.5));
+		ringApi.respond((call) => squareRing(Number(call.lat), Number(call.lon), [0, 0.5]));
 
 		await openInProduction(page);
 
-		await expect.poll(() => posthog.named('start set'), SENT).toEqual([
-			expect.objectContaining({ method: 'geolocation', start_country: 'SRB', start_city: 'Нови-Сад', start_city_id: 3194360 }),
-		]);
+		await expect
+			.poll(() => posthog.named('start set'), SENT)
+			.toEqual([expect.objectContaining({ method: 'geolocation', start_country: 'SRB', start_city: 'Нови-Сад', start_city_id: 3194360 })]);
 		expect(posthog.ours).not.toContain('link opened');
 	});
 
 	test('by search: the city picked', async ({ page, ringApi, posthog }) => {
-		ringApi.respond((call) => squareRing(Number(call.lat), Number(call.lon), 0, 0.5));
+		ringApi.respond((call) => squareRing(Number(call.lat), Number(call.lon), [0, 0.5]));
 		await openInProduction(page);
 
 		await phrase(page).getByRole('button', { name: 'выберите' }).click();
 		await page.getByRole('dialog', { name: 'Откуда едем' }).getByRole('searchbox', { name: 'Найти город' }).fill('сег');
-		await page.getByRole('dialog', { name: 'Откуда едем' }).getByRole('button', { name: /^Сегед/u }).click();
+		await page
+			.getByRole('dialog', { name: 'Откуда едем' })
+			.getByRole('button', { name: /^Сегед/u })
+			.click();
 
-		await expect.poll(() => posthog.named('start set'), SENT).toEqual([
-			expect.objectContaining({ method: 'search', start_country: 'HUN', start_city: 'Сегед', start_city_id: 715429 }),
-		]);
+		await expect
+			.poll(() => posthog.named('start set'), SENT)
+			.toEqual([expect.objectContaining({ method: 'search', start_country: 'HUN', start_city: 'Сегед', start_city_id: 715429 })]);
 	});
 
 	test('by the pin: the city nearest to it', async ({ page, ringApi, posthog }) => {
-		ringApi.respond((call) => squareRing(Number(call.lat), Number(call.lon), 0, 0.5));
+		ringApi.respond((call) => squareRing(Number(call.lat), Number(call.lon), [0, 0.5]));
 		await openInProduction(page, LINK);
 		await expectRingCard(page, '2–3 ч');
 
@@ -246,15 +261,17 @@ test.describe('start set', () => {
 		await page.getByRole('dialog', { name: 'Откуда едем' }).getByRole('button', { name: 'Указать на карте' }).click();
 		await page.getByRole('button', { name: 'Старт здесь' }).click();
 
-		await expect.poll(() => posthog.named('start set'), SENT).toEqual([
-			expect.objectContaining({ method: 'link', start_city: 'Белград' }),
-			expect.objectContaining({ method: 'pin', start_country: 'SRB', start_city: 'Белград', start_city_id: 792680 }),
-		]);
+		await expect
+			.poll(() => posthog.named('start set'), SENT)
+			.toEqual([
+				expect.objectContaining({ method: 'link', start_city: 'Белград' }),
+				expect.objectContaining({ method: 'pin', start_country: 'SRB', start_city: 'Белград', start_city_id: 792680 }),
+			]);
 	});
 
 	test('without the cities file: only the method', async ({ page, ringApi, posthog }) => {
 		await page.route('**/data/cities.json', (route) => route.fulfill({ status: 404 }));
-		ringApi.respond((call) => squareRing(BELGRADE.lat, BELGRADE.lon, call.hours - 1, call.hours));
+		ringApi.respond((call) => squareRing(BELGRADE.lat, BELGRADE.lon, [call.hours - 1, call.hours]));
 
 		await openInProduction(page, LINK);
 
@@ -284,23 +301,26 @@ test.describe('geolocation failed', () => {
 
 			await firstCard(page).getByRole('button', { name: 'Где я' }).click();
 
-			await expect.poll(() => posthog.named('geolocation failed'), SENT).toEqual([
-				expect.objectContaining({ reason }),
-				expect.objectContaining({ reason }),
-			]);
+			await expect
+				.poll(() => posthog.named('geolocation failed'), SENT)
+				.toEqual([expect.objectContaining({ reason }), expect.objectContaining({ reason })]);
 		});
 	}
 });
 
-test.describe('ring result', () => {
-	/** Belgrade's ring 0–1.5° around it, Serbia and Hungary open: worked out from `CITIES`, 10 Serbian cities and Szeged. */
-	const belgradeRing = (source: RingSource = 'calculation'): RingResponse => ({
-		...squareRing(BELGRADE.lat, BELGRADE.lon, 0, 1.5),
-		...visaRules({ SRB: { mode: 'visa_free', citizenship: 'RUS' }, HUN: { mode: 'visa_free', citizenship: 'RUS' } }),
-		source,
-	});
+/** Belgrade's ring 0–1.5° around it, Serbia and Hungary open: worked out from `CITIES`, 10 Serbian cities and Szeged. */
+const belgradeRing = (source: RingSource = 'calculation'): RingResponse => ({
+	...squareRing(BELGRADE.lat, BELGRADE.lon, [0, 1.5]),
+	...visaRules({ SRB: { mode: 'visa_free', citizenship: 'RUS' }, HUN: { mode: 'visa_free', citizenship: 'RUS' } }),
+	source,
+});
 
-	test('tells the ring: N, the citizenships and held visas sorted, the place, the source, the wait and the cities', async ({ page, ringApi, posthog }) => {
+test.describe('ring result', () => {
+	test('tells the ring: N, the citizenships and held visas sorted, the place, the source, the wait and the cities', async ({
+		page,
+		ringApi,
+		posthog,
+	}) => {
 		await holdTheClock(page);
 		await openInProduction(page, '/#/?p=44.81760,20.45730&h=3&cit=RUS,SRB&visas=GEO,SCHENGEN');
 		await ringApi.waitForCalls(1);
@@ -346,25 +366,34 @@ test.describe('ring result', () => {
 
 		await dragSlider(page, 3);
 
-		await expect.poll(() => posthog.named('ring result').map(({ hours, source }) => [hours, source]), SENT).toEqual([
-			[3, 'calculation'],
-			[5, 'calculation'],
-			[3, 'memory'],
-		]);
-		expect(posthog.named('ring result')[2]).toMatchObject({ outcome: 'ring', wait_ms: 0, cities_count: 11, countries_count: 2, start_city: 'Белград' });
+		await expect
+			.poll(() => posthog.named('ring result').map(({ hours, source }) => [hours, source]), SENT)
+			.toEqual([
+				[3, 'calculation'],
+				[5, 'calculation'],
+				[3, 'memory'],
+			]);
+		expect(posthog.named('ring result')[2]).toMatchObject({
+			outcome: 'ring',
+			wait_ms: 0,
+			cities_count: 11,
+			countries_count: 2,
+			start_city: 'Белград',
+		});
 		expect(ringApi.calls).toHaveLength(2);
 	});
 
-	const outcomes: [RingResultOutcome, RingReply, string][] = [
-		['empty', { outcome: 'empty', maxHours: 2, startCountry: 'SRB', source: 'cache', ...visaRules() }, 'Дальше 2 ч не уехать'],
-		['no_roads', { outcome: 'no_roads', startCountry: 'SRB', source: 'calculation', ...visaRules() }, 'Рядом нет дорог'],
-		['no_ring', { outcome: 'no_ring', startCountry: 'UKR', source: 'cache', ...visaRules() }, 'Кольца нет'],
-		['visa_rules_missing', { outcome: 'visa_rules_missing', missingCitizenship: 'RUS' }, 'визовые правила'],
-		['too_many_requests', { status: 429 }, 'Слишком много'],
-		['error', { status: 502 }, 'Не получилось'],
-		['error', 'network error', 'Не получилось'],
+	// The outcome, the Worker's reply, the card, and the source the event tells: the Worker's, when it answered.
+	const outcomes: [RingResultOutcome, RingReply, string, RingSource | undefined][] = [
+		['empty', { outcome: 'empty', maxHours: 2, startCountry: 'SRB', source: 'cache', ...visaRules() }, 'Дальше 2 ч не уехать', 'cache'],
+		['no_roads', { outcome: 'no_roads', startCountry: 'SRB', source: 'calculation', ...visaRules() }, 'Рядом нет дорог', 'calculation'],
+		['no_ring', { outcome: 'no_ring', startCountry: 'UKR', source: 'cache', ...visaRules() }, 'Кольца нет', 'cache'],
+		['visa_rules_missing', { outcome: 'visa_rules_missing', missingCitizenship: 'RUS' }, 'визовые правила', undefined],
+		['too_many_requests', { status: 429 }, 'Слишком много', undefined],
+		['error', { status: 502 }, 'Не получилось', undefined],
+		['error', 'network error', 'Не получилось', undefined],
 	];
-	for (const [outcome, reply, card] of outcomes) {
+	for (const [outcome, reply, card, source] of outcomes) {
 		test(`tells ${outcome}${reply === 'network error' ? ' when the network fails' : ''}`, async ({ page, ringApi, posthog }) => {
 			ringApi.respond(() => reply);
 
@@ -375,11 +404,8 @@ test.describe('ring result', () => {
 			const [result] = posthog.named('ring result');
 			expect(result).toMatchObject({ outcome, hours: 3, citizenships: ['RUS'], held_visas: [], start_city: 'Белград' });
 			expect(result).not.toHaveProperty('cities_count');
-			if (typeof reply === 'object' && 'source' in reply) {
-				expect(result.source).toBe(reply.source);
-			} else {
-				expect(result).not.toHaveProperty('source');
-			}
+			// The properties came as JSON, which has no undefined: an undefined source is none.
+			expect(result.source).toBe(source);
 		});
 	}
 
@@ -404,16 +430,18 @@ test.describe('ring result', () => {
 		// The ring of 5 h is asked for, so the one of 3 h is abandoned, at the held time.
 		await runNowUntil(page, () => ringApi.calls.length === 2);
 		await page.clock.resume();
-		await expect.poll(() => posthog.named('ring result'), SENT).toEqual([
-			expect.objectContaining({ outcome: 'abandoned', hours: 3, start_city: 'Белград' }),
-		]);
+		await expect
+			.poll(() => posthog.named('ring result'), SENT)
+			.toEqual([expect.objectContaining({ outcome: 'abandoned', hours: 3, start_city: 'Белград' })]);
 		await ringApi.answer(belgradeRing(), 5);
 		await ringApi.answer(belgradeRing(), 3);
 
-		await expect.poll(() => posthog.named('ring result').map(({ hours, outcome }) => [hours, outcome]), SENT).toEqual([
-			[3, 'abandoned'],
-			[5, 'ring'],
-		]);
+		await expect
+			.poll(() => posthog.named('ring result').map(({ hours, outcome }) => [hours, outcome]), SENT)
+			.toEqual([
+				[3, 'abandoned'],
+				[5, 'ring'],
+			]);
 		const [abandoned] = posthog.named('ring result');
 		expect(abandoned).not.toHaveProperty('source');
 		expect(abandoned.wait_ms).toBe(500);
@@ -422,11 +450,13 @@ test.describe('ring result', () => {
 		await expect.poll(() => dottedHours(page)).toEqual([3, 5]);
 		ringApi.respond(() => belgradeRing());
 		await slider(page).press('ArrowUp');
-		await expect.poll(() => posthog.named('ring result').map(({ hours, outcome }) => [hours, outcome]), SENT).toEqual([
-			[3, 'abandoned'],
-			[5, 'ring'],
-			[6, 'ring'],
-		]);
+		await expect
+			.poll(() => posthog.named('ring result').map(({ hours, outcome }) => [hours, outcome]), SENT)
+			.toEqual([
+				[3, 'abandoned'],
+				[5, 'ring'],
+				[6, 'ring'],
+			]);
 	});
 
 	test('a request the person left the page during is abandoned by beacon', async ({ page, ringApi, posthog }) => {
@@ -436,9 +466,14 @@ test.describe('ring result', () => {
 
 		await leave(page);
 
-		await expect.poll(() => posthog.events.filter((sent) => sent.event === 'ring result'), SENT).toEqual([
-			expect.objectContaining({ beacon: true, properties: expect.objectContaining({ outcome: 'abandoned', hours: 3, start_city: 'Белград' }) }),
-		]);
+		await expect
+			.poll(() => posthog.events.filter((sent) => sent.event === 'ring result'), SENT)
+			.toEqual([
+				expect.objectContaining({
+					beacon: true,
+					properties: expect.objectContaining({ outcome: 'abandoned', hours: 3, start_city: 'Белград' }),
+				}),
+			]);
 	});
 
 	test('none while the slider moves: only where it is let go', async ({ page, ringApi, posthog }) => {
@@ -455,12 +490,16 @@ test.describe('ring result', () => {
 	});
 });
 
-test('taps on the map are no dead clicks or rage clicks; a tap on text that does nothing is a dead click', async ({ page, ringApi, posthog }) => {
+test('taps on the map are no dead clicks or rage clicks; a tap on text that does nothing is a dead click', async ({
+	page,
+	ringApi,
+	posthog,
+}) => {
 	// The project's dead clicks on, as the Owner may switch them.
 	posthog.remoteConfig = { ...posthog.remoteConfig, captureDeadClicks: true };
 	// PostHog waits a few seconds after a click for the page to change: the page's clock runs them.
 	await page.clock.install();
-	ringApi.respond((call) => squareRing(BELGRADE.lat, BELGRADE.lon, call.hours - 1, call.hours));
+	ringApi.respond((call) => squareRing(BELGRADE.lat, BELGRADE.lon, [call.hours - 1, call.hours]));
 	await openInProduction(page, LINK);
 	await expectRingCard(page, '2–3 ч');
 	await mapAtRest(page);

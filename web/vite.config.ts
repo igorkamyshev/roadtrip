@@ -3,6 +3,14 @@ import { execFileSync } from 'node:child_process';
 import posthog from '@posthog/rollup-plugin';
 import react from '@vitejs/plugin-react';
 import { defineConfig, type PluginOption } from 'vite';
+import { bundleBudget } from './bundle-budget.ts';
+
+/**
+ * What the first paint may load, the entry chunk and the chunks it imports statically, in KB gzipped: 136 KB on
+ * 2026-11-08 (the screen, 132 KB, and the chunk it shares with the map view, 4 KB), and about a fifth more. The map
+ * view with MapLibre and the basemap's style (297 KB) and posthog-js (124 KB) are chunks of their own, after it.
+ */
+const FIRST_PAINT_BUDGET_KB = 165;
 
 /**
  * PostHog's source maps (spec «Аналитика и ошибки», «Браузер»), so that the stack of an error in the browser reads as
@@ -13,9 +21,9 @@ import { defineConfig, type PluginOption } from 'vite';
  * left out, and the build is as any other and uploads nothing.
  */
 function sourceMaps(env: NodeJS.ProcessEnv): PluginOption {
-	const personalApiKey = env.POSTHOG_PERSONAL_API_KEY?.trim();
-	const projectId = env.POSTHOG_PROJECT_ID?.trim();
-	if (!personalApiKey || !projectId) {
+	const personalApiKey = env.POSTHOG_PERSONAL_API_KEY?.trim() ?? '';
+	const projectId = env.POSTHOG_PROJECT_ID?.trim() ?? '';
+	if (personalApiKey === '' || projectId === '') {
 		return undefined;
 	}
 	return posthog({
@@ -32,13 +40,10 @@ function sourceMaps(env: NodeJS.ProcessEnv): PluginOption {
 }
 
 export default defineConfig({
-	plugins: [react(), sourceMaps(process.env)],
+	plugins: [react(), sourceMaps(process.env), bundleBudget(FIRST_PAINT_BUDGET_KB)],
 	build: {
 		// MapLibre 6 needs WebGL2 and modern JS anyway; the entry awaits the opening state at the top level.
 		target: 'es2022',
-		// The screen is 0.42 MB (132 KB gzip); its two chunks of its own come after the first paint: the map view with
-		// MapLibre and the basemap's style, 1.1 MB (297 KB gzip), and posthog-js on the production host, 0.37 MB.
-		chunkSizeWarningLimit: 1200,
 	},
 	server: {
 		// `pnpm dev` of the worker (wrangler dev) answers the ring.

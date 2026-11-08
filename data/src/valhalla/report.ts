@@ -20,12 +20,12 @@ export interface PointComparison {
 	readonly rings: readonly RingComparison[];
 }
 
-export function fits(point: PointComparison): boolean {
+function fits(point: PointComparison): boolean {
 	return point.rings.every((ring) => ring.area.fits && (ring.median?.fits ?? true));
 }
 
 export function report(points: readonly PointComparison[], notes: string): string {
-	const fitting = points.filter(fits).length;
+	const fitting = points.filter((point) => fits(point)).length;
 	const lines = [
 		'# Сверка движка с Valhalla',
 		'',

@@ -1,97 +1,24 @@
-// The external boundaries of the screen, doubled for its tests: `GET /api/ring` (a scripted double that records
-// every request and answers or holds it), the basemap's tiles (`GET /tiles/{z}/{x}/{y}`, each one empty), the
-// dataset's zone outlines (`/data/zones.json`, `ZONE_OUTLINES`) and cities (`/data/cities.json`, `CITIES`, or a
-// test's own through `serveCities`), PostHog behind its proxy (`PostHogDouble`, the `posthog` fixture), and every
-// other host, which is cut off in every test so that none reaches the network. The production host is the preview
-// server under the production name (`openInProduction`), where the build runs PostHog. The basemap's fonts and
-// sprites are the client's own static assets. Geolocation and time come from Playwright itself (context
-// permissions, `page.clock`; `failGeolocation` for a failure other than a refusal).
-import { existsSync } from 'node:fs';
-import { createRequire } from 'node:module';
-import { dirname, join } from 'node:path';
-import { gunzipSync } from 'node:zlib';
-import { test as base, expect, type BrowserContext, type Page, type Route } from '@playwright/test';
+// The external boundaries of the screen, doubled for its tests: `GET /api/ring` (`RingApi` of e2e/ring-api.ts, a
+// scripted double that records every request and answers or holds it), the basemap's tiles (`GET /tiles/{z}/{x}/{y}`,
+// each one empty), the dataset's zone outlines (`/data/zones.json`, `ZONE_OUTLINES`) and cities (`/data/cities.json`,
+// `CITIES`, or a test's own through `serveCities`), PostHog behind its proxy (`PostHogDouble` of
+// e2e/posthog-double.ts, the `posthog` fixture), and every other host, which is cut off in every test so that none
+// reaches the network. The production host is the preview server under the production name (`openInProduction`),
+// where the build runs PostHog. The basemap's fonts and sprites are the client's own static assets. Geolocation and
+// time come from Playwright itself (context permissions, `page.clock`; `failGeolocation` for a failure other than a
+// refusal).
+import { test as base, expect, type BrowserContext, type Page } from '@playwright/test';
 import { encodeCities, type CityRow } from 'data/cities-file';
-import type { Access, RingResponse } from 'worker/api';
+import type { Access, RingAnswer, RingResponse } from 'worker/api';
+import { PostHogDouble } from './posthog-double.ts';
+import { RingApi } from './ring-api.ts';
 
 export { expect };
 
-/** A request to `GET /api/ring`, as the screen sent it. */
-export interface RingCall {
-	readonly lat: string;
-	readonly lon: string;
-	readonly hours: number;
-	readonly cit: string | null;
-	readonly visas: string | null;
-	readonly query: string;
-	/** Its headers, lowercase: PostHog's `x-posthog-*` among them on the production host. */
-	readonly headers: Readonly<Record<string, string>>;
-}
+type Position = [lon: number, lat: number];
 
-/** How the double answers: 200 with a body, another status, or a dropped connection. */
-export type RingReply = RingResponse | { readonly status: number } | 'network error';
-
-/** Answers to a call, or undefined to hold it until the test calls `answer`. */
-export type RingResponder = (call: RingCall) => RingReply | undefined;
-
-export class RingApi {
-	readonly calls: RingCall[] = [];
-	#held: { call: RingCall; route: Route }[] = [];
-	#responder: RingResponder = () => undefined;
-
-	/** How every next call is answered; by default each one is held. */
-	respond(responder: RingResponder): void {
-		this.#responder = responder;
-	}
-
-	/** Answers the oldest held call (or the held call for `hours`). */
-	async answer(reply: RingReply, hours?: number): Promise<RingCall> {
-		await expect.poll(() => this.#held.some((held) => hours === undefined || held.call.hours === hours)).toBe(true);
-		const index = this.#held.findIndex((held) => hours === undefined || held.call.hours === hours);
-		const [{ call, route }] = this.#held.splice(index, 1);
-		await fulfil(route, reply);
-		return call;
-	}
-
-	/** Resolves once the screen has sent `count` calls in all. */
-	async waitForCalls(count: number): Promise<RingCall[]> {
-		await expect.poll(() => this.calls.length, { message: `${count} calls to /api/ring` }).toBeGreaterThanOrEqual(count);
-		return this.calls;
-	}
-
-	async handle(route: Route): Promise<void> {
-		const url = new URL(route.request().url());
-		const call: RingCall = {
-			lat: url.searchParams.get('lat') ?? '',
-			lon: url.searchParams.get('lon') ?? '',
-			hours: Number(url.searchParams.get('hours')),
-			cit: url.searchParams.get('cit'),
-			visas: url.searchParams.get('visas'),
-			query: url.search,
-			headers: route.request().headers(),
-		};
-		this.calls.push(call);
-		const reply = this.#responder(call);
-		if (reply === undefined) {
-			this.#held.push({ call, route });
-			return;
-		}
-		await fulfil(route, reply);
-	}
-}
-
-async function fulfil(route: Route, reply: RingReply): Promise<void> {
-	if (reply === 'network error') {
-		await route.abort('connectionreset');
-	} else if ('outcome' in reply) {
-		await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(reply) });
-	} else {
-		await route.fulfill({ status: reply.status, contentType: 'application/json', body: JSON.stringify({ error: 'double' }) });
-	}
-}
-
-/** A square of `size` degrees with its south-west corner at (lon, lat), as a zone's outline. */
-function squareZone(zone: string, lon: number, lat: number, size = 1) {
+/** A square of `size` degrees with its south-west corner at `corner`, as a zone's outline. */
+function squareZone(zone: string, [lon, lat]: Position, size = 1) {
 	const ring = [
 		[lon, lat],
 		[lon + size, lat],
@@ -109,12 +36,12 @@ function squareZone(zone: string, lon: number, lat: number, size = 1) {
 export const ZONE_OUTLINES = {
 	type: 'FeatureCollection' as const,
 	features: [
-		squareZone('ALB', 19.5, 40.5),
-		squareZone('BIH', 17.5, 43.5),
-		squareZone('CRIMEA', 33.5, 44.5),
-		squareZone('HUN', 19.5, 46.5),
-		squareZone('SRB', 20, 44),
-		squareZone('UKR', 30, 48, 3),
+		squareZone('ALB', [19.5, 40.5]),
+		squareZone('BIH', [17.5, 43.5]),
+		squareZone('CRIMEA', [33.5, 44.5]),
+		squareZone('HUN', [19.5, 46.5]),
+		squareZone('SRB', [20, 44]),
+		squareZone('UKR', [30, 48], 3),
 	],
 };
 
@@ -161,12 +88,13 @@ export const PRODUCTION = 'https://roadtrip.kamyshev.me';
 /** PostHog's managed proxy, where the browser sends its events (`PostHogDouble`). */
 export const POSTHOG_PROXY = 'https://r-rt.kamyshev.me';
 
-const PHONE_USER_AGENT = 'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Mobile Safari/537.36';
+const PHONE_USER_AGENT =
+	'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Mobile Safari/537.36';
 
 /** What the page asked of the network: the basemap's tiles it got, and the requests to other hosts, cut off. */
-export class Network {
-	readonly tiles: URL[] = [];
-	readonly blocked: string[] = [];
+interface Network {
+	readonly tiles: URL[];
+	readonly blocked: string[];
 }
 
 /** The headers of a body as it was sent, which `fetch` has decoded. */
@@ -216,12 +144,13 @@ async function cutOffTheNetwork(context: BrowserContext, network: Network, previ
 export const test = base.extend<{ network: Network; ringApi: RingApi; posthog: PostHogDouble }>({
 	network: [
 		async ({ context, baseURL }, use) => {
-			const network = new Network();
+			const network: Network = { tiles: [], blocked: [] };
 			await cutOffTheNetwork(context, network, baseURL ?? '');
-			// The map the client announces (`MAP_EVENT` of src/map/map-view.tsx), kept for e2e/screen.ts.
+			// The map the client announces (`MAP_EVENT` of src/map/map-view.tsx), kept as `window.mapForTests` for
+			// e2e/screen.ts.
 			await context.addInitScript(() => {
 				window.addEventListener('roadtrip:map', (event) => {
-					(window as unknown as { __roadtripMap?: unknown }).__roadtripMap = (event as CustomEvent).detail;
+					window.mapForTests = event.detail;
 				});
 			});
 			await use(network);
@@ -241,7 +170,7 @@ export const test = base.extend<{ network: Network; ringApi: RingApi; posthog: P
 		await context.addInitScript((userAgent) => {
 			Object.defineProperty(Navigator.prototype, 'webdriver', { get: () => false });
 			Object.defineProperty(Navigator.prototype, 'userAgent', { get: () => userAgent });
-			Object.defineProperty(Navigator.prototype, 'userAgentData', { get: () => undefined });
+			Object.defineProperty(Navigator.prototype, 'userAgentData', { value: undefined });
 		}, PHONE_USER_AGENT);
 		await use(posthog);
 	},
@@ -250,112 +179,6 @@ export const test = base.extend<{ network: Network; ringApi: RingApi; posthog: P
 /** Opens the screen on the production host, where PostHog runs: `path` is the rest of the URL, as `/#/?p=…`. */
 export async function openInProduction(page: Page, path = '/'): Promise<void> {
 	await page.goto(`${PRODUCTION}${path}`);
-}
-
-/** An event the page sent to PostHog. */
-export interface SentEvent {
-	readonly event: string;
-	readonly properties: Readonly<Record<string, unknown>>;
-	/** Sent by `navigator.sendBeacon`, as a page going away does. */
-	readonly beacon: boolean;
-}
-
-/**
- * PostHog behind its managed proxy: records the events the page sends (`/e/`, `/i/v0/e/`, `/batch/`, as JSON,
- * base64 or gzip), answers the remote config with `remoteConfig` and the flags with none, and serves the SDK's lazy
- * scripts from the installed posthog-js.
- */
-export class PostHogDouble {
-	readonly events: SentEvent[] = [];
-	/** What the project's settings say to the SDK (`/array/<token>/config`): by default the project's own. */
-	remoteConfig: Record<string, unknown> = { ...PROJECT_CONFIG };
-
-	/** The properties of each `event` sent, in order. */
-	named(event: string): Readonly<Record<string, unknown>>[] {
-		return this.events.filter((sent) => sent.event === event).map((sent) => sent.properties);
-	}
-
-	/** The names of the events sent, in order, without PostHog's own (`$…`). */
-	get ours(): string[] {
-		return this.events.map((sent) => sent.event).filter((event) => !event.startsWith('$'));
-	}
-
-	async handle(route: Route): Promise<void> {
-		const request = route.request();
-		const url = new URL(request.url());
-		if (url.pathname.startsWith('/static/')) {
-			const name = url.pathname.split('/').at(-1) ?? '';
-			const file = join(POSTHOG_JS_DIST, name);
-			await (existsSync(file) ? route.fulfill({ path: file, contentType: 'application/javascript' }) : route.fulfill({ status: 404 }));
-			return;
-		}
-		const config = /^\/array\/(?<token>[^/]+)\/config(?<script>\.js)?$/u.exec(url.pathname)?.groups;
-		if (config !== undefined) {
-			const json = JSON.stringify(this.remoteConfig);
-			await (config.script === undefined
-				? route.fulfill({ status: 200, contentType: 'application/json', body: json })
-				: route.fulfill({
-						status: 200,
-						contentType: 'application/javascript',
-						body: `window._POSTHOG_REMOTE_CONFIG = window._POSTHOG_REMOTE_CONFIG || {}; window._POSTHOG_REMOTE_CONFIG[${JSON.stringify(config.token)}] = { config: ${json}, siteApps: [] };`,
-					}));
-			return;
-		}
-		if (url.pathname.startsWith('/flags')) {
-			await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ featureFlags: {}, featureFlagPayloads: {}, errorsWhileComputingFlags: false }) });
-			return;
-		}
-		const body = request.postDataBuffer();
-		if (body !== null && body.length > 0) {
-			// Chromium's type for `navigator.sendBeacon`.
-			const beacon = request.resourceType() === 'ping';
-			for (const sent of decodeEvents(body, url.searchParams.get('compression'))) {
-				this.events.push({ event: sent.event, properties: sent.properties ?? {}, beacon });
-			}
-		}
-		await route.fulfill({ status: 200, contentType: 'application/json', body: '{"status":1}' });
-	}
-}
-
-/** The remote config of the project roadtrip as PostHog served it on 2026-11-08: its settings as the SDK sees them. */
-const PROJECT_CONFIG = {
-	analytics: { endpoint: '/i/v0/e/' },
-	autocaptureExceptions: true,
-	autocapture_opt_out: false,
-	captureDeadClicks: false,
-	capturePerformance: { network_timing: true, web_vitals: true, web_vitals_allowed_metrics: null },
-	conversations: false,
-	defaultIdentifiedOnly: true,
-	elementsChainAsString: true,
-	errorTracking: { autocaptureExceptions: true, suppressionRules: [] },
-	hasFeatureFlags: false,
-	heatmaps: { captureMode: 'url_allowlist', urlAllowlist: [], urlAllowlistEnforced: false },
-	logs: { captureConsoleLogs: false },
-	productTours: false,
-	push: { appIds: [] },
-	sdkVersion: { requested: '1' },
-	sessionRecording: false,
-	supportedCompression: ['gzip', 'gzip-js'],
-	surveys: false,
-};
-
-/** Where the installed posthog-js keeps the scripts it loads from `/static/`. */
-const POSTHOG_JS_DIST = join(dirname(createRequire(import.meta.url).resolve('posthog-js/package.json')), 'dist');
-
-/** The events of a body posthog-js sent: one event, a list, or `{ batch }`; gzipped or base64 by `compression`. */
-function decodeEvents(body: Buffer, compression: string | null): { event: string; properties?: Record<string, unknown> }[] {
-	let text: string;
-	if (compression === 'gzip-js' || (body[0] === 0x1f && body[1] === 0x8b)) {
-		text = gunzipSync(body).toString('utf8');
-	} else if (compression === 'base64' || body.toString('utf8').startsWith('data=')) {
-		const data = new URLSearchParams(body.toString('utf8')).get('data') ?? '';
-		text = Buffer.from(data, 'base64').toString('utf8');
-	} else {
-		text = body.toString('utf8');
-	}
-	const json = JSON.parse(text) as unknown;
-	const events = Array.isArray(json) ? json : typeof json === 'object' && json !== null && 'batch' in json ? (json as { batch: unknown[] }).batch : [json];
-	return events as { event: string; properties?: Record<string, unknown> }[];
 }
 
 /** Serves the page `cities` as the cities file instead of `CITIES`. */
@@ -376,29 +199,40 @@ export async function allowGeolocation(context: BrowserContext, at: { readonly l
  * (`timeout`). A refusal (`denied`) needs nothing: a context without the permission refuses.
  */
 export async function failGeolocation(context: BrowserContext, reason: 'unavailable' | 'timeout'): Promise<void> {
-	await context.addInitScript((code) => {
-		const error = { code, message: 'test', PERMISSION_DENIED: 1, POSITION_UNAVAILABLE: 2, TIMEOUT: 3 } as GeolocationPositionError;
-		navigator.geolocation.getCurrentPosition = (_, fail) => {
-			setTimeout(() => fail?.(error), 0);
-		};
-	}, reason === 'unavailable' ? 2 : 3);
+	await context.addInitScript(
+		(code) => {
+			const error = { code, message: 'test', PERMISSION_DENIED: 1, POSITION_UNAVAILABLE: 2, TIMEOUT: 3 } as GeolocationPositionError;
+			navigator.geolocation.getCurrentPosition = (_, fail) => {
+				setTimeout(() => fail?.(error), 0);
+			};
+		},
+		reason === 'unavailable' ? 2 : 3,
+	);
 }
+
+/** A Russian's entry mode in Serbia, the start country. */
+const RUSSIAN_IN_SERBIA: Access = { SRB: { mode: 'visa_free', citizenship: 'RUS' } };
 
 /**
  * What the visa rules add to an answer: `access` (by default a Russian's in Serbia, the start country) and when they
  * came from Sherpa (by default just now).
  */
-export function visaRules(access: Access = { SRB: { mode: 'visa_free', citizenship: 'RUS' } }, loadedAt = new Date().toISOString()) {
+export function visaRules(
+	access: Access = RUSSIAN_IN_SERBIA,
+	loadedAt = new Date().toISOString(),
+): Pick<RingAnswer, 'access' | 'visaRulesLoadedAt'> {
 	return { access, visaRulesLoadedAt: loadedAt };
 }
-
-type Position = [lon: number, lat: number];
 
 /**
  * A ring as the API sends it: a square band around (lat, lon) between `inner` and `outer` degrees from it, a
  * MultiPolygon with a hole (no hole for inner 0).
  */
-export function squareRing(lat: number, lon: number, inner: number, outer: number): Extract<RingResponse, { outcome: 'ring' }> {
+export function squareRing(
+	lat: number,
+	lon: number,
+	[inner, outer]: readonly [inner: number, outer: number],
+): Extract<RingResponse, { outcome: 'ring' }> {
 	const square = (d: number): Position[] => [
 		[lon - d, lat - d],
 		[lon + d, lat - d],
@@ -406,6 +240,12 @@ export function squareRing(lat: number, lon: number, inner: number, outer: numbe
 		[lon - d, lat + d],
 		[lon - d, lat - d],
 	];
-	const polygon = inner === 0 ? [square(outer)] : [square(outer), square(inner).reverse()];
-	return { outcome: 'ring', ring: { type: 'MultiPolygon', coordinates: [polygon] }, startCountry: 'SRB', source: 'calculation', ...visaRules() };
+	const polygon = inner === 0 ? [square(outer)] : [square(outer), square(inner).toReversed()];
+	return {
+		outcome: 'ring',
+		ring: { type: 'MultiPolygon', coordinates: [polygon] },
+		startCountry: 'SRB',
+		source: 'calculation',
+		...visaRules(),
+	};
 }
