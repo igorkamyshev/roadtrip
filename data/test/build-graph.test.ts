@@ -3,7 +3,7 @@
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { decodeGraph, encodeGraph, type Graph } from 'engine/graph';
+import { decodeGraph, encodeGraph, type Graph, MAX_EDGE_SECONDS } from 'engine/graph';
 import type { BorderTable } from 'rules';
 import { afterAll, describe, expect, it } from 'vitest';
 import { buildGraph } from '../src/build-graph.ts';
@@ -121,6 +121,68 @@ describe('the graph', () => {
 				.flatMap(([one, two]) => [`${one} → ${two}`, `${two} → ${one}`])
 				.sort(),
 		);
+	});
+});
+
+/** OSM ways with their locations, as `osmium add-locations-to-ways` writes them; each point is [lat, lon] in degrees. */
+function locatedWays(...ways: { refs: number[]; points: [number, number][]; tags?: Record<string, string> }[]): OsmSource {
+	return {
+		read(visitor) {
+			ways.forEach(({ refs, points, tags }, index) =>
+				visitor.way?.({
+					id: index + 1,
+					refs,
+					tags: tags ?? { highway: 'secondary' },
+					locations: { lat: points.map(([lat]) => lat * 1e7), lon: points.map(([, lon]) => lon * 1e7) },
+				}),
+			);
+		},
+	};
+}
+
+describe('a loop of degree-2 nodes', () => {
+	// A road from 0,0 to the loop's junction at 0,0.1; the loop goes round through 0.1,0.2, 0,0.3 and −0.1,0.2.
+	const road = { refs: [1, 2], points: [[0, 0], [0, 0.1]] as [number, number][] };
+	const loopSeconds = 4 * (15_725 / (60 / 3.6));
+
+	it.each([
+		['one closed way', [{ refs: [2, 3, 4, 5, 2], points: [[0, 0.1], [0.1, 0.2], [0, 0.3], [-0.1, 0.2], [0, 0.1]] as [number, number][] }]],
+		[
+			'two ways',
+			[
+				{ refs: [2, 3, 4], points: [[0, 0.1], [0.1, 0.2], [0, 0.3]] as [number, number][] },
+				{ refs: [4, 5, 2], points: [[0, 0.3], [-0.1, 0.2], [0, 0.1]] as [number, number][] },
+			],
+		],
+	])('made of %s keeps its edges both ways, none from a node to itself', (_, loop) => {
+		const graph = buildGraph(locatedWays(road, ...loop)).graph;
+		const loopEdges = edges(graph).filter((edge) => !edge.includes('0,0 '));
+
+		// Two edges each way between the junction and one node of the loop.
+		expect(loopEdges).toHaveLength(4);
+		expect(loopEdges.every((edge) => edge.split(' → ')[0] !== edge.split(' → ')[1])).toBe(true);
+		const seconds = [...graph.edgeSeconds].reduce((sum, value) => sum + value, 0);
+		// The road (11.1 km) both ways and the loop (4 × 15.7 km) both ways, at 60 km/h, each edge rounded.
+		expect(Math.abs(seconds - 2 * (11_119.5 / (60 / 3.6) + loopSeconds))).toBeLessThan(3);
+	});
+});
+
+describe('a chain longer than an edge holds', () => {
+	// Three ways end to end along the equator, 0°–8°–16°–24°E, a node every 0.5°: 2 669 km, 44.5 h at 60 km/h.
+	const way = (from: number) => ({
+		refs: Array.from({ length: 17 }, (_, index) => from * 2 + index + 1),
+		points: Array.from({ length: 17 }, (_, index): [number, number] => [0, from + index / 2]),
+	});
+
+	it('is split into edges of at most MAX_EDGE_SECONDS at its nodes, keeping its driving time', () => {
+		const graph = buildGraph(locatedWays(way(0), way(8), way(16))).graph;
+
+		expect(graph.nodeLat.every((lat) => lat === 0)).toBe(true);
+		expect([...graph.nodeLon].every((lon) => (lon / 1e7) % 0.5 === 0)).toBe(true);
+		expect(graph.edgeSeconds.length).toBeGreaterThanOrEqual(6);
+		expect(Math.max(...graph.edgeSeconds)).toBeLessThanOrEqual(MAX_EDGE_SECONDS);
+		const seconds = [...graph.edgeSeconds].reduce((sum, value) => sum + value, 0);
+		expect(Math.abs(seconds - 2 * (2_668_700 / (60 / 3.6)))).toBeLessThan(200);
 	});
 });
 

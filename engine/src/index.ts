@@ -14,7 +14,7 @@ import { latestArrival, type Seed, traverse, TRAVEL_PER_DRIVING } from './traver
  * The version of the engine's results. It is part of the data version in the ring cache key (spec «Кэш колец»),
  * so bump it by hand whenever the same input would give another result: see engine/AGENTS.md.
  */
-export const ENGINE_VERSION = 3;
+export const ENGINE_VERSION = 4;
 
 /** SHA-256 of the border table as JSON, in hex: any change to the table, a note included, changes it. */
 export async function borderTableHash(table: BorderTable): Promise<string> {
