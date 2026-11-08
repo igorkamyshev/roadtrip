@@ -98,6 +98,28 @@ describe('publishing a dataset', () => {
 		expect(JSON.parse(r2.text('current.json')).version).toBe('2026-10-01');
 	});
 
+	it('publishes the same files under their version again, as a rerun does', async () => {
+		const r2 = memoryStore();
+		await publishDataset(r2.store, directory, silent);
+		await r2.store.write('current.json', '{"version":"2026-10-01","files":{}}');
+
+		await publishDataset(r2.store, directory, silent);
+
+		expect(JSON.parse(r2.text('current.json')).version).toBe('2026-11-07');
+	});
+
+	it('uploads nothing over a version published with other files, and says to take a new one', async () => {
+		const r2 = memoryStore();
+		await publishDataset(r2.store, directory, silent);
+		writeFileSync(join(directory, 'cities.json'), '{"format":1,"cities":[[1,"Подгорица","Podgorica",42.4,19.3,150977,"MNE"]]}');
+		r2.writes.length = 0;
+
+		await expect(publishDataset(r2.store, directory, silent)).rejects.toThrow(/cities\.json.*new version/su);
+
+		expect(r2.writes).toEqual([]);
+		expect(r2.text('2026-11-07/cities.json')).toBe('{"format":1,"cities":[]}');
+	});
+
 	it.each([
 		['a file is missing', () => rmSync(join(directory, 'cities.json')), 'cities.json'],
 		['dataset.json names no version', () => writeFileSync(join(directory, 'dataset.json'), '{}'), 'version'],

@@ -60,7 +60,7 @@ Every heavy step runs under `.github/dataset/measure.sh`, which puts its time, p
 The dataset in R2, bucket `roadtrip-datasets`:
 
 - `<version>/graph.graph`, `zones.json`, `cities.json`, `dataset.json` (`{ "version": "<version>" }`, as `engine/dataset/dataset.json`) and `report.md` (the build report);
-- `<version>/manifest.json`: the version and each file's size and SHA-256;
+- `<version>/manifest.json`: the version and each file's size and SHA-256. Once it is there, the version keeps its files, so one version names one dataset: `publish-dataset` takes the same files again (a rerun) and refuses others before it uploads anything, which then go under a new version;
 - `current.json`: the pointer, a copy of the current version's manifest. It moves only once every file of the version is uploaded and its size checked, so a failed run leaves the version before it current. The deploy reads it (`fetch-dataset`, above), then takes the files under its version.
 
 A run of only some of the parts is a trial: it publishes under `trials/<run id>/` and deletes that at the end, so the current dataset stays.
@@ -76,6 +76,6 @@ The fixtures in `test/fixtures/` are hand-written OSM XML of a few countries and
 - `test/cities.test.ts`: the cities file from lines in GeoNames' formats, a double of Wikidata and the zones of `zones.osm`; `test/wikidata.test.ts`: the Wikidata client against a double of the Query Service.
 - `test/commands.test.ts`: the commands as processes; `build-cities` reads the small GeoNames files in `test/fixtures/geonames/`.
 - `test/zone-locator.test.ts`: `ZoneLocator` and the builder's `ZoneCells` on squares of whole degrees.
-- `test/publish.test.ts`: `publishDataset` against a double of R2: the pointer moves last, and not at all after a failed upload.
+- `test/publish.test.ts`: `publishDataset` against a double of R2: the pointer moves last, and not at all after a failed upload; nothing goes over a version published with other files.
 - `test/fetch-dataset.test.ts`: `fetchDataset` against a double of R2: the files of the pointer's version take their places, and none does when one's SHA-256 is not the pointer's or the bucket lacks it.
 - `test/valhalla-metrics.test.ts`: the measures of the Valhalla comparison (ring area, the median time to cities, the tolerance); the comparison itself runs in no test.
