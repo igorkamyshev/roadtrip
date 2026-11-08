@@ -1,0 +1,131 @@
+import { LocalProjection } from './geo.ts';
+import type { Graph } from './graph.ts';
+
+/** A road further from the origin than this is no road for it: `no_roads`. */
+export const MAX_SNAP_METERS = 50_000;
+
+/** Where the origin meets the road: on the segment from node `a` to node `b`, `fraction` of the way from `a`. */
+export interface Snap {
+	readonly a: number;
+	readonly b: number;
+	readonly fraction: number;
+	readonly meters: number;
+}
+
+/** The origin on its road: where it meets it, and the travel times to there and along the road. */
+export interface OriginRoad {
+	readonly snap: Snap;
+	/** Travel time from the origin to where it meets its road. */
+	readonly accessSeconds: number;
+	/** Travel time along the origin's road from `snap.a` to `snap.b`; undefined when it is one-way the other way. */
+	readonly forwardSeconds: number | undefined;
+	/** Travel time along the origin's road from `snap.b` to `snap.a`; undefined when it is one-way the other way. */
+	readonly backSeconds: number | undefined;
+}
+
+/**
+ * A road from which fewer nodes are reachable leads nowhere, as a one-way street whose only way on is a street the
+ * graph does not hold: the origin is not snapped to it. Valhalla's `minimum_reachability`, 50 by default.
+ */
+export const MIN_REACHABLE_NODES = 50;
+
+/**
+ * The nearest point of a road to the origin (1e-7 degrees), on a road with both ends in `zone`, or on any road
+ * with both ends in one zone when `zone` is undefined: never on the road across a border, which would start the
+ * origin in two countries. Of those, the nearest road from which MIN_REACHABLE_NODES nodes are reachable, driving
+ * it each way it may be driven; the nearest of all when none is. Undefined when there is none within
+ * MAX_SNAP_METERS.
+ */
+export function snapToRoad(graph: Graph, lat: number, lon: number, zone: number | undefined): Snap | undefined {
+	let nearest: Snap | undefined;
+	eachRoad(graph, lat, lon, zone, (snap) => {
+		if (nearest === undefined || snap.meters < nearest.meters) {
+			nearest = snap;
+		}
+	});
+	if (nearest === undefined || reachesEnough(graph, nearest)) {
+		return nearest;
+	}
+	// Rarely needed: every road within reach, nearest first, the order of the scan among equals.
+	const roads: Snap[] = [];
+	eachRoad(graph, lat, lon, zone, (snap) => roads.push(snap));
+	roads.sort((one, other) => one.meters - other.meters);
+	return roads.find((road) => reachesEnough(graph, road)) ?? nearest;
+}
+
+/** Calls `onRoad` with the nearest point of each road within MAX_SNAP_METERS that `snapToRoad` may snap to. */
+function eachRoad(graph: Graph, lat: number, lon: number, zone: number | undefined, onRoad: (snap: Snap) => void): void {
+	const { nodeLat, nodeLon, nodeZone, firstEdge, edgeTarget } = graph;
+	const projection = new LocalProjection(lat, lon);
+	const latReach = MAX_SNAP_METERS / projection.metersPerE7Lat;
+	const lonReach = MAX_SNAP_METERS / projection.metersPerE7Lon;
+	for (let a = 0; a < nodeLat.length; a++) {
+		if (zone !== undefined && nodeZone[a] !== zone) {
+			continue;
+		}
+		const latA = nodeLat[a];
+		const lonA = nodeLon[a];
+		for (let edge = firstEdge[a]; edge < firstEdge[a + 1]; edge++) {
+			const b = edgeTarget[edge];
+			if (nodeZone[b] !== nodeZone[a]) {
+				continue;
+			}
+			const latB = nodeLat[b];
+			const lonB = nodeLon[b];
+			if (
+				Math.min(latA, latB) > lat + latReach ||
+				Math.max(latA, latB) < lat - latReach ||
+				Math.min(lonA, lonB) > lon + lonReach ||
+				Math.max(lonA, lonB) < lon - lonReach
+			) {
+				continue;
+			}
+			const ax = projection.x(lonA);
+			const ay = projection.y(latA);
+			const dx = projection.x(lonB) - ax;
+			const dy = projection.y(latB) - ay;
+			const lengthSquared = dx * dx + dy * dy;
+			const fraction = lengthSquared === 0 ? 0 : Math.min(1, Math.max(0, -(ax * dx + ay * dy) / lengthSquared));
+			const meters = Math.hypot(ax + fraction * dx, ay + fraction * dy);
+			if (meters <= MAX_SNAP_METERS) {
+				onRoad({ a, b, fraction, meters });
+			}
+		}
+	}
+}
+
+/** Whether MIN_REACHABLE_NODES nodes are reachable from the road of the snap, by the roads' directions alone. */
+function reachesEnough(graph: Graph, snap: Snap): boolean {
+	const { firstEdge, edgeTarget } = graph;
+	const reached = new Set<number>();
+	const queue: number[] = [];
+	const reach = (node: number) => {
+		if (!reached.has(node)) {
+			reached.add(node);
+			queue.push(node);
+		}
+	};
+	if (edgeSecondsBetween(graph, snap.a, snap.b) >= 0) {
+		reach(snap.b);
+	}
+	if (edgeSecondsBetween(graph, snap.b, snap.a) >= 0) {
+		reach(snap.a);
+	}
+	for (let at = 0; at < queue.length && reached.size < MIN_REACHABLE_NODES; at++) {
+		for (let edge = firstEdge[queue[at]]; edge < firstEdge[queue[at] + 1]; edge++) {
+			reach(edgeTarget[edge]);
+		}
+	}
+	return reached.size >= MIN_REACHABLE_NODES;
+}
+
+/** The shortest driving time of an edge from `from` to `to`, in seconds, or −1 when there is no such edge. */
+export function edgeSecondsBetween(graph: Graph, from: number, to: number): number {
+	let seconds = -1;
+	for (let edge = graph.firstEdge[from]; edge < graph.firstEdge[from + 1]; edge++) {
+		if (graph.edgeTarget[edge] === to && (seconds < 0 || graph.edgeSeconds[edge] < seconds)) {
+			seconds = graph.edgeSeconds[edge];
+		}
+	}
+	return seconds;
+}

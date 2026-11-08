@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  A one-way road that leads nowhere next to a network of roads, as the one-way streets at the Zócalo in Mexico City
+  lead only to streets that are no roads of the graph. One country, AAA, from 1°W to 2°E and 1°S to 1°N:
+
+    road 1, along the equator from 0° to 1°E: a two-way secondary (60 km/h) with a junction every 0.04° from 0.02°E
+            to 0.98°E, each with a tooth: a secondary road 0.02° (2.2 km) south. 52 nodes of the graph with its ends.
+    road 2: a one-way secondary from road 1's junction at 0.5°E north to 0.2°N, where it ends.
+
+  The origin, (0.15°N, 0.505°E), is 0.56 km from road 2 and 16.7 km from road 1. From road 2 only its end is
+  reachable, fewer than 50 nodes, so the origin snaps to road 1, at 0.505°E: 16.7 km at 30 km/h, 0.556 h at the
+  wheel, 0.667 h of travel. Road 1 takes 0.222 h of travel per 0.1°, so the ring of 2 h holds (0°, 0.8°E), 0.295°
+  on, at 1.323 h, and not (0°, 0.6°E), at 0.878 h. Snapped to road 2, the origin would reach nothing after 0.133 h.
+
+         0.2°N                    r2
+                                  ^
+                                  |    * the origin
+           0° 0-+---+---+---+-...-+-...-+---+---+-1°E   road 1
+                |   |   |   |     |     |   |   |       its teeth
+       0.02°S
+-->
+<osm version="0.6" generator="hand">
+	<node id="1" lat="0" lon="0"/>
+	<node id="2" lat="0" lon="0.02"/>
+	<node id="3" lat="0" lon="0.06"/>
+	<node id="4" lat="0" lon="0.1"/>
+	<node id="5" lat="0" lon="0.14"/>
+	<node id="6" lat="0" lon="0.18"/>
+	<node id="7" lat="0" lon="0.22"/>
+	<node id="8" lat="0" lon="0.26"/>
+	<node id="9" lat="0" lon="0.3"/>
+	<node id="10" lat="0" lon="0.34"/>
+	<node id="11" lat="0" lon="0.38"/>
+	<node id="12" lat="0" lon="0.42"/>
+	<node id="13" lat="0" lon="0.46"/>
+	<node id="14" lat="0" lon="0.5"/>
+	<node id="15" lat="0" lon="0.54"/>
+	<node id="16" lat="0" lon="0.58"/>
+	<node id="17" lat="0" lon="0.62"/>
+	<node id="18" lat="0" lon="0.66"/>
+	<node id="19" lat="0" lon="0.7"/>
+	<node id="20" lat="0" lon="0.74"/>
+	<node id="21" lat="0" lon="0.78"/>
+	<node id="22" lat="0" lon="0.82"/>
+	<node id="23" lat="0" lon="0.86"/>
+	<node id="24" lat="0" lon="0.9"/>
+	<node id="25" lat="0" lon="0.94"/>
+	<node id="26" lat="0" lon="0.98"/>
+	<node id="27" lat="0" lon="1"/>
+	<way id="1">
+		<nd ref="1"/><nd ref="2"/><nd ref="3"/><nd ref="4"/><nd ref="5"/><nd ref="6"/><nd ref="7"/><nd ref="8"/><nd ref="9"/>
+		<nd ref="10"/><nd ref="11"/><nd ref="12"/><nd ref="13"/><nd ref="14"/><nd ref="15"/><nd ref="16"/><nd ref="17"/><nd ref="18"/>
+		<nd ref="19"/><nd ref="20"/><nd ref="21"/><nd ref="22"/><nd ref="23"/><nd ref="24"/><nd ref="25"/><nd ref="26"/><nd ref="27"/>
+		<tag k="highway" v="secondary"/>
+	</way>
+
+	<node id="101" lat="-0.02" lon="0.02"/>
+	<node id="102" lat="-0.02" lon="0.06"/>
+	<node id="103" lat="-0.02" lon="0.1"/>
+	<node id="104" lat="-0.02" lon="0.14"/>
+	<node id="105" lat="-0.02" lon="0.18"/>
+	<node id="106" lat="-0.02" lon="0.22"/>
+	<node id="107" lat="-0.02" lon="0.26"/>
+	<node id="108" lat="-0.02" lon="0.3"/>
+	<node id="109" lat="-0.02" lon="0.34"/>
+	<node id="110" lat="-0.02" lon="0.38"/>
+	<node id="111" lat="-0.02" lon="0.42"/>
+	<node id="112" lat="-0.02" lon="0.46"/>
+	<node id="113" lat="-0.02" lon="0.5"/>
+	<node id="114" lat="-0.02" lon="0.54"/>
+	<node id="115" lat="-0.02" lon="0.58"/>
+	<node id="116" lat="-0.02" lon="0.62"/>
+	<node id="117" lat="-0.02" lon="0.66"/>
+	<node id="118" lat="-0.02" lon="0.7"/>
+	<node id="119" lat="-0.02" lon="0.74"/>
+	<node id="120" lat="-0.02" lon="0.78"/>
+	<node id="121" lat="-0.02" lon="0.82"/>
+	<node id="122" lat="-0.02" lon="0.86"/>
+	<node id="123" lat="-0.02" lon="0.9"/>
+	<node id="124" lat="-0.02" lon="0.94"/>
+	<node id="125" lat="-0.02" lon="0.98"/>
+	<way id="101"><nd ref="2"/><nd ref="101"/><tag k="highway" v="secondary"/></way>
+	<way id="102"><nd ref="3"/><nd ref="102"/><tag k="highway" v="secondary"/></way>
+	<way id="103"><nd ref="4"/><nd ref="103"/><tag k="highway" v="secondary"/></way>
+	<way id="104"><nd ref="5"/><nd ref="104"/><tag k="highway" v="secondary"/></way>
+	<way id="105"><nd ref="6"/><nd ref="105"/><tag k="highway" v="secondary"/></way>
+	<way id="106"><nd ref="7"/><nd ref="106"/><tag k="highway" v="secondary"/></way>
+	<way id="107"><nd ref="8"/><nd ref="107"/><tag k="highway" v="secondary"/></way>
+	<way id="108"><nd ref="9"/><nd ref="108"/><tag k="highway" v="secondary"/></way>
+	<way id="109"><nd ref="10"/><nd ref="109"/><tag k="highway" v="secondary"/></way>
+	<way id="110"><nd ref="11"/><nd ref="110"/><tag k="highway" v="secondary"/></way>
+	<way id="111"><nd ref="12"/><nd ref="111"/><tag k="highway" v="secondary"/></way>
+	<way id="112"><nd ref="13"/><nd ref="112"/><tag k="highway" v="secondary"/></way>
+	<way id="113"><nd ref="14"/><nd ref="113"/><tag k="highway" v="secondary"/></way>
+	<way id="114"><nd ref="15"/><nd ref="114"/><tag k="highway" v="secondary"/></way>
+	<way id="115"><nd ref="16"/><nd ref="115"/><tag k="highway" v="secondary"/></way>
+	<way id="116"><nd ref="17"/><nd ref="116"/><tag k="highway" v="secondary"/></way>
+	<way id="117"><nd ref="18"/><nd ref="117"/><tag k="highway" v="secondary"/></way>
+	<way id="118"><nd ref="19"/><nd ref="118"/><tag k="highway" v="secondary"/></way>
+	<way id="119"><nd ref="20"/><nd ref="119"/><tag k="highway" v="secondary"/></way>
+	<way id="120"><nd ref="21"/><nd ref="120"/><tag k="highway" v="secondary"/></way>
+	<way id="121"><nd ref="22"/><nd ref="121"/><tag k="highway" v="secondary"/></way>
+	<way id="122"><nd ref="23"/><nd ref="122"/><tag k="highway" v="secondary"/></way>
+	<way id="123"><nd ref="24"/><nd ref="123"/><tag k="highway" v="secondary"/></way>
+	<way id="124"><nd ref="25"/><nd ref="124"/><tag k="highway" v="secondary"/></way>
+	<way id="125"><nd ref="26"/><nd ref="125"/><tag k="highway" v="secondary"/></way>
+
+	<node id="201" lat="0.2" lon="0.5"/>
+	<way id="2">
+		<nd ref="14"/><nd ref="201"/>
+		<tag k="highway" v="secondary"/>
+		<tag k="oneway" v="yes"/>
+	</way>
+
+	<node id="301" lat="-1" lon="-1"/>
+	<node id="302" lat="-1" lon="2"/>
+	<node id="303" lat="1" lon="2"/>
+	<node id="304" lat="1" lon="-1"/>
+	<way id="300">
+		<nd ref="301"/><nd ref="302"/><nd ref="303"/><nd ref="304"/><nd ref="301"/>
+		<tag k="boundary" v="administrative"/>
+		<tag k="admin_level" v="2"/>
+	</way>
+	<relation id="1000">
+		<member type="way" ref="300" role="outer"/>
+		<tag k="type" v="boundary"/>
+		<tag k="boundary" v="administrative"/>
+		<tag k="admin_level" v="2"/>
+		<tag k="ISO3166-1:alpha3" v="AAA"/>
+	</relation>
+</osm>

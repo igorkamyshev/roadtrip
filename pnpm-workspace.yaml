@@ -1,0 +1,11 @@
+packages:
+  - engine
+  - data
+  - rules
+  - error-tracking
+  - worker
+  - web
+# pnpm 10 runs no install scripts unless listed: wrangler needs workerd's and esbuild's.
+onlyBuiltDependencies:
+  - esbuild
+  - workerd

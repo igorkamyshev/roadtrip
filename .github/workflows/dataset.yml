@@ -1,0 +1,302 @@
+name: Dataset
+
+# The monthly build of the world's dataset (spec «Набор данных», #35; data/AGENTS.md «The world build», numbers in
+# docs/world-build.md):
+#
+# 1. plan: the date of the extracts, the newest one every part of the world has at Geofabrik; the dataset's version
+#    is that date.
+# 2. extract, one job per part (Russia is none: the others cover it): downloads the part of that date and keeps
+#    what the dataset needs with osmium.
+# 3. build: merges the parts, adds the locations to the ways, and builds the graph, the zone outlines and the cities
+#    file. The build report goes to the run's summary.
+# 4. publish: the dataset to R2 under its version, then the pointer `current.json` to it, then the build of the Worker
+#    roadtrip in Cloudflare Workers Builds, which deploys it (#36), and waits for the build's outcome.
+#
+# A run with only some of the parts is a trial: it publishes under trials/<run id>/, deletes that at the end and
+# deploys nothing.
+on:
+  schedule:
+    # The 2nd of each month: Geofabrik keeps the extracts of the 1st for months, the others for a week.
+    - cron: '41 2 2 * *'
+  workflow_dispatch:
+    inputs:
+      date:
+        description: The extracts' date as Geofabrik names them (YYMMDD); empty takes the newest that every part has
+        default: ''
+      parts:
+        description: Parts of the world separated by spaces; empty is all of them, some of them is a trial
+        default: ''
+      parts_run_id:
+        description: A run whose filtered parts (kept 2 days) to build from, of the same date and parts; empty extracts them
+        default: ''
+
+concurrency:
+  group: dataset
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  # The artifacts of another run, for parts_run_id.
+  actions: read
+
+env:
+  # Geofabrik's parts of the world but Russia, biggest first.
+  ALL_PARTS: europe north-america asia africa south-america australia-oceania central-america antarctica
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      date: ${{ steps.plan.outputs.date }}
+      version: ${{ steps.plan.outputs.version }}
+      parts: ${{ steps.plan.outputs.parts }}
+      prefix: ${{ steps.plan.outputs.prefix }}
+      parts_run_id: ${{ steps.plan.outputs.parts_run_id }}
+    steps:
+      - id: plan
+        env:
+          DATE: ${{ inputs.date }}
+          PARTS: ${{ inputs.parts }}
+          PARTS_RUN_ID: ${{ inputs.parts_run_id }}
+        run: |
+          parts=${PARTS:-$ALL_PARTS}
+          if [ -z "$DATE" ]; then
+            # The dated files each part's page lists: the 1st of recent months and every day of the last week.
+            common=
+            for part in $parts; do
+              dates=$(curl -fsSL --retry 5 --retry-delay 30 "https://download.geofabrik.de/$part.html" | grep -oE "$part-[0-9]{6}\.osm\.pbf" | grep -oE '[0-9]{6}' | sort -u)
+              echo "$part: $(echo $dates | wc -w) dated extracts, the newest $(echo "$dates" | tail -1)"
+              common=$([ -z "$common" ] && echo "$dates" || comm -12 <(echo "$common") <(echo "$dates"))
+            done
+            DATE=$(echo "$common" | tail -1)
+          fi
+          if ! [[ "$DATE" =~ ^[0-9]{6}$ ]]; then
+            echo "::error::No date every part has: '$DATE'"
+            exit 1
+          fi
+          version="20${DATE:0:2}-${DATE:2:2}-${DATE:4:2}"
+          if [ "$(echo $parts | tr ' ' '\n' | sort)" = "$(echo $ALL_PARTS | tr ' ' '\n' | sort)" ]; then
+            prefix=
+          else
+            prefix="trials/$GITHUB_RUN_ID/"
+          fi
+          echo "date=$DATE" >> "$GITHUB_OUTPUT"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "parts=$(jq -cn --arg parts "$parts" '$parts | split(" ") | map(select(. != ""))')" >> "$GITHUB_OUTPUT"
+          echo "prefix=$prefix" >> "$GITHUB_OUTPUT"
+          echo "parts_run_id=$PARTS_RUN_ID" >> "$GITHUB_OUTPUT"
+          echo "### Набор данных $version" >> "$GITHUB_STEP_SUMMARY"
+          echo "Выгрузки Geofabrik на $DATE: $parts.${prefix:+ Пробный прогон: в R2 под \`$prefix\`, потом удаляется.}" >> "$GITHUB_STEP_SUMMARY"
+
+  extract:
+    needs: plan
+    if: needs.plan.outputs.parts_run_id == ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 345
+    strategy:
+      # A failed part can be run again alone.
+      fail-fast: false
+      matrix:
+        part: ${{ fromJSON(needs.plan.outputs.parts) }}
+    env:
+      PART: ${{ matrix.part }}
+      DATE: ${{ needs.plan.outputs.date }}
+      VERSION: ${{ needs.plan.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      - name: The runner and its disk
+        run: .github/dataset/runner.sh
+      - name: Install osmium-tool
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq osmium-tool time > /dev/null
+          osmium --version | head -1
+      - name: Download the part
+        working-directory: ${{ env.WORK }}
+        run: |
+          "$GITHUB_WORKSPACE/.github/dataset/measure.sh" "$PART: download" "$GITHUB_WORKSPACE/.github/dataset/download.sh" "$PART-$DATE.osm.pbf" part.osm.pbf
+          echo "$PART-$DATE.osm.pbf: $(awk -v b="$(stat -c %s part.osm.pbf)" 'BEGIN { printf "%.2f", b / 1e9 }') GB" >> "$NOTES"
+          # An extract of one date holds OSM as of that day's evening.
+          timestamp=$(osmium fileinfo -g header.option.osmosis_replication_timestamp part.osm.pbf)
+          echo "OSM as of $timestamp" | tee -a "$NOTES"
+          if [ "${timestamp:0:10}" != "$VERSION" ]; then
+            echo "::error::$PART-$DATE.osm.pbf holds OSM as of $timestamp, not of $VERSION"
+            exit 1
+          fi
+      # The filter of spec «Набор данных»: the roads from motorway to tertiary with their links, the border
+      # checkpoints, the countries (admin_level=2) with their boundaries, and the zones of #13 by relation id.
+      - name: Filter with osmium
+        working-directory: ${{ env.WORK }}
+        run: |
+          measure() { "$GITHUB_WORKSPACE/.github/dataset/measure.sh" "$PART: $1" "${@:2}"; }
+          measure "tags-filter" osmium tags-filter part.osm.pbf \
+            w/highway=motorway,motorway_link,trunk,trunk_link,primary,primary_link,secondary,secondary_link,tertiary,tertiary_link \
+            n/barrier=border_control r/admin_level=2 -o roads.pbf
+          relations=$(cd "$GITHUB_WORKSPACE" && node --input-type=module -e "
+            import { SPECIAL_ZONES } from './data/src/zones.ts';
+            console.log([...SPECIAL_ZONES.keys()].map((id) => 'r' + id).join(' '));")
+          # Exits 1 when the part lacks some of them, as most parts do.
+          measure "getid of #13's zones" osmium getid -r part.osm.pbf $relations -o zones.pbf || test -s zones.pbf
+          rm part.osm.pbf
+          measure "merge" osmium merge roads.pbf zones.pbf -o "$PART.pbf"
+          rm roads.pbf zones.pbf
+          "$GITHUB_WORKSPACE/.github/dataset/counts.sh" "$PART.pbf" | tee -a "$NOTES"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: part-${{ matrix.part }}
+          path: ${{ env.WORK }}/${{ matrix.part }}.pbf
+          retention-days: 2
+          compression-level: 0
+      - name: Summary
+        if: always()
+        run: .github/dataset/summary.sh "Часть $PART"
+
+  build:
+    needs: [plan, extract]
+    if: ${{ !cancelled() && needs.plan.result == 'success' && (needs.extract.result == 'success' || needs.extract.result == 'skipped') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 345
+    env:
+      VERSION: ${{ needs.plan.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: The runner and its disk
+        run: .github/dataset/runner.sh
+      - name: Install osmium-tool
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq osmium-tool time unzip brotli > /dev/null
+          osmium --version | head -1
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: part-*
+          path: ${{ env.WORK }}/parts
+          merge-multiple: true
+          run-id: ${{ needs.plan.outputs.parts_run_id || github.run_id }}
+          github-token: ${{ github.token }}
+      - name: Merge the parts and add the locations to the ways
+        working-directory: ${{ env.WORK }}
+        run: |
+          measure() { "$GITHUB_WORKSPACE/.github/dataset/measure.sh" "$1" "${@:2}"; }
+          ls -l parts
+          measure "merge" osmium merge parts/*.pbf -o world.pbf
+          rm -r parts
+          # The parts are of one date, so an object in two of them is one version.
+          if [ "$(osmium fileinfo -e -g data.multiple_versions world.pbf)" != no ]; then
+            echo "::error::The merged parts hold several versions of an object"
+            exit 1
+          fi
+          measure "add-locations-to-ways" osmium add-locations-to-ways --ignore-missing-nodes world.pbf -o world-roads.pbf
+          rm world.pbf
+          "$GITHUB_WORKSPACE/.github/dataset/counts.sh" world-roads.pbf | tee -a "$NOTES"
+      - name: Build the graph and the zone outlines
+        run: |
+          mkdir -p "$WORK/dataset"
+          .github/dataset/measure.sh "graph and zone outlines" node --max-old-space-size=12288 data/src/cli/build-graph.ts \
+            "$WORK/world-roads.pbf" "$WORK/dataset/graph.graph" --outlines "$WORK/dataset/zones.json" --report "$WORK/dataset/report.md"
+      - name: Build the cities file
+        run: .github/dataset/measure.sh "cities file" node data/src/cli/build-cities.ts "$WORK/dataset/graph.graph" "$WORK/dataset/cities.json"
+      - name: The dataset
+        working-directory: ${{ env.WORK }}/dataset
+        run: |
+          echo "{ \"version\": \"$VERSION\" }" > dataset.json
+          for file in *; do
+            # The Worker serves the JSON files as static assets, in brotli.
+            brotli=$([[ "$file" == *.json ]] && brotli -c "$file" | wc -c | awk '{ printf ", %.2f MB in brotli", $1 / 1e6 }' || true)
+            echo "$file: $(awk -v b="$(stat -c %s "$file")" 'BEGIN { printf "%.2f", b / 1e6 }') MB$brotli" | tee -a "$NOTES"
+          done
+          cat report.md >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dataset-${{ needs.plan.outputs.version }}
+          path: ${{ env.WORK }}/dataset
+          retention-days: 14
+          compression-level: 1
+      - name: Summary
+        if: always()
+        run: .github/dataset/summary.sh "Сборка"
+
+  publish:
+    needs: [plan, build]
+    if: ${{ !cancelled() && needs.build.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      VERSION: ${{ needs.plan.outputs.version }}
+      PREFIX: ${{ needs.plan.outputs.prefix }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      BUCKET: roadtrip-datasets
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - uses: actions/download-artifact@v4
+        with:
+          name: dataset-${{ needs.plan.outputs.version }}
+          path: dataset
+      # R2's S3 API takes the Cloudflare API token as credentials: its id, and the SHA-256 of its value.
+      - name: S3 credentials from the Cloudflare API token
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          # A user's token or the account's: each has its own endpoint, the other answers 401.
+          verify() { curl -fsS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "https://api.cloudflare.com/client/v4/$1/tokens/verify" 2> /dev/null | jq -r '.result.id // empty'; }
+          id=$(verify user || true)
+          id=${id:-$(verify "accounts/$CLOUDFLARE_ACCOUNT_ID" || true)}
+          if [ -z "$id" ]; then
+            echo "::error::Cloudflare did not verify the API token"
+            exit 1
+          fi
+          secret=$(printf '%s' "$CLOUDFLARE_API_TOKEN" | sha256sum | cut -d ' ' -f 1)
+          echo "::add-mask::$id"
+          echo "::add-mask::$secret"
+          echo "AWS_ACCESS_KEY_ID=$id" >> "$GITHUB_ENV"
+          echo "AWS_SECRET_ACCESS_KEY=$secret" >> "$GITHUB_ENV"
+      - name: Publish to R2
+        run: |
+          # The step's default shell is `bash -e`: without pipefail, tee would hide a failed publish.
+          set -o pipefail
+          node data/src/cli/publish-dataset.ts dataset --bucket "$BUCKET" --prefix "$PREFIX" 2>&1 | tee publish.log
+          {
+            echo "### В R2"
+            echo
+            echo "\`$BUCKET/$PREFIX$VERSION/\`: $(ls dataset | tr '\n' ' '), manifest.json. Указатель \`$BUCKET/${PREFIX}current.json\` переведён на $VERSION."
+            echo
+            echo '```'
+            cat publish.log
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+      # The dataset is current now: the build of the Worker roadtrip in Workers Builds deploys it with the default
+      # branch's code (its deploy takes the dataset current.json points at), and the run waits for the build's
+      # outcome. A trial leaves the current dataset as it was and deploys nothing.
+      - name: Deploy the dataset
+        if: env.PREFIX == ''
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          # The trigger «Deploy default branch» of the Worker roadtrip (docs/agents/infrastructure.md).
+          TRIGGER: 5d0acd69-e1e3-4ad2-ac21-47399686d952
+          BRANCH: ${{ github.event.repository.default_branch }}
+        run: .github/dataset/deploy.sh "$TRIGGER" "$BRANCH"
+      - name: Delete the trial's objects
+        if: always() && env.PREFIX != ''
+        run: |
+          aws s3 rm "s3://$BUCKET/$PREFIX" --recursive --only-show-errors --endpoint-url "https://$CLOUDFLARE_ACCOUNT_ID.r2.cloudflarestorage.com"
+          echo "left under $PREFIX: $(aws s3 ls "s3://$BUCKET/$PREFIX" --recursive --endpoint-url "https://$CLOUDFLARE_ACCOUNT_ID.r2.cloudflarestorage.com" | wc -l) objects"
+        env:
+          AWS_DEFAULT_REGION: auto
+          AWS_REQUEST_CHECKSUM_CALCULATION: when_required
+          AWS_RESPONSE_CHECKSUM_VALIDATION: when_required

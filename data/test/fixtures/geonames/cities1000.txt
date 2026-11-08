@@ -1,0 +1,8 @@
+146268	Nicosia	Nicosia		0.5	3.5	P	PPLC	CY		01				200452		10	Europe/Nicosia	2026-11-01
+146384	Limassol	Limassol		0.3	3.2	P	PPLA	CY		01				154000		10	Europe/Nicosia	2026-11-01
+146412	Kyrenia	Kyrenia		0.5	2.5	P	PPLA	CY		01				26701		10	Europe/Nicosia	2026-11-01
+146617	Famagusta	Famagusta		0.7	2.7	P	PPLA	CY		01				42526		10	Europe/Nicosia	2026-11-01
+146999	Small village	Small village		0.4	3.8	P	PPL	CY		01				9000		10	Europe/Nicosia	2026-11-01
+147000	Strovolos quarter	Strovolos quarter		0.6	3.4	P	PPLX	CY		01				67904		10	Europe/Nicosia	2026-11-01
+786714	Pristina	Pristina		0.5	0.5	P	PPLC	XK		01				161751		10	Europe/Nicosia	2026-11-01
+617239	Tiraspol	Tiraspol		0.5	7.5	P	PPLA	MD		01				157000		10	Europe/Nicosia	2026-11-01

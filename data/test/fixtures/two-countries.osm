@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Two countries side by side with sea around them: AAA from 0° to 1°E, BBB from 1°E to 2°E, both from the
+  equator to 1°N. Their polygons share the border way 200, and AAA's outer ring runs against it, so the builder
+  has to turn one way round to close it. Each country has one secondary road (60 km/h), from 0.2°N to 0.8°N:
+  AAA's along 0.8°E, BBB's along 1.1°E. The two roads do not meet.
+
+  Here 0.1° is ~11.1 km, and 11.1 km takes 0.222 h of travel on the road and 0.444 h off it (30 km/h).
+
+         1°N +-----------------+-----------------+
+             |       AAA       |       BBB       |
+             |           3     |   13            |
+             |           |     |   |             |
+             |           2  *  |   12            |   * (0.5°N, 0.97°E): in AAA, 18.9 km from road 1–3
+             |           |     |   |             |     and 14.5 km from road 11–13
+             |           1     |   11            |
+          0° +-----------------+-----------------+
+            0°               1°E                2°E
+-->
+<osm version="0.6" generator="hand">
+	<node id="1" lat="0.2" lon="0.8"/>
+	<node id="2" lat="0.5" lon="0.8"/>
+	<node id="3" lat="0.8" lon="0.8"/>
+	<node id="11" lat="0.2" lon="1.1"/>
+	<node id="12" lat="0.5" lon="1.1"/>
+	<node id="13" lat="0.8" lon="1.1"/>
+
+	<node id="201" lat="0" lon="1"/>
+	<node id="202" lat="1" lon="1"/>
+	<node id="211" lat="0" lon="0"/>
+	<node id="212" lat="1" lon="0"/>
+	<node id="221" lat="1" lon="2"/>
+	<node id="222" lat="0" lon="2"/>
+
+	<way id="1">
+		<nd ref="1"/><nd ref="2"/><nd ref="3"/>
+		<tag k="highway" v="secondary"/>
+	</way>
+	<way id="11">
+		<nd ref="11"/><nd ref="12"/><nd ref="13"/>
+		<tag k="highway" v="secondary"/>
+	</way>
+
+	<!-- The border between AAA and BBB, south to north. -->
+	<way id="200">
+		<nd ref="201"/><nd ref="202"/>
+		<tag k="boundary" v="administrative"/>
+		<tag k="admin_level" v="2"/>
+	</way>
+	<!-- The rest of AAA's boundary: from the border's south end round the west to its north end. -->
+	<way id="210">
+		<nd ref="201"/><nd ref="211"/><nd ref="212"/><nd ref="202"/>
+		<tag k="boundary" v="administrative"/>
+		<tag k="admin_level" v="2"/>
+	</way>
+	<!-- The rest of BBB's boundary: from the border's north end round the east to its south end. -->
+	<way id="220">
+		<nd ref="202"/><nd ref="221"/><nd ref="222"/><nd ref="201"/>
+		<tag k="boundary" v="administrative"/>
+		<tag k="admin_level" v="2"/>
+	</way>
+
+	<relation id="1000">
+		<member type="way" ref="210" role="outer"/>
+		<member type="way" ref="200" role="outer"/>
+		<tag k="type" v="boundary"/>
+		<tag k="boundary" v="administrative"/>
+		<tag k="admin_level" v="2"/>
+		<tag k="ISO3166-1:alpha3" v="AAA"/>
+	</relation>
+	<relation id="2000">
+		<member type="way" ref="220" role="outer"/>
+		<member type="way" ref="200" role="outer"/>
+		<tag k="type" v="boundary"/>
+		<tag k="boundary" v="administrative"/>
+		<tag k="admin_level" v="2"/>
+		<tag k="ISO3166-1:alpha3" v="BBB"/>
+	</relation>
+</osm>

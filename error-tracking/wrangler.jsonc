@@ -1,0 +1,21 @@
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "roadtrip-error-tracking",
+	"main": "src/index.ts",
+	"compatibility_date": "2026-10-01",
+	"compatibility_flags": ["nodejs_compat"],
+	// Tail Worker: the runtime calls it after runs of the workers that list it in
+	// tail_consumers. It has no HTTP of its own. Never add it to its own
+	// tail_consumers: its own error logs would loop.
+	"workers_dev": false,
+	"preview_urls": false,
+	"vars": {
+		// Project key of the roadtrip PostHog project (org Roadtrip, US, id 718601). It only writes
+		// events and is public, so it is not a secret. Empty (as `.dev.vars` may set it), the worker
+		// prints the events instead of sending them.
+		"POSTHOG_API_KEY": "phc_uvomseW3xjkV7pvWXexL6ERPQKN6P3KBQ2XXYCw83NAg",
+	},
+	"observability": {
+		"enabled": true,
+	},
+}

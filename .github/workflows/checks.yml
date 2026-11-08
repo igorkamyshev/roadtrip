@@ -14,7 +14,7 @@ concurrency:
 jobs:
   code:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
 
     steps:
       - uses: actions/checkout@v4
@@ -28,4 +28,11 @@ jobs:
       - run: pnpm install --frozen-lockfile
       # The root AGENTS.md names every nested AGENTS.md.
       - run: pnpm lint
+      # Every workspace package's typecheck script.
+      - run: pnpm typecheck
+      # Every package's tests, in one vitest run from the root: the engine's seam and the ring API's.
       - run: pnpm test
+      # The screen's seam: the built client in Playwright's Chromium. Locally the environment has the browser; CI
+      # installs the one @playwright/test asks for.
+      - run: pnpm --filter web exec playwright install --with-deps chromium
+      - run: pnpm e2e

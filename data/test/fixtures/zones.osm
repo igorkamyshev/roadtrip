@@ -1,0 +1,292 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  The zones of #13, as OSM has them (relation ids and tags checked 2026-11-07), as squares of 1° along the equator
+  with no roads: an origin in each tells its zone by its start country. A square inside another is 0.6° by 0.6°.
+
+    0°–1°E     Kosovo, r2088990: admin_level=2, ISO3166-1:alpha3=XKK                                     RKS
+    2°–4°E     Cyprus, r307787, the whole island                                                         CYP
+               with Northern Cyprus, r2514541, admin_level=3, inside it at 2.2°–2.8°E                    NX
+    4°–5°E     Akrotiri and Dhekelia, r3263728: admin_level=2 without an ISO code                        CYP
+    6°–8°E     Moldova, r58974, with Transnistria, r2607033, admin_level=4, inside it at 7.2°–7.8°E      MDA
+    9°–11°E    Russia, r60189, and 10°–12°E Ukraine, r60199, overlapping at 10°–11°E                RUS, UKR
+               with Crimea, r72639, at 10.2°–10.5°E and Sevastopol, r1574364, at 10.5°–10.8°E,
+               both admin_level=4, inside both                                                        CRIMEA
+    13°–15°E   Georgia, r28699                                                                           GEO
+               with Abkhazia, r1152720, at 13.2°–13.8°E and South Ossetia, r1152717, at 14.2°–14.8°E,
+               both admin_level=3                                                ABKHAZIA, SOUTH_OSSETIA
+    16°–17°E   the Gaza Strip, r1473938: admin_level=4, in no country                                   GAZA
+    18°–20°E   Morocco, r3630439, and 20°–21°E r5441968: admin_level=2 without an ISO code               MAR
+               with all of Western Sahara, r2559126: no admin_level, ISO3166-1:alpha3=ESH, over
+               19°–21°E                                                                       WESTERN_SAHARA
+
+  The shipped border table closes RKS, UKR and the territories for everyone: no ring from them. Elsewhere, with no
+  roads, no_roads.
+-->
+<osm version="0.6" generator="hand">
+	<!-- Kosovo. -->
+	<node id="11" lat="0" lon="0"/>
+	<node id="12" lat="0" lon="1"/>
+	<node id="13" lat="1" lon="1"/>
+	<node id="14" lat="1" lon="0"/>
+	<way id="10">
+		<nd ref="11"/><nd ref="12"/><nd ref="13"/><nd ref="14"/><nd ref="11"/>
+	</way>
+	<relation id="2088990">
+		<member type="way" ref="10" role="outer"/>
+		<tag k="type" v="boundary"/>
+		<tag k="boundary" v="administrative"/>
+		<tag k="admin_level" v="2"/>
+		<tag k="ISO3166-1:alpha3" v="XKK"/>
+		<tag k="name:en" v="Kosovo"/>
+	</relation>
+	<!-- Cyprus, the whole island. -->
+	<node id="21" lat="0" lon="2"/>
+	<node id="22" lat="0" lon="4"/>
+	<node id="23" lat="1" lon="4"/>
+	<node id="24" lat="1" lon="2"/>
+	<way id="20">
+		<nd ref="21"/><nd ref="22"/><nd ref="23"/><nd ref="24"/><nd ref="21"/>
+	</way>
+	<relation id="307787">
+		<member type="way" ref="20" role="outer"/>
+		<tag k="type" v="boundary"/>
+		<tag k="boundary" v="administrative"/>
+		<tag k="admin_level" v="2"/>
+		<tag k="ISO3166-1:alpha3" v="CYP"/>
+		<tag k="name:en" v="Cyprus"/>
+	</relation>
+	<!-- Northern Cyprus, inside it. -->
+	<node id="31" lat="0.2" lon="2.2"/>
+	<node id="32" lat="0.2" lon="2.8"/>
+	<node id="33" lat="0.8" lon="2.8"/>
+	<node id="34" lat="0.8" lon="2.2"/>
+	<way id="30">
+		<nd ref="31"/><nd ref="32"/><nd ref="33"/><nd ref="34"/><nd ref="31"/>
+	</way>
+	<relation id="2514541">
+		<member type="way" ref="30" role="outer"/>
+		<tag k="type" v="boundary"/>
+		<tag k="boundary" v="administrative"/>
+		<tag k="admin_level" v="3"/>
+		<tag k="name:en" v="Northern Cyprus"/>
+	</relation>
+	<!-- Akrotiri and Dhekelia, next to it. -->
+	<node id="41" lat="0" lon="4"/>
+	<node id="42" lat="0" lon="5"/>
+	<node id="43" lat="1" lon="5"/>
+	<node id="44" lat="1" lon="4"/>
+	<way id="40">
+		<nd ref="41"/><nd ref="42"/><nd ref="43"/><nd ref="44"/><nd ref="41"/>
+	</way>
+	<relation id="3263728">
+		<member type="way" ref="40" role="outer"/>
+		<tag k="type" v="boundary"/>
+		<tag k="boundary" v="administrative"/>
+		<tag k="admin_level" v="2"/>
+		<tag k="name:en" v="Akrotiri and Dhekelia"/>
+	</relation>
+	<!-- Moldova. -->
+	<node id="51" lat="0" lon="6"/>
+	<node id="52" lat="0" lon="8"/>
+	<node id="53" lat="1" lon="8"/>
+	<node id="54" lat="1" lon="6"/>
+	<way id="50">
+		<nd ref="51"/><nd ref="52"/><nd ref="53"/><nd ref="54"/><nd ref="51"/>
+	</way>
+	<relation id="58974">
+		<member type="way" ref="50" role="outer"/>
+		<tag k="type" v="boundary"/>
+		<tag k="boundary" v="administrative"/>
+		<tag k="admin_level" v="2"/>
+		<tag k="ISO3166-1:alpha3" v="MDA"/>
+		<tag k="name:en" v="Moldova"/>
+	</relation>
+	<!-- Transnistria, inside it. -->
+	<node id="61" lat="0.2" lon="7.2"/>
+	<node id="62" lat="0.2" lon="7.8"/>
+	<node id="63" lat="0.8" lon="7.8"/>
+	<node id="64" lat="0.8" lon="7.2"/>
+	<way id="60">
+		<nd ref="61"/><nd ref="62"/><nd ref="63"/><nd ref="64"/><nd ref="61"/>
+	</way>
+	<relation id="2607033">
+		<member type="way" ref="60" role="outer"/>
+		<tag k="type" v="boundary"/>
+		<tag k="boundary" v="administrative"/>
+		<tag k="admin_level" v="4"/>
+		<tag k="ISO3166-2" v="MD-SN"/>
+	</relation>
+	<!-- Russia, overlapping Ukraine over Crimea. -->
+	<node id="71" lat="0" lon="9"/>
+	<node id="72" lat="0" lon="11"/>
+	<node id="73" lat="1" lon="11"/>
+	<node id="74" lat="1" lon="9"/>
+	<way id="70">
+		<nd ref="71"/><nd ref="72"/><nd ref="73"/><nd ref="74"/><nd ref="71"/>
+	</way>
+	<relation id="60189">
+		<member type="way" ref="70" role="outer"/>
+		<tag k="type" v="boundary"/>
+		<tag k="boundary" v="administrative"/>
+		<tag k="admin_level" v="2"/>
+		<tag k="ISO3166-1:alpha3" v="RUS"/>
+		<tag k="name:en" v="Russia"/>
+	</relation>
+	<!-- Ukraine. -->
+	<node id="81" lat="0" lon="10"/>
+	<node id="82" lat="0" lon="12"/>
+	<node id="83" lat="1" lon="12"/>
+	<node id="84" lat="1" lon="10"/>
+	<way id="80">
+		<nd ref="81"/><nd ref="82"/><nd ref="83"/><nd ref="84"/><nd ref="81"/>
+	</way>
+	<relation id="60199">
+		<member type="way" ref="80" role="outer"/>
+		<tag k="type" v="boundary"/>
+		<tag k="boundary" v="administrative"/>
+		<tag k="admin_level" v="2"/>
+		<tag k="ISO3166-1:alpha3" v="UKR"/>
+		<tag k="name:en" v="Ukraine"/>
+	</relation>
+	<!-- Crimea, inside both. -->
+	<node id="91" lat="0.2" lon="10.2"/>
+	<node id="92" lat="0.2" lon="10.5"/>
+	<node id="93" lat="0.8" lon="10.5"/>
+	<node id="94" lat="0.8" lon="10.2"/>
+	<way id="90">
+		<nd ref="91"/><nd ref="92"/><nd ref="93"/><nd ref="94"/><nd ref="91"/>
+	</way>
+	<relation id="72639">
+		<member type="way" ref="90" role="outer"/>
+		<tag k="type" v="boundary"/>
+		<tag k="boundary" v="administrative"/>
+		<tag k="admin_level" v="4"/>
+		<tag k="ISO3166-2" v="UA-43"/>
+		<tag k="name:en" v="Autonomous Republic of Crimea"/>
+	</relation>
+	<!-- Sevastopol, inside both. -->
+	<node id="101" lat="0.2" lon="10.5"/>
+	<node id="102" lat="0.2" lon="10.8"/>
+	<node id="103" lat="0.8" lon="10.8"/>
+	<node id="104" lat="0.8" lon="10.5"/>
+	<way id="100">
+		<nd ref="101"/><nd ref="102"/><nd ref="103"/><nd ref="104"/><nd ref="101"/>
+	</way>
+	<relation id="1574364">
+		<member type="way" ref="100" role="outer"/>
+		<tag k="type" v="boundary"/>
+		<tag k="boundary" v="administrative"/>
+		<tag k="admin_level" v="4"/>
+		<tag k="ISO3166-2" v="UA-40"/>
+		<tag k="name:en" v="Sevastopol"/>
+	</relation>
+	<!-- Georgia. -->
+	<node id="111" lat="0" lon="13"/>
+	<node id="112" lat="0" lon="15"/>
+	<node id="113" lat="1" lon="15"/>
+	<node id="114" lat="1" lon="13"/>
+	<way id="110">
+		<nd ref="111"/><nd ref="112"/><nd ref="113"/><nd ref="114"/><nd ref="111"/>
+	</way>
+	<relation id="28699">
+		<member type="way" ref="110" role="outer"/>
+		<tag k="type" v="boundary"/>
+		<tag k="boundary" v="administrative"/>
+		<tag k="admin_level" v="2"/>
+		<tag k="ISO3166-1:alpha3" v="GEO"/>
+		<tag k="name:en" v="Georgia"/>
+	</relation>
+	<!-- Abkhazia, inside it. -->
+	<node id="121" lat="0.2" lon="13.2"/>
+	<node id="122" lat="0.2" lon="13.8"/>
+	<node id="123" lat="0.8" lon="13.8"/>
+	<node id="124" lat="0.8" lon="13.2"/>
+	<way id="120">
+		<nd ref="121"/><nd ref="122"/><nd ref="123"/><nd ref="124"/><nd ref="121"/>
+	</way>
+	<relation id="1152720">
+		<member type="way" ref="120" role="outer"/>
+		<tag k="type" v="boundary"/>
+		<tag k="boundary" v="administrative"/>
+		<tag k="admin_level" v="3"/>
+		<tag k="ISO3166-2" v="GE-AB"/>
+		<tag k="name:en" v="Abkhazia"/>
+	</relation>
+	<!-- South Ossetia, inside it. -->
+	<node id="131" lat="0.2" lon="14.2"/>
+	<node id="132" lat="0.2" lon="14.8"/>
+	<node id="133" lat="0.8" lon="14.8"/>
+	<node id="134" lat="0.8" lon="14.2"/>
+	<way id="130">
+		<nd ref="131"/><nd ref="132"/><nd ref="133"/><nd ref="134"/><nd ref="131"/>
+	</way>
+	<relation id="1152717">
+		<member type="way" ref="130" role="outer"/>
+		<tag k="type" v="boundary"/>
+		<tag k="boundary" v="administrative"/>
+		<tag k="admin_level" v="3"/>
+		<tag k="name:en" v="South Ossetia"/>
+	</relation>
+	<!-- The Gaza Strip, in no country. -->
+	<node id="141" lat="0" lon="16"/>
+	<node id="142" lat="0" lon="17"/>
+	<node id="143" lat="1" lon="17"/>
+	<node id="144" lat="1" lon="16"/>
+	<way id="140">
+		<nd ref="141"/><nd ref="142"/><nd ref="143"/><nd ref="144"/><nd ref="141"/>
+	</way>
+	<relation id="1473938">
+		<member type="way" ref="140" role="outer"/>
+		<tag k="type" v="boundary"/>
+		<tag k="boundary" v="administrative"/>
+		<tag k="admin_level" v="4"/>
+		<tag k="name:en" v="Gaza Strip"/>
+	</relation>
+	<!-- Morocco, with Western Sahara west of the wall. -->
+	<node id="151" lat="0" lon="18"/>
+	<node id="152" lat="0" lon="20"/>
+	<node id="153" lat="1" lon="20"/>
+	<node id="154" lat="1" lon="18"/>
+	<way id="150">
+		<nd ref="151"/><nd ref="152"/><nd ref="153"/><nd ref="154"/><nd ref="151"/>
+	</way>
+	<relation id="3630439">
+		<member type="way" ref="150" role="outer"/>
+		<tag k="type" v="boundary"/>
+		<tag k="boundary" v="administrative"/>
+		<tag k="admin_level" v="2"/>
+		<tag k="ISO3166-1:alpha3" v="MAR"/>
+		<tag k="name:en" v="Morocco"/>
+	</relation>
+	<!-- Western Sahara east of the wall. -->
+	<node id="161" lat="0" lon="20"/>
+	<node id="162" lat="0" lon="21"/>
+	<node id="163" lat="1" lon="21"/>
+	<node id="164" lat="1" lon="20"/>
+	<way id="160">
+		<nd ref="161"/><nd ref="162"/><nd ref="163"/><nd ref="164"/><nd ref="161"/>
+	</way>
+	<relation id="5441968">
+		<member type="way" ref="160" role="outer"/>
+		<tag k="type" v="boundary"/>
+		<tag k="boundary" v="administrative"/>
+		<tag k="admin_level" v="2"/>
+		<tag k="name:en" v="Sahrawi Arab Democratic Republic"/>
+	</relation>
+	<!-- All of Western Sahara, over both. -->
+	<node id="171" lat="0" lon="19"/>
+	<node id="172" lat="0" lon="21"/>
+	<node id="173" lat="1" lon="21"/>
+	<node id="174" lat="1" lon="19"/>
+	<way id="170">
+		<nd ref="171"/><nd ref="172"/><nd ref="173"/><nd ref="174"/><nd ref="171"/>
+	</way>
+	<relation id="2559126">
+		<member type="way" ref="170" role="outer"/>
+		<tag k="type" v="boundary"/>
+		<tag k="boundary" v="administrative"/>
+		<tag k="ISO3166-1:alpha3" v="ESH"/>
+		<tag k="name:en" v="Western Sahara"/>
+	</relation>
+
+</osm>

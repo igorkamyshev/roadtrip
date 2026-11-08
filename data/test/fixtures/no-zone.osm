@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Land in no country's polygon between two countries, as the West Bank lies between Israel and Jordan in OSM: AAA
+  from 0° to 1°E, BBB from 2°E to 3°E, both from the equator to 1°N, and no zone between 1°E and 2°E. Two
+  secondary roads (60 km/h):
+
+    road 1, along 0.5°N: 10 (0.5°E) – 11 (0.9°E) – 12 (1.1°E) – 13 (1.9°E) – 14 (2.1°E) – 15 (2.9°E)
+    road 2: 21 (0.6°N, 0.9°E) – 22 (0.6°N, 1.1°E) – 12 (0.5°N, 1.1°E)                     from AAA to road 1
+
+  Four edges join the land in no zone to AAA (11–12 and 21–22, each way) and two to BBB (13–14), so it counts as
+  AAA's: entering it from BBB, or leaving it for BBB, is the border AAA–BBB, at 13–14. A crossing of the table at
+  (0.5°N, 2°E) is on 13–14.
+
+  0.1° is 11.12 km here, 667 s at the wheel. In whole seconds at the wheel: 10–11 2669, 11–12 1334, 12–13 5337,
+  13–14 1334, 14–15 5337, 21–22 1334, 22–12 667.
+
+    From 10, the west end of road 1:
+      the border not crossed: 13 is the latest, at 9340 s, 11208 s of travel, 3.113 h: maxHours 4;
+      crossed with 1.5 h: 15 at 16011 s, 19213 s of travel, 5.337 h, 6.837 h with the border: maxHours 7.
+    From 15, the east end of road 1:
+      the border not crossed: 14 is the latest, at 5337 s, 6404 s of travel, 1.779 h: maxHours 2;
+      crossed with 1.5 h: 10 at 16011 s, 19213 s of travel, 5.337 h, 6.837 h with the border: maxHours 7.
+
+       1°N +-----------------+                 +-----------------+
+           |       AAA       |     no zone     |       BBB       |
+    0.6°N  |              21-+-22              |                 |
+    0.5°N  |     10-------11-+-12-----------13-+-14-----------15 |
+        0° +-----------------+                 +-----------------+
+          0°               1°E                2°E               3°E
+-->
+<osm version="0.6" generator="hand">
+	<node id="10" lat="0.5" lon="0.5"/>
+	<node id="11" lat="0.5" lon="0.9"/>
+	<node id="12" lat="0.5" lon="1.1"/>
+	<node id="13" lat="0.5" lon="1.9"/>
+	<node id="14" lat="0.5" lon="2.1"/>
+	<node id="15" lat="0.5" lon="2.9"/>
+	<way id="1">
+		<nd ref="10"/><nd ref="11"/><nd ref="12"/><nd ref="13"/><nd ref="14"/><nd ref="15"/>
+		<tag k="highway" v="secondary"/>
+	</way>
+
+	<node id="21" lat="0.6" lon="0.9"/>
+	<node id="22" lat="0.6" lon="1.1"/>
+	<way id="2">
+		<nd ref="21"/><nd ref="22"/><nd ref="12"/>
+		<tag k="highway" v="secondary"/>
+	</way>
+
+	<node id="101" lat="0" lon="0"/>
+	<node id="102" lat="0" lon="1"/>
+	<node id="103" lat="1" lon="1"/>
+	<node id="104" lat="1" lon="0"/>
+	<way id="100">
+		<nd ref="101"/><nd ref="102"/><nd ref="103"/><nd ref="104"/><nd ref="101"/>
+		<tag k="boundary" v="administrative"/>
+		<tag k="admin_level" v="2"/>
+	</way>
+	<relation id="1000">
+		<member type="way" ref="100" role="outer"/>
+		<tag k="type" v="boundary"/>
+		<tag k="boundary" v="administrative"/>
+		<tag k="admin_level" v="2"/>
+		<tag k="ISO3166-1:alpha3" v="AAA"/>
+	</relation>
+
+	<node id="201" lat="0" lon="2"/>
+	<node id="202" lat="0" lon="3"/>
+	<node id="203" lat="1" lon="3"/>
+	<node id="204" lat="1" lon="2"/>
+	<way id="200">
+		<nd ref="201"/><nd ref="202"/><nd ref="203"/><nd ref="204"/><nd ref="201"/>
+		<tag k="boundary" v="administrative"/>
+		<tag k="admin_level" v="2"/>
+	</way>
+	<relation id="2000">
+		<member type="way" ref="200" role="outer"/>
+		<tag k="type" v="boundary"/>
+		<tag k="boundary" v="administrative"/>
+		<tag k="admin_level" v="2"/>
+		<tag k="ISO3166-1:alpha3" v="BBB"/>
+	</relation>
+</osm>

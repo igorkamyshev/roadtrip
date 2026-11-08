@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Zones whose boundary the extract holds only in part, as the world's parts lack the boundary of two remote atolls
+  of the USA (Kingman Reef and Johnston Atoll, in no part of Geofabrik's).
+
+  AAA: its mainland from 1°S to 1°N and 0° to 1°E (way 100, whole); an island at 2°N (way 110), whose node 113
+  the extract lacks; and a ring of way 120, which the extract lacks. AAA keeps its mainland and is reported
+  partial: the road along the equator from 0.2°E to 0.8°E (way 1) is in AAA.
+
+  BBB: only an inner ring, from 1°S to 1°N and 2°E to 3°E (way 210); its outer ring (way 200) the extract lacks.
+  A hole alone is no zone, so BBB is left out: the road from 2.2°E to 2.8°E (way 2) is in no zone.
+-->
+<osm version="0.6" generator="hand">
+	<node id="1" lat="0" lon="0.2"/>
+	<node id="2" lat="0" lon="0.8"/>
+	<way id="1">
+		<nd ref="1"/><nd ref="2"/>
+		<tag k="highway" v="secondary"/>
+	</way>
+	<node id="3" lat="0" lon="2.2"/>
+	<node id="4" lat="0" lon="2.8"/>
+	<way id="2">
+		<nd ref="3"/><nd ref="4"/>
+		<tag k="highway" v="secondary"/>
+	</way>
+
+	<node id="101" lat="-1" lon="0"/>
+	<node id="102" lat="-1" lon="1"/>
+	<node id="103" lat="1" lon="1"/>
+	<node id="104" lat="1" lon="0"/>
+	<way id="100">
+		<nd ref="101"/><nd ref="102"/><nd ref="103"/><nd ref="104"/><nd ref="101"/>
+	</way>
+	<node id="111" lat="2" lon="0"/>
+	<node id="112" lat="2" lon="0.5"/>
+	<way id="110">
+		<nd ref="111"/><nd ref="112"/><nd ref="113"/><nd ref="111"/>
+	</way>
+	<relation id="1">
+		<member type="way" ref="100" role="outer"/>
+		<member type="way" ref="110" role="outer"/>
+		<member type="way" ref="120" role="outer"/>
+		<tag k="type" v="boundary"/>
+		<tag k="boundary" v="administrative"/>
+		<tag k="admin_level" v="2"/>
+		<tag k="ISO3166-1:alpha3" v="AAA"/>
+	</relation>
+
+	<node id="211" lat="-1" lon="2"/>
+	<node id="212" lat="-1" lon="3"/>
+	<node id="213" lat="1" lon="3"/>
+	<node id="214" lat="1" lon="2"/>
+	<way id="210">
+		<nd ref="211"/><nd ref="212"/><nd ref="213"/><nd ref="214"/><nd ref="211"/>
+	</way>
+	<relation id="2">
+		<member type="way" ref="200" role="outer"/>
+		<member type="way" ref="210" role="inner"/>
+		<tag k="type" v="boundary"/>
+		<tag k="boundary" v="administrative"/>
+		<tag k="admin_level" v="2"/>
+		<tag k="ISO3166-1:alpha3" v="BBB"/>
+	</relation>
+</osm>
