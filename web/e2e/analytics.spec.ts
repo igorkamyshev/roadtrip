@@ -240,7 +240,7 @@ test.describe('start set', () => {
 	test('by the pin: the city nearest to it', async ({ page, ringApi, posthog }) => {
 		ringApi.respond((call) => squareRing(Number(call.lat), Number(call.lon), 0, 0.5));
 		await openInProduction(page, LINK);
-		await expect(firstCard(page)).toContainText('В кольце 2–3 ч');
+		await expectRingCard(page, '2–3 ч');
 
 		await phrase(page).getByRole('button', { name: 'Белград' }).click();
 		await page.getByRole('dialog', { name: 'Откуда едем' }).getByRole('button', { name: 'Указать на карте' }).click();

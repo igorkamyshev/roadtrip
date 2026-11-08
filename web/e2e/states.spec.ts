@@ -2,7 +2,7 @@
 // engine's outcomes without a ring, the WAF's block and failures, with the spec's texts and buttons.
 import type { RingResponse } from 'worker/api';
 import { allowGeolocation, expect, squareRing, test, visaRules, type RingReply } from './fixtures.ts';
-import { firstCard, ringOnMap } from './screen.ts';
+import { expectRingCard, firstCard, ringOnMap } from './screen.ts';
 
 const BELGRADE = { lat: 44.8176, lon: 20.4573 };
 /** A link to Belgrade with N = 5. */
@@ -34,6 +34,8 @@ for (const { outcome, answer, texts, buttons } of outcomes) {
 		ringApi.respond(() => answer);
 		await page.goto(LINK);
 
+		// The state, which the tests wait on (e2e/screen.ts), is the outcome's name.
+		await expect(firstCard(page)).toHaveAttribute('data-state', outcome);
 		for (const text of texts) {
 			await expect(firstCard(page)).toContainText(text);
 		}
@@ -51,19 +53,20 @@ test('«На карте» of a card without a ring turns the pin mode on', async
 	await expect(page.getByText('Двигайте карту, чтобы поставить точку под булавку')).toBeVisible();
 });
 
-const failures: readonly { failure: string; reply: RingReply; texts: readonly string[] }[] = [
-	{ failure: '429 from the WAF', reply: { status: 429 }, texts: ['Слишком много запросов, подождите несколько секунд'] },
-	{ failure: '5xx', reply: { status: 502 }, texts: ['Не получилось посчитать', 'Проверьте интернет и попробуйте ещё раз.'] },
-	{ failure: 'a network failure', reply: 'network error', texts: ['Не получилось посчитать', 'Проверьте интернет и попробуйте ещё раз.'] },
+const failures: readonly { failure: string; reply: RingReply; state: string; texts: readonly string[] }[] = [
+	{ failure: '429 from the WAF', reply: { status: 429 }, state: 'too_many_requests', texts: ['Слишком много запросов, подождите несколько секунд'] },
+	{ failure: '5xx', reply: { status: 502 }, state: 'error', texts: ['Не получилось посчитать', 'Проверьте интернет и попробуйте ещё раз.'] },
+	{ failure: 'a network failure', reply: 'network error', state: 'error', texts: ['Не получилось посчитать', 'Проверьте интернет и попробуйте ещё раз.'] },
 ];
 
-for (const { failure, reply, texts } of failures) {
+for (const { failure, reply, state, texts } of failures) {
 	test(`${failure}: the first card says so, and «Повторить» asks again`, async ({ page, context, ringApi }) => {
 		await allowGeolocation(context, BELGRADE);
 		await page.clock.install();
 		ringApi.respond(() => reply);
 		await page.goto('/');
 
+		await expect(firstCard(page)).toHaveAttribute('data-state', state);
 		for (const text of texts) {
 			await expect(firstCard(page)).toContainText(text);
 		}
@@ -74,7 +77,7 @@ for (const { failure, reply, texts } of failures) {
 		ringApi.respond((call) => squareRing(Number(call.lat), Number(call.lon), 0, 0.5));
 		await firstCard(page).getByRole('button', { name: 'Повторить' }).click();
 
-		await expect(firstCard(page)).toContainText('В кольце до 1 ч');
+		await expectRingCard(page, 'до 1 ч');
 		expect(ringApi.calls).toHaveLength(2);
 		expect(ringApi.calls[1]).toEqual(ringApi.calls[0]);
 	});

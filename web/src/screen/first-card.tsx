@@ -38,7 +38,7 @@ export function FirstCard({ state, actions }: { readonly state: FirstCardState; 
 	switch (state.kind) {
 		case 'no_origin':
 			return (
-				<Card>
+				<Card state={state.kind}>
 					<h3>Откуда едем?</h3>
 					<p className="muted small">
 						{state.geolocationFailed ? 'Браузер не дал доступ к геолокации. ' : ''}Найдите город или укажите точку на карте.
@@ -57,7 +57,7 @@ export function FirstCard({ state, actions }: { readonly state: FirstCardState; 
 			return <Calculating key={state.request} hours={state.hours} />;
 		case 'ring':
 			return (
-				<Card>
+				<Card state={state.kind}>
 					<span className="muted small">В кольце {hoursShort(state.hours)}</span>
 					{state.cities === undefined ? null : (
 						<>
@@ -73,14 +73,14 @@ export function FirstCard({ state, actions }: { readonly state: FirstCardState; 
 			);
 		case 'no_cities':
 			return (
-				<Card>
+				<Card state={state.kind}>
 					<h3>Городов в кольце нет</h3>
 					<p className="muted small">Показываем города больше 15 000 жителей.</p>
 				</Card>
 			);
 		case 'empty':
 			return (
-				<Card>
+				<Card state={state.kind}>
 					<h3>Дальше {state.maxHours} ч не уехать</h3>
 					<p className="muted small">Дальше море или закрытые страны. Добавьте свои визы или уменьшите время.</p>
 					<div className="acts">
@@ -92,7 +92,7 @@ export function FirstCard({ state, actions }: { readonly state: FirstCardState; 
 			);
 		case 'no_roads':
 			return (
-				<Card>
+				<Card state={state.kind}>
 					<h3>Рядом нет дорог</h3>
 					<p className="muted small">Точка дальше 50 км от дороги. Выберите другую.</p>
 					<div className="acts">
@@ -103,7 +103,7 @@ export function FirstCard({ state, actions }: { readonly state: FirstCardState; 
 			);
 		case 'no_ring':
 			return (
-				<Card>
+				<Card state={state.kind}>
 					<h3>Кольца нет</h3>
 					<p className="muted small">Отсюда посчитать не можем: эта страна или территория закрыта для всех.</p>
 					<div className="acts">
@@ -114,7 +114,7 @@ export function FirstCard({ state, actions }: { readonly state: FirstCardState; 
 			);
 		case 'visa_rules_missing':
 			return (
-				<Card>
+				<Card state={state.kind}>
 					<h3 className="err">Не удалось загрузить визовые правила для гражданства {state.citizenship}.</h3>
 					<p className="muted small">Попробуйте позже или уберите это гражданство</p>
 					<div className="acts">
@@ -126,14 +126,14 @@ export function FirstCard({ state, actions }: { readonly state: FirstCardState; 
 			);
 		case 'too_many_requests':
 			return (
-				<Card>
+				<Card state={state.kind}>
 					<h3 className="err">Слишком много запросов, подождите несколько секунд</h3>
 					<RetryButton onRetry={actions.onRetry} />
 				</Card>
 			);
 		case 'error':
 			return (
-				<Card>
+				<Card state={state.kind}>
 					<h3 className="err">Не получилось посчитать</h3>
 					<p className="muted small">Проверьте интернет и попробуйте ещё раз.</p>
 					<RetryButton onRetry={actions.onRetry} />
@@ -142,9 +142,10 @@ export function FirstCard({ state, actions }: { readonly state: FirstCardState; 
 	}
 }
 
-function Card({ children }: { readonly children: ReactNode }) {
+/** The card; `data-state` names its state, which the screen tests wait on rather than its text (e2e/screen.ts). */
+function Card({ state, children }: { readonly state: FirstCardState['kind']; readonly children: ReactNode }) {
 	return (
-		<div className="c-card" data-testid="first-card">
+		<div className="c-card" data-testid="first-card" data-state={state}>
 			{children}
 		</div>
 	);
@@ -161,7 +162,7 @@ function Calculating({ hours }: { readonly hours: number }) {
 		};
 	}, []);
 	return (
-		<Card>
+		<Card state="calculating">
 			<span className="muted small">Кольцо {hoursShort(hours)}</span>
 			<h3>
 				<span className="spin" aria-hidden="true" /> Считаем…

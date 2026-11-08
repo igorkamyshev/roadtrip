@@ -6,7 +6,7 @@
 import type { Page } from '@playwright/test';
 import type { RingResponse } from 'worker/api';
 import { allowGeolocation, CITIES, expect, serveCities, squareRing, test, visaRules } from './fixtures.ts';
-import { firstCard, phrase } from './screen.ts';
+import { expectRingCard, firstCard, phrase } from './screen.ts';
 
 const startSheet = (page: Page) => page.getByRole('dialog', { name: 'Откуда едем' });
 
@@ -163,7 +163,7 @@ test.describe('«Город» on the first card', () => {
 			await startSheet(page).getByRole('searchbox', { name: 'Найти город' }).fill('Белград');
 			await startSheet(page).getByRole('button', { name: /^Белград/u }).click();
 
-			await expect(firstCard(page)).toContainText('В кольце до 1 ч');
+			await expectRingCard(page, 'до 1 ч');
 			await expect(phrase(page)).toContainText('Из точки Белград, до 1 часа в пути.');
 		});
 	}
@@ -248,7 +248,7 @@ test.describe("the origin's label", () => {
 		await page.route('**/data/cities.json', (route) => route.fulfill({ status: 404 }));
 		await page.goto('/#/?p=43.30000,21.90000&h=1');
 
-		await expect(firstCard(page)).toContainText('В кольце до 1 ч');
+		await expectRingCard(page, 'до 1 ч');
 		await expect(phrase(page)).toContainText('Из точки на карте, до 1 часа в пути.');
 	});
 });
