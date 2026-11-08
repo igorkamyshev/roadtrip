@@ -3,12 +3,12 @@
 // can move to a Worker or a browser.
 import type { BorderTable } from 'rules';
 import { borderZones, closedForEveryone, passage } from './borders.ts';
-import { OFF_ROAD_SECONDS_PER_METER, ringContour } from './contour.ts';
+import { ringContour } from './contour.ts';
 import { E7 } from './geo.ts';
 import type { Graph } from './graph.ts';
 import { ZoneLocator } from './zones.ts';
-import { edgeSecondsBetween, snapToRoad } from './snap.ts';
-import { latestArrival, type Seed, traverse, TRAVEL_PER_DRIVING } from './traverse.ts';
+import { startOnRoad } from './start.ts';
+import { latestArrival, traverse } from './traverse.ts';
 
 /**
  * The version of the engine's results. It is part of the data version in the ring cache key (spec «Кэш колец»),
@@ -96,34 +96,23 @@ export function computeRing(graph: Graph, borderTable: BorderTable, request: Rin
 		return { outcome: 'no_ring', startCountry: zoneCode(graph, originZone), timings: since(started, started) };
 	}
 	// On land the origin snaps to a road of its own zone; at sea, to any road.
-	const snap = snapToRoad(graph, lat, lon, originZone === 0 ? undefined : originZone);
-	if (snap === undefined) {
+	const start = startOnRoad(graph, lat, lon, originZone === 0 ? undefined : originZone);
+	if (start === undefined) {
 		return { outcome: 'no_roads', startCountry: zoneCode(graph, originZone), timings: since(started, started) };
 	}
+	const { snap } = start;
 	const startZone = originZone !== 0 ? originZone : borderZones(graph)[snap.fraction < 0.5 ? snap.a : snap.b];
 	if (closed[startZone]) {
 		return { outcome: 'no_ring', startCountry: zoneCode(graph, startZone), timings: since(started, started) };
 	}
 
-	// The origin reaches the road in a straight line at 30 km/h of driving.
-	const accessSeconds = snap.meters * OFF_ROAD_SECONDS_PER_METER;
-	// Travel time along the origin's road, end to end, each way it may be driven.
-	const forward = travelSecondsBetween(graph, snap.a, snap.b);
-	const back = travelSecondsBetween(graph, snap.b, snap.a);
-	const seeds: Seed[] = [];
-	if (forward !== undefined) {
-		seeds.push({ node: snap.b, seconds: accessSeconds + (1 - snap.fraction) * forward });
-	}
-	if (back !== undefined) {
-		seeds.push({ node: snap.a, seconds: accessSeconds + snap.fraction * back });
-	}
 	const allowed = passage(graph, borderTable, request.closedCountries, startZone);
-	const traversal = traverse(graph, allowed, seeds, request.hours * 3600);
+	const traversal = traverse(graph, allowed, start.seeds, request.hours * 3600);
 	const traversed = performance.now();
 	const startCountry = zoneCode(graph, startZone);
 
 	if (traversal.exhausted) {
-		const latestHours = latestArrival(graph, traversal, { snap, accessSeconds, forwardSeconds: forward, backSeconds: back }) / 3600;
+		const latestHours = latestArrival(graph, traversal, start) / 3600;
 		if (latestHours <= request.hours - 1) {
 			return { outcome: 'empty', maxHours: Math.ceil(latestHours - 1e-9), startCountry, timings: since(started, traversed) };
 		}
@@ -132,16 +121,11 @@ export function computeRing(graph: Graph, borderTable: BorderTable, request: Rin
 		graph,
 		allowed,
 		zoneLocator(graph),
-		{ seconds: traversal.seconds, snap, accessSeconds, forwardSeconds: forward, backSeconds: back },
+		{ ...start, seconds: traversal.seconds },
 		(request.hours - 1) * 3600,
 		request.hours * 3600,
 	);
 	return { outcome: 'ring', ring, startCountry, timings: since(started, traversed) };
-}
-
-function travelSecondsBetween(graph: Graph, from: number, to: number): number | undefined {
-	const seconds = edgeSecondsBetween(graph, from, to);
-	return seconds < 0 ? undefined : seconds * TRAVEL_PER_DRIVING;
 }
 
 function zoneCode(graph: Graph, zone: number): string | null {

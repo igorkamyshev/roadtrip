@@ -7,8 +7,9 @@ import { passage } from 'engine/borders';
 import { OFF_ROAD_SECONDS_PER_METER, ringContour } from 'engine/contour';
 import { LocalProjection } from 'engine/geo';
 import { type Graph, ZoneLocator } from 'engine/graph';
-import { edgeSecondsBetween, snapToRoad } from 'engine/snap';
-import { type Seed, TRAVEL_PER_DRIVING, traverse } from 'engine/traverse';
+import { edgeSecondsBetween } from 'engine/snap';
+import { startOnRoad } from 'engine/start';
+import { TRAVEL_PER_DRIVING, traverse } from 'engine/traverse';
 import { borderTable } from 'rules';
 import { buildGraph } from '../build-graph.ts';
 import { openOsm } from '../osm/open.ts';
@@ -44,34 +45,22 @@ export interface OurReach {
 
 /**
  * Everything the engine reaches from the origin within `limitHours`: the origin's road reached as computeRing
- * reaches it, then the engine's Dijkstra. Undefined when the origin has no road within 50 km.
+ * reaches it (startOnRoad), then the engine's Dijkstra. Undefined when the origin has no road within 50 km.
  */
 export function ourReach(graph: Graph, index: RoadIndex, origin: LatLon, limitHours: number): OurReach | undefined {
-	const snap = snapToRoad(graph, Math.round(origin.lat * 1e7), Math.round(origin.lon * 1e7), undefined);
-	if (snap === undefined) {
+	const start = startOnRoad(graph, Math.round(origin.lat * 1e7), Math.round(origin.lon * 1e7), undefined);
+	if (start === undefined) {
 		return undefined;
-	}
-	const accessSeconds = snap.meters * OFF_ROAD_SECONDS_PER_METER;
-	const forward = edgeSecondsBetween(graph, snap.a, snap.b);
-	const back = edgeSecondsBetween(graph, snap.b, snap.a);
-	const forwardSeconds = forward < 0 ? undefined : forward * TRAVEL_PER_DRIVING;
-	const backSeconds = back < 0 ? undefined : back * TRAVEL_PER_DRIVING;
-	const seeds: Seed[] = [];
-	if (forwardSeconds !== undefined) {
-		seeds.push({ node: snap.b, seconds: accessSeconds + (1 - snap.fraction) * forwardSeconds });
-	}
-	if (backSeconds !== undefined) {
-		seeds.push({ node: snap.a, seconds: accessSeconds + snap.fraction * backSeconds });
 	}
 	// Every zone open, as computeRing has it with no country closed: the graph has only zone 0.
 	const open = passage(graph, borderTable, [], 0);
-	const { seconds } = traverse(graph, open, seeds, limitHours * 3600);
+	const { seconds } = traverse(graph, open, start.seeds, limitHours * 3600);
 	const locator = new ZoneLocator(graph.zoneRings);
 	return {
 		isochrone(hours) {
 			// Only what is reached within the hours, as a traversal up to them gives: the raster spans just that.
 			const within = seconds.map((time) => (time <= hours * 3600 ? time : Infinity));
-			return ringContour(graph, open, locator, { seconds: within, snap, accessSeconds, forwardSeconds, backSeconds }, -1, hours * 3600);
+			return ringContour(graph, open, locator, { ...start, seconds: within }, -1, hours * 3600);
 		},
 		travelHours(targets) {
 			return targets.map((target) => {
