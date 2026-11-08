@@ -1,6 +1,7 @@
 // The first card of the carousel: the ring's summary or the screen's state (spec «Экран», «Первая карточка, по
 // состояниям»). The texts are the spec's table.
 import { useEffect, useState, type ReactNode } from 'react';
+import type { CitiesCount } from '../cities/in-ring.ts';
 import type { RingFailure } from '../ring/fetch-ring.ts';
 import { hoursShort, plural } from './copy.ts';
 import { LocateIcon, PinIcon, SearchIcon } from './icons.tsx';
@@ -9,7 +10,7 @@ export type FirstCardState =
 	| { readonly kind: 'no_origin'; readonly geolocationFailed: boolean }
 	| { readonly kind: 'calculating'; readonly hours: number; readonly request: string }
 	/** `cities`: how many cities the ring holds and in how many countries; undefined until the cities file comes. */
-	| { readonly kind: 'ring'; readonly hours: number; readonly cities?: { readonly count: number; readonly countries: number } }
+	| { readonly kind: 'ring'; readonly hours: number; readonly cities?: CitiesCount }
 	| { readonly kind: 'no_cities' }
 	| { readonly kind: 'empty'; readonly maxHours: number }
 	| { readonly kind: 'no_roads' }

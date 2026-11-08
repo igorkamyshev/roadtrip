@@ -8,7 +8,7 @@
 // page (then by `sendBeacon`, as is everything still waiting).
 import type { RingResponse } from 'worker/api';
 import type { City } from '../cities/cities.ts';
-import { citiesInRing } from '../cities/in-ring.ts';
+import { citiesInRing, countOf } from '../cities/in-ring.ts';
 import { nearestCity } from '../cities/nearest.ts';
 import type { RingFailure } from '../ring/fetch-ring.ts';
 import type { Settings } from '../state/settings.ts';
@@ -164,8 +164,8 @@ function outcomeOf(ending: Ending, cities: readonly City[] | undefined): Pick<Ri
 		return { outcome: answer.outcome, source };
 	}
 	// As the first card counts them.
-	const inRing = citiesInRing(cities, answer.ring, answer.access);
-	return { outcome: answer.outcome, source, cities_count: inRing.length, countries_count: new Set(inRing.map((city) => city.zone)).size };
+	const { count, countries } = countOf(citiesInRing(cities, answer.ring, answer.access));
+	return { outcome: answer.outcome, source, cities_count: count, countries_count: countries };
 }
 
 /** Where the origin is: the city picked in the search, else the nearest city of the file; nothing without the file. */

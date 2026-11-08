@@ -6,6 +6,16 @@ import type { Access } from 'worker/api';
 import type { RingGeometry } from '../map/overlay.ts';
 import type { City } from './cities.ts';
 
+/** How many cities the ring holds and in how many countries: the first card's numbers, and `ring result`'s. */
+export interface CitiesCount {
+	readonly count: number;
+	readonly countries: number;
+}
+
+export function countOf(cities: readonly City[]): CitiesCount {
+	return { count: cities.length, countries: new Set(cities.map((city) => city.zone)).size };
+}
+
 export function citiesInRing(cities: readonly City[], ring: RingGeometry, access: Access): City[] {
 	const inside = ringContains(ring);
 	return cities

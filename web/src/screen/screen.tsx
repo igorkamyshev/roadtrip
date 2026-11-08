@@ -9,13 +9,12 @@ import { type City, useCities, useCitiesFile } from '../cities/cities.ts';
 import { CitiesSheet } from '../cities/cities-sheet.tsx';
 import { CityCard, MoreCard } from '../cities/city-card.tsx';
 import { scrollToCard, useCarouselStops } from '../cities/carousel.ts';
-import { citiesInRing } from '../cities/in-ring.ts';
+import { citiesInRing, countOf } from '../cities/in-ring.ts';
 import { MapView, type MapHandle } from '../map/map-view.tsx';
 import type { MapCity } from '../map/overlay.ts';
 import { RingRequestError } from '../ring/fetch-ring.ts';
 import { ringKey, useCachedHours, useRing } from '../ring/use-ring.ts';
 import { point, type LatLon } from '../state/point.ts';
-import { settingsOf } from '../state/settings.ts';
 import { useScreenState } from '../state/use-screen-state.ts';
 import { GeolocationError, locate } from '../start/geolocation.ts';
 import { StartSheet } from '../start/start-sheet.tsx';
@@ -46,13 +45,7 @@ function citiesOnMap(cities: readonly City[], chosen: number | undefined): MapCi
 }
 
 export function Screen() {
-	const { origin, start, hours, citizenships, visas, setStart, setHours, setCitizenships, setVisas } = useScreenState();
-	const citizenshipsText = citizenships.join(',');
-	const visasText = visas.join(',');
-	const settings = useMemo(
-		() => settingsOf({ citizenships: citizenshipsText.split(','), visas: visasText === '' ? [] : visasText.split(',') }),
-		[citizenshipsText, visasText],
-	);
+	const { origin, start, hours, citizenships, visas, settings, setStart, setHours, setCitizenships, setVisas } = useScreenState();
 	const ring = useRing(origin, hours, settings);
 	const cities = useCities();
 	const cachedHours = useCachedHours(origin, settings);
@@ -351,7 +344,7 @@ function firstCardState(
 			}
 			return cities.length === 0
 				? { kind: 'no_cities' }
-				: { kind: 'ring', hours, cities: { count: cities.length, countries: new Set(cities.map((city) => city.zone)).size } };
+				: { kind: 'ring', hours, cities: countOf(cities) };
 		case 'empty':
 			return { kind: 'empty', maxHours: answer.maxHours };
 		case 'no_roads':

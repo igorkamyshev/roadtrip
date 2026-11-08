@@ -6,6 +6,7 @@ import { useCallback, useMemo, useRef, useState } from 'react';
 import type { Start } from '../start/start.ts';
 import { pointText } from './point.ts';
 import { searchFromState, stateFromSearch, type ScreenState } from './search.ts';
+import type { Settings } from './settings.ts';
 import { writeSaved } from './startup.ts';
 
 export interface ScreenStateControls extends ScreenState {
@@ -15,6 +16,8 @@ export interface ScreenStateControls extends ScreenState {
 	 * without an origin. The same object while the origin and its method stay.
 	 */
 	readonly start: Start | undefined;
+	/** The citizenships and the held visas, the same object while both stay: the rings' memory is keyed by them. */
+	readonly settings: Settings;
 	readonly setStart: (start: Start) => void;
 	readonly setHours: (hours: number) => void;
 	/** Sorted, at least one. */
@@ -83,5 +86,10 @@ export function useScreenState(): ScreenStateControls {
 		[change],
 	);
 
-	return { ...state, start, setStart, setHours, setCitizenships, setVisas };
+	// The link gives new lists on every render; their text says when they change.
+	const citizenshipsText = state.citizenships.join(',');
+	const visasText = state.visas.join(',');
+	const settings = useMemo((): Settings => ({ citizenships: state.citizenships, visas: state.visas }), [citizenshipsText, visasText]);
+
+	return { ...state, start, settings, setStart, setHours, setCitizenships, setVisas };
 }
