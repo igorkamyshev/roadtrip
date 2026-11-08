@@ -21,9 +21,9 @@ const FIRST_PAINT_BUDGET_KB = 165;
  * left out, and the build is as any other and uploads nothing.
  */
 function sourceMaps(env: NodeJS.ProcessEnv): PluginOption {
-	const personalApiKey = env.POSTHOG_PERSONAL_API_KEY?.trim();
-	const projectId = env.POSTHOG_PROJECT_ID?.trim();
-	if (!personalApiKey || !projectId) {
+	const personalApiKey = env.POSTHOG_PERSONAL_API_KEY?.trim() ?? '';
+	const projectId = env.POSTHOG_PROJECT_ID?.trim() ?? '';
+	if (personalApiKey === '' || projectId === '') {
 		return undefined;
 	}
 	return posthog({
