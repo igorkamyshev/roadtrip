@@ -69,10 +69,6 @@ The port of Protomaps' PMTiles Worker for Cloudflare (`serverless/cloudflare` in
 
 The dataset's version is in `engine/dataset/dataset.json`: the Worker bundles it, and the image copies it next to the graph, so both say the version of the dataset they were built with. The graph (`engine/dataset/graph.graph`) is not in git. Locally it is the graph of one region, built by `data`; the deploy (below) puts the world's and its version there from R2 before `wrangler deploy`. The world's graph of 2026-11-07 (357 MB) loads in 0.23–0.27 s, and the port opens 0.7–1.9 s after the process starts (Docker under the instance's limits, `docs/agents/infrastructure.md`).
 
-## The Container bench
-
-`bench/` is the temporary Worker of the Container bench (#25) and its measurements, which `.github/workflows/container-bench.yml` deploys on the Owner's account as `roadtrip-bench-<instance type>`, measures and deletes. `docs/container-bench.md` has the numbers and says how to run it again, say for another instance type or a faster engine.
-
 ## Run it locally
 
 `wrangler dev` builds the image with Docker and runs the Container. It needs a graph and a Docker daemon. For the basemap alone, see «The basemap locally» below.

@@ -96,7 +96,7 @@
 
 ## Как повторить
 
-Workflow `.github/workflows/container-bench.yml`. На обычный пуш он не запускается: его запускают руками (`workflow_dispatch`) или пушем в интеграционную ветку с правкой `.github/container-bench.json`. В этом файле:
+Кода замера в репозитории больше нет: замер был разовым, а его workflow запускался и пушем, разворачивая Worker'ы на аккаунте владельца. Код лежит в коммите [`182bb5a`](https://github.com/igorkamyshev/roadtrip/tree/182bb5a60a4cf7edc82aa96de13fd6030dea0c98): workflow `.github/workflows/container-bench.yml`, его настройки `.github/container-bench.json` и временный Worker `worker/bench/`. Чтобы повторить замер, скажем для другого типа инстанса или ускоренного движка, верните их оттуда (`git checkout 182bb5a -- .github/workflows/container-bench.yml .github/container-bench.json worker/bench`) и добавьте `bench/index.ts` в `include` у `worker/tsconfig.json`, а `bench/measure.ts` — у `worker/tsconfig.test.json`. Workflow на обычный пуш не запускается: его запускают руками (`workflow_dispatch`) или пушем с правкой `.github/container-bench.json`. В этом файле:
 
 - `graphRunId` — номер прогона, чей артефакт `europe-graph` взять. Пусто — собрать граф заново, это ~50 мин. Артефакт хранится 7 дней.
 - `instanceTypes` — типы инстансов, по одному временному Worker'у на каждый, по очереди.

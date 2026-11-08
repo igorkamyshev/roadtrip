@@ -1,7 +1,6 @@
 {
-	// The Worker, bundled by wrangler, with the runtime's types from `wrangler types`, and the Container bench's Worker
-	// (bench/index.ts). Its tests and the bench's measurements run in Node and have their own tsconfig.test.json. The
-	// engine's and rules' sources it imports use `.ts` specifiers.
+	// The Worker, bundled by wrangler, with the runtime's types from `wrangler types`. Its tests run in Node and have
+	// their own tsconfig.test.json. The engine's and rules' sources it imports use `.ts` specifiers.
 	"compilerOptions": {
 		"target": "es2024",
 		"lib": ["es2024"],
@@ -15,6 +14,6 @@
 		"resolveJsonModule": true,
 		"types": ["./worker-configuration.d.ts"]
 	},
-	"include": ["worker-configuration.d.ts", "src/**/*.ts", "bench/index.ts"],
+	"include": ["worker-configuration.d.ts", "src/**/*.ts"],
 	"exclude": ["src/**/*.test.ts"]
 }
