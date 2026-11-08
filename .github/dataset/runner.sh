@@ -25,5 +25,7 @@ sudo chown "$(id -u):$(id -g)" "$work"
 	echo "NOTES=$RUNNER_TEMP/notes.md"
 } >> "$GITHUB_ENV"
 touch "$RUNNER_TEMP/measures.md"
+# What measure.sh takes for the disk the job's files take: what is in use now.
+df -B1 --output=used "$work" | tail -1 > "$RUNNER_TEMP/disk-baseline"
 echo "Раннер: $(nproc) vCPU, $(free -g | awk '/^Mem/ { print $2 }') GiB памяти, $(df -h --output=avail "$work" | tail -1 | tr -d ' ') свободно в $work" > "$RUNNER_TEMP/notes.md"
 cat "$RUNNER_TEMP/notes.md"

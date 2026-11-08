@@ -1,4 +1,4 @@
 {
-	"run": 2,
-	"parts": ["antarctica", "central-america"]
+	"run": 3,
+	"parts": ["europe", "north-america", "asia", "africa", "south-america", "australia-oceania", "central-america", "antarctica"]
 }
