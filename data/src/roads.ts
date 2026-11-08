@@ -19,9 +19,16 @@ export const CLASS_SPEED_KMH: Readonly<Record<string, number>> = {
 	tertiary_link: 30,
 };
 
+/** CLASS_SPEED_KMH looked up by any way's `highway`: undefined for a value that is no road class of the graph. */
+const SPEED_BY_HIGHWAY: Readonly<Partial<Record<string, number>>> = CLASS_SPEED_KMH;
+
 /** The access tags for a car, from the most specific; the first one present decides. */
 const ACCESS_KEYS = ['motorcar', 'motor_vehicle', 'vehicle', 'access'];
 const NO_ACCESS = new Set(['no', 'private']);
+
+/** The `oneway` values of a way driven in the order of its nodes only, and against it only. */
+const ONEWAY_FORWARD = new Set(['yes', 'true', '1']);
+const ONEWAY_BACKWARD = new Set(['-1', 'reverse']);
 
 export interface Road {
 	readonly kmh: number;
@@ -33,23 +40,25 @@ export interface Road {
 
 /** The road a way is, or undefined when it is no road of the graph. */
 export function roadOf(tags: Tags): Road | undefined {
-	const classKmh = CLASS_SPEED_KMH[tags.highway ?? ''];
-	if (classKmh === undefined || tags.route === 'ferry' || tags.area === 'yes') {
-		return undefined;
-	}
-	const access = ACCESS_KEYS.map((key) => tags[key]).find((value) => value !== undefined);
-	if (access !== undefined && NO_ACCESS.has(access)) {
+	const classKmh = SPEED_BY_HIGHWAY[tags.highway ?? ''];
+	if (classKmh === undefined || tags.route === 'ferry' || tags.area === 'yes' || !carMayEnter(tags)) {
 		return undefined;
 	}
 	const kmh = Math.min(classKmh, maxspeedKmh(tags.maxspeed) ?? Infinity);
+	const { forward, backward } = directions(tags);
+	return { kmh, forward, backward };
+}
+
+/** Whether the way's access tags let a car on it. */
+function carMayEnter(tags: Tags): boolean {
+	const access = ACCESS_KEYS.map((key) => tags[key]).find((value) => value !== undefined);
+	return access === undefined || !NO_ACCESS.has(access);
+}
+
+/** The directions a car may drive the way in: by its `oneway`, which a motorway and a roundabout imply. */
+function directions(tags: Tags): Pick<Road, 'forward' | 'backward'> {
 	const oneway = tags.oneway ?? (tags.highway === 'motorway' || tags.junction === 'roundabout' ? 'yes' : 'no');
-	if (oneway === 'yes' || oneway === 'true' || oneway === '1') {
-		return { kmh, forward: true, backward: false };
-	}
-	if (oneway === '-1' || oneway === 'reverse') {
-		return { kmh, forward: false, backward: true };
-	}
-	return { kmh, forward: true, backward: true };
+	return { forward: !ONEWAY_BACKWARD.has(oneway), backward: !ONEWAY_FORWARD.has(oneway) };
 }
 
 /** A `maxspeed` in km/h: a number, in km/h unless it says mph; undefined for anything else ("signals", "RU:urban"). */

@@ -24,7 +24,17 @@ export function writePbf(source: OsmSource, path: string, options: PbfOptions): 
 	const nodes: OsmNode[] = [];
 	const ways: OsmWay[] = [];
 	const relations: OsmRelation[] = [];
-	source.read({ node: (node) => nodes.push(node), way: (way) => ways.push(way), relation: (relation) => relations.push(relation) });
+	source.read({
+		node: (node) => {
+			nodes.push(node);
+		},
+		way: (way) => {
+			ways.push(way);
+		},
+		relation: (relation) => {
+			relations.push(relation);
+		},
+	});
 	const coordinates = new Map(nodes.map((node) => [node.id, node]));
 
 	const header = new PbfWriter();
@@ -41,13 +51,27 @@ export function writePbf(source: OsmSource, path: string, options: PbfOptions): 
 		return index >= 0 ? index : strings.push(value) - 1;
 	};
 	const writeTags = (tags: Tags, pbf: PbfWriter) => {
-		pbf.writePackedVarint(2, Object.keys(tags).map(stringId));
-		pbf.writePackedVarint(3, Object.values(tags).map(stringId));
+		const entries = tagEntries(tags);
+		pbf.writePackedVarint(
+			2,
+			entries.map(([key]) => stringId(key)),
+		);
+		pbf.writePackedVarint(
+			3,
+			entries.map(([, value]) => stringId(value)),
+		);
 	};
-	const deltas = (values: readonly number[]) => values.map((value, index) => value - (index === 0 ? 0 : values[index - 1]));
 
 	const groups = new PbfWriter();
 	const keptNodes = options.locationsOnWays ? nodes.filter((node) => Object.keys(node.tags).length > 0) : nodes;
+	// Each node's keys and values, one after the other, and a 0 after the node's last.
+	const keysValues: number[] = [];
+	for (const node of keptNodes) {
+		for (const [key, value] of tagEntries(node.tags)) {
+			keysValues.push(stringId(key), stringId(value));
+		}
+		keysValues.push(0);
+	}
 	groups.writeMessage(
 		2,
 		(_, group) => {
@@ -57,10 +81,7 @@ export function writePbf(source: OsmSource, path: string, options: PbfOptions): 
 					dense.writePackedSVarint(1, deltas(keptNodes.map((node) => node.id)));
 					dense.writePackedSVarint(8, deltas(keptNodes.map((node) => node.lat)));
 					dense.writePackedSVarint(9, deltas(keptNodes.map((node) => node.lon)));
-					dense.writePackedVarint(
-						10,
-						keptNodes.flatMap((node) => [...Object.entries(node.tags).flatMap(([key, value]) => [stringId(key), stringId(value)]), 0]),
-					);
+					dense.writePackedVarint(10, keysValues);
 				},
 				null,
 			);
@@ -119,7 +140,9 @@ export function writePbf(source: OsmSource, path: string, options: PbfOptions): 
 	block.writeMessage(
 		1,
 		(_, table) => {
-			strings.forEach((value) => table.writeStringField(1, value));
+			for (const value of strings) {
+				table.writeStringField(1, value);
+			}
 		},
 		null,
 	);
@@ -127,6 +150,16 @@ export function writePbf(source: OsmSource, path: string, options: PbfOptions): 
 	const blockBytes = Buffer.concat([block.finish(), groupBytes]);
 
 	writeFileSync(path, Buffer.concat([blob('OSMHeader', header.finish()), blob('OSMData', blockBytes)]));
+}
+
+/** Differences from the value before, the first from 0. */
+function deltas(values: readonly number[]): number[] {
+	return values.map((value, index) => value - (index === 0 ? 0 : values[index - 1]));
+}
+
+/** The tags an element has, as key and value. */
+function tagEntries(tags: Tags): [string, string][] {
+	return Object.entries(tags).flatMap(([key, value]): [string, string][] => (value === undefined ? [] : [[key, value]]));
 }
 
 function blob(type: string, data: Uint8Array): Buffer {

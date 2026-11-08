@@ -30,9 +30,16 @@ export const ENGINE_SOURCES: readonly string[] = [
 	// marks at a border crossing, which nodes of the roads it keeps, and how it reads an extract.
 	'data/src/border-controls.ts',
 	'data/src/build-graph.ts',
+	'data/src/collapse.ts',
+	'data/src/column.ts',
 	'data/src/node-ids.ts',
+	'data/src/osm-nodes.ts',
 	'data/src/osm/pbf.ts',
+	'data/src/pieces.ts',
+	'data/src/repeated-ids.ts',
 	'data/src/roads.ts',
+	'data/src/scan.ts',
+	'data/src/segments.ts',
 	'data/src/zone-cells.ts',
 	'data/src/zones.ts',
 ];
@@ -42,4 +49,4 @@ export const ENGINE_SOURCES: readonly string[] = [
  * hex; data/test/engine-fingerprint.test.ts checks it. A new fingerprint with the same ENGINE_VERSION says the
  * change gives every ring as before.
  */
-export const ENGINE_FINGERPRINT = '3345e74587bd19f6ebfa4df34cfb1ceb24e6d7f4a86a42174822276088c47cd7';
+export const ENGINE_FINGERPRINT = '9edd9f359892aecba64167a5c4625404bbde5a904beae6023652302ec042dd94';
