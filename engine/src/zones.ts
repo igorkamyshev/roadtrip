@@ -16,11 +16,18 @@ interface IndexedRing {
 	readonly bandEdges: Uint32Array;
 }
 
+/**
+ * The rings by the cells of a grid of whole degrees their bounding boxes cover, so a lookup tries only the rings
+ * near the point: the world has thousands of rings, mostly islands.
+ */
+const GRID_CELL = 10_000_000;
+
 /** Which zone a point is in, by the zone polygons (`ZoneRings`). Shared by the builder and the engine. */
 export class ZoneLocator {
 	readonly #rings: ZoneRings;
 	readonly #indexed: IndexedRing[] = [];
 	readonly #parity: Uint8Array;
+	readonly #grid: RingGrid;
 
 	constructor(rings: ZoneRings) {
 		this.#rings = rings;
@@ -30,21 +37,30 @@ export class ZoneLocator {
 			zoneCount = Math.max(zoneCount, rings.zone[ring] + 1);
 		}
 		this.#parity = new Uint8Array(zoneCount);
+		this.#grid = gridRings(this.#indexed);
 	}
 
 	/** The zone of the point (1e-7 degrees): the lowest zone index whose polygon holds it, or 0 for none. */
 	zoneAt(lat: number, lon: number): number {
 		const { lat: ringLat, lon: ringLon } = this.#rings;
+		const grid = this.#grid;
+		const row = Math.floor(lat / GRID_CELL) - grid.firstRow;
+		const column = Math.floor(lon / GRID_CELL) - grid.firstColumn;
+		if (row < 0 || row >= grid.rows || column < 0 || column >= grid.columns) {
+			return 0;
+		}
+		const cell = row * grid.columns + column;
 		const parity = this.#parity;
 		parity.fill(0);
-		for (const ring of this.#indexed) {
+		for (let slot = grid.cellStart[cell]; slot < grid.cellStart[cell + 1]; slot++) {
+			const ring = this.#indexed[grid.cellRings[slot]];
 			if (lat < ring.minLat || lat >= ring.maxLat || lon < ring.minLon || lon > ring.maxLon) {
 				continue;
 			}
 			const band = Math.min(ring.bandStart.length - 2, Math.floor((lat - ring.minLat) / ring.bandHeight));
 			let crossings = 0;
-			for (let slot = ring.bandStart[band]; slot < ring.bandStart[band + 1]; slot++) {
-				const point = ring.bandEdges[slot];
+			for (let edge = ring.bandStart[band]; edge < ring.bandStart[band + 1]; edge++) {
+				const point = ring.bandEdges[edge];
 				const lat1 = ringLat[point];
 				const lat2 = ringLat[point + 1];
 				if (lat1 > lat !== lat2 > lat) {
@@ -114,6 +130,52 @@ export class ZoneLocator {
 		}
 		return cells;
 	}
+}
+
+interface RingGrid {
+	readonly firstRow: number;
+	readonly firstColumn: number;
+	readonly rows: number;
+	readonly columns: number;
+	/** The rings whose bounding box covers cell c are `cellRings[cellStart[c]]` … ; cells row by row. */
+	readonly cellStart: Uint32Array;
+	readonly cellRings: Uint32Array;
+}
+
+function gridRings(rings: readonly IndexedRing[]): RingGrid {
+	const rowOf = (lat: number) => Math.floor(lat / GRID_CELL);
+	const columnOf = (lon: number) => Math.floor(lon / GRID_CELL);
+	if (rings.length === 0) {
+		return { firstRow: 0, firstColumn: 0, rows: 0, columns: 0, cellStart: new Uint32Array(1), cellRings: new Uint32Array(0) };
+	}
+	// Loops, not Math.min(...): the world's rings can outgrow the argument limit.
+	let [firstRow, firstColumn, lastRow, lastColumn] = [Infinity, Infinity, -Infinity, -Infinity];
+	for (const ring of rings) {
+		firstRow = Math.min(firstRow, rowOf(ring.minLat));
+		firstColumn = Math.min(firstColumn, columnOf(ring.minLon));
+		lastRow = Math.max(lastRow, rowOf(ring.maxLat));
+		lastColumn = Math.max(lastColumn, columnOf(ring.maxLon));
+	}
+	const rows = lastRow - firstRow + 1;
+	const columns = lastColumn - firstColumn + 1;
+	const eachCell = (ring: IndexedRing, visit: (cell: number) => void) => {
+		for (let row = rowOf(ring.minLat) - firstRow; row <= rowOf(ring.maxLat) - firstRow; row++) {
+			for (let column = columnOf(ring.minLon) - firstColumn; column <= columnOf(ring.maxLon) - firstColumn; column++) {
+				visit(row * columns + column);
+			}
+		}
+	};
+	const cellStart = new Uint32Array(rows * columns + 1);
+	for (const ring of rings) {
+		eachCell(ring, (cell) => cellStart[cell + 1]++);
+	}
+	for (let cell = 0; cell < rows * columns; cell++) {
+		cellStart[cell + 1] += cellStart[cell];
+	}
+	const cellRings = new Uint32Array(cellStart[rows * columns]);
+	const fill = cellStart.slice(0, rows * columns);
+	rings.forEach((ring, index) => eachCell(ring, (cell) => (cellRings[fill[cell]++] = index)));
+	return { firstRow, firstColumn, rows, columns, cellStart, cellRings };
 }
 
 function indexRing(rings: ZoneRings, ring: number): IndexedRing {
