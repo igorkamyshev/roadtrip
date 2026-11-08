@@ -54,6 +54,18 @@ jobs:
       - run: pnpm typecheck
       # Every package's tests, in one vitest run from the root: the engine's seam and the ring API's.
       - run: pnpm test
+      # The Container's image as the deploy builds it (engine/Dockerfile), on a fixture's graph instead of the world's:
+      # it builds, starts and answers a ring. A file the server needs outside the image's COPYs fails here, not in
+      # Workers Builds after a merge.
+      - run: |
+          node data/src/cli/build-graph.ts data/test/fixtures/straight-road.osm engine/dataset/graph.graph
+          docker build -f engine/Dockerfile -t roadtrip-engine .
+          docker run -d --name engine -p 8080:8080 roadtrip-engine
+          if ! curl -fsS --retry 30 --retry-connrefused --retry-delay 1 -X POST localhost:8080/ring \
+            -d '{"origin":{"lat":0,"lon":0.5},"hours":1,"closedCountries":[]}' | grep -q '"outcome":"ring"'; then
+            docker logs engine
+            exit 1
+          fi
       # The screen's seam: the built client in Playwright's Chromium. Its build fails when the first paint's JavaScript
       # is over its budget (web/vite.config.ts). Locally the environment has the browser; CI
       # installs the one @playwright/test asks for.
