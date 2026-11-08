@@ -25,9 +25,9 @@ jobs:
           cache: pnpm
       # Every AGENTS.md has a sibling CLAUDE.md symlinked to it.
       - run: node scripts/agents-symlinks.ts --check
-      # Every tracked *.sh is executable in git's index (100755): the workflows run them by their path.
+      # Every tracked *.sh and git hook is executable in git's index (100755): workflows and git run them by their path.
       - run: |
-          if git ls-files -s -- '*.sh' | grep -v '^100755'; then
+          if git ls-files -s -- '*.sh' '.githooks/*' | grep -v '^100755'; then
             echo '::error::Not executable in git: git update-index --chmod=+x <file> for each file above'
             exit 1
           fi
@@ -37,10 +37,10 @@ jobs:
           echo "8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8  $RUNNER_TEMP/actionlint.tar.gz" | sha256sum --check --strict
           tar -xzf "$RUNNER_TEMP/actionlint.tar.gz" -C "$RUNNER_TEMP" actionlint
           "$RUNNER_TEMP/actionlint"
-      # Every tracked *.sh and the pre-commit hook, by the shellcheck the runner has.
+      # Every tracked *.sh and the git hooks, by the shellcheck the runner has.
       - run: |
           shellcheck --version
-          git ls-files -z -- '*.sh' | xargs -0 shellcheck .githooks/pre-commit
+          git ls-files -z -- '*.sh' '.githooks/*' | xargs -0 shellcheck
       - run: pnpm install --frozen-lockfile
       # The root AGENTS.md names every nested AGENTS.md.
       - run: pnpm lint
