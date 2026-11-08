@@ -19,6 +19,8 @@ Nothing is deployed by hand (spec «Набор данных», «Деплой»;
 
 The monthly world build (`.github/workflows/dataset.yml`) starts the same build once it moves the pointer, with the same request as below, and waits for the outcome (`.github/dataset/deploy.sh`, «Deploy the dataset»): a new dataset goes live with `main`'s code. It calls the API with the repository's secrets `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`, not the build token. A trial run deploys nothing.
 
+The Builds API takes only a user token, and the secret `CLOUDFLARE_API_TOKEN` is an account-owned one (2026-11-08: it verifies at `/accounts/{account_id}/tokens/verify`, not at `/user/tokens/verify`), so the API answers it «Invalid token» (12006) and the step fails: a new dataset gets published but not deployed until the Owner makes the secret a user token (`worker/README.md`, «What stays with the Owner»). Until then, deploy it by starting the build by hand (below).
+
 The first launch went in this order: `roadtrip-error-tracking`, then `roadtrip`, whose `tail_consumers` names it.
 
 ### The build token

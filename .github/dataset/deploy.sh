@@ -19,7 +19,7 @@ call() {
 	if [ "$(jq -r '.success // false' <<< "$response" 2> /dev/null)" != true ]; then
 		echo "::error::Cloudflare answered $1 $2 with: $(jq -c '.errors // .' <<< "$response" 2> /dev/null || echo "$response")"
 		if [ "$(jq -r '.errors[0].code // empty' <<< "$response" 2> /dev/null)" = 12006 ]; then
-			echo "::error::The Builds API takes only a user API token (My Profile → API Tokens) with Workers CI: Edit; an account-owned token answers «Invalid token»"
+			echo "::error::The Builds API takes only a user API token (My Profile → API Tokens) with Workers Builds Configuration: Edit; an account-owned token answers «Invalid token» (worker/README.md, «What stays with the Owner»)"
 		fi
 		exit 1
 	fi
