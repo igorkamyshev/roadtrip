@@ -169,17 +169,27 @@ export class Network {
 	readonly blocked: string[] = [];
 }
 
+/** The headers of a body as it was sent, which `fetch` has decoded. */
+const DECODED_BODY_HEADERS = new Set(['content-encoding', 'content-length', 'transfer-encoding']);
+
 async function cutOffTheNetwork(context: BrowserContext, network: Network, preview: string): Promise<void> {
 	// Routes run newest first; the catch-all lets the page's own host through to the routes before it, and this one,
 	// the oldest, answers what is left on the production host from the preview server.
 	await context.route(`${PRODUCTION}/**`, async (route) => {
 		const request = route.request();
 		const { pathname, search } = new URL(request.url());
-		const response = await context.request.fetch(new URL(pathname + search, preview).href, {
-			method: request.method(),
-			headers: request.headers(),
+		// Node's own fetch, not the context's (`context.request`): its answers are disposed as the context closes, and a
+		// request the page still makes as a test ends (a glyph of the basemap) would fail the test with «Fetch response
+		// has been disposed». A route still running then is no matter to Playwright, which drops its `fulfill`.
+		const response = await fetch(new URL(pathname + search, preview), { method: request.method(), headers: request.headers() });
+		// fetch decodes the body, so its encoding and length do not go with it.
+		const headers: Record<string, string> = {};
+		response.headers.forEach((value, name) => {
+			if (!DECODED_BODY_HEADERS.has(name)) {
+				headers[name] = value;
+			}
 		});
-		await route.fulfill({ response });
+		await route.fulfill({ status: response.status, headers, body: Buffer.from(await response.arrayBuffer()) });
 	});
 	await context.route('**/tiles/**', async (route) => {
 		network.tiles.push(new URL(route.request().url()));
