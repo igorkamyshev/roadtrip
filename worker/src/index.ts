@@ -88,6 +88,10 @@ export default {
 				fetch: (sherpaRequest) => fetch(sherpaRequest),
 				sherpaApiKey: env.SHERPA_API_KEY,
 				now: () => Date.now(),
+				sleep: (ms) =>
+					new Promise((resolve) => {
+						setTimeout(resolve, ms);
+					}),
 				waitUntil: (promise) => {
 					ctx.waitUntil(promise);
 				},

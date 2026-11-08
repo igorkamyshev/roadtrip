@@ -2,7 +2,7 @@
 // Sherpa's classes per citizenship, reduced to an entry mode per country, whose closed countries the calculation
 // avoids; Sherpa's copies in KV. Sherpa is a faked `fetch` (test/api.ts) answering in the shape of 2026-11-07.
 import { fixtureGraph } from 'data/fixture-graph';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { api, DAY, engineContainer, HOUR, MINUTE, recorded, SHERPA_API_KEY, SHERPA_COUNTRIES, SherpaDouble, sherpaMap, START } from '../test/api.ts';
 
 const straightRoad = fixtureGraph('straight-road.osm');
@@ -230,10 +230,6 @@ describe("Sherpa's copies", () => {
 });
 
 describe('a failure of Sherpa', () => {
-	afterEach(() => {
-		vi.useRealTimers();
-	});
-
 	const browser = { 'X-POSTHOG-DISTINCT-ID': '019a5f2c-browser', 'X-POSTHOG-SESSION-ID': '019a5f2c-session' };
 
 	it('without a copy answers visa_rules_missing with the citizenship, calculates nothing, and goes to logger.error', async () => {
@@ -313,19 +309,18 @@ describe('a failure of Sherpa', () => {
 	});
 
 	it('is a timeout after 10 s without an answer', async () => {
-		vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
 		const sherpa = new SherpaDouble();
 		sherpa.answer(() => 'no answer');
-		const { get, errors } = api({ container: await engineContainer(straightRoad), sherpa });
+		const { get, errors, timers } = api({ container: await engineContainer(straightRoad), sherpa });
 
 		let answered = false;
 		const answer = get('lat=0&lon=0&hours=2&cit=RUS').then((result) => {
 			answered = true;
 			return result;
 		});
-		await vi.advanceTimersByTimeAsync(10_000 - 1);
+		await timers.advance(10_000 - 1);
 		expect(answered).toBe(false);
-		await vi.advanceTimersByTimeAsync(1);
+		await timers.advance(1);
 
 		expect((await answer).body).toEqual({ outcome: 'visa_rules_missing', missingCitizenship: 'RUS' });
 		expect(errors.map(([, , context]) => context)).toEqual([expect.objectContaining({ reason: 'timeout', citizenship: 'RUS', served: 'error' })]);
@@ -422,10 +417,6 @@ describe('the citizenships', () => {
 });
 
 describe('sherpa fetched', () => {
-	afterEach(() => {
-		vi.useRealTimers();
-	});
-
 	it('tells each request to Sherpa a request waited for: the citizenship, the result, the status and how long it took', async () => {
 		const clock = { now: START };
 		const sherpa = new SherpaDouble();
@@ -469,17 +460,12 @@ describe('sherpa fetched', () => {
 	});
 
 	it('tells a timeout after 10 s, without a status', async () => {
-		vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
-		const clock = { now: START };
 		const sherpa = new SherpaDouble();
-		sherpa.answer(() => {
-			clock.now += 10_000;
-			return 'no answer';
-		});
-		const { get, analytics } = api({ container: await engineContainer(straightRoad), sherpa, clock });
+		sherpa.answer(() => 'no answer');
+		const { get, analytics, timers } = api({ container: await engineContainer(straightRoad), sherpa });
 
 		const answer = get('lat=0&lon=0&hours=2&cit=RUS');
-		await vi.advanceTimersByTimeAsync(10_000);
+		await timers.advance(10_000);
 		await answer;
 
 		expect(analytics.named('sherpa fetched')).toEqual([{ citizenship: 'RUS', result: 'timeout', duration_ms: 10_000, mode: 'blocking' }]);

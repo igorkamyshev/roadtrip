@@ -21,6 +21,41 @@ export interface Clock {
 	now: number;
 }
 
+/**
+ * The handler's timers on `clock`: `sleep` (deps) ends once the test has moved the clock past it with `advance`, never
+ * on its own, as `setTimeout` would.
+ */
+export class Timers {
+	readonly #sleeping: { readonly until: number; readonly wake: () => void }[] = [];
+
+	constructor(readonly clock: Clock) {}
+
+	readonly sleep = (ms: number): Promise<void> =>
+		new Promise((wake) => {
+			this.#sleeping.push({ until: this.clock.now + ms, wake });
+		});
+
+	/** Lets the handler run up to its next wait, moves the clock by `ms`, ends the sleeps due by then, and lets it run on. */
+	async advance(ms: number): Promise<void> {
+		await settled();
+		this.clock.now += ms;
+		for (const sleeper of this.#sleeping.filter(({ until }) => until <= this.clock.now)) {
+			this.#sleeping.splice(this.#sleeping.indexOf(sleeper), 1);
+			sleeper.wake();
+		}
+		await settled();
+	}
+}
+
+/** Once the promises that can go on have gone on: a few turns of Node's event loop. */
+async function settled(): Promise<void> {
+	for (let turn = 0; turn < 10; turn++) {
+		await new Promise((resolve) => {
+			setImmediate(resolve);
+		});
+	}
+}
+
 /** The Container: the engine server in this process, calculating with the engine on `graph`. */
 export async function engineContainer(graph: Graph, dataset = DATASET): Promise<Container> {
 	const server = createEngineServer({
@@ -219,8 +254,8 @@ export class SherpaDouble {
 export const SHERPA_API_KEY = 'sherpa-test-key';
 
 /**
- * The handler with its deps: a ring cache, a visa rules' store, a Sherpa and a PostHog of its own unless given ones,
- * all on `clock`, and the shipped visa exemptions' table unless given rows. `get` sends GET /api/ring with `query` and waits for the handler's background work too; `request` does
+ * The handler with its deps: a ring cache, a visa rules' store, a Sherpa, a PostHog and timers of its own unless given
+ * ones, all on `clock`, and the shipped visa exemptions' table unless given rows. `get` sends GET /api/ring with `query` and waits for the handler's background work too; `request` does
  * not, and `settle` waits for it later.
  */
 export function api({
@@ -232,10 +267,12 @@ export function api({
 	sherpa = new SherpaDouble(),
 	visaExemptions = VISA_EXEMPTIONS,
 	analytics = new AnalyticsDouble(),
+	timers = new Timers(clock),
 }: {
 	container: Container;
 	datasetVersion?: string;
 	clock?: Clock;
+	timers?: Timers;
 	rings?: MemoryKv;
 	visaRules?: MemoryKv;
 	sherpa?: SherpaDouble;
@@ -253,6 +290,7 @@ export function api({
 		fetch: sherpa.fetch,
 		sherpaApiKey: SHERPA_API_KEY,
 		now: () => clock.now,
+		sleep: timers.sleep,
 		waitUntil: (promise) => {
 			background.push(promise);
 		},
@@ -278,5 +316,5 @@ export function api({
 		await settle();
 		return answer;
 	};
-	return { get, request, settle, clock, kv: rings, rings, visaRules, sherpa, errors, analytics, deps };
+	return { get, request, settle, clock, timers, kv: rings, rings, visaRules, sherpa, errors, analytics, deps };
 }

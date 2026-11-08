@@ -36,6 +36,8 @@ export interface RingDeps {
 	readonly sherpaApiKey: string;
 	/** Milliseconds since the epoch. */
 	readonly now: () => number;
+	/** Resolves after `ms`, for Sherpa's timeout: `setTimeout`, or the tests' timers. */
+	readonly sleep: (ms: number) => Promise<void>;
 	readonly waitUntil: (promise: Promise<unknown>) => void;
 	readonly logger: Pick<Logger, 'error' | 'info'>;
 	/** PostHog: `ring served` and `sherpa fetched`, tied to the browser that sent the request (analytics.ts). */

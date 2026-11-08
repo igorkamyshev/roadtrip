@@ -49,6 +49,8 @@ export interface SherpaDeps {
 	readonly fetch: (request: Request) => Promise<Response>;
 	/** The Worker's secret `SHERPA_API_KEY`. */
 	readonly sherpaApiKey: string;
+	/** Resolves after `ms`: `setTimeout`, or the tests' timers. */
+	readonly sleep: (ms: number) => Promise<void>;
 }
 
 /**
@@ -70,19 +72,12 @@ export function failureReason(failure: SherpaFailure): string {
 /** Sherpa's classes for `passport`, or why there are none. Never throws. */
 export async function fetchSherpaClasses(passport: string, deps: SherpaDeps): Promise<SherpaResult> {
 	const controller = new AbortController();
-	// Set by the executor, which runs at once.
-	let timer!: ReturnType<typeof setTimeout>;
-	const timeout = new Promise<SherpaResult>((resolve) => {
-		timer = setTimeout(() => {
-			controller.abort();
-			resolve({ result: 'timeout', problem: `no answer in ${SHERPA_TIMEOUT_MS / 1000} s` });
-		}, SHERPA_TIMEOUT_MS);
+	const answered = request(passport, deps, controller.signal);
+	const timeout = deps.sleep(SHERPA_TIMEOUT_MS).then((): SherpaResult => {
+		controller.abort();
+		return { result: 'timeout', problem: `no answer in ${SHERPA_TIMEOUT_MS / 1000} s` };
 	});
-	try {
-		return await Promise.race([request(passport, deps, controller.signal), timeout]);
-	} finally {
-		clearTimeout(timer);
-	}
+	return Promise.race([answered, timeout]);
 }
 
 async function request(passport: string, deps: SherpaDeps, signal: AbortSignal): Promise<SherpaResult> {

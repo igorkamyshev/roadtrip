@@ -5,8 +5,8 @@ import { fixtureGraph } from 'data/fixture-graph';
 import { computeRing, dataVersion, type RingRequest } from 'engine';
 import type { Graph } from 'engine/graph';
 import { borderTable } from 'rules';
-import { afterEach, describe, expect, it, vi } from 'vitest';
-import { answering, api, counted, DATASET, DAY, engineContainer, MemoryKv, recorded, SherpaDouble, sherpaMap, START, taking } from '../test/api.ts';
+import { describe, expect, it } from 'vitest';
+import { answering, api, counted, DATASET, DAY, engineContainer, MemoryKv, MINUTE, recorded, SherpaDouble, sherpaMap, START, taking } from '../test/api.ts';
 import { handleRing } from './ring.ts';
 
 const straightRoad = fixtureGraph('straight-road.osm');
@@ -163,10 +163,6 @@ describe('the ring cache', () => {
 });
 
 describe('the Container', () => {
-	afterEach(() => {
-		vi.useRealTimers();
-	});
-
 	it('answers joined to a request it joined to a calculation of the same ring, which caches it', async () => {
 		const container = counted(await answering(200, { outcome: 'empty', maxHours: 5, startCountry: 'AAA', joined: true }));
 		const { get } = api({ container });
@@ -180,13 +176,12 @@ describe('the Container', () => {
 	});
 
 	it('is waited for as long as its queue takes', async () => {
-		vi.useFakeTimers();
 		let release = () => {};
 		const queued = new Promise<void>((resolve) => {
 			release = resolve;
 		});
 		const engine = await engineContainer(straightRoad);
-		const { get } = api({
+		const { get, timers } = api({
 			container: {
 				fetch: async (request) => {
 					await queued;
@@ -196,7 +191,7 @@ describe('the Container', () => {
 		});
 
 		const answer = get('lat=0&lon=0&hours=2&cit=RUS');
-		await vi.advanceTimersByTimeAsync(30 * 60 * 1000);
+		await timers.advance(30 * MINUTE);
 		release();
 
 		expect(await answer).toMatchObject({ status: 200, body: { outcome: 'ring', source: 'calculation' } });
