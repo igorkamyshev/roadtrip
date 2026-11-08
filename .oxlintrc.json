@@ -123,6 +123,16 @@
 			"rules": { "roadtrip/no-capture-exception": "error" }
 		},
 		{
+			// One reader of untyped JSON for the packages that can import the engine (CODING_STANDARDS.md, Where code goes).
+			"files": ["engine/**", "data/**", "worker/**"],
+			"rules": { "roadtrip/json-through-engine": "error" }
+		},
+		{
+			// The reader itself.
+			"files": ["engine/src/json.ts"],
+			"rules": { "roadtrip/json-through-engine": "off" }
+		},
+		{
 			// The Worker's clock and timers come from deps (CODING_STANDARDS.md, Where code goes; ADR 0002), its tests move them on their own clock.
 			"files": ["worker/src/**", "worker/test/**"],
 			"rules": { "roadtrip/time-through-deps": "error" }
