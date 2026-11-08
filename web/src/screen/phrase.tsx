@@ -1,11 +1,11 @@
-// The phrase over the map (spec «Экран»): «Из точки [на карте], 2–3 часа в пути. Гражданство [РФ], мои визы:
+// The phrase over the map (spec «Экран»): «Из точки [Белград], 2–3 часа в пути. Гражданство [РФ], мои визы:
 // [нет] ⓘ», and under it «визовые правила от <дата>» when they are old. Each word in brackets opens a sheet.
 import type { ReactNode } from 'react';
 import { hoursLong } from './copy.ts';
 import { InfoIcon } from './icons.tsx';
 
 export interface PhraseProps {
-	/** The origin's label: «на карте» for now (#33: the city of the search, the nearest city); undefined without one. */
+	/** The origin's label (src/start/start.ts, `startLabel`); undefined without an origin: «выберите». */
 	readonly startLabel: string | undefined;
 	readonly hours: number;
 	/** A ring is being calculated: the spinner next to the hours. */

@@ -102,7 +102,7 @@ test('the ring of another origin is not kept while the new origin’s ring is ca
 	await page.goto('/');
 	await expect(firstCard(page)).toContainText('В кольце до 1 ч');
 
-	await phrase(page).getByRole('button', { name: 'на карте' }).click();
+	await phrase(page).getByRole('button', { name: 'Белград' }).click();
 	await page.getByRole('dialog', { name: 'Откуда едем' }).getByRole('button', { name: 'Указать на карте' }).click();
 	await dragMap(page, -150, 0);
 	await page.getByRole('button', { name: 'Старт здесь' }).click();

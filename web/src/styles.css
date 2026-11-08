@@ -682,3 +682,11 @@ a {
 		transition-duration: 0.01ms !important;
 	}
 }
+
+/* ---------- the city search (the sheet «Откуда едем») ---------- */
+.found {
+	display: grid;
+}
+.found-row {
+	padding: 10px 2px;
+}

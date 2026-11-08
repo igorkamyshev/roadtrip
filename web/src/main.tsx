@@ -19,8 +19,8 @@ import { hashSearch, readSaved, startup, writeSaved } from './state/startup.ts';
 // MapLibre 6 looks for its worker next to its own module, which the bundle moves: point it at the worker's file.
 setWorkerUrl(mapWorkerUrl);
 
-const router = createScreenRouter();
 const opening = startup(hashSearch(window.location.hash), readSaved());
+const router = createScreenRouter({ opening: opening.source });
 if (opening.source !== 'default') {
 	// The link with its invalid values replaced, or the saved state put into the link.
 	const search = searchFromState(stateFromSearch(opening.search));

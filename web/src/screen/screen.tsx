@@ -13,14 +13,16 @@ import { MapView, type MapHandle } from '../map/map-view.tsx';
 import type { MapCity } from '../map/overlay.ts';
 import { RingRequestError } from '../ring/fetch-ring.ts';
 import { ringKey, useCachedHours, useRing } from '../ring/use-ring.ts';
-import type { Point } from '../state/point.ts';
+import { point, type Point } from '../state/point.ts';
 import { settingsOf } from '../state/settings.ts';
 import { useScreenState } from '../state/use-screen-state.ts';
 import { locate } from '../start/geolocation.ts';
+import { StartSheet } from '../start/start-sheet.tsx';
+import { startLabel } from '../start/start.ts';
 import { citizenshipsLabel, visasLabel } from './countries.ts';
 import { FirstCard, type FirstCardState } from './first-card.tsx';
 import { Phrase, PhraseToken, VisaRulesDate } from './phrase.tsx';
-import { CitizenshipSheet, InfoSheet, StartSheet, VisasSheet } from './sheets.tsx';
+import { CitizenshipSheet, InfoSheet, VisasSheet } from './sheets.tsx';
 import { Slider } from './slider.tsx';
 
 type SheetName = 'start' | 'citizenships' | 'visas' | 'info' | 'cities';
@@ -43,7 +45,7 @@ function citiesOnMap(cities: readonly City[], chosen: number | undefined): MapCi
 }
 
 export function Screen() {
-	const { origin, hours, citizenships, visas, setOrigin, setHours, setCitizenships, setVisas } = useScreenState();
+	const { origin, start, hours, citizenships, visas, setStart, setHours, setCitizenships, setVisas } = useScreenState();
 	const citizenshipsText = citizenships.join(',');
 	const visasText = visas.join(',');
 	const settings = useMemo(
@@ -62,9 +64,9 @@ export function Screen() {
 		(position: Point) => {
 			setGeolocationFailed(false);
 			setSheet(undefined);
-			setOrigin(position);
+			setStart({ method: 'geolocation', origin: position });
 		},
-		[setOrigin],
+		[setStart],
 	);
 	const notLocated = useCallback(() => {
 		setGeolocationFailed(true);
@@ -89,6 +91,13 @@ export function Screen() {
 		}
 	}, [origin, located, notLocated]);
 
+	const openStart = () => {
+		setSheet('start');
+	};
+	const startFromCity = (city: City) => {
+		setSheet(undefined);
+		setStart({ method: 'search', origin: point(city.lat, city.lon), city });
+	};
 	const startPinning = () => {
 		setSheet(undefined);
 		setPinning(true);
@@ -97,7 +106,7 @@ export function Screen() {
 		const center = map.current?.center();
 		setPinning(false);
 		if (center !== undefined) {
-			setOrigin(center);
+			setStart({ method: 'pin', origin: center });
 		}
 	};
 
@@ -147,6 +156,7 @@ export function Screen() {
 			map.current?.goTo(city, PICKED_CITY_ZOOM);
 		}
 	};
+	const label = useMemo(() => startLabel(start, cities), [start, cities]);
 	const mapCities = useMemo(() => citiesOnMap(shownCities ?? [], chosen), [shownCities, chosen]);
 	const closed = answer === undefined ? [] : Object.keys(answer.access).filter((code) => answer.access[code].mode === 'closed');
 	const openCitizenships = () => {
@@ -170,12 +180,10 @@ export function Screen() {
 				onCity={tapCity}
 			/>
 			<Phrase
-				startLabel={origin === undefined ? undefined : 'на карте'}
+				startLabel={label}
 				hours={hours}
 				busy={card.kind === 'calculating'}
-				onStart={() => {
-					setSheet('start');
-				}}
+				onStart={openStart}
 				onInfo={() => {
 					setSheet('info');
 				}}
@@ -215,6 +223,7 @@ export function Screen() {
 					<FirstCard
 						state={card}
 						actions={{
+							onSearch: openStart,
 							onPin: startPinning,
 							onLocate: locateHere,
 							onRetry: () => {
@@ -270,7 +279,9 @@ export function Screen() {
 			) : null}
 			{sheet === 'start' ? (
 				<StartSheet
+					cities={cities}
 					geolocationFailed={geolocationFailed}
+					onPick={startFromCity}
 					onPin={startPinning}
 					onLocate={locateHere}
 					onClose={() => {
