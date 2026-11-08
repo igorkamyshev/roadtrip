@@ -9,7 +9,7 @@ Read a package's `AGENTS.md` before working in it:
 - `engine/AGENTS.md`: the ring engine, keeping it portable, when to bump the engine version, where its tests live; the engine server of the Container and its image.
 - `data/AGENTS.md`: the graph builder, the zone outlines, the `ring` command, the OSM fixtures.
 
-`rules` holds the tables edited by hand: the border table, the countries as zones (`COUNTRIES`) and Sherpa's 199 passports (`SHERPA_PASSPORTS`); it has no `AGENTS.md` yet.
+`rules` holds the tables edited by hand: the border table, the visa exemptions' table (`VISA_EXEMPTIONS`), the Schengen area, the countries as zones (`COUNTRIES`) and Sherpa's 199 passports (`SHERPA_PASSPORTS`); it has no `AGENTS.md` yet.
 
 `error-tracking` is the Tail Worker that turns the Workers' errors into PostHog `$exception` events, and the home of the logger they write with (`import { logger } from 'error-tracking/logger'`). Its `README.md` says how a Worker attaches it and writes `logger.error`.
 
@@ -30,3 +30,7 @@ Default labels: `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-huma
 ### Domain docs
 
 Single-context: one `GLOSSARY.md` and `docs/adr/` at the repo root. See `docs/agents/domain.md`.
+
+### Visa exemptions review
+
+Reviewing or editing the visa exemptions' table or the Schengen area, the monthly run included: `docs/agents/visa-exemptions-review.md`.

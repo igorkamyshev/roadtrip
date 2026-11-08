@@ -11,6 +11,8 @@ export interface ScreenStateControls extends ScreenState {
 	readonly setHours: (hours: number) => void;
 	/** Sorted, at least one. */
 	readonly setCitizenships: (citizenships: readonly string[]) => void;
+	/** Sorted; none is fine. */
+	readonly setVisas: (visas: readonly string[]) => void;
 }
 
 export function useScreenState(): ScreenStateControls {
@@ -40,6 +42,9 @@ export function useScreenState(): ScreenStateControls {
 	const setCitizenships = useCallback((citizenships: readonly string[]) => {
 		change({ citizenships });
 	}, [change]);
+	const setVisas = useCallback((visas: readonly string[]) => {
+		change({ visas });
+	}, [change]);
 
-	return { ...state, setOrigin, setHours, setCitizenships };
+	return { ...state, setOrigin, setHours, setCitizenships, setVisas };
 }

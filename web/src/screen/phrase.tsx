@@ -13,7 +13,7 @@ export interface PhraseProps {
 	readonly onStart: () => void;
 	readonly onInfo: () => void;
 	/**
-	 * After «в пути.»: the settings' words, «Гражданство [РФ]» and (#31) «, мои визы: [нет]», each a `PhraseToken`.
+	 * After «в пути.»: the settings' words, «Гражданство [РФ], мои визы: [нет]», each a `PhraseToken`.
 	 * The line «визовые правила от <дата>» (`VisaRulesDate`) goes under the phrase, as its `footer`.
 	 */
 	readonly settings?: ReactNode;

@@ -11,7 +11,8 @@ export const RING_PATH = '/api/ring';
  *   cache);
  * - `hours`: N, a whole number from 1 to 12;
  * - `cit`: the citizenships, at least one, each one of Sherpa's passports (rules' `SHERPA_PASSPORTS`);
- * - `visas`: the held visas, `SCHENGEN` and alpha-3 of countries outside Schengen; may be empty or left out.
+ * - `visas`: the held visas, `SCHENGEN` and the alpha-3 of countries outside Schengen whose passports Sherpa knows
+ *   (rules' `HELD_VISAS`); may be empty or left out.
  *
  * For example `/api/ring?lat=44.8125&lon=20.4612&hours=3&cit=RUS,SRB&visas=SCHENGEN`.
  */
@@ -26,9 +27,9 @@ export interface RingQuery {
 export type RingSource = 'cache' | 'calculation' | 'joined';
 
 /**
- * How a country lets the person in (spec «Визовые правила и сведение»), best first: without a visa, by a held visa
- * (#31), a visa on arrival, an e-visa; `start` is the start country, open although the visa rules close it;
- * `closed` is never entered.
+ * How a country lets the person in (spec «Визовые правила и сведение»), best first: without a visa, by a held visa,
+ * a visa on arrival, an e-visa; `start` is the start country, open although the visa rules close it; `closed` is
+ * never entered.
  */
 export type EntryMode = 'visa_free' | 'held_visa' | 'visa_on_arrival' | 'evisa' | 'start' | 'closed';
 
@@ -37,7 +38,10 @@ export interface CountryAccess {
 	readonly mode: EntryMode;
 	/** The citizenship whose visa rules give the mode, or whose own country this is. */
 	readonly citizenship?: string;
-	/** The held visa that gives it (#31): `SCHENGEN` or an alpha-3. */
+	/**
+	 * The held visa that gives it: `SCHENGEN` or an alpha-3. For `held_visa` always, and for an `evisa` that a row of
+	 * the visa exemptions' table gives. A city's label says it: «по визе Шенгена», «по визе: <страна>».
+	 */
 	readonly visa?: string;
 	/** Closed for everyone, whatever the citizenships and visas (#13): such a country is always `closed`. */
 	readonly closedForEveryone?: true;

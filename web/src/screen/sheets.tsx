@@ -1,7 +1,9 @@
-// The sheets the phrase opens (spec «Экран»): «Откуда едем», «Гражданство» and «Что важно знать». #31 «Мои визы»
-// and #32 the list of all cities are `Sheet`s too.
-import { useState, type ReactNode } from 'react';
-import { CITIZENSHIP_CHOICES, countryName, DEFAULT_CITIZENSHIP } from './countries.ts';
+// The sheets the phrase opens (spec «Экран»): «Откуда едем», «Гражданство», «Мои визы» and «Что важно знать». #32's
+// list of all cities is a `Sheet` too.
+import { EXEMPTION_VISAS } from 'rules/held-visas';
+import { useId, useState, type ReactNode } from 'react';
+import { CITIZENSHIP_CHOICES, countryName, DEFAULT_CITIZENSHIP, SINGLE_COUNTRY_VISAS, visaName } from './countries.ts';
+import { opensByRows, opensText } from './held-visas.ts';
 import { CheckIcon, CloseIcon, InfoIcon, LocateIcon, PinIcon, SearchIcon, WarnIcon } from './icons.tsx';
 
 export function Sheet({ title, onClose, children }: { readonly title: string; readonly onClose: () => void; readonly children: ReactNode }) {
@@ -84,34 +86,122 @@ export function CitizenshipSheet({ citizenships, onChange, onClose }: Citizenshi
 				/>
 			</label>
 			<div className="pick">
-				{shown.map((code) => {
-					const chosen = citizenships.includes(code);
-					return (
-						<button
-							key={code}
-							type="button"
-							className={chosen ? 'pick-item on' : 'pick-item'}
-							aria-pressed={chosen}
-							onClick={() => {
-								toggle(code);
-							}}
-						>
-							<span className="pick-box">{chosen ? <CheckIcon /> : null}</span>
-							<span className="row-main">
-								<span className="pick-name">{countryName(code)}</span>
-								{code === DEFAULT_CITIZENSHIP ? (
-									<>
-										{' '}
-										<span className="pick-sub">по умолчанию</span>
-									</>
-								) : null}
-							</span>
-						</button>
-					);
-				})}
+				{shown.map((code) => (
+					<PickItem
+						key={code}
+						name={countryName(code)}
+						sub={code === DEFAULT_CITIZENSHIP ? 'по умолчанию' : undefined}
+						chosen={citizenships.includes(code)}
+						onToggle={() => {
+							toggle(code);
+						}}
+					/>
+				))}
 			</div>
 			{shown.length === 0 ? <p className="muted small">Такого гражданства нет в списке.</p> : null}
 		</Sheet>
+	);
+}
+
+export interface VisasSheetProps {
+	/** `SCHENGEN` and alpha-3 outside Schengen, sorted. */
+	readonly visas: readonly string[];
+	/** The citizenships chosen: the rows for some citizenships count only for theirs. */
+	readonly citizenships: readonly string[];
+	/** Today's date in UTC, YYYY-MM-DD: the rows count up to their last day. */
+	readonly today: string;
+	/** With the new visas, sorted; none is fine. */
+	readonly onChange: (visas: readonly string[]) => void;
+	readonly onClose: () => void;
+}
+
+/**
+ * «Мои визы»: first Schengen and the visas that open other countries, each with what the exemptions' rows acting
+ * today open for these citizenships; then «Виза одной страны», every other country outside Schengen, with a filter
+ * by name. Any number may be chosen, none too. Each change asks for its ring at once.
+ */
+export function VisasSheet({ visas, citizenships, today, onChange, onClose }: VisasSheetProps) {
+	const [filter, setFilter] = useState('');
+	const wanted = searchable(filter.trim());
+	const shown = SINGLE_COUNTRY_VISAS.filter((code) => searchable(countryName(code)).includes(wanted));
+	const toggle = (code: string) => {
+		onChange(visas.includes(code) ? visas.filter((held) => held !== code) : [...visas, code].sort());
+	};
+	const item = (code: string, sub?: string) => (
+		<PickItem
+			key={code}
+			name={visaName(code)}
+			sub={sub}
+			chosen={visas.includes(code)}
+			onToggle={() => {
+				toggle(code);
+			}}
+		/>
+	);
+	return (
+		<Sheet title="Мои визы" onClose={onClose}>
+			<p className="muted small sheet-note">Визы и ВНЖ, которые у вас уже есть.</p>
+			<PickSection title="Шенген и визы, которые открывают другие страны">
+				{EXEMPTION_VISAS.map((visa) => item(visa, opensText(visa, opensByRows(visa, today, citizenships))))}
+			</PickSection>
+			<PickSection title="Виза одной страны">
+				<label className="search-in">
+					<SearchIcon />
+					<input
+						type="search"
+						placeholder="Страна"
+						aria-label="Найти страну"
+						value={filter}
+						onChange={(event) => {
+							setFilter(event.target.value);
+						}}
+					/>
+				</label>
+				{shown.map((code) => item(code))}
+				{shown.length === 0 ? <p className="muted small">Такой страны нет в списке.</p> : null}
+			</PickSection>
+		</Sheet>
+	);
+}
+
+/** A choice of a multiple-choice sheet: a box, the name, and a line under it. */
+function PickItem({
+	name,
+	sub,
+	chosen,
+	onToggle,
+}: {
+	readonly name: string;
+	readonly sub: string | undefined;
+	readonly chosen: boolean;
+	readonly onToggle: () => void;
+}) {
+	return (
+		<button type="button" className={chosen ? 'pick-item on' : 'pick-item'} aria-pressed={chosen} onClick={onToggle}>
+			<span className="pick-box">{chosen ? <CheckIcon /> : null}</span>
+			<span className="row-main">
+				<span className="pick-name">{name}</span>
+				{sub === undefined ? null : (
+					<>
+						{' '}
+						<span className="pick-sub">{sub}</span>
+					</>
+				)}
+			</span>
+		</button>
+	);
+}
+
+/** A titled part of a multiple-choice sheet: a region named by its title. */
+function PickSection({ title, children }: { readonly title: string; readonly children: ReactNode }) {
+	const id = useId();
+	return (
+		<section className="pick" aria-labelledby={id}>
+			<h4 className="pick-sep" id={id}>
+				{title}
+			</h4>
+			{children}
+		</section>
 	);
 }
 

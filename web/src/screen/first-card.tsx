@@ -22,6 +22,8 @@ export interface FirstCardActions {
 	readonly onRetry: () => void;
 	/** Opens the sheet «Гражданство». */
 	readonly onCitizenships: () => void;
+	/** Opens the sheet «Мои визы». */
+	readonly onVisas: () => void;
 }
 
 /** How long «Считаем…» waits before it says the calculation takes longer than usual. */
@@ -56,11 +58,15 @@ export function FirstCard({ state, actions }: { readonly state: FirstCardState; 
 				</Card>
 			);
 		case 'empty':
-			// #31 adds the button «Мои визы».
 			return (
 				<Card>
 					<h3>Дальше {state.maxHours} ч не уехать</h3>
 					<p className="muted small">Дальше море или закрытые страны. Добавьте свои визы или уменьшите время.</p>
+					<div className="acts">
+						<button type="button" className="btn" onClick={actions.onVisas}>
+							Мои визы
+						</button>
+					</div>
 				</Card>
 			);
 		case 'no_roads':
