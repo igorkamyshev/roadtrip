@@ -1,7 +1,7 @@
 // The one screen (spec «Экран», variant C of the prototype): the map under everything, the phrase over it, the
 // slider at its right edge, the carousel at the bottom, and the sheets.
 import type { UseQueryResult } from '@tanstack/react-query';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { utcDate } from 'rules/held-visas';
 import type { RingResponse } from 'worker/api';
 import { useScreenAnalytics } from '../analytics/use-screen-analytics.ts';
@@ -10,7 +10,7 @@ import { CitiesSheet } from '../cities/cities-sheet.tsx';
 import { CityCard, MoreCard } from '../cities/city-card.tsx';
 import { scrollToCard, useCarouselStops } from '../cities/carousel.ts';
 import { citiesInRing, countOf } from '../cities/in-ring.ts';
-import { MapView, type MapHandle } from '../map/map-view.tsx';
+import type { MapHandle } from '../map/map-view.tsx';
 import type { MapCity } from '../map/overlay.ts';
 import { RingRequestError } from '../ring/fetch-ring.ts';
 import { ringKey, useCachedHours, useRing } from '../ring/use-ring.ts';
@@ -24,6 +24,9 @@ import { FirstCard, type FirstCardState } from './first-card.tsx';
 import { Phrase, PhraseToken, VisaRulesDate } from './phrase.tsx';
 import { CitizenshipSheet, InfoSheet, VisasSheet } from './sheets.tsx';
 import { Slider } from './slider.tsx';
+
+/** The map, a chunk of its own with MapLibre: the phrase, the slider and the first card paint without waiting for it. */
+const MapView = lazy(async () => ({ default: (await import('../map/map-view.tsx')).MapView }));
 
 type SheetName = 'start' | 'citizenships' | 'visas' | 'info' | 'cities';
 
@@ -171,17 +174,19 @@ export function Screen() {
 
 	return (
 		<div className="screen">
-			<MapView
-				ref={map}
-				origin={origin}
-				ring={shownRing}
-				striped={ring.isPlaceholderData}
-				fit={ring.isPlaceholderData || shownRing === undefined ? undefined : requestId}
-				pinning={pinning}
-				closed={closed}
-				cities={mapCities}
-				onCity={tapCity}
-			/>
+			<Suspense fallback={null}>
+				<MapView
+					ref={map}
+					origin={origin}
+					ring={shownRing}
+					striped={ring.isPlaceholderData}
+					fit={ring.isPlaceholderData || shownRing === undefined ? undefined : requestId}
+					pinning={pinning}
+					closed={closed}
+					cities={mapCities}
+					onCity={tapCity}
+				/>
+			</Suspense>
 			<Phrase
 				startLabel={label}
 				hours={hours}

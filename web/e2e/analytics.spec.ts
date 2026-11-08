@@ -84,6 +84,41 @@ test('an error the screen did not catch goes to PostHog', async ({ page, ringApi
 	]);
 });
 
+test('posthog-js comes after the screen, and still gets the errors thrown before it came, and the ring waits for its ids', async ({
+	page,
+	context,
+	ringApi,
+	posthog,
+}) => {
+	// The chunk of posthog-js held until the screen is up and has thrown.
+	let release = () => {};
+	const held = new Promise<void>((resolve) => {
+		release = resolve;
+	});
+	await context.route(/\/assets\/posthog-client-[\w-]+\.js$/u, async (route) => {
+		await held;
+		await route.fallback();
+	});
+	ringApi.respond((call) => squareRing(BELGRADE.lat, BELGRADE.lon, call.hours - 1, call.hours));
+
+	await openInProduction(page, LINK);
+	await expect(phrase(page)).toContainText('2–3 часа в пути.');
+	await page.evaluate(() => {
+		setTimeout(() => {
+			throw new RangeError('broke before PostHog');
+		});
+	});
+	await page.evaluate(() => new Promise((resolve) => setTimeout(resolve, 0)));
+	expect(ringApi.calls).toEqual([]);
+	release();
+
+	await expectRingCard(page, '2–3 ч');
+	expect(ringApi.calls[0].headers['x-posthog-distinct-id']).toEqual(expect.any(String));
+	await expect.poll(() => posthog.named('$exception'), SENT).toEqual([
+		expect.objectContaining({ $exception_list: [expect.objectContaining({ type: 'RangeError', value: 'broke before PostHog' })] }),
+	]);
+});
+
 test('off the production host PostHog is not started: nothing goes to it', async ({ page, context, ringApi, posthog }) => {
 	const toPostHog: string[] = [];
 	context.on('request', (request) => {

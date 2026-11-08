@@ -1,5 +1,6 @@
 // Reading the screen in its tests: the DOM by role and text, the map by its sources and layers (never pixels),
-// through the MapLibre map the client announces, which the fixtures keep as `window.__roadtripMap` (e2e/fixtures.ts).
+// through the MapLibre map the client announces once it shows the screen's state, which the fixtures keep as
+// `window.__roadtripMap` (e2e/fixtures.ts). Each reading of the map waits for it.
 import { expect, type Page } from '@playwright/test';
 import type { Feature, FeatureCollection, GeoJSON, Geometry } from 'geojson';
 
@@ -46,8 +47,17 @@ export async function dottedHours(page: Page): Promise<number[]> {
 	);
 }
 
+/**
+ * Waits for the map: the client announces it once it is loaded and shows the screen's state (the map view is a chunk
+ * of its own, which may come after the first card).
+ */
+export async function mapIsUp(page: Page): Promise<void> {
+	await page.waitForFunction(() => (window as unknown as { __roadtripMap?: unknown }).__roadtripMap !== undefined);
+}
+
 /** The GeoJSON of a map source: `ring` (the ring), `start` (the origin's marker) or `cities` (the ring's cities). */
 export async function sourceData(page: Page, source: 'ring' | 'start' | 'cities'): Promise<FeatureCollection> {
+	await mapIsUp(page);
 	return page.evaluate(async (id) => {
 		const map = (window as unknown as { __roadtripMap?: MapForTests }).__roadtripMap;
 		const data = await map?.getSource(id)?.getData();
@@ -68,6 +78,7 @@ export async function startOnMap(page: Page): Promise<number[] | undefined> {
 
 /** Whether the ring is drawn with the running stripes of a calculation (the old ring while a new one comes). */
 export async function ringIsStriped(page: Page): Promise<boolean> {
+	await mapIsUp(page);
 	return page.evaluate(() => {
 		const map = (window as unknown as { __roadtripMap?: MapForTests }).__roadtripMap;
 		return map?.getLayoutProperty('ring-stripes', 'visibility') === 'visible';
@@ -76,6 +87,7 @@ export async function ringIsStriped(page: Page): Promise<boolean> {
 
 /** The zones the hatching covers: those its layer's filter lets through, sorted. */
 export async function hatchedZones(page: Page): Promise<string[]> {
+	await mapIsUp(page);
 	const filter = await page.evaluate(() => {
 		const map = (window as unknown as { __roadtripMap?: MapForTests }).__roadtripMap;
 		// Until the map has loaded, it has no layers.
@@ -88,6 +100,7 @@ export async function hatchedZones(page: Page): Promise<string[]> {
 
 /** The zones whose outlines the map holds (the source `zones`), in its order. */
 export async function outlinesOnMap(page: Page): Promise<string[]> {
+	await mapIsUp(page);
 	const data = await page.evaluate(async () => {
 		const map = (window as unknown as { __roadtripMap?: MapForTests }).__roadtripMap;
 		return map?.getSource('zones')?.getData();

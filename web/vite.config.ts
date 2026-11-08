@@ -36,9 +36,9 @@ export default defineConfig({
 	build: {
 		// MapLibre 6 needs WebGL2 and modern JS anyway; the entry awaits the opening state at the top level.
 		target: 'es2022',
-		// One screen, one chunk of 1.9 MB: MapLibre alone is about 0.8 MB of it, posthog-js 0.4 MB, React and TanStack
-		// the rest.
-		chunkSizeWarningLimit: 2000,
+		// The screen is 0.42 MB (132 KB gzip); its two chunks of its own come after the first paint: the map view with
+		// MapLibre and the basemap's style, 1.1 MB (297 KB gzip), and posthog-js on the production host, 0.37 MB.
+		chunkSizeWarningLimit: 1200,
 	},
 	server: {
 		// `pnpm dev` of the worker (wrangler dev) answers the ring.

@@ -2,6 +2,7 @@
 // `outcome`; a block by the WAF (429) and anything else that is not 200, the network's failure included, is a
 // `RingRequestError` the first card shows, and `ring result` tells (src/analytics/).
 import { RING_PATH, type RingQuery, type RingResponse } from 'worker/api';
+import { analyticsStarted } from '../analytics/posthog.ts';
 
 /** Why the ring did not come: Cloudflare's block for too many requests, or any other failure. */
 export type RingFailure = 'too_many_requests' | 'error';
@@ -22,9 +23,11 @@ export class RingRequestError extends Error {
  * after the person moved on still goes to the memory of rings, it is only not shown.
  */
 export async function fetchRing(query: RingQuery): Promise<RingResponse> {
+	// On the production host, once posthog-js is up: it wraps the global fetch to add its tracing headers.
+	await analyticsStarted();
 	let response: Response;
 	try {
-		// The global fetch, looked up at the call: posthog-js wraps it to add its tracing headers (src/analytics/posthog.ts).
+		// The global fetch, looked up at the call, as posthog-js wrapped it.
 		response = await fetch(ringUrl(query));
 	} catch {
 		throw new RingRequestError('error');

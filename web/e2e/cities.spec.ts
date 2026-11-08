@@ -6,7 +6,7 @@
 import type { Locator, Page } from '@playwright/test';
 import type { Access } from 'worker/api';
 import { allowGeolocation, expect, serveCities, squareRing, test, visaRules } from './fixtures.ts';
-import { citiesOnMap, distanceFromTheMiddle, firstCard, labelsOnMap, mapZoom, phrase, slider, tapMap } from './screen.ts';
+import { citiesOnMap, distanceFromTheMiddle, firstCard, labelsOnMap, mapAtRest, mapZoom, phrase, slider, tapMap } from './screen.ts';
 
 const BELGRADE = { lat: 44.8176, lon: 20.4573 };
 const LINK = '/#/?p=44.81760,20.45730&h=3';
@@ -202,7 +202,19 @@ test.describe('the carousel and the map', () => {
 		ringApi.respond(() => ringAroundBelgrade(WITH_SCHENGEN_VISA));
 		await page.goto(LINK);
 		await expect(cityCards(page)).toHaveCount(12);
+		// The map is a chunk of its own: the carousel moves it once it is up and has fit the ring.
+		await mapAtRest(page);
 	});
+
+	/**
+	 * Opens the list of all by «и ещё», at the carousel's end. Scrolling to it is a stop of the carousel, which chooses
+	 * the city in its middle 140 ms later: the page's clock runs past that before the test picks a city, as a person's
+	 * fingers would.
+	 */
+	async function openTheList(page: Page): Promise<void> {
+		await page.getByRole('button', { name: /и ещё/u }).click();
+		await page.clock.fastForward(1000);
+	}
 
 	/** How far the place is from the middle of the map once the camera went to it: past its easing, by the page's clock. */
 	async function wentTo(page: Page, at: { readonly lat: number; readonly lon: number }): Promise<number> {
@@ -251,7 +263,7 @@ test.describe('the carousel and the map', () => {
 	});
 
 	test('a city picked in the list of all is chosen on the map, which goes to it', async ({ page }) => {
-		await page.getByRole('button', { name: /и ещё/u }).click();
+		await openTheList(page);
 
 		await page.getByRole('dialog').getByTestId('city-row').filter({ hasText: 'Осиек' }).click();
 
@@ -264,7 +276,7 @@ test.describe('the carousel and the map', () => {
 	});
 
 	test('a city picked in the list of all that has a card is chosen in the carousel', async ({ page }) => {
-		await page.getByRole('button', { name: /и ещё/u }).click();
+		await openTheList(page);
 
 		await page.getByRole('dialog').getByTestId('city-row').filter({ hasText: 'Тузла' }).click();
 

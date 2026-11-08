@@ -1,7 +1,8 @@
 // The map under the whole screen: MapLibre GL with the basemap and the overlay (overlay.ts). It shows the ring
 // whole when a new one comes, with room for the phrase, the slider and the carousel, goes to a city when the screen
 // says, and tells the screen of a tap on a city.
-import { Map as MapLibre, type MapMouseEvent } from 'maplibre-gl';
+import { Map as MapLibre, type MapMouseEvent, setWorkerUrl } from 'maplibre-gl';
+import mapWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?url';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { useEffect, useImperativeHandle, useRef, useState, type Ref } from 'react';
 import { point, pointText, type LatLon } from '../state/point.ts';
@@ -22,11 +23,14 @@ import {
 } from './overlay.ts';
 
 /**
- * The event the map view announces its MapLibre map with, on `window`, once it is made. Nothing in the client listens
- * and nothing keeps the map on `window`: the screen tests listen from an init script and read the map's sources
- * through it (e2e/fixtures.ts, e2e/screen.ts), on the very build that is deployed.
+ * The event the map view announces its MapLibre map with, on `window`, once it is loaded and shows what the screen
+ * gave it. Nothing in the client listens and nothing keeps the map on `window`: the screen tests listen from an init
+ * script and read the map's sources through it (e2e/fixtures.ts, e2e/screen.ts), on the very build that is deployed.
  */
 export const MAP_EVENT = 'roadtrip:map';
+
+// MapLibre 6 looks for its worker next to its own module, which the bundle moves: point it at the worker's file.
+setWorkerUrl(mapWorkerUrl);
 
 /** Room around the ring for the phrase (top), the slider (right) and the carousel (bottom), as in the prototype. */
 export const MAP_PADDING = { top: 130, right: 74, bottom: 200, left: 16 } as const;
@@ -80,7 +84,6 @@ export function MapView({ origin, ring, striped, fit, pinning, closed, cities, o
 			...(start === undefined ? OVERVIEW : { center: [start.lon, start.lat], zoom: ORIGIN_ZOOM }),
 			attributionControl: { compact: true },
 		});
-		window.dispatchEvent(new CustomEvent(MAP_EVENT, { detail: created }));
 		let removed = false;
 		created.once('load', () => {
 			addOverlay(created);
@@ -174,6 +177,13 @@ export function MapView({ origin, ring, striped, fit, pinning, closed, cities, o
 		map.fitBounds(bounds(ring), { padding: MAP_PADDING, maxZoom: 11 });
 		// Only a new ring moves the camera, and `fit` changes with each.
 	}, [map, fit]);
+
+	// Last: the effects above have shown the screen's state on the loaded map by now (MAP_EVENT).
+	useEffect(() => {
+		if (map !== undefined) {
+			window.dispatchEvent(new CustomEvent(MAP_EVENT, { detail: map }));
+		}
+	}, [map]);
 
 	return (
 		<div className="map">

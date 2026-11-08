@@ -47,6 +47,8 @@ export class ScreenAnalytics {
 	#lastAsk: string | undefined;
 	/** The ring request under way: what was asked and when. */
 	#pending: { readonly ask: RingAsk; readonly askedAt: number } | undefined;
+	/** While the page goes away: what goes now goes by beacon. */
+	#leaving = false;
 
 	constructor(
 		private readonly send: Send,
@@ -119,9 +121,14 @@ export class ScreenAnalytics {
 		this.#ringResult(pending.ask, 'abandoned', now - pending.askedAt, now);
 	}
 
-	/** The person leaves the page: the request under way is abandoned, and everything still waiting goes by beacon. */
+	/**
+	 * The person leaves the page: the request under way is abandoned, and it and everything still waiting go by
+	 * beacon, whether posthog-js's own `pagehide` came before this one or not.
+	 */
 	leave(): void {
+		this.#leaving = true;
 		this.abandon();
+		this.#leaving = false;
 		const cities = this.#cities.settled ? this.#cities.cities : undefined;
 		for (const event of this.#waiting.splice(0)) {
 			this.send(event.event, event.properties(cities), { at: new Date(event.at), beacon: true });
@@ -140,7 +147,7 @@ export class ScreenAnalytics {
 	/** Sends the event now if the cities are known, else when they are. */
 	#emit<Event extends BrowserEvent>(event: Event, properties: (cities: readonly City[] | undefined) => BrowserEvents[Event], at: number): void {
 		if (this.#cities.settled) {
-			this.send(event, properties(this.#cities.cities));
+			this.send(event, properties(this.#cities.cities), this.#leaving ? { beacon: true } : undefined);
 		} else {
 			this.#waiting.push({ event, properties, at });
 		}

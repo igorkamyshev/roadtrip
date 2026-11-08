@@ -1,5 +1,6 @@
 // The client's entry: PostHog on the production host, the opening state (link, then saved, then defaults), then
-// the screen.
+// the screen. posthog-js (src/analytics/posthog-client.ts) and MapLibre (src/map/map-view.tsx) come as chunks of their
+// own, after the first paint.
 import { send, startAnalytics } from './analytics/posthog.ts';
 import '@fontsource/golos-text/400.css';
 import '@fontsource/golos-text/500.css';
@@ -10,8 +11,6 @@ import '@fontsource/unbounded/700.css';
 import './styles.css';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { RouterProvider } from '@tanstack/react-router';
-import { setWorkerUrl } from 'maplibre-gl';
-import mapWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?url';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { createScreenRouter } from './router.tsx';
@@ -20,9 +19,6 @@ import { hashSearch, readSaved, startup, writeSaved } from './state/startup.ts';
 
 // First, so that PostHog catches the errors of everything after it.
 startAnalytics(window.location.hostname);
-
-// MapLibre 6 looks for its worker next to its own module, which the bundle moves: point it at the worker's file.
-setWorkerUrl(mapWorkerUrl);
 
 const opening = startup(hashSearch(window.location.hash), readSaved());
 if (opening.source === 'link' && !opening.hadSaved) {
