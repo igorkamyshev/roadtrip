@@ -3,7 +3,7 @@
 import type { Page } from '@playwright/test';
 import type { Feature, FeatureCollection, GeoJSON, Geometry } from 'geojson';
 
-/** The phrase over the map: «Из точки [на карте], до 1 часа в пути. … ⓘ». */
+/** The phrase over the map: «Из точки [Белград], до 1 часа в пути. … ⓘ». */
 export const phrase = (page: Page) => page.getByTestId('phrase');
 
 /** The first card of the carousel: the ring's summary or the state. */

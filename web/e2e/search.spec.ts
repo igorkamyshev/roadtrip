@@ -1,0 +1,173 @@
+// The sheet «Откуда едем» and the origin's label (spec «Экран»: the phrase, the sheet, the first card's table;
+// stories 2, 4, 5): the city search by the start of the Russian or local name, «Указать на карте» and «Где я», and
+// the label of each way to set the origin. The cities are `CITIES` of the fixtures, real ones around Belgrade.
+import type { Page } from '@playwright/test';
+import { allowGeolocation, CITIES, expect, serveCities, squareRing, test } from './fixtures.ts';
+import { firstCard, phrase } from './screen.ts';
+
+const startSheet = (page: Page) => page.getByRole('dialog', { name: 'Откуда едем' });
+
+/** Opens «Откуда едем» from the phrase's start token (`label`) and types `text` into the search. */
+async function search(page: Page, label: string, text: string): Promise<void> {
+	await phrase(page).getByRole('button', { name: label }).click();
+	await startSheet(page).getByRole('searchbox', { name: 'Найти город' }).fill(text);
+}
+
+/** The cities the search shows, as their rows read: name, local name, country and population. */
+const found = (page: Page) => startSheet(page).getByTestId('found-city');
+
+/** A new load of the page, as after closing the tab: the browser's storage stays. */
+async function reopen(page: Page, path: string): Promise<void> {
+	await page.goto('about:blank');
+	await page.goto(path);
+}
+
+test.beforeEach(({ ringApi }) => {
+	ringApi.respond((call) => squareRing(Number(call.lat), Number(call.lon), 0, 0.5));
+});
+
+test.describe('the search', () => {
+	test('a city found by the start of its Russian name becomes the origin, and the phrase names it', async ({ page, ringApi }) => {
+		await page.goto('/');
+		await search(page, 'выберите', 'бел');
+		await startSheet(page).getByRole('button', { name: /^Белград/u }).click();
+
+		const [call] = await ringApi.waitForCalls(1);
+		expect(call).toMatchObject({ lat: '44.80400', lon: '20.46500', hours: 1 });
+		await expect(startSheet(page)).toHaveCount(0);
+		await expect(phrase(page)).toContainText('Из точки Белград, до 1 часа в пути.');
+		await expect(page).toHaveURL(/#\/\?p=44\.80400,20\.46500&h=1&cit=RUS$/u);
+	});
+
+	test('finds a city by the start of its local name, in any case, and says its country and population', async ({ page }) => {
+		await page.goto('/');
+		await search(page, 'выберите', 'SZEG');
+
+		await expect(found(page)).toHaveText(['Сегед Szeged Венгрия · 161 тыс.'], { useInnerText: true });
+	});
+
+	test('takes ё for е and е for ё', async ({ page }) => {
+		await serveCities(page, [...CITIES, [515012, 'Орёл', 'Orel', 52.965, 36.078, 303_169, 'RUS']]);
+		await page.goto('/');
+
+		await search(page, 'выберите', 'орел');
+		await expect(found(page)).toHaveText([/^Орёл/u]);
+		await startSheet(page).getByRole('searchbox', { name: 'Найти город' }).fill('сёгед');
+		await expect(found(page)).toHaveText([/^Сегед/u]);
+	});
+
+	test('shows the names that start so first, then those with a word that does, bigger cities higher', async ({ page }) => {
+		await page.goto('/');
+		await search(page, 'выберите', 'с');
+
+		await expect(found(page).locator('.row-name')).toHaveText(['Сараево', 'Сегед', 'Суботица', 'Смедерево', 'Нови-Сад', 'Дробета-Турну-Северин']);
+	});
+
+	test('says when the list has no such city', async ({ page }) => {
+		await page.goto('/');
+		await search(page, 'выберите', 'Лондон');
+
+		await expect(found(page)).toHaveCount(0);
+		await expect(startSheet(page)).toContainText('Такого города нет в списке. В нём города от 15 000 жителей.');
+	});
+});
+
+test.describe('the sheet «Откуда едем»', () => {
+	test('«Указать на карте» turns the pin mode on', async ({ page }) => {
+		await page.goto('/');
+		await phrase(page).getByRole('button', { name: 'выберите' }).click();
+
+		await startSheet(page).getByRole('button', { name: 'Указать на карте' }).click();
+
+		await expect(startSheet(page)).toHaveCount(0);
+		await expect(page.getByText('Двигайте карту, чтобы поставить точку под булавку')).toBeVisible();
+	});
+
+	test('«Где я» says under the buttons when the browser gives no position', async ({ page }) => {
+		// A link: the screen does not ask where the person is until «Где я».
+		await page.goto('/#/?p=44.80400,20.46500&h=1');
+		await phrase(page).getByRole('button', { name: 'Белград' }).click();
+		await expect(startSheet(page)).not.toContainText('Браузер не дал доступ к геолокации.');
+
+		await startSheet(page).getByRole('button', { name: 'Где я' }).click();
+
+		await expect(startSheet(page).locator('.chips + p')).toHaveText('Браузер не дал доступ к геолокации.');
+		await expect(phrase(page)).toContainText('Из точки Белград,');
+	});
+
+	test('«Где я» sets the origin where the person is, and the phrase names the nearest city', async ({ page, context, ringApi }) => {
+		await page.goto('/');
+		await phrase(page).getByRole('button', { name: 'выберите' }).click();
+		// Between Belgrade (12 km) and Pančevo (4 km).
+		await allowGeolocation(context, { lat: 44.85, lon: 20.6 });
+
+		await startSheet(page).getByRole('button', { name: 'Где я' }).click();
+
+		const [call] = await ringApi.waitForCalls(1);
+		expect(call).toMatchObject({ lat: '44.85000', lon: '20.60000' });
+		await expect(startSheet(page)).toHaveCount(0);
+		await expect(phrase(page)).toContainText('Из точки Панчево, до 1 часа в пути.');
+	});
+});
+
+test.describe("the origin's label", () => {
+	test('is «на карте» for the pin', async ({ page }) => {
+		await page.goto('/#/?p=44.80400,20.46500&h=1');
+		await expect(phrase(page)).toContainText('Из точки Белград,');
+
+		await phrase(page).getByRole('button', { name: 'Белград' }).click();
+		await startSheet(page).getByRole('button', { name: 'Указать на карте' }).click();
+		await page.getByRole('button', { name: 'Старт здесь' }).click();
+
+		await expect(phrase(page)).toContainText('Из точки на карте, до 1 часа в пути.');
+	});
+
+	test('is the nearest city on the first visit, by geolocation', async ({ page, context }) => {
+		// Novi Sad is 8 km away, Zrenjanin 43.
+		await allowGeolocation(context, { lat: 45.2, lon: 19.9 });
+		await page.goto('/');
+
+		await expect(phrase(page)).toContainText('Из точки Нови-Сад, до 1 часа в пути.');
+	});
+
+	test('is the nearest city for a link', async ({ page }) => {
+		// Niš is 3 km away.
+		await page.goto('/#/?p=43.30000,21.90000&h=1');
+
+		await expect(phrase(page)).toContainText('Из точки Ниш, до 1 часа в пути.');
+	});
+
+	test('is the nearest city for the saved state, a city of the search included', async ({ page }) => {
+		await page.goto('/#/?p=43.30000,21.90000&h=1');
+		await expect(phrase(page)).toContainText('Из точки Ниш,');
+		await search(page, 'Ниш', 'Ilid');
+		await startSheet(page).getByRole('button', { name: /^Ilidža/u }).click();
+		await expect(phrase(page)).toContainText('Из точки Ilidža,');
+
+		await reopen(page, '/');
+
+		await expect(page).toHaveURL(/#\/\?p=43\.83100,18\.30700&h=1&cit=RUS$/u);
+		await expect(phrase(page)).toContainText('Из точки Ilidža, до 1 часа в пути.');
+	});
+
+	test('is the nearest city of a link the person puts into the open page', async ({ page }) => {
+		await page.goto('/#/?p=44.80400,20.46500&h=1');
+		await search(page, 'Белград', 'Сараево');
+		await startSheet(page).getByRole('button', { name: /^Сараево/u }).click();
+		await expect(phrase(page)).toContainText('Из точки Сараево,');
+
+		await page.evaluate(() => {
+			window.location.hash = '#/?p=43.30000,21.90000&h=1&cit=RUS';
+		});
+
+		await expect(phrase(page)).toContainText('Из точки Ниш, до 1 часа в пути.');
+	});
+
+	test('is «на карте» when the cities file cannot be had', async ({ page }) => {
+		await page.route('**/data/cities.json', (route) => route.fulfill({ status: 404 }));
+		await page.goto('/#/?p=43.30000,21.90000&h=1');
+
+		await expect(firstCard(page)).toContainText('В кольце до 1 ч');
+		await expect(phrase(page)).toContainText('Из точки на карте, до 1 часа в пути.');
+	});
+});
