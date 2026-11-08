@@ -1,5 +1,5 @@
-// The city search of the sheet «Откуда едем» (spec «Экран»): the cities of the cities file by the start of their
-// Russian or local name, case and ё aside; up to 8, the names that start so first, bigger cities higher.
+// The city search of the sheet «Откуда едем» (spec «Экран», #33): the cities of the cities file by the start of their
+// Russian or local name, case and ё aside, a hyphen as a space; up to 8, bigger cities higher.
 import type { City } from './cities.ts';
 
 /** How many cities the search gives at most. */
@@ -24,28 +24,20 @@ function entriesOf(cities: readonly City[]): readonly Entry[] {
 }
 
 /**
- * Up to 8 cities whose Russian or local name starts with `text` («Бел»: Белград), then those with a later word
- * that does («Сад»: Нови-Сад); within each, the bigger first. Nothing for a blank text, nor for a text in the
- * middle of a word.
+ * Up to 8 cities whose Russian or local name starts with `text`, the bigger first: «Бел» is Белград, «нови с» Нови-Сад,
+ * and neither «Сад» nor «град» finds anything. Every match is one from the start, as the spec's «сначала совпадения с
+ * начала» wants them first: a later word of a name (Нови-Сад's «Сад») is not one. Nothing for a blank text.
  */
 export function searchCities(cities: readonly City[], text: string): City[] {
 	const wanted = searchable(text);
 	if (wanted === '') {
 		return [];
 	}
-	const word = ` ${wanted}`;
-	const found: { city: City; rank: number }[] = [];
-	for (const { city, names } of entriesOf(cities)) {
-		if (names.some((name) => name.startsWith(wanted))) {
-			found.push({ city, rank: 0 });
-		} else if (names.some((name) => name.includes(word))) {
-			found.push({ city, rank: 1 });
-		}
-	}
-	return found
-		.sort((one, two) => one.rank - two.rank || two.city.population - one.city.population || one.city.id - two.city.id)
-		.slice(0, SEARCH_RESULTS)
-		.map(({ city }) => city);
+	return entriesOf(cities)
+		.filter(({ names }) => names.some((name) => name.startsWith(wanted)))
+		.map(({ city }) => city)
+		.sort((one, two) => two.population - one.population || one.id - two.id)
+		.slice(0, SEARCH_RESULTS);
 }
 
 /**

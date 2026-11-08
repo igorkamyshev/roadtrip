@@ -15,7 +15,7 @@ import {
 	test,
 	visaRules,
 } from './fixtures.ts';
-import { dragSlider, firstCard, leave, mapAtRest, phrase } from './screen.ts';
+import { dragSlider, expectRingCard, firstCard, leave, mapAtRest, phrase } from './screen.ts';
 
 const BELGRADE = { lat: 44.8176, lon: 20.4573 };
 const LINK = '/#/?p=44.81760,20.45730&h=3&cit=RUS';
@@ -27,9 +27,9 @@ test('one page view a load, and no URL PostHog gets has the link’s #…, howev
 	ringApi.respond((call) => squareRing(BELGRADE.lat, BELGRADE.lon, call.hours - 1, call.hours));
 
 	await openInProduction(page, LINK);
-	await expect(firstCard(page)).toContainText('В кольце 2–3 ч');
+	await expectRingCard(page, '2–3 ч');
 	await dragSlider(page, 5);
-	await expect(firstCard(page)).toContainText('В кольце 4–5 ч');
+	await expectRingCard(page, '4–5 ч');
 	await expect.poll(() => posthog.named('ring result'), SENT).toHaveLength(2);
 
 	expect(posthog.named('$pageview')).toEqual([expect.objectContaining({ $current_url: `${PRODUCTION}/` })]);
@@ -43,7 +43,7 @@ test("every ring request carries the browser's PostHog ids, the first one of the
 	ringApi.respond((call) => squareRing(BELGRADE.lat, BELGRADE.lon, call.hours - 1, call.hours));
 
 	await openInProduction(page, LINK);
-	await expect(firstCard(page)).toContainText('В кольце 2–3 ч');
+	await expectRingCard(page, '2–3 ч');
 	await dragSlider(page, 5);
 	await expect.poll(() => posthog.named('ring result'), SENT).toHaveLength(2);
 
@@ -59,7 +59,7 @@ test("every ring request carries the browser's PostHog ids, the first one of the
 test('an error the screen did not catch goes to PostHog', async ({ page, ringApi, posthog }) => {
 	ringApi.respond((call) => squareRing(BELGRADE.lat, BELGRADE.lon, call.hours - 1, call.hours));
 	await openInProduction(page, LINK);
-	await expect(firstCard(page)).toContainText('В кольце 2–3 ч');
+	await expectRingCard(page, '2–3 ч');
 
 	await page.evaluate(() => {
 		setTimeout(() => {
@@ -82,9 +82,9 @@ test('off the production host PostHog is not started: nothing goes to it', async
 	ringApi.respond((call) => squareRing(BELGRADE.lat, BELGRADE.lon, call.hours - 1, call.hours));
 
 	await page.goto(LINK);
-	await expect(firstCard(page)).toContainText('В кольце 2–3 ч');
+	await expectRingCard(page, '2–3 ч');
 	await dragSlider(page, 5);
-	await expect(firstCard(page)).toContainText('В кольце 4–5 ч');
+	await expectRingCard(page, '4–5 ч');
 	await leave(page);
 
 	// A started PostHog asks for its remote config at once.
@@ -361,7 +361,7 @@ test('taps on the map are no dead clicks or rage clicks; a tap on text that does
 	posthog.remoteConfig = { ...posthog.remoteConfig, captureDeadClicks: true };
 	ringApi.respond((call) => squareRing(BELGRADE.lat, BELGRADE.lon, call.hours - 1, call.hours));
 	await openInProduction(page, LINK);
-	await expect(firstCard(page)).toContainText('В кольце 2–3 ч');
+	await expectRingCard(page, '2–3 ч');
 	await mapAtRest(page);
 
 	/** Three quick taps at the middle of `box`, as on a map that zooms by double taps. */

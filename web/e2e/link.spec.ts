@@ -3,7 +3,7 @@
 // entries, and saved; invalid parameters take their defaults.
 import type { Page } from '@playwright/test';
 import { allowGeolocation, expect, squareRing, test } from './fixtures.ts';
-import { dragSlider, firstCard, phrase, slider } from './screen.ts';
+import { dragSlider, expectRingCard, firstCard, phrase, slider } from './screen.ts';
 
 const BELGRADE = { lat: 44.8176, lon: 20.4573 };
 const SARAJEVO = '43.85630,18.41310';
@@ -24,7 +24,7 @@ async function reopen(page: Page, path: string): Promise<void> {
 test('a link opens its own state, not where the person is', async ({ page, ringApi }) => {
 	await page.goto(`/#/?p=${SARAJEVO}&h=2`);
 
-	await expect(firstCard(page)).toContainText('В кольце 1–2 ч');
+	await expectRingCard(page, '1–2 ч');
 	// The origin's label is the nearest city of the cities file.
 	await expect(phrase(page)).toContainText('Из точки Сараево, 1–2 часа в пути.');
 	await expect(slider(page)).toHaveAttribute('aria-valuenow', '2');
@@ -34,12 +34,12 @@ test('a link opens its own state, not where the person is', async ({ page, ringA
 
 test('without a link the saved state opens, and goes into the link', async ({ page, ringApi }) => {
 	await page.goto(`/#/?p=${SARAJEVO}&h=2`);
-	await expect(firstCard(page)).toContainText('В кольце 1–2 ч');
+	await expectRingCard(page, '1–2 ч');
 
 	await reopen(page, '/');
 
 	await expect(page).toHaveURL(new RegExp(`#/\\?p=${SARAJEVO}&h=2&cit=RUS$`, 'u'));
-	await expect(firstCard(page)).toContainText('В кольце 1–2 ч');
+	await expectRingCard(page, '1–2 ч');
 	expect(ringApi.calls.map((call) => [call.lat, call.lon, call.hours])).toEqual([
 		['43.85630', '18.41310', 2],
 		['43.85630', '18.41310', 2],
@@ -48,14 +48,14 @@ test('without a link the saved state opens, and goes into the link', async ({ pa
 
 test('an opened link overwrites the saved state', async ({ page, ringApi }) => {
 	await page.goto(`/#/?p=${SARAJEVO}&h=2`);
-	await expect(firstCard(page)).toContainText('В кольце 1–2 ч');
+	await expectRingCard(page, '1–2 ч');
 
 	await reopen(page, `/#/?p=${NIS}&h=6`);
-	await expect(firstCard(page)).toContainText('В кольце 5–6 ч');
+	await expectRingCard(page, '5–6 ч');
 	await reopen(page, '/');
 
 	await expect(page).toHaveURL(new RegExp(`#/\\?p=${NIS}&h=6&cit=RUS$`, 'u'));
-	await expect(firstCard(page)).toContainText('В кольце 5–6 ч');
+	await expectRingCard(page, '5–6 ч');
 	expect(ringApi.calls.at(-1)).toMatchObject({ lat: '43.32470', lon: '21.90330', hours: 6 });
 });
 

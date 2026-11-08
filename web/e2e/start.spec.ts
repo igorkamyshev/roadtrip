@@ -78,7 +78,7 @@ test('the pin puts the origin under it, where the person moved the map, and the 
 	await expect(page).toHaveURL(new RegExp(`#/\\?p=${lat},${lon}&h=1&cit=RUS$`, 'u'));
 	await expect(phrase(page)).toContainText('Из точки на карте, до 1 часа в пути.');
 	await expect(page.getByText('Двигайте карту, чтобы поставить точку под булавку')).toHaveCount(0);
-	await expect(firstCard(page)).toContainText('В кольце до 1 ч');
+	await expect.poll(() => ringOnMap(page)).toHaveLength(1);
 	expect(await startOnMap(page)).toEqual([Number(lon), Number(lat)]);
 });
 

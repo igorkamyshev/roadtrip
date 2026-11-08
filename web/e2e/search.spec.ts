@@ -1,5 +1,6 @@
 // The sheet «Откуда едем» and the origin's label (spec «Экран»: the phrase, the sheet, the first card's table;
-// stories 2, 4, 5): the city search by the start of the Russian or local name, «Указать на карте» and «Где я», «Город»
+// stories 2, 4, 5): the city search by the start of the Russian or local name (src/cities/search.ts), the nearest city
+// (src/cities/nearest.ts), «Указать на карте» and «Где я», «Город»
 // on the first card, and the label of each way to set the origin. The cities are `CITIES` of the fixtures, real ones
 // around Belgrade.
 import type { Page } from '@playwright/test';
@@ -58,11 +59,37 @@ test.describe('the search', () => {
 		await expect(found(page)).toHaveText([/^Сегед/u]);
 	});
 
-	test('shows the names that start so first, then those with a word that does, bigger cities higher', async ({ page }) => {
+	test('finds only the names that start with the text, bigger cities higher: not by a later word, nor by the middle of one', async ({
+		page,
+	}) => {
 		await page.goto('/');
 		await search(page, 'выберите', 'с');
+		await expect(found(page).locator('.row-name')).toHaveText(['Сараево', 'Сегед', 'Суботица', 'Смедерево']);
 
-		await expect(found(page).locator('.row-name')).toHaveText(['Сараево', 'Сегед', 'Суботица', 'Смедерево', 'Нови-Сад', 'Дробета-Турну-Северин']);
+		for (const text of ['сад', 'Sad', 'град', 'grade']) {
+			await startSheet(page).getByRole('searchbox', { name: 'Найти город' }).fill(text);
+			await expect(found(page)).toHaveCount(0);
+		}
+	});
+
+	test('takes a space for a hyphen and a hyphen for a space', async ({ page }) => {
+		await page.goto('/');
+		await search(page, 'выберите', 'нови с');
+		await expect(found(page).locator('.row-name')).toHaveText(['Нови-Сад']);
+
+		await startSheet(page).getByRole('searchbox', { name: 'Найти город' }).fill('novi-s');
+		await expect(found(page).locator('.row-name')).toHaveText(['Нови-Сад']);
+		await startSheet(page).getByRole('searchbox', { name: 'Найти город' }).fill('дробета турну');
+		await expect(found(page).locator('.row-name')).toHaveText(['Дробета-Турну-Северин']);
+	});
+
+	test('shows the 8 biggest at most', async ({ page }) => {
+		const cities = Array.from({ length: 10 }, (_, index) => [9000 + index, `Сити ${index}`, `City ${index}`, 44.8, 20.4 + index / 100, 20_000 + index * 1000, 'SRB'] as const);
+		await serveCities(page, cities);
+		await page.goto('/');
+		await search(page, 'выберите', 'сити');
+
+		await expect(found(page).locator('.row-name')).toHaveText(['Сити 9', 'Сити 8', 'Сити 7', 'Сити 6', 'Сити 5', 'Сити 4', 'Сити 3', 'Сити 2']);
 	});
 
 	test('says when the list has no such city', async ({ page }) => {
@@ -160,6 +187,28 @@ test.describe("the origin's label", () => {
 		await page.goto('/');
 
 		await expect(phrase(page)).toContainText('Из точки Нови-Сад, до 1 часа в пути.');
+	});
+
+	test('is the nearest city in kilometres, not degrees: far north a degree of longitude is short', async ({ page }) => {
+		// At 69° N the city 1° east is 40 km away (111 km × cos 69°), the one 0.5° north 56 km.
+		await serveCities(page, [
+			[1, 'Север', 'Sever', 69.5, 33, 20_000, 'RUS'],
+			[2, 'Восток', 'Vostok', 69, 34, 20_000, 'RUS'],
+		]);
+		await page.goto('/#/?p=69.00000,33.00000&h=1');
+
+		await expect(phrase(page)).toContainText('Из точки Восток, до 1 часа в пути.');
+	});
+
+	test('is the nearest city across the antimeridian', async ({ page }) => {
+		// From 179.9° E: 179.95° W is 0.15° away (16 km), 178.5° E is 1.4° (149 km).
+		await serveCities(page, [
+			[1, 'Восток', 'Vostok', -16.8, 178.5, 20_000, 'FJI'],
+			[2, 'Запад', 'Zapad', -16.8, -179.95, 20_000, 'FJI'],
+		]);
+		await page.goto('/#/?p=-16.80000,179.90000&h=1');
+
+		await expect(phrase(page)).toContainText('Из точки Запад, до 1 часа в пути.');
 	});
 
 	test('is the nearest city for a link', async ({ page }) => {

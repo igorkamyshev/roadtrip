@@ -1,6 +1,6 @@
 // Reading the screen in its tests: the DOM by role and text, the map by its sources and layers (never pixels),
 // through the MapLibre map the client exposes as `window.__roadtripMap`.
-import type { Page } from '@playwright/test';
+import { expect, type Page } from '@playwright/test';
 import type { Feature, FeatureCollection, GeoJSON, Geometry } from 'geojson';
 
 /** The phrase over the map: «Из точки [Белград], до 1 часа в пути. … ⓘ». */
@@ -10,6 +10,15 @@ export const phrase = (page: Page) => page.getByTestId('phrase');
 export const firstCard = (page: Page) => page.getByTestId('first-card');
 
 export const slider = (page: Page) => page.getByRole('slider', { name: 'Время в пути' });
+
+/**
+ * The first card of a ring of `hours` («2–3 ч»), with its cities or without any: «В кольце 2–3 ч» while the cities
+ * file comes or with cities, «Городов в кольце нет» for a ring whose cities are all closed or none.
+ */
+export async function expectRingCard(page: Page, hours: string): Promise<void> {
+	await expect(slider(page)).toHaveAttribute('aria-valuetext', hours);
+	await expect(firstCard(page)).toHaveText(new RegExp(`^(В кольце ${hours}|Городов в кольце нет)`, 'u'));
+}
 
 /**
  * Drags the slider's thumb from its value to `hours`, passing every hour between, and calls `meanwhile` before it

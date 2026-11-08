@@ -6,7 +6,7 @@
 // changes a count changes them too.
 import type { Page } from '@playwright/test';
 import { allowGeolocation, expect, squareRing, test } from './fixtures.ts';
-import { firstCard, phrase } from './screen.ts';
+import { expectRingCard, firstCard, phrase } from './screen.ts';
 
 const BELGRADE = { lat: 44.8176, lon: 20.4573 };
 const LINK = '/#/?p=44.81760,20.45730&h=2';
@@ -201,7 +201,7 @@ test.describe('the held visas of a link', () => {
 
 	test('alone carries a state: the saved one does not open', async ({ page, ringApi }) => {
 		await page.goto(`/#/?p=43.85630,18.41310&h=4`);
-		await expect(firstCard(page)).toContainText('В кольце 3–4 ч');
+		await expectRingCard(page, '3–4 ч');
 
 		await reopen(page, '/#/?visas=SCHENGEN');
 
