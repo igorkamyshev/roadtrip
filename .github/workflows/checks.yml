@@ -42,7 +42,9 @@ jobs:
           shellcheck --version
           git ls-files -z -- '*.sh' '.githooks/*' | xargs -0 shellcheck
       - run: pnpm install --frozen-lockfile
-      # The root AGENTS.md names every nested AGENTS.md.
+      - run: pnpm format:check
+      # Oxlint, then fallow (dead code, architecture, duplication, cognitive complexity) and our own checks: the
+      # overrides' files, the root AGENTS.md naming every nested AGENTS.md (ADR 0002).
       - run: pnpm lint
       # Each package's Worker types (`cf-typegen`) match its wrangler config: a config changed without them fails.
       - run: |
@@ -52,6 +54,8 @@ jobs:
       - run: pnpm typecheck
       # Every package's tests, in one vitest run from the root: the engine's seam and the ring API's.
       - run: pnpm test
+      # The client's build, which fails when the first paint's JavaScript is over its budget (web/vite.config.ts).
+      - run: pnpm --filter web build
       # The screen's seam: the built client in Playwright's Chromium. Locally the environment has the browser; CI
       # installs the one @playwright/test asks for.
       - run: pnpm --filter web exec playwright install --with-deps chromium
