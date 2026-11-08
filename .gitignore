@@ -1,3 +1,5 @@
 node_modules
 # Subagents' worktrees (Claude Code)
 .claude/worktrees/
+# fallow's cache
+.fallow/
