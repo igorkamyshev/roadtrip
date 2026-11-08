@@ -3,7 +3,7 @@
 // entries, and saved; invalid parameters take their defaults.
 import type { Page } from '@playwright/test';
 import { allowGeolocation, expect, squareRing, test } from './fixtures.ts';
-import { dragSlider, expectRingCard, firstCard, phrase, slider } from './screen.ts';
+import { dragSlider, expectRingCard, phrase, slider } from './screen.ts';
 
 const BELGRADE = { lat: 44.8176, lon: 20.4573 };
 const SARAJEVO = '43.85630,18.41310';
@@ -61,13 +61,13 @@ test('an opened link overwrites the saved state', async ({ page, ringApi }) => {
 
 test('every change goes into the link without a new history entry, and is saved', async ({ page }) => {
 	await page.goto('/');
-	await expect(firstCard(page)).toContainText('В кольце до 1 ч');
+	await expectRingCard(page, 'до 1 ч');
 	const entries = await page.evaluate(() => history.length);
 
 	await dragSlider(page, 4);
-	await expect(firstCard(page)).toContainText('В кольце 3–4 ч');
+	await expectRingCard(page, '3–4 ч');
 	await slider(page).press('ArrowDown');
-	await expect(firstCard(page)).toContainText('В кольце 2–3 ч');
+	await expectRingCard(page, '2–3 ч');
 	// Sheets are not part of the state.
 	await phrase(page).getByRole('button', { name: 'Что важно знать' }).click();
 
@@ -75,7 +75,7 @@ test('every change goes into the link without a new history entry, and is saved'
 	expect(await page.evaluate(() => history.length)).toBe(entries);
 	await reopen(page, '/');
 	await expect(page).toHaveURL(/#\/\?p=44\.81760,20\.45730&h=3&cit=RUS$/u);
-	await expect(firstCard(page)).toContainText('В кольце 2–3 ч');
+	await expectRingCard(page, '2–3 ч');
 });
 
 const invalidLinks: readonly { link: string; becomes: string }[] = [

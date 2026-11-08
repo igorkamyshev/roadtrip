@@ -7,18 +7,22 @@ import type { Feature, FeatureCollection, GeoJSON, Geometry } from 'geojson';
 /** The phrase over the map: «Из точки [Белград], до 1 часа в пути. … ⓘ». */
 export const phrase = (page: Page) => page.getByTestId('phrase');
 
-/** The first card of the carousel: the ring's summary or the state. */
+/**
+ * The first card of the carousel: the ring's summary or the state, which its `data-state` names (`FirstCardState` of
+ * src/screen/first-card.tsx): a test that waits for the screen to get somewhere waits on that, not on the copy.
+ */
 export const firstCard = (page: Page) => page.getByTestId('first-card');
 
 export const slider = (page: Page) => page.getByRole('slider', { name: 'Время в пути' });
 
 /**
- * The first card of a ring of `hours` («2–3 ч»), with its cities or without any: «В кольце 2–3 ч» while the cities
- * file comes or with cities, «Городов в кольце нет» for a ring whose cities are all closed or none.
+ * Waits for the answer of a ring of `hours` («2–3 ч»): the slider at those hours and the first card a ring's, with
+ * its cities, before the cities file comes or without any (`ring`, `no_cities`). Its copy is not read: the tests of
+ * the card's texts read them.
  */
 export async function expectRingCard(page: Page, hours: string): Promise<void> {
 	await expect(slider(page)).toHaveAttribute('aria-valuetext', hours);
-	await expect(firstCard(page)).toHaveText(new RegExp(`^(В кольце ${hours}|Городов в кольце нет)`, 'u'));
+	await expect(firstCard(page)).toHaveAttribute('data-state', /^(?:ring|no_cities)$/u);
 }
 
 /**

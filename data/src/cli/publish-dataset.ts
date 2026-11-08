@@ -2,10 +2,11 @@
 // `<version>/` in R2, then the pointer `current.json` (src/publish.ts). R2 by its S3 API, through the aws CLI, which
 // uploads a file of any size in parts; `wrangler r2 object put` takes 300 MiB at most, about the world's graph.
 //
-//   node data/src/cli/publish-dataset.ts <dataset directory> [--bucket <name>] [--prefix <prefix>]
+//   node data/src/cli/publish-dataset.ts <dataset directory> [--bucket <name>] [--prefix <prefix>] [--trial]
 //
 // The account is CLOUDFLARE_ACCOUNT_ID, the S3 credentials AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY (the
-// workflow derives them from its Cloudflare API token). --prefix puts every key under it, as a trial run does.
+// workflow derives them from its Cloudflare API token). --prefix puts every key under it, as a trial run does;
+// --trial says the dataset holds some parts of the world only, so its countries' zones are not checked.
 import { spawn } from 'node:child_process';
 import { parseArgs } from 'node:util';
 import { type DatasetStore, publishDataset } from '../publish.ts';
@@ -13,12 +14,16 @@ import { log, userPath } from './input.ts';
 
 const { values, positionals } = parseArgs({
 	allowPositionals: true,
-	options: { bucket: { type: 'string', default: 'roadtrip-datasets' }, prefix: { type: 'string', default: '' } },
+	options: {
+		bucket: { type: 'string', default: 'roadtrip-datasets' },
+		prefix: { type: 'string', default: '' },
+		trial: { type: 'boolean', default: false },
+	},
 });
 const [directory] = positionals;
 const account = process.env.CLOUDFLARE_ACCOUNT_ID;
 if (directory === undefined || account === undefined) {
-	log('usage: CLOUDFLARE_ACCOUNT_ID=… node data/src/cli/publish-dataset.ts <dataset directory> [--bucket <name>] [--prefix <prefix>]');
+	log('usage: CLOUDFLARE_ACCOUNT_ID=… node data/src/cli/publish-dataset.ts <dataset directory> [--bucket <name>] [--prefix <prefix>] [--trial]');
 	process.exit(2);
 }
 
@@ -41,7 +46,7 @@ const r2: DatasetStore = {
 	},
 };
 
-const { manifest } = await publishDataset(r2, userPath(directory), log);
+const { manifest } = await publishDataset(r2, userPath(directory), log, { trial: values.trial });
 log(`published ${manifest.version} to ${values.bucket}/${values.prefix}`);
 
 /**

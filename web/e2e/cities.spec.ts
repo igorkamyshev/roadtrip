@@ -6,7 +6,7 @@
 import type { Locator, Page } from '@playwright/test';
 import type { Access } from 'worker/api';
 import { allowGeolocation, expect, serveCities, squareRing, test, visaRules } from './fixtures.ts';
-import { citiesOnMap, distanceFromTheMiddle, firstCard, labelsOnMap, mapAtRest, mapZoom, phrase, slider, tapMap } from './screen.ts';
+import { citiesOnMap, distanceFromTheMiddle, expectRingCard, firstCard, labelsOnMap, mapAtRest, mapZoom, phrase, slider, tapMap } from './screen.ts';
 
 const BELGRADE = { lat: 44.8176, lon: 20.4573 };
 const LINK = '/#/?p=44.81760,20.45730&h=3';
@@ -291,7 +291,7 @@ test.describe('the carousel and the map', () => {
 
 		await slider(page).press('ArrowDown');
 
-		await expect(firstCard(page)).toContainText('В кольце 1–2 ч');
+		await expectRingCard(page, '1–2 ч');
 		await expect(firstCard(page)).toBeInViewport();
 		await expect(chosenCard(page)).toHaveCount(0);
 		await expect.poll(async () => (await labelsOnMap(page)).chosen).toEqual([]);

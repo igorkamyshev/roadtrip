@@ -140,7 +140,7 @@ test.describe('the sheet «Мои визы»', () => {
 			'GEO,USA',
 			'GEO',
 		]);
-		await expect(firstCard(page)).toContainText('В кольце 1–2 ч');
+		await expectRingCard(page, '1–2 ч');
 
 		await sheet(page).getByRole('button', { name: 'Закрыть' }).click();
 		await expect(sheet(page)).toBeHidden();
@@ -159,7 +159,7 @@ test('«Мои визы» of the card `empty` opens the sheet, and a visa chosen
 	await firstCard(page).getByRole('button', { name: 'Мои визы' }).click();
 	await sheet(page).locator('.pick-item').filter({ hasText: /^Шенген/u }).click();
 
-	await expect(firstCard(page)).toContainText('В кольце 1–2 ч');
+	await expectRingCard(page, '1–2 ч');
 	expect(ringApi.calls.at(-1)?.visas).toBe('SCHENGEN');
 });
 

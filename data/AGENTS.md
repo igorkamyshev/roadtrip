@@ -38,7 +38,7 @@ The dataset build (spec «Набор данных»): the builder that turns an 
 
 `build-graph … --report <report.md>` also writes the build report as Markdown.
 
-`publish-dataset <dataset directory> [--bucket <name>] [--prefix <prefix>]` puts a dataset in R2 (below); it needs the aws CLI, `CLOUDFLARE_ACCOUNT_ID` and R2's S3 credentials in `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`.
+`publish-dataset <dataset directory> [--bucket <name>] [--prefix <prefix>] [--trial]` puts a dataset in R2 (below); it needs the aws CLI, `CLOUDFLARE_ACCOUNT_ID` and R2's S3 credentials in `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`. Before it uploads anything, it checks that `zones.json` has a zone for every country of `COUNTRIES` but `ZONELESS_COUNTRIES` (`src/zoneless.ts`: the 35 without one in the world of 2026-11-07, each with the outline that holds its land) and names those that lack one; `--trial` skips that, for a dataset of some parts of the world. A country that loses its zone in OSM for good joins the list.
 
 `fetch-dataset [--bucket <name>]` is the first step of the `roadtrip` Worker's deploy (`worker/README.md`, «Deploy»): `fetchDataset` (`src/fetch-dataset.ts`) reads the pointer, downloads its version's `graph.graph` and `dataset.json` into `engine/dataset/`, `zones.json` and `cities.json` into `web/public/data/`, each next to its place, and moves them in only once every file's size and SHA-256 match the pointer's, so a bad download leaves the files there were. It reads R2 through Cloudflare's API with `CLOUDFLARE_API_TOKEN` (Workers R2 Storage: Read) and `CLOUDFLARE_ACCOUNT_ID`, which Workers Builds gives the deploy.
 
@@ -50,7 +50,7 @@ The dataset build (spec «Набор данных»): the builder that turns an 
 
 `.github/workflows/dataset.yml` builds the world's dataset on the 2nd of each month (spec «Набор данных», #14, #35), or when run by hand (`workflow_dispatch`: the extracts' date, the parts to take, and `parts_run_id`, a run whose filtered parts to build from instead of downloading them again). Its jobs:
 
-1. `plan` picks the date: the newest one every part's page at Geofabrik lists a dated extract of (`europe-261107.osm.pbf`). Geofabrik keeps those of the 1st of each month for months and the others for a week. The dataset's version is that date, `2026-11-07`.
+1. `plan` picks the date: the newest one every part's page at Geofabrik lists a dated extract of (`europe-261107.osm.pbf`). Geofabrik keeps those of the 1st of each month for months and the others for a week. The dataset's version is that date, `2026-11-07`; a rebuild of a published date's extracts after a fix of the build is started by hand with the input `revision` (2, 3, …) and publishes as `2026-11-07-r2`.
 2. `extract`, one job per part of the world (Russia is none: the others cover it), downloads the part of that date, checks its MD5 and that it holds OSM of that date, then keeps with osmium what the builder reads: `tags-filter` of the roads from motorway to tertiary with their links, `barrier=border_control` and `admin_level=2` with their members, and `getid -r` of `SPECIAL_ZONES`.
 3. `build` merges the parts (two parts of one date hold one version of an object; the job fails otherwise), runs `add-locations-to-ways --ignore-missing-nodes`, then `build-graph` with `--outlines` and `--report`, and `build-cities` on the graph. The build report goes to the run's summary, the dataset to an artifact kept 14 days.
 4. `publish` puts the dataset in R2 with `publish-dataset` (`src/publish.ts`), with the S3 credentials R2 derives from the Cloudflare API token in the repository's secrets: its id, and the SHA-256 of its value. Then it deploys the new dataset: `.github/dataset/deploy.sh` starts the build of the Worker `roadtrip` in Cloudflare Workers Builds on the default branch, with the same token, and waits for the build's outcome, so a failed deploy fails the run (`docs/agents/infrastructure.md`). A trial deploys nothing.
@@ -60,10 +60,10 @@ Every heavy step runs under `.github/dataset/measure.sh`, which puts its time, p
 The dataset in R2, bucket `roadtrip-datasets`:
 
 - `<version>/graph.graph`, `zones.json`, `cities.json`, `dataset.json` (`{ "version": "<version>" }`, as `engine/dataset/dataset.json`) and `report.md` (the build report);
-- `<version>/manifest.json`: the version and each file's size and SHA-256;
+- `<version>/manifest.json`: the version and each file's size and SHA-256. Once it is there, the version keeps its files, so one version names one dataset: `publish-dataset` takes the same files again (a rerun) and refuses others before it uploads anything, which then go under a new version (`revision`, above);
 - `current.json`: the pointer, a copy of the current version's manifest. It moves only once every file of the version is uploaded and its size checked, so a failed run leaves the version before it current. The deploy reads it (`fetch-dataset`, above), then takes the files under its version.
 
-A run of only some of the parts is a trial: it publishes under `trials/<run id>/` and deletes that at the end, so the current dataset stays.
+A run of only some of the parts is a trial: it publishes under `trials/<run id>/` with `--trial` and deletes that at the end, so the current dataset stays.
 
 ## Tests
 
@@ -72,10 +72,10 @@ The fixtures in `test/fixtures/` are hand-written OSM XML of a few countries and
 - `test/ring.test.ts`: the engine's seam (spec «Решения по тестам», seam 1), borders included. Its border tests build their own small tables with `test/rules.ts`; the closed territories and the zones of #13 use the shipped table.
 - `test/build-graph.test.ts`: the graph itself, the PBF reader against the XML, the graph file, the build report.
 - `test/outlines.test.ts`: the zone outlines against the graph's `ZoneLocator` on `zones.osm`, and the simplification.
-- `test/border-table.test.ts` and `test/data-version.test.ts`: the border table's check and the data version, here because every package's tests run under `data`'s vitest and types.
+- `test/border-table.test.ts`, `test/data-version.test.ts` and `test/engine-fingerprint.test.ts`: the border table's check, the data version and the engine's fingerprint (`engine/AGENTS.md`), here because every package's tests run under `data`'s vitest and types.
 - `test/cities.test.ts`: the cities file from lines in GeoNames' formats, a double of Wikidata and the zones of `zones.osm`; `test/wikidata.test.ts`: the Wikidata client against a double of the Query Service.
 - `test/commands.test.ts`: the commands as processes; `build-cities` reads the small GeoNames files in `test/fixtures/geonames/`.
 - `test/zone-locator.test.ts`: `ZoneLocator` and the builder's `ZoneCells` on squares of whole degrees.
-- `test/publish.test.ts`: `publishDataset` against a double of R2: the pointer moves last, and not at all after a failed upload.
+- `test/publish.test.ts`: `publishDataset` against a double of R2: the pointer moves last, and not at all after a failed upload; nothing goes over a version published with other files, nor anywhere when a country lost its zone, but in a trial; `ZONELESS_COUNTRIES` names countries of `COUNTRIES` only.
 - `test/fetch-dataset.test.ts`: `fetchDataset` against a double of R2: the files of the pointer's version take their places, and none does when one's SHA-256 is not the pointer's or the bucket lacks it.
 - `test/valhalla-metrics.test.ts`: the measures of the Valhalla comparison (ring area, the median time to cities, the tolerance); the comparison itself runs in no test.

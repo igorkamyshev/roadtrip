@@ -9,6 +9,13 @@ What you edit:
 
 The research the table started from, with every source, is `research/visa-exemptions` (issue #9 links it).
 
+## Schedule
+
+The Owner's routine «roadtrip: ежемесячная сверка визовой таблицы» (`trig_013UWVrYVQofPK1jVcEiuNuz`) fires on the 3rd of each month at 09:31, Europe/Belgrade, into one persistent cloud session of the same name (`session_01DPrp7mK1d8iUqh96sSWEKW`), which has this repository attached. Its prompt, in Russian, sends the run to this file.
+
+- A routine that starts a fresh session each time gets no repository and no GitHub tools, so it cannot open the pull request: keep it firing into a session with the repository.
+- The routine's prompt can be changed only from that session; from anywhere else, a change means a new routine into the same session, then deleting the old one.
+
 ## Steps
 
 1. **Branch.** Start from the default branch on a branch `visa-exemptions/<YYYY-MM>`. Take today's date in UTC: it is the `checked` of every row you confirm, and the rows' last days compare with it.

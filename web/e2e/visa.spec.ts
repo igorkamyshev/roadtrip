@@ -3,7 +3,7 @@
 // citizenships): what the person sees and what the screen asks the API.
 import type { Page } from '@playwright/test';
 import { allowGeolocation, expect, squareRing, test, visaRules, ZONE_OUTLINES } from './fixtures.ts';
-import { dottedHours, firstCard, hatchedZones, outlinesOnMap, phrase, ringOnMap, slider } from './screen.ts';
+import { dottedHours, expectRingCard, firstCard, hatchedZones, outlinesOnMap, phrase, ringOnMap, slider } from './screen.ts';
 
 const BELGRADE = { lat: 44.8176, lon: 20.4573 };
 const LINK = '/#/?p=44.81760,20.45730&h=2';
@@ -34,7 +34,7 @@ test.describe('the citizenships', () => {
 
 	test('are chosen in their sheet: several, at least one, Russian first and by default', async ({ page, ringApi }) => {
 		await page.goto(LINK);
-		await expect(firstCard(page)).toContainText('В кольце 1–2 ч');
+		await expectRingCard(page, '1–2 ч');
 
 		await phrase(page).getByRole('button', { name: 'РФ' }).click();
 
@@ -62,7 +62,7 @@ test.describe('the citizenships', () => {
 
 		await sheet(page).getByRole('button', { name: 'Закрыть' }).click();
 		await expect(sheet(page)).toBeHidden();
-		await expect(firstCard(page)).toContainText('В кольце 1–2 ч');
+		await expectRingCard(page, '1–2 ч');
 	});
 
 	test("are Sherpa's passports, filtered by name, in Russian", async ({ page }) => {
@@ -159,7 +159,7 @@ test.describe('the visa rules', () => {
 
 		await expect(phrase(page)).toContainText('визовые правила от 5 ноября');
 		await slider(page).press('ArrowUp');
-		await expect(firstCard(page)).toContainText('В кольце 2–3 ч');
+		await expectRingCard(page, '2–3 ч');
 		await expect(phrase(page)).not.toContainText('визовые правила');
 	});
 
@@ -183,7 +183,7 @@ test.describe('the visa rules', () => {
 		await firstCard(page).getByRole('button', { name: 'Гражданство' }).click();
 		await choice(page, 'Сербия').click();
 
-		await expect(firstCard(page)).toContainText('В кольце 1–2 ч');
+		await expectRingCard(page, '1–2 ч');
 		expect(ringApi.calls.at(-1)?.cit).toBe('RUS');
 	});
 
@@ -213,7 +213,7 @@ test.describe('the visa rules', () => {
 		// Without the citizenship and with it again: a request again.
 		await firstCard(page).getByRole('button', { name: 'Гражданство' }).click();
 		await choice(page, 'Сербия').click();
-		await expect(firstCard(page)).toContainText('В кольце 1–2 ч');
+		await expectRingCard(page, '1–2 ч');
 		await choice(page, 'Сербия').click();
 		await expect(firstCard(page)).toContainText('Не удалось загрузить визовые правила для гражданства Сербия.');
 		expect(ringApi.calls.map((call) => [call.cit, call.hours]).slice(3)).toEqual([

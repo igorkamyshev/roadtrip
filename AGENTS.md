@@ -6,7 +6,7 @@
 
 Read a package's `AGENTS.md` before working in it:
 
-- `engine/AGENTS.md`: the ring engine, keeping it portable, when to bump the engine version, where its tests live; the engine server of the Container and its image.
+- `engine/AGENTS.md`: the ring engine, keeping it portable, when to bump the engine version and record its fingerprint, where its tests live; the engine server of the Container and its image.
 - `data/AGENTS.md`: the graph builder, the zone outlines, the cities file, the `ring` and `build-cities` commands, the fixtures; the monthly world build (`.github/workflows/dataset.yml`) and the dataset in R2 with its pointer `current.json`.
 
 `rules` holds the tables edited by hand: the border table, the visa exemptions' table (`VISA_EXEMPTIONS`), the Schengen area, the countries as zones (`COUNTRIES`), Sherpa's 199 passports (`SHERPA_PASSPORTS`) and the EU (`EU`, for the line on Russian plates); it has no `AGENTS.md` yet.
@@ -19,7 +19,18 @@ Read a package's `AGENTS.md` before working in it:
 
 ## Deploy and services
 
-A merge to `main` deploys both Workers through Cloudflare Workers Builds, and the monthly world build deploys each new dataset the same way. Deploys, checking and rerunning a build, a new worker, secrets and vars, the logs of every run, PostHog: read `docs/agents/infrastructure.md` before the first call. What only the Owner sets is in `worker/README.md`, «Deploy».
+A merge to `main` deploys both Workers through Cloudflare Workers Builds, and the monthly world build deploys each new dataset the same way. Deploys, checking and rerunning a build, a new worker, secrets and vars, the logs of every run, waiting for a GitHub Actions run, PostHog: read `docs/agents/infrastructure.md` before the first call. What only the Owner sets is in `worker/README.md`, «Deploy».
+
+## Review
+
+Reviewing a branch or merging a ticket's work: check the diff against `CODING_STANDARDS.md`.
+
+## Subagents
+
+- While subagents run, ask the Owner in a plain message or a Things task, note the open question, and keep dispatching the work it does not block: a question prompt holds every subagent's report until the Owner answers.
+- In a worktree, give Bash one plain command with literal paths, edit files with Edit or Write, and run a script saved to a file with `python3 -I <file>`: the worktree guard refuses heredocs, `$VAR`, `$(…)`, loops and `cd … &&` chains.
+- A subagent's worktree starts from this checkout's HEAD (`worktree.baseRef` in `.claude/settings.json`): check out the branch the work builds on before launching it.
+- Notes shared with subagents hold only what the repo's docs lack, and link the docs for the rest.
 
 ## Agent skills
 
