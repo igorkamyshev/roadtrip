@@ -3,7 +3,7 @@
 // (test/pmtiles-archive.ts), whose tiles are strings named after their place; the Cache API is a double too.
 import { describe, expect, it } from 'vitest';
 import { pmtilesArchive } from '../test/pmtiles-archive.ts';
-import { type BasemapBucket, createTilesHandler, type TilesDeps } from './tiles.ts';
+import { type BasemapBucket, createTilesHandler, type TileCache, type TilesDeps } from './tiles.ts';
 
 const ARCHIVE = '20261107.pmtiles';
 const DAY_SECONDS = 24 * 60 * 60;
@@ -27,32 +27,31 @@ class MemoryBucket implements BasemapBucket {
 		this.objects.set(key, { data, etag });
 	}
 
-	async get(key: string, { range, onlyIf }: Parameters<BasemapBucket['get']>[1]) {
+	get(key: string, { range, onlyIf }: Parameters<BasemapBucket['get']>[1]): ReturnType<BasemapBucket['get']> {
 		this.reads++;
 		const object = this.objects.get(key);
 		if (object === undefined) {
-			return null;
+			return Promise.resolve(null);
 		}
 		const { etag } = object;
 		if (onlyIf.etagMatches !== undefined && onlyIf.etagMatches !== etag) {
-			return { etag };
+			return Promise.resolve({ etag });
 		}
 		const bytes = object.data.slice(range.offset, range.offset + range.length);
-		return { etag, body: new Blob([bytes]).stream(), arrayBuffer: async () => bytes.buffer };
+		return Promise.resolve({ etag, body: new Blob([bytes]).stream(), arrayBuffer: () => Promise.resolve(bytes.buffer) });
 	}
 }
 
 /** The Cache API of one data centre in memory: responses by URL. */
-class MemoryCache {
-	readonly responses = new Map<string, Response>();
-
-	async match(url: string): Promise<Response | undefined> {
-		return this.responses.get(url)?.clone();
-	}
-
-	async put(url: string, response: Response): Promise<void> {
-		this.responses.set(url, response);
-	}
+function memoryCache(): TileCache {
+	const responses = new Map<string, Response>();
+	return {
+		match: (url) => Promise.resolve(responses.get(url)?.clone()),
+		put: (url, response) => {
+			responses.set(url, response);
+			return Promise.resolve();
+		},
+	};
 }
 
 /**
@@ -62,7 +61,7 @@ class MemoryCache {
 function tiles() {
 	const bucket = new MemoryBucket();
 	bucket.put(ARCHIVE, FIXTURE, 'etag-1');
-	const cache = new MemoryCache();
+	const cache = memoryCache();
 	const errors: unknown[][] = [];
 	const background: Promise<unknown>[] = [];
 	const deps: TilesDeps = {

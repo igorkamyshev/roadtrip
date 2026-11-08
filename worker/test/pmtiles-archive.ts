@@ -24,12 +24,12 @@ export interface ArchiveOptions {
 export function pmtilesArchive(tiles: readonly ArchiveTile[], { minZoom, maxZoom }: ArchiveOptions): Uint8Array {
 	const entries = tiles
 		.map((tile) => ({ tileId: zxyToTileId(tile.z, tile.x, tile.y), data: gzipSync(tile.data) }))
-		.sort((a, b) => a.tileId - b.tileId);
+		.toSorted((a, b) => a.tileId - b.tileId);
 	let offset = 0;
-	const placed = entries.map((entry) => {
+	const placed = entries.map(({ tileId, data }) => {
 		const at = offset;
-		offset += entry.data.length;
-		return { ...entry, offset: at };
+		offset += data.length;
+		return { tileId, data, offset: at };
 	});
 	const directory = gzipSync(serializeDirectory(placed));
 	const metadata = gzipSync(JSON.stringify({ name: 'fixture' }));
