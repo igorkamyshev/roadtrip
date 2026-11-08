@@ -35,6 +35,15 @@ The client: the one screen of the site (spec «Экран», «Состояни�
   - `ring result` is one for each ring asked for: the load, the slider let go (it changes N only then, so moving it sends nothing), other settings, another origin, «Повторить». A ring in memory is `memory` with `wait_ms` 0; a request ends with its answer (`source` the Worker's), its failure (`too_many_requests`, `error`), or `abandoned` when the screen asks for something else first, at once, or when the page goes away (`pagehide`), by `sendBeacon`, as everything still waiting.
 - The map's container has `ph-no-deadclick` and `ph-no-rageclick`: a tap on the map changes only the canvas, and PostHog's dead clicks (once the project turns them on) took every tap for one.
 
+### Source maps
+
+`@posthog/rollup-plugin` in `vite.config.ts` uploads the build's source maps to PostHog, so that the stack of an error in the browser reads as the source. It runs only when the build has two variables, which Workers Builds gives the build of the Worker `roadtrip` (its trigger's build variables, not the Worker's vars):
+
+- `POSTHOG_PERSONAL_API_KEY`: a secret, the Owner's personal key (`phx_…`) with the scope «error tracking: write». Never in the repository.
+- `POSTHOG_PROJECT_ID`: `718601`, not secret.
+
+With both, the plugin writes a chunk id into each JS file, uploads the maps under the release `roadtrip-web` of the commit's git SHA (`WORKERS_CI_COMMIT_SHA`, else `git rev-parse HEAD`) and removes the `.map` files from `dist/`: the deploy must ship exactly that `dist/`. A key PostHog refuses fails the build. Without them, as locally, in CI and in the screen tests, the plugin is left out: the build is as before and uploads nothing. The plugin runs `posthog-cli`, which downloads its binary from `releases.posthog.com` on first use (pnpm runs no install script of `@posthog/cli`).
+
 ## Basemap
 
 `src/map/basemap.ts` (spec «Экран» → «Карта»): the style of `@protomaps/basemaps` over the vector tiles of `GET /tiles/{z}/{x}/{y}`, which the Worker serves from the world's PMTiles archive (`worker/README.md`), credited «Protomaps © OpenStreetMap».
