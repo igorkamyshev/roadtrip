@@ -1,6 +1,6 @@
 # engine
 
-The ring engine (spec «Движок», ADR 0001): `computeRing` in `src/index.ts`, the border rules it applies from the border table in `rules` (`src/borders.ts`), and the graph format it shares with the builder in `data` (`src/graph.ts`).
+The ring engine (spec «Движок», ADR 0001): `computeRing` in `src/index.ts`, where the origin meets its road (`src/start.ts`, `src/snap.ts`, which the Valhalla comparison in `data` shares), the border rules it applies from the border table in `rules` (`src/borders.ts`; land in no country's polygon, as the West Bank, counts at a border as the zone most of its roads lead to: `borderZones`), and the graph format it shares with the builder in `data` (`src/graph.ts`).
 
 ## Portable
 
