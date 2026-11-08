@@ -2,8 +2,7 @@
 // `deps` (test/api.ts). Sherpa answers every country visa-free here unless a test says otherwise; the visa rules
 // themselves are in visa-rules.test.ts. The border rules are the engine's seam, not repeated here.
 import { fixtureGraph } from 'data/fixture-graph';
-import { computeRing, dataVersion, type RingRequest } from 'engine';
-import type { Graph } from 'engine/graph';
+import { dataVersion } from 'engine';
 import { borderTable } from 'rules';
 import { describe, expect, it } from 'vitest';
 import { answering, api, counted, DATASET, DAY, engineContainer, MemoryKv, MINUTE, recorded, SherpaDouble, sherpaMap, START, taking } from '../test/api.ts';
@@ -11,26 +10,25 @@ import { handleRing } from './ring.ts';
 
 const straightRoad = fixtureGraph('straight-road.osm');
 
-/** The engine's own result for a request from the rounded origin, for comparing with what the API passes on. */
-function engineResult(graph: Graph, request: RingRequest) {
-	const { timings: _, ...result } = computeRing(graph, borderTable, request);
-	return result;
-}
+/** The countries closed for everyone (rules' border table), closed in every set. */
+const CLOSED_FOR_EVERYONE = ['AZE', 'BTN', 'CHN', 'MMR', 'RKS', 'UKR'];
 
 describe('GET /api/ring', () => {
-	it('answers the ring the Container calculated', async () => {
-		const { get } = api({ container: await engineContainer(straightRoad) });
+	it("answers the Container's ring with the entry modes and the date of the visa rules, without the calculation's own fields", async () => {
+		const ring = { type: 'MultiPolygon', coordinates: [[[[0.6, -0.01], [0.8, -0.01], [0.8, 0.01], [0.6, 0.01], [0.6, -0.01]]]] };
+		const { get } = api({ container: await answering(200, { outcome: 'ring', ring, startCountry: 'AAA' }) });
 
 		const { status, body } = await get('lat=0&lon=0&hours=2&cit=RUS');
 
 		expect(status).toBe(200);
 		expect(body).toEqual({
-			...engineResult(straightRoad, { origin: { lat: 0, lon: 0 }, hours: 2, closedCountries: [] }),
-			access: expect.any(Object),
+			outcome: 'ring',
+			ring,
+			startCountry: 'AAA',
+			access: expect.objectContaining({ SRB: { mode: 'visa_free', citizenship: 'RUS' }, RUS: { mode: 'visa_free', citizenship: 'RUS' } }),
 			visaRulesLoadedAt: '2026-11-07T00:00:00.000Z',
 			source: 'calculation',
 		});
-		expect(body).toMatchObject({ outcome: 'ring', startCountry: 'AAA', ring: { type: 'MultiPolygon' } });
 	});
 
 	it.each([
@@ -306,7 +304,7 @@ describe('the origin', () => {
 
 		await get('lat=0.00049&lon=0.10051&hours=2&cit=RUS,TUR&visas=SCHENGEN');
 
-		expect(container.bodies).toEqual([{ origin: { lat: 0, lon: 0.101 }, hours: 2, closedCountries: [...borderTable.closedForEveryone].sort() }]);
+		expect(container.bodies).toEqual([{ origin: { lat: 0, lon: 0.101 }, hours: 2, closedCountries: CLOSED_FOR_EVERYONE }]);
 	});
 
 	it('shares the ring cache with every origin in its cell of 0.001°, and with no other', async () => {
