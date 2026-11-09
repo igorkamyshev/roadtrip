@@ -4,7 +4,7 @@ Everything runs on the Owner's Cloudflare account `1d6db711ad880b2455da08a6aeb2a
 
 ## Deploy: Cloudflare Workers Builds
 
-Nothing is deployed by hand ([spec #20](https://github.com/igorkamyshev/roadtrip/issues/20) «Набор данных», «Деплой»; #36). Each Worker has its own Workers Builds trigger, «Deploy default branch», connected to `igorkamyshev/roadtrip`: branch `main`, root `/`, empty build command, deploy command `pnpm --filter <package> run deploy`, paths `*`, build cache on. The package's `deploy` script is the whole deploy, so a step the deploy needs goes in that script. A merge to `main` runs both triggers at once, in no fixed order.
+Nothing is deployed by hand ([spec #20](../specs/20.md) «Набор данных», «Деплой»; #36). Each Worker has its own Workers Builds trigger, «Deploy default branch», connected to `igorkamyshev/roadtrip`: branch `main`, root `/`, empty build command, deploy command `pnpm --filter <package> run deploy`, paths `*`, build cache on. The package's `deploy` script is the whole deploy, so a step the deploy needs goes in that script. A merge to `main` runs both triggers at once, in no fixed order.
 
 | Worker                    | Tag                                | Trigger                                | Deploy script     |
 | ------------------------- | ---------------------------------- | -------------------------------------- | ----------------- |

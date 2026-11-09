@@ -57,7 +57,7 @@ Default labels: `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-huma
 
 ### Domain docs
 
-Single-context: one `GLOSSARY.md` and `docs/adr/` at the repo root. See `docs/agents/domain.md`.
+Single-context: one `GLOSSARY.md` and `docs/adr/` at the repo root. See `docs/agents/domain.md`. The spec is `docs/specs/20.md`, a frozen copy of issue #20, with what has changed since in `docs/specs/20-amendments.md`: «spec #20 «Раздел»» is that section with its amendments, and where they differ the amendment is right.
 
 ### Visa exemptions review
 

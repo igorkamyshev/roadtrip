@@ -1,6 +1,6 @@
 # roadtrip-error-tracking
 
-Tail Worker that sends the errors of the roadtrip Workers to PostHog Error Tracking (the roadtrip project, US cloud). Ported from `error-tracking` in `igorkamyshev/ytc` ([spec #20](https://github.com/igorkamyshev/roadtrip/issues/20) «Аналитика и ошибки», «Ошибки сервера»). The package also holds the logger the Workers write errors with: `error-tracking/logger`.
+Tail Worker that sends the errors of the roadtrip Workers to PostHog Error Tracking (the roadtrip project, US cloud). Ported from `error-tracking` in `igorkamyshev/ytc` ([spec #20](../docs/specs/20.md) «Аналитика и ошибки», «Ошибки сервера»). The package also holds the logger the Workers write errors with: `error-tracking/logger`.
 
 A Worker that lists `roadtrip-error-tracking` in `tail_consumers` hands it a `TraceItem` for each of its runs. From each one, this worker sends a `$exception` event for:
 

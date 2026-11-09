@@ -4,7 +4,7 @@ Rules a reviewer checks by judgement: when a ticket's work is merged, and when a
 
 ## Tests
 
-- A package is tested at its seam ([spec #20](https://github.com/igorkamyshev/roadtrip/issues/20), «Решения по тестам»): the engine through `computeRing` on fixtures that `data` builds, the Worker through its handlers with doubles in `deps`, the screen through Playwright on the built client. A module under a seam is tested through the seam, not by a unit test of its own.
+- A package is tested at its seam ([spec #20](docs/specs/20.md), «Решения по тестам»): the engine through `computeRing` on fixtures that `data` builds, the Worker through its handlers with doubles in `deps`, the screen through Playwright on the built client. A module under a seam is tested through the seam, not by a unit test of its own.
 - Only external boundaries are doubled: Sherpa, KV, R2, PostHog, the Container, time, geolocation.
 - Expected values come from the spec or a worked example done by hand (an edge of 60 km on a 60 km/h road: 1 h at the wheel, 1.2 h in the ring), not recomputed the way the code computes them: not through `computeRing`, the code's own templates, or its sorting.
 - An e2e test drives the page's time with `page.clock`, paused, and waits on what the page shows.
@@ -26,5 +26,6 @@ Rules a reviewer checks by judgement: when a ticket's work is merged, and when a
 
 - A change that contradicts an ADR in `docs/adr/` edits that ADR in the same commit.
 - A one-off harness (a benchmark, a probe workflow) is deleted when its ticket ends, or runs only on `workflow_dispatch`.
-- A change updates every README, agent doc and spec line that describes what it changed. The spec is the body of issue #20: a line of it the change makes wrong is edited with the change.
-- A mention of the spec names its issue: `spec #20 «Экран»` in code, `[spec #20](https://github.com/igorkamyshev/roadtrip/issues/20) «Экран»` in Markdown.
+- A change updates every README and agent doc line that describes what it changed.
+- The spec, `docs/specs/20.md` (issue #20 copied when its work ended), is frozen. A change that makes a section of it untrue adds a line under that section in `docs/specs/20-amendments.md`.
+- A mention of the spec names its issue and section: `spec #20 «Экран»` in code, `[spec #20](docs/specs/20.md) «Экран»` in Markdown (the path relative to the file). It means the section with its amendments.
