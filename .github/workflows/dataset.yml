@@ -125,9 +125,13 @@ jobs:
       DAY: ${{ needs.plan.outputs.day }}
     steps:
       - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
+          cache: pnpm
+      # The filter reads the zones of #13 from data/src/zones.ts, which imports the engine package (#79).
+      - run: pnpm install --frozen-lockfile
       - name: The runner and its disk
         run: .github/dataset/runner.sh
       - name: Install osmium-tool
