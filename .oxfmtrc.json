@@ -12,6 +12,7 @@
 		"web/public/",
 		"dist/",
 		".wrangler/",
-		"test-results/"
+		"test-results/",
+		"docs/specs/20.md"
 	]
 }

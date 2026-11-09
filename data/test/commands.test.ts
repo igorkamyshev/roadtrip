@@ -1,6 +1,6 @@
 // The commands as a person runs them: `ring` writes GeoJSON, `build-graph` a graph file `ring` reads.
 import { execFileSync, spawnSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -131,8 +131,11 @@ describe('the build-cities command', () => {
 		rmSync(directory, { recursive: true });
 	});
 
-	it("writes the cities file of GeoNames' files, the zones by the polygons of a graph", () => {
+	it("writes the cities file of GeoNames' files, the zones by the polygons of a graph, and adds the parts of a city to the report", () => {
 		const out = join(directory, 'cities.json');
+		// What build-graph wrote of the report before.
+		const report = join(directory, 'report.md');
+		writeFileSync(report, '## Граф дорог\n');
 
 		const run = spawnSync(
 			process.execPath,
@@ -145,12 +148,15 @@ describe('the build-cities command', () => {
 				'--names',
 				geonames('alternateNamesV2.txt'),
 				'--no-wikidata',
+				'--report',
+				report,
 			],
 			{ encoding: 'utf8' },
 		);
 
 		expect(run.status).toBe(0);
-		// The fixtures' cities in the squares of zones.osm: Kyrenia and Famagusta in Northern Cyprus.
+		// The fixtures' cities in the squares of zones.osm: Kyrenia and Famagusta in Northern Cyprus. Not Engomi, 1.1 km
+		// from Nicosia, within its limits of 4.0 km and an eleventh of it: a part of the city.
 		expect(writtenCities(out)).toEqual([
 			[146268, 'Никосия', 'Nicosia', 0.5, 3.5, 200_452, 'CYP'],
 			[786714, 'Приштина', 'Pristina', 0.5, 0.5, 161_751, 'RKS'],
@@ -159,7 +165,24 @@ describe('the build-cities command', () => {
 			[146617, '', 'Famagusta', 0.7, 2.7, 42_526, 'NX'],
 			[146412, 'Кирения', 'Kyrenia', 0.5, 2.5, 26_701, 'NX'],
 		]);
-		expect(run.stderr).toContain('6 cities of 8 lines');
+		expect(run.stderr).toContain('6 cities of 9 lines');
+		expect(run.stderr).toContain('parts of a city, left out: 1; the biggest: 146500 Engomi (Nicosia, 1.1 km)');
+		expect(readFileSync(report, 'utf8')).toBe(
+			[
+				'## Граф дорог',
+				'',
+				'## Части города',
+				'',
+				'Мест, которые стали частями города и не вошли в файл городов: 1.',
+				'',
+				'Все они:',
+				'',
+				'| Место | Жителей | Город | Расстояние, км |',
+				'| --- | --- | --- | --- |',
+				'| Engomi (146500) | 18\u00A0000 | Nicosia | 1,1 |',
+				'',
+			].join('\n'),
+		);
 		expect(run.stderr).toContain('Russian names: 5 from GeoNames, 0 from Wikidata, 1 without');
 		expect(run.stderr).toMatch(/MB in brotli/u);
 	});

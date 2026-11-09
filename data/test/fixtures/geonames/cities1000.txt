@@ -6,3 +6,4 @@
 147000	Strovolos quarter	Strovolos quarter		0.6	3.4	P	PPLX	CY		01				67904		10	Europe/Nicosia	2026-11-01
 786714	Pristina	Pristina		0.5	0.5	P	PPLC	XK		01				161751		10	Europe/Nicosia	2026-11-01
 617239	Tiraspol	Tiraspol		0.5	7.5	P	PPLA	MD		01				157000		10	Europe/Nicosia	2026-11-01
+146500	Engomi	Engomi		0.51	3.5	P	PPLA3	CY		01				18000		10	Europe/Nicosia	2026-11-01

@@ -31,4 +31,4 @@ Nothing on the map: «Showing the logo of MapLibre is not required for using Map
 
 ## Sherpa
 
-The visa rules. The line names it as their source ([spec #20](https://github.com/igorkamyshev/roadtrip/issues/20) «ⓘ «Что важно знать»»).
+The visa rules. The line names it as their source ([spec #20](specs/20.md) «ⓘ «Что важно знать»»).

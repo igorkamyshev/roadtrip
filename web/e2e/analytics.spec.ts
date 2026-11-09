@@ -308,7 +308,10 @@ test.describe('geolocation failed', () => {
 	}
 });
 
-/** Belgrade's ring 0–1.5° around it, Serbia and Hungary open: worked out from `CITIES`, 10 Serbian cities and Szeged. */
+/**
+ * Belgrade's ring 0–1.5° around it, Serbia and Hungary open: worked out from `CITIES`, 9 Serbian cities and Szeged.
+ * Not Belgrade, the origin's city.
+ */
 const belgradeRing = (source: RingSource = 'calculation'): RingResponse => ({
 	...squareRing(BELGRADE.lat, BELGRADE.lon, [0, 1.5]),
 	...visaRules({ SRB: { mode: 'visa_free', citizenship: 'RUS' }, HUN: { mode: 'visa_free', citizenship: 'RUS' } }),
@@ -327,7 +330,7 @@ test.describe('ring result', () => {
 		await page.clock.runFor(1000);
 		await ringApi.answer(belgradeRing());
 		// The answer is in, at the held time, before the clock goes on.
-		await runNowUntil(page, async () => /11\s*городов в 2 странах/u.test(await firstCard(page).innerText()));
+		await runNowUntil(page, async () => /10\s*городов в 2 странах/u.test(await firstCard(page).innerText()));
 		await page.clock.resume();
 
 		await expect.poll(() => posthog.named('ring result'), SENT).toHaveLength(1);
@@ -341,7 +344,7 @@ test.describe('ring result', () => {
 			start_city: 'Белград',
 			start_city_id: 792680,
 			source: 'calculation',
-			cities_count: 11,
+			cities_count: 10,
 			countries_count: 2,
 		});
 		expect(result.wait_ms).toBe(1000);
@@ -360,7 +363,7 @@ test.describe('ring result', () => {
 	test('from memory: source memory, wait 0, as it came', async ({ page, ringApi, posthog }) => {
 		ringApi.respond(() => belgradeRing());
 		await openInProduction(page, LINK);
-		await expect(firstCard(page)).toContainText(/11\s*городов/u);
+		await expect(firstCard(page)).toContainText(/10\s*городов/u);
 		await dragSlider(page, 5);
 		await expect.poll(() => ringApi.calls, SENT).toHaveLength(2);
 
@@ -376,7 +379,7 @@ test.describe('ring result', () => {
 		expect(posthog.named('ring result')[2]).toMatchObject({
 			outcome: 'ring',
 			wait_ms: 0,
-			cities_count: 11,
+			cities_count: 10,
 			countries_count: 2,
 			start_city: 'Белград',
 		});
@@ -479,7 +482,7 @@ test.describe('ring result', () => {
 	test('none while the slider moves: only where it is let go', async ({ page, ringApi, posthog }) => {
 		ringApi.respond(() => belgradeRing());
 		await openInProduction(page, LINK);
-		await expect(firstCard(page)).toContainText(/11\s*городов/u);
+		await expect(firstCard(page)).toContainText(/10\s*городов/u);
 
 		await dragSlider(page, 8);
 

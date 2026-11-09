@@ -2,6 +2,7 @@
 // Russian and local name, place, population and zone. `build-cities` writes it, the Worker serves it as a static
 // asset at `/data/cities.json`, and the screen picks the cities in the ring from it (web/src/cities/). Shared by the
 // builder and the client, so no Node APIs here.
+import { haversineMeters } from 'engine/geo';
 import { field, items } from 'engine/json';
 
 /** The layout of the file; a change to the columns is a new one, and the client reads only its own. */
@@ -69,6 +70,52 @@ export function decodeCities(file: CitiesFile): CityRow[] {
 		return withId(row, id);
 	});
 	return rows.toSorted((one, two) => biggestFirst(ranked(one), ranked(two)));
+}
+
+/** A point, degrees. */
+export interface Point {
+	readonly lat: number;
+	readonly lon: number;
+}
+
+/** A city's point and population: what its limits are made of. */
+export interface Placed extends Point {
+	readonly population: number;
+}
+
+/**
+ * The radius of a city's limits (GLOSSARY «Пределы города»), km: 9 km × √(its people in millions), so Sarajevo's is
+ * 7.5 km, Belgrade's 10, Moscow's 29. The builder leaves out the parts of a city by it, and the screen finds the
+ * origin's city.
+ */
+export function limitsKm(population: number): number {
+	return 9 * Math.sqrt(population / 1e6);
+}
+
+/** The great-circle distance between two points, km. */
+export function distanceKm(one: Point, two: Point): number {
+	return haversineMeters(one.lat, one.lon, two.lat, two.lon) / 1000;
+}
+
+/** A city and how far a point is from it, km. */
+export interface CityAt<City> {
+	readonly city: City;
+	readonly km: number;
+}
+
+/**
+ * The city of `cities` whose limits hold the point, the nearest of several (GLOSSARY «Город точки старта»), with
+ * how far it is; undefined outside them all. Of two as close, the first in `cities`.
+ */
+export function cityAround<City extends Placed>(cities: Iterable<City>, at: Point): CityAt<City> | undefined {
+	let around: CityAt<City> | undefined;
+	for (const city of cities) {
+		const km = distanceKm(at, city);
+		if (km <= limitsKm(city.population) && (around === undefined || km < around.km)) {
+			around = { city, km };
+		}
+	}
+	return around;
 }
 
 /** The row with another first column. */

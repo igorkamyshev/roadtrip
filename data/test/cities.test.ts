@@ -69,23 +69,29 @@ function build(places: readonly Place[], names: readonly AlternateName[] = [], w
 	});
 }
 
-// A point inside Cyprus (2°–4°E) and outside Northern Cyprus (2.2°–2.8°E).
-const IN_CYPRUS = { lat: 0.5, lon: 3.5 };
+/**
+ * The n-th point of a row inside Cyprus (2°–4°E) and outside Northern Cyprus (2.2°–2.8°E), 0.1° (11 km) apart: no
+ * city of a million or fewer holds the next in its limits (9 km for a million), so none is a part of a city.
+ */
+const inCyprus = (n: number) => ({ lat: 0.5, lon: 2.9 + n * 0.1 });
+
+/** The n-th point of a row far from the squares of zones.osm, 0.1° (11 km) apart. */
+const away = (n: number) => ({ lat: 5, lon: 50 + n * 0.1 });
 
 /** A city in Cyprus, the bigger the smaller its id. */
-const city = (id: number) => ({ id, name: `City ${id}`, ...IN_CYPRUS, population: 100_000 - id });
+const city = (id: number) => ({ id, name: `City ${id}`, ...inCyprus(id), population: 100_000 - id });
 
 describe('the cities', () => {
 	it('holds the places of 15 000 people and more, without sections of cities and vanished places', async () => {
 		const { cities } = await build([
-			{ id: 1, name: 'Limassol', ...IN_CYPRUS, population: 154_000, code: 'PPLA' },
-			{ id: 2, name: 'Small', ...IN_CYPRUS, population: 14_999 },
-			{ id: 3, name: 'Just enough', ...IN_CYPRUS, population: 15_000 },
-			{ id: 4, name: 'A section of a city', ...IN_CYPRUS, population: 80_000, code: 'PPLX' },
-			{ id: 5, name: 'Historical', ...IN_CYPRUS, population: 80_000, code: 'PPLH' },
-			{ id: 6, name: 'Abandoned', ...IN_CYPRUS, population: 80_000, code: 'PPLQ' },
-			{ id: 7, name: 'Destroyed', ...IN_CYPRUS, population: 80_000, code: 'PPLW' },
-			{ id: 8, name: 'Capital', ...IN_CYPRUS, population: 200_000, code: 'PPLC' },
+			{ id: 1, name: 'Limassol', ...inCyprus(1), population: 154_000, code: 'PPLA' },
+			{ id: 2, name: 'Small', ...inCyprus(2), population: 14_999 },
+			{ id: 3, name: 'Just enough', ...inCyprus(3), population: 15_000 },
+			{ id: 4, name: 'A section of a city', ...inCyprus(4), population: 80_000, code: 'PPLX' },
+			{ id: 5, name: 'Historical', ...inCyprus(5), population: 80_000, code: 'PPLH' },
+			{ id: 6, name: 'Abandoned', ...inCyprus(6), population: 80_000, code: 'PPLQ' },
+			{ id: 7, name: 'Destroyed', ...inCyprus(7), population: 80_000, code: 'PPLW' },
+			{ id: 8, name: 'Capital', ...inCyprus(8), population: 200_000, code: 'PPLC' },
 		]);
 
 		expect(cities.map(([id]) => id)).toEqual([8, 1, 3]);
@@ -162,9 +168,9 @@ describe('the cities', () => {
 		const asked: number[][] = [];
 		const { cities, report } = await build(
 			[
-				{ id: 1, name: 'Aalst', ...IN_CYPRUS, population: 80_000 },
-				{ id: 2, name: 'Brussels', ...IN_CYPRUS, population: 1_000_000 },
-				{ id: 3, name: 'Paju', ...IN_CYPRUS, population: 50_000 },
+				{ id: 1, name: 'Aalst', ...inCyprus(1), population: 80_000 },
+				{ id: 2, name: 'Brussels', ...inCyprus(2), population: 1_000_000 },
+				{ id: 3, name: 'Paju', ...inCyprus(3), population: 50_000 },
 			],
 			[{ id: 2, name: 'Брюссель' }],
 			(ids) => {
@@ -208,12 +214,10 @@ describe('the cities', () => {
 	});
 
 	it("puts a city outside every polygon in its GeoNames country, and leaves it out when that is no zone's", async () => {
-		// Far from the squares of zones.osm.
-		const away = { lat: 5, lon: 50 };
 		const { cities, report } = await build([
-			{ id: 1, name: 'Ramallah', ...away, population: 38_998, country: 'PS' },
-			{ id: 2, name: 'Prizren', ...away, population: 85_119, country: 'XK' },
-			{ id: 3, name: 'Nowhere', ...away, population: 20_000, country: 'ZZ' },
+			{ id: 1, name: 'Ramallah', ...away(1), population: 38_998, country: 'PS' },
+			{ id: 2, name: 'Prizren', ...away(2), population: 85_119, country: 'XK' },
+			{ id: 3, name: 'Nowhere', ...away(3), population: 20_000, country: 'ZZ' },
 			{ id: 4, name: 'Nicosia', lat: 0.5, lon: 3.5, population: 200_452, country: 'CY' },
 		]);
 
@@ -223,6 +227,90 @@ describe('the cities', () => {
 			['Ramallah', 'PSE'],
 		]);
 		expect(report).toMatchObject({ cities: 3, zoneByPolygon: 1, zoneByCountry: 2, withoutZone: ['3 Nowhere ZZ'] });
+	});
+});
+
+describe('the parts of a city', () => {
+	// Real places of GeoNames; their distances, by hand at 111.2 km a degree of latitude and cos(lat) of that a degree
+	// of longitude. A city's limits are 9 km × √(its people in millions): Belgrade's 10.2 km, Sarajevo's 7.5,
+	// Moscow's 29.0.
+	const serbia = { country: 'RS', code: 'PPLA3' };
+	const BELGRADE = { id: 792680, name: 'Belgrade', lat: 44.80401, lon: 20.46513, population: 1_273_651, code: 'PPLC', country: 'RS' };
+	const places: Place[] = [
+		BELGRADE,
+		// 3.2 km from Belgrade.
+		{ id: 787607, name: 'Novi Beograd', lat: 44.80556, lon: 20.42417, population: 209_763, ...serbia },
+		// 6.9 km.
+		{ id: 783920, name: 'Zemun', lat: 44.8458, lon: 20.40116, population: 155_591, ...serbia },
+		// 15.8 km and 15.3 km: outside Belgrade's limits.
+		{ id: 787237, name: 'Pančevo', lat: 44.87177, lon: 20.64167, population: 76_654, code: 'PPLA2', country: 'RS' },
+		{ id: 785615, name: 'Sremčica', lat: 44.67653, lon: 20.39232, population: 23_000, code: 'PPL', country: 'RS' },
+		{ id: 3191281, name: 'Sarajevo', lat: 43.84864, lon: 18.35644, population: 696_731, code: 'PPLC', country: 'BA' },
+		// 4.4 km from Sarajevo.
+		{ id: 3199145, name: 'Ilidža', lat: 43.83148, lon: 18.30697, population: 71_277, code: 'PPLA3', country: 'BA' },
+		{ id: 524901, name: 'Moscow', lat: 55.75204, lon: 37.61781, population: 10_381_222, code: 'PPLC', country: 'RU' },
+		// 20.3 km from Moscow: a satellite grown into it.
+		{ id: 550280, name: 'Khimki', lat: 55.9001, lon: 37.42848, population: 239_967, code: 'PPLA2', country: 'RU' },
+	];
+
+	it("leaves out the places within a city's limits that it is three times as big as or more", async () => {
+		const { cities } = await build(places);
+
+		expect(cities.map(([, , local]) => local)).toEqual(['Moscow', 'Belgrade', 'Sarajevo', 'Pančevo', 'Sremčica']);
+	});
+
+	it('keeps a city within the limits of another that is less than three times as big', async () => {
+		// 4.5 km apart, within the bigger's 9 km; 1 000 000 is 2.5 times 400 000, and 3 times 333 334 less 2.
+		const { cities } = await build([
+			{ id: 1, name: 'Big', lat: 10, lon: 50, population: 1_000_000, country: 'RS' },
+			{ id: 2, name: 'Near and big', lat: 10.04, lon: 50, population: 400_000, country: 'RS' },
+			{ id: 3, name: 'Near, a third', lat: 9.96, lon: 50, population: 333_334, country: 'RS' },
+		]);
+
+		expect(cities.map(([, , local]) => local)).toEqual(['Big', 'Near and big', 'Near, a third']);
+	});
+
+	it('keeps a place within the limits of a part only, outside those of its city: a part holds no parts', async () => {
+		// A city of a million, 9 km of limits; 8 km east of it a place of 100 000, 2.8 km of limits; 10 km east of the
+		// city, 2 km from that one, a place of 20 000. At 10° N a degree of longitude is 109.5 km.
+		const { cities, report } = await build([
+			{ id: 1, name: 'City', lat: 10, lon: 50, population: 1_000_000, country: 'RS' },
+			{ id: 2, name: 'Part', lat: 10, lon: 50.073, population: 100_000, country: 'RS' },
+			{ id: 3, name: 'Beyond', lat: 10, lon: 50.0913, population: 20_000, country: 'RS' },
+		]);
+
+		expect(cities.map(([, , local]) => local)).toEqual(['City', 'Beyond']);
+		expect(report.biggestCityParts).toEqual([{ id: 2, name: 'Part', population: 100_000, city: 'City', km: 8 }]);
+	});
+
+	it('reports how many places are parts of a city, and the biggest with their city and distance', async () => {
+		const { report } = await build(places);
+
+		expect(report.cityParts).toBe(4);
+		expect(report.biggestCityParts).toEqual([
+			{ id: 550280, name: 'Khimki', population: 239_967, city: 'Moscow', km: 20.3 },
+			{ id: 787607, name: 'Novi Beograd', population: 209_763, city: 'Belgrade', km: 3.2 },
+			{ id: 783920, name: 'Zemun', population: 155_591, city: 'Belgrade', km: 6.9 },
+			{ id: 3199145, name: 'Ilidža', population: 71_277, city: 'Sarajevo', km: 4.4 },
+		]);
+	});
+
+	it('names the 20 biggest parts only', async () => {
+		// 25 places 1 km from a city of 1 000 000, each of 20 000 people and more.
+		const { report } = await build([
+			{ id: 1, name: 'City', lat: 10, lon: 50, population: 1_000_000, country: 'RS' },
+			...Array.from({ length: 25 }, (_, n) => ({
+				id: n + 2,
+				name: `Part ${n + 2}`,
+				lat: 10.009,
+				lon: 50,
+				population: 20_000 + n,
+				country: 'RS',
+			})),
+		]);
+
+		expect(report.cityParts).toBe(25);
+		expect(report.biggestCityParts.map(({ id }) => id)).toEqual(Array.from({ length: 20 }, (_, n) => 26 - n));
 	});
 });
 
