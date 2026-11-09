@@ -26,6 +26,8 @@ export class RingApi {
 	#held: { call: RingCall; route: Route }[] = [];
 	/** None holds every call. */
 	#responder: RingResponder | undefined;
+	/** Where the calls of the page's current load start in `calls`. */
+	#loadStart = 0;
 
 	/** How every next call is answered; by default each one is held. */
 	respond(responder: RingResponder): void {
@@ -50,6 +52,27 @@ export class RingApi {
 	async waitForCalls(count: number): Promise<RingCall[]> {
 		await expect.poll(() => this.calls.length, { message: `${count} calls to /api/ring` }).toBeGreaterThanOrEqual(count);
 		return this.calls;
+	}
+
+	/** A new load of the page starts (`reopen`): the page forgets its rings, so only the calls from here count. */
+	newLoad(): void {
+		this.#loadStart = this.calls.length;
+	}
+
+	/** Whether the page, since it was loaded, has asked for the ring its link names: `…#/?p=lat,lon&h=…&cit=…&visas=…`. */
+	askedFor(link: string): boolean {
+		const state = new URLSearchParams(new URL(link).hash.replace(/^#\/\?/u, ''));
+		const [lat, lon] = (state.get('p') ?? '').split(',');
+		return this.calls
+			.slice(this.#loadStart)
+			.some(
+				(call) =>
+					call.lat === lat &&
+					call.lon === lon &&
+					call.hours === Number(state.get('h')) &&
+					call.cit === state.get('cit') &&
+					call.visas === state.get('visas'),
+			);
 	}
 
 	async handle(route: Route): Promise<void> {

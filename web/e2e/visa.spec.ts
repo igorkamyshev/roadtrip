@@ -3,7 +3,7 @@
 // citizenships): what the person sees and what the screen asks the API.
 import type { Page } from '@playwright/test';
 import { allowGeolocation, expect, squareRing, test, visaRules, ZONE_OUTLINES } from './fixtures.ts';
-import { dottedHours, expectRingCard, firstCard, hatchedZones, outlinesOnMap, phrase, ringOnMap, slider } from './screen.ts';
+import { dottedHours, expectRingCard, firstCard, hatchedZones, outlinesOnMap, phrase, reopen, ringOnMap, slider } from './screen.ts';
 
 const BELGRADE = { lat: 44.8176, lon: 20.4573 };
 const LINK = '/#/?p=44.81760,20.45730&h=2';
@@ -15,12 +15,6 @@ test.beforeEach(async ({ context, ringApi }) => {
 
 const sheet = (page: Page) => page.getByRole('dialog', { name: 'Гражданство' });
 const choice = (page: Page, name: string) => sheet(page).getByRole('button', { name });
-
-/** A new load of the page, as after closing the tab: the browser's storage stays. */
-async function reopen(page: Page, path: string): Promise<void> {
-	await page.goto('about:blank');
-	await page.goto(path);
-}
 
 test.describe('the citizenships', () => {
 	test('are Russian by default: «Гражданство РФ» in the phrase, in the request and in the link', async ({ page, ringApi }) => {
@@ -94,7 +88,7 @@ test.describe('the citizenships', () => {
 		await expect(page).toHaveURL(/&h=2&cit=DEU,SRB$/u);
 		expect((await ringApi.waitForCalls(1))[0].cit).toBe('DEU,SRB');
 
-		await reopen(page, '/');
+		await reopen(page, ringApi, '/');
 		await expect(page).toHaveURL(/&h=2&cit=DEU,SRB$/u);
 		await expect(phrase(page)).toContainText('Гражданство Германия + Сербия');
 	});
