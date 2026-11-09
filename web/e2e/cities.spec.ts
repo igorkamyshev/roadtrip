@@ -335,12 +335,12 @@ test.describe("the origin's city", () => {
 	});
 });
 
-/** The cards of the carousel, as the person scrolls it until the card is in the middle. */
+/** The cards of the carousel, as the person scrolls it until the card is the current one, at its left edge. */
 async function scrollTo(page: Page, name: string): Promise<void> {
 	await cityCards(page)
 		.filter({ has: page.getByRole('heading', { name, exact: true }) })
 		.evaluate((card) => {
-			card.scrollIntoView({ inline: 'center', block: 'nearest' });
+			card.scrollIntoView({ inline: 'start', block: 'nearest' });
 		});
 }
 
@@ -358,17 +358,18 @@ async function openTheList(page: Page): Promise<void> {
 }
 
 /**
- * Taps the card where the carousel shows it, on its heading's line, as a finger would: a card at the carousel's edge
- * only peeks out of it, and a click of Playwright's would scroll it into view first.
+ * Taps the card where the carousel shows it, on its heading's line, as a finger would: a card past the current one
+ * only peeks out from under the slider, and a click of Playwright's would scroll it into view first.
  */
 async function tapCard(page: Page, name: string): Promise<void> {
-	const [cardBox, headingBox, carouselBox] = await Promise.all([
+	const [cardBox, headingBox, carouselBox, sliderBox] = await Promise.all([
 		boxOf(card(page, name)),
 		boxOf(card(page, name).getByRole('heading')),
 		boxOf(carousel(page)),
+		boxOf(slider(page)),
 	]);
 	const left = Math.max(cardBox.x, carouselBox.x);
-	const right = Math.min(cardBox.x + cardBox.width, carouselBox.x + carouselBox.width);
+	const right = Math.min(cardBox.x + cardBox.width, sliderBox.x - 8);
 	await page.mouse.click((left + right) / 2, headingBox.y + headingBox.height / 2);
 }
 
@@ -408,23 +409,29 @@ test.describe('the carousel and the map', () => {
 
 		// Back to the first card: no city is chosen.
 		await firstCard(page).evaluate((card) => {
-			card.scrollIntoView({ inline: 'center', block: 'nearest' });
+			card.scrollIntoView({ inline: 'start', block: 'nearest' });
 		});
 		await expect(chosenCard(page)).toHaveCount(0);
 		await expect.poll(async () => (await labelsOnMap(page)).chosen).toEqual([]);
 	});
 
-	test('tapping a card at the edge of the carousel chooses its city, and the map goes to it at the same zoom', async ({ page }) => {
-		const zoom = await mapZoom(page);
-		await expect(card(page, 'Будапешт')).not.toBeInViewport({ ratio: 0.9 });
+	// On a large phone the card after the current one peeks out from under the slider (#85); on a smaller one it starts
+	// at the slider and fades out.
+	test.describe('on a large phone', () => {
+		test.use({ viewport: { width: 430, height: 932 } });
 
-		await tapCard(page, 'Будапешт');
+		test('tapping the card that peeks out chooses its city, and the map goes to it at the same zoom', async ({ page }) => {
+			const zoom = await mapZoom(page);
+			await expect(card(page, 'Будапешт')).not.toBeInViewport({ ratio: 0.9 });
 
-		await expect(chosenCard(page).locator('h3')).toHaveText('Будапешт');
-		await expect(chosenCard(page)).toBeInViewport({ ratio: 0.9 });
-		await expect.poll(async () => (await labelsOnMap(page)).chosen).toEqual(['Будапешт']);
-		expect(await wentTo(page, BUDAPEST)).toBeLessThan(25);
-		expect(await mapZoom(page)).toBeCloseTo(zoom);
+			await tapCard(page, 'Будапешт');
+
+			await expect(chosenCard(page).locator('h3')).toHaveText('Будапешт');
+			await expect(chosenCard(page)).toBeInViewport({ ratio: 0.9 });
+			await expect.poll(async () => (await labelsOnMap(page)).chosen).toEqual(['Будапешт']);
+			expect(await wentTo(page, BUDAPEST)).toBeLessThan(25);
+			expect(await mapZoom(page)).toBeCloseTo(zoom);
+		});
 	});
 
 	test("tapping the chosen city's card brings the map back to it, at the same zoom", async ({ page }) => {
@@ -456,6 +463,26 @@ test.describe('the carousel and the map', () => {
 		await expect(chosenCard(page).locator('h3')).toHaveText('Ниш');
 		await expect.poll(async () => (await labelsOnMap(page)).chosen).toEqual(['Ниш']);
 		expect(await wentTo(page, NIS)).toBeLessThan(25);
+	});
+
+	test('a tap on the slider over a card under it changes N and chooses no card', async ({ page }) => {
+		const hourBox = await boxOf(slider(page).locator('[data-hours="1"]'));
+		const tap = { x: hourBox.x + hourBox.width / 2, y: hourBox.y + hourBox.height / 2 };
+		const under = await cityCards(page).evaluateAll(
+			(cards, at) =>
+				cards.some((card) => {
+					const box = card.getBoundingClientRect();
+					return box.left <= at.x && at.x <= box.right && box.top <= at.y && at.y <= box.bottom;
+				}),
+			tap,
+		);
+		expect(under, 'a card under the cell of 1 h').toBe(true);
+
+		await page.mouse.click(tap.x, tap.y);
+
+		await expect(slider(page)).toHaveAttribute('aria-valuenow', '1');
+		await page.clock.fastForward(1000);
+		await expect(chosenCard(page)).toHaveCount(0);
 	});
 
 	test('tapping «Маршрут» of a card opens the route, as before', async ({ page, network }) => {

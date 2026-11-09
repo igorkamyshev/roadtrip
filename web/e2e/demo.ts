@@ -1,6 +1,6 @@
 // The screen without the Worker, to look at (`pnpm --filter web demo`, e2e/demo-cli.ts) and record (e2e/record.ts):
 // the build served by Vite's preview server, with the screen tests' doubles of what the Worker serves
-// (e2e/fixtures.ts). `/api/ring` answers a band N − 1 to N tenths of a degree around the origin after
+// (e2e/fixtures.ts). `/api/ring` answers a band of its bounds `from` to `to` in tenths of a degree around the origin after
 // `RING_DELAY_MS`, so the calculation shows; the cities are `CITIES` around Belgrade, the zones `ZONE_OUTLINES`, the
 // tiles empty. PostHog stays off, as on any host but production.
 import type { IncomingMessage, ServerResponse } from 'node:http';
@@ -19,8 +19,8 @@ function json(response: ServerResponse, body: unknown): void {
 function worker(request: IncomingMessage, response: ServerResponse, next: () => void): void {
 	const url = new URL(request.url ?? '/', 'http://demo');
 	if (url.pathname === '/api/ring') {
-		const hours = Number(url.searchParams.get('hours'));
-		const ring = squareRing(Number(url.searchParams.get('lat')), Number(url.searchParams.get('lon')), [(hours - 1) / 10, hours / 10]);
+		const [from, to] = [url.searchParams.get('from'), url.searchParams.get('to')].map(Number);
+		const ring = squareRing(Number(url.searchParams.get('lat')), Number(url.searchParams.get('lon')), [from / 10, to / 10]);
 		setTimeout(() => {
 			json(response, ring);
 		}, RING_DELAY_MS);

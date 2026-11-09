@@ -32,6 +32,24 @@
 	--shadow: 0 2px 10px rgb(16 30 26 / 14%), 0 1px 2px rgb(16 30 26 / 10%);
 	--font: 'Golos Text', system-ui, -apple-system, 'Segoe UI', 'Roboto', sans-serif;
 	--display: 'Unbounded', 'Golos Text', system-ui, sans-serif;
+
+	/* Every floating panel stands this far from the screen's nearest edges, past the safe area, and this far from the
+	   panel next to it (#85). */
+	--edge: 12px;
+	--edge-top: calc(var(--edge) + env(safe-area-inset-top, 0px));
+	--edge-right: calc(var(--edge) + env(safe-area-inset-right, 0px));
+	--edge-bottom: calc(var(--edge) + env(safe-area-inset-bottom, 0px));
+	--edge-left: calc(var(--edge) + env(safe-area-inset-left, 0px));
+	--between: 8px;
+
+	/* The corners (#85): of the floating panels and plates, and of what is nested in them, the panel's less its
+	   padding of 6 px: the slider's cells, the buttons. */
+	--radius: 18px;
+	--radius-inner: 12px;
+
+	/* The slider's panel; the carousel's cards end --between left of it. */
+	--slider-width: 52px;
+	--beside-slider: calc(var(--edge-right) + var(--slider-width) + var(--between));
 }
 
 @media (prefers-color-scheme: dark) {
@@ -148,7 +166,7 @@ a {
 	gap: 6px;
 	height: 40px;
 	padding: 0 14px;
-	border-radius: 12px;
+	border-radius: var(--radius-inner);
 	background: var(--surface-2);
 	font-weight: 500;
 	text-decoration: none;
@@ -210,7 +228,7 @@ a {
 	gap: 8px;
 	align-items: flex-start;
 	padding: 10px 12px;
-	border-radius: 12px;
+	border-radius: var(--radius-inner);
 	background: var(--warn-bg);
 	color: var(--warn);
 	font-size: 13px;
@@ -308,7 +326,7 @@ a {
 	bottom: 0;
 	max-height: 86%;
 	background: var(--surface);
-	border-radius: 20px 20px 0 0;
+	border-radius: var(--radius) var(--radius) 0 0;
 	z-index: 51;
 	display: flex;
 	flex-direction: column;
@@ -348,7 +366,7 @@ a {
 .ico-btn {
 	width: 40px;
 	height: 40px;
-	border-radius: 12px;
+	border-radius: var(--radius-inner);
 	display: grid;
 	place-items: center;
 	flex: none;
@@ -364,7 +382,7 @@ a {
 	gap: 8px;
 	height: 44px;
 	padding: 0 12px;
-	border-radius: 12px;
+	border-radius: var(--radius-inner);
 	background: var(--surface-2);
 	color: var(--muted);
 }
@@ -531,7 +549,7 @@ a {
 	display: grid;
 	place-items: center;
 	min-height: 0;
-	border-radius: 9px;
+	border-radius: var(--radius-inner);
 	font-size: 13px;
 	color: var(--muted);
 	font-variant-numeric: tabular-nums;
@@ -569,7 +587,7 @@ a {
 	right: 0;
 	bottom: 0;
 	height: calc((100% - 11 * var(--gap)) / 12);
-	border-radius: 9px;
+	border-radius: var(--radius-inner);
 	background: var(--ring);
 	box-shadow: 0 1px 4px color-mix(in srgb, var(--ring) 40%, transparent);
 	transition: transform 150ms ease-out;
@@ -577,16 +595,17 @@ a {
 
 /* ---------- variant C: phrase + carousel ---------- */
 
-/* The phrase and the slider's panel under it, one column from the top of the screen down to the carousel: a longer
-   phrase moves the slider down, never over it (#47). The map between them takes its taps. */
+/* The phrase and the slider's panel under it, one column from the top of the screen down to its bottom, over the
+   carousel (#85): a longer phrase moves the slider down, never over it (#47). The map and the carousel between them
+   take their taps; the slider takes those on it. */
 .c-top {
 	position: absolute;
-	inset: 12px 6px 214px 12px;
-	z-index: 10;
+	inset: var(--edge-top) var(--edge-right) var(--edge-bottom) var(--edge-left);
+	z-index: 11;
 	display: flex;
 	flex-direction: column;
 	align-items: flex-end;
-	gap: 8px;
+	gap: var(--between);
 	pointer-events: none;
 }
 
@@ -598,9 +617,8 @@ a {
 	position: relative;
 	align-self: stretch;
 	flex: none;
-	margin-right: 6px;
 	background: var(--surface);
-	border-radius: 18px;
+	border-radius: var(--radius);
 	box-shadow: var(--shadow);
 	padding: 12px 14px;
 	font-size: 17px;
@@ -616,12 +634,12 @@ a {
    column's layout, so the slider stays where it is when they go. */
 .c-phrase p.c-sources {
 	position: absolute;
-	top: calc(100% + 8px);
-	right: 58px;
-	max-width: calc(100% - 58px);
+	top: calc(100% + var(--between));
+	right: calc(var(--slider-width) + var(--between));
+	max-width: calc(100% - var(--slider-width) - var(--between));
 	box-sizing: border-box;
 	padding: 4px 10px;
-	border-radius: 10px;
+	border-radius: var(--radius);
 	background: var(--surface);
 	box-shadow: var(--shadow);
 	color: var(--muted);
@@ -682,30 +700,46 @@ a {
 	height: 20px;
 }
 
-/* The slider's panel, in .c-top: down to the carousel, up to 450 px, about 36 px an hour; on a low screen or under a
-   long phrase, up to 8 px under the phrase, and never lower than 120 px, to be taken by a finger. */
+/* The slider's panel, in .c-top: down to the bottom of the screen over the carousel, up to 450 px, about 36 px an
+   hour; on a low screen or under a long phrase, up to 8 px under the phrase, and never lower than 120 px, to be
+   taken by a finger. */
 .c-vs {
 	flex: 1 1 0;
 	margin-top: auto;
 	min-height: 120px;
 	max-height: 450px;
-	width: 52px;
+	width: var(--slider-width);
 	background: color-mix(in srgb, var(--surface) 88%, transparent);
-	border-radius: 18px;
+	border-radius: var(--radius);
 	box-shadow: var(--shadow);
 }
 
+/* The carousel, the whole width of the screen under the slider (#85): the current card at the left edge, ending
+   --between left of the slider's panel, up to 300 px wide; the cards right of it fade out before the panel, so none
+   shows under it. */
 .c-car {
+	--card: min(300px, 100% - var(--edge-left) - var(--beside-slider));
+	--fade: linear-gradient(
+		to right,
+		#000 calc(var(--edge-left) + var(--card)),
+		transparent calc(100% - var(--edge-right) - var(--slider-width))
+	);
+
 	position: absolute;
 	left: 0;
 	right: 0;
-	bottom: 12px;
+	bottom: 0;
 	z-index: 10;
 	display: flex;
 	gap: 10px;
 	overflow-x: auto;
 	scroll-snap-type: x mandatory;
-	padding: 4px 16px 6px;
+	scroll-padding-left: var(--edge-left);
+	padding: 4px var(--beside-slider) var(--edge-bottom) var(--edge-left);
+	/* stylelint-disable-next-line property-no-vendor-prefix, plugin/no-unsupported-browser-features -- Chrome before 120 reads only the prefixed one (caniuse «css-masks»). */
+	-webkit-mask-image: var(--fade);
+	/* stylelint-disable-next-line plugin/no-unsupported-browser-features -- the prefixed one above masks in Chrome before 120. */
+	mask-image: var(--fade);
 	/* stylelint-disable-next-line plugin/no-unsupported-browser-features -- hides the scrollbar where it can; `::-webkit-scrollbar` below does it in Safari and older Chrome. */
 	scrollbar-width: none;
 }
@@ -714,13 +748,19 @@ a {
 	display: none;
 }
 
+/* Room after the last card, so it too comes to the left edge when the cards are narrower than the carousel. */
+.c-car::after {
+	content: '';
+	flex: none;
+	width: max(0px, 100% - min(300px, 100%) - 10px);
+}
+
 .c-card {
 	flex: none;
-	width: 76%;
-	max-width: 300px;
-	scroll-snap-align: center;
+	width: min(300px, 100%);
+	scroll-snap-align: start;
 	background: var(--surface);
-	border-radius: 18px;
+	border-radius: var(--radius);
 	box-shadow: var(--shadow);
 	padding: 14px;
 	display: grid;
@@ -748,7 +788,7 @@ a {
 	content: '';
 	position: absolute;
 	inset: 0;
-	border-radius: 18px;
+	border-radius: var(--radius);
 }
 
 .c-card-tap:focus-visible {
@@ -798,12 +838,12 @@ a {
 
 .c-pickbar {
 	position: absolute;
-	left: 12px;
-	right: 12px;
-	bottom: 16px;
+	left: var(--edge-left);
+	right: var(--edge-right);
+	bottom: var(--edge-bottom);
 	z-index: 30;
 	background: var(--surface);
-	border-radius: 18px;
+	border-radius: var(--radius);
 	box-shadow: var(--shadow);
 	padding: 12px;
 	display: grid;
