@@ -47,10 +47,13 @@ const SMALL_PLOT_SQUARE_METERS = 200_000_000;
 /**
  * Past 12 h a ring is seen whole on a smaller scale, and in a sparse network of roads (Russia, Scandinavia) they are
  * 30–80 km apart: with plots of 200 km² a ring of days is lace (#77). So past 12 h the small plot grows with the
- * square of the ring's upper bound, SMALL_PLOT_GROWTH × (upper / 12 h)² times SMALL_PLOT_SQUARE_METERS.
+ * square of the ring's upper bound, SMALL_PLOT_GROWTH × (upper / 12 h)² times SMALL_PLOT_SQUARE_METERS: 3 200 km² up
+ * to 24 h, 20 000 km² up to 60 h, a square of 140 km. Picked by the rings of days of the world drawn with growths 1, 4
+ * and 9 (docs/container-bench.md, «Кружево колец дней»): at 1 the networks of Russia and Iran stayed lace, at 4 they
+ * were land, and 9 closed only a few holes more with plots of up to 45 000 km², the size of a large lake.
  */
 const SMALL_PLOT_FROM_SECONDS = 12 * 3600;
-const SMALL_PLOT_GROWTH = 1;
+const SMALL_PLOT_GROWTH = 4;
 /** Off-road travel to and from a road, in seconds of travel per metre: 30 km/h of driving (spec #20 «Привязка»). */
 export const OFF_ROAD_SECONDS_PER_METER = (3.6 / 30) * TRAVEL_PER_DRIVING;
 /** A raster larger than this gets coarser cells: ~120 MB of time and distance. */

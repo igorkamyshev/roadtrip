@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  A plot of land in a ring of days (#77): one country, AAA, a square from 1°W to 12°E and 1°S to 1°N. Every road is
+  secondary (60 km/h): one along the equator from 0° to 10.4°E, and a square loop off it, 10°E – 10.2°E and 0° – 0.2°N,
+  each road of the loop meeting the equator's at its own node, each corner away from the equator with a stub of road
+  1.1 km north, so the builder keeps the corner: it collapses a chain of nodes no other road meets into one straight
+  edge.
+
+  On the equator 1° is 111.2 km: 2.224 h of travel per degree of road. The loop's plot is 0.2° = 22.24 km a side; what
+  of it is further than 1 km from its roads is 20.24 × 20.24 km = 410 km²: more than the 200 km² of a small plot up to
+  12 h, less than the 3 200 km² of a ring up to 24 h, 200 km² × 4 × (24 h / 12 h)².
+
+  From 0°: the loop's roads are reached from 22.24 h (10°E) to 23.13 h (its north-east corner, either way round), all
+  within 24 h and none within 12 h, so the ring (12, 24] takes the plot in. From 9°E: they are reached from 2.22 h to
+  3.11 h, so the ring (0, 12] walls it in too, but 410 km² is no small plot up to 12 h, and it stays out.
+
+     0.2°N                                      +----+
+                                                |plot|
+        0°  0 . . . . . . . . . . . . . 9 . . . +----+ . .
+            0°                          9°E   10°E 10.2°E 10.4°E
+-->
+<osm version="0.6" generator="hand">
+	<node id="1" lat="0" lon="0"/>
+	<node id="2" lat="0" lon="1"/>
+	<node id="3" lat="0" lon="2"/>
+	<node id="4" lat="0" lon="3"/>
+	<node id="5" lat="0" lon="4"/>
+	<node id="6" lat="0" lon="5"/>
+	<node id="7" lat="0" lon="6"/>
+	<node id="8" lat="0" lon="7"/>
+	<node id="9" lat="0" lon="8"/>
+	<node id="10" lat="0" lon="9"/>
+	<node id="11" lat="0" lon="10"/>
+	<node id="12" lat="0" lon="10.2"/>
+	<node id="13" lat="0" lon="10.4"/>
+	<node id="21" lat="0.2" lon="10"/>
+	<node id="22" lat="0.2" lon="10.2"/>
+	<node id="23" lat="0.21" lon="10"/>
+	<node id="24" lat="0.21" lon="10.2"/>
+	<node id="101" lat="-1" lon="-1"/>
+	<node id="102" lat="-1" lon="12"/>
+	<node id="103" lat="1" lon="12"/>
+	<node id="104" lat="1" lon="-1"/>
+
+	<way id="1">
+		<nd ref="1"/><nd ref="2"/><nd ref="3"/><nd ref="4"/><nd ref="5"/><nd ref="6"/><nd ref="7"/><nd ref="8"/><nd ref="9"/><nd ref="10"/><nd ref="11"/><nd ref="12"/><nd ref="13"/>
+		<tag k="highway" v="secondary"/>
+	</way>
+	<way id="2">
+		<nd ref="11"/><nd ref="21"/><nd ref="22"/><nd ref="12"/>
+		<tag k="highway" v="secondary"/>
+	</way>
+	<way id="3">
+		<nd ref="21"/><nd ref="23"/>
+		<tag k="highway" v="secondary"/>
+	</way>
+	<way id="4">
+		<nd ref="22"/><nd ref="24"/>
+		<tag k="highway" v="secondary"/>
+	</way>
+
+	<way id="100">
+		<nd ref="101"/><nd ref="102"/><nd ref="103"/><nd ref="104"/><nd ref="101"/>
+		<tag k="boundary" v="administrative"/>
+		<tag k="admin_level" v="2"/>
+	</way>
+	<relation id="1000">
+		<member type="way" ref="100" role="outer"/>
+		<tag k="type" v="boundary"/>
+		<tag k="boundary" v="administrative"/>
+		<tag k="admin_level" v="2"/>
+		<tag k="ISO3166-1:alpha3" v="AAA"/>
+	</relation>
+</osm>
