@@ -62,7 +62,7 @@ One line per file, so that two changes of the screen seldom touch the same line.
   - `icons.tsx`.
 - `src/styles.css`: the prototype's CSS for variant C, its tokens on `:root` with the dark scheme; the slider's `.sl*`, its panel `.c-vs` and the column `.c-top` are ours.
   - `.c-top` holds the phrase and the slider's panel, from 12 px under the top of the screen down to 214 px over its bottom, over the carousel (#47). The panel is up to 450 px high at the bottom of the column; a longer phrase moves its top down, 8 px under the phrase at the closest, and never makes it lower than 120 px. The data's sources of the first 5 s are out of the column's layout, under the phrase: the slider stays when they go.
-- `e2e/`: the screen's tests (below, «Tests») and `demo.ts`, the screen without the Worker (below, «Demo»).
+- `e2e/`: the screen's tests (below, «Tests») and `demo.ts`, the screen without the Worker, which `demo-cli.ts` serves and `record.ts` films (below, «Demo»).
 
 ## For the next tickets
 
@@ -113,7 +113,22 @@ The screen runs where MapLibre 6 runs: Safari 15.4, Chrome 93, Firefox 92 and ne
 
 - Open `/#/?p=44.81760,20.45730&h=6&cit=RUS`: Belgrade, a ring with cities (at 3 h the band has none).
 - For a PR's «Evidence», screenshots and the video go into a private artifact (the Artifact tool), and the PR links it: a cloud session cannot attach a file to a PR.
-- In a cloud session, report its port to the app (`report_preview_port`). Where the app shows no preview, record a video instead: Playwright's `chromium.launch()`, a context with `viewport: { width: 390, height: 844 }` and `recordVideo: { dir, size: { width: 390, height: 844 } }`, the steps with `page.mouse` and pauses a person can follow, then `context.close()` writes the `.webm`; `ffmpeg -i <in>.webm -c:v libx264 -pix_fmt yuv420p <out>.mp4` makes it play on a phone. A dot that follows the pointer (an init script on `pointerdown` and `pointermove`) shows where the finger is.
+- In a cloud session, report its port to the app (`report_preview_port`). Where the app shows no preview, record a video instead.
+- `pnpm --filter web record <steps.ts> <out-dir>` records one: it builds, serves the demo on a free port, films a phone of 390×844 with a dot where the finger is, and writes `recording.mp4` (`.webm` without ffmpeg) and a PNG at 2× for each `shot`. The steps file, written anywhere (the scratchpad), default-exports the steps; `Recording` (`e2e/record.ts`) says what each gesture does, `tap` on a card that peeks from the carousel's edge included:
+
+  ```ts
+  import type { Recording } from '<repo>/web/e2e/record.ts';
+
+  export default async function steps({ page, open, tap, drag, pause, shot }: Recording): Promise<void> {
+  	await open('/#/?p=44.81760,20.45730&h=6&cit=RUS');
+  	await page.getByTestId('city-card').first().waitFor();
+  	await pause(2000);
+  	await tap(page.getByTestId('city-card').first());
+  	await pause(2000);
+  	await shot('tapped');
+  	await drag({ x: 195, y: 420 }, { x: 60, y: 250 });
+  }
+  ```
 
 ## Tests
 
