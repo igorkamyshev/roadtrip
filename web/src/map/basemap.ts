@@ -11,9 +11,6 @@ const SOURCE = 'protomaps';
 /** A label: the Russian name, else the local one (spec). */
 const RUSSIAN_NAME: ExpressionSpecification = ['coalesce', ['get', 'name:ru'], ['get', 'name']];
 
-const ATTRIBUTION =
-	'<a href="https://github.com/protomaps/basemaps">Protomaps</a> © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>';
-
 /** The basemap in the page's colour scheme: Protomaps' `light`, or `dark` as the screen's dark scheme. */
 export function basemapStyle(): StyleSpecification {
 	const flavor = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
@@ -25,7 +22,7 @@ export function basemapStyle(): StyleSpecification {
 		sprite: `${origin}/basemap/sprites/${flavor}`,
 		sources: {
 			// To z15, as the world's archive; MapLibre overzooms beyond.
-			[SOURCE]: { type: 'vector', tiles: [`${origin}/tiles/{z}/{x}/{y}`], maxzoom: 15, attribution: ATTRIBUTION },
+			[SOURCE]: { type: 'vector', tiles: [`${origin}/tiles/{z}/{x}/{y}`], maxzoom: 15 },
 		},
 		layers: layers(SOURCE, namedFlavor(flavor), { lang: 'ru' }).map((layer) => withRussianName(layer)),
 	};
