@@ -643,11 +643,30 @@ a {
 	min-height: 150px;
 	box-sizing: border-box;
 	text-align: left;
+	position: relative;
 }
 .c-card h3 {
 	margin: 0;
 	font-size: 19px;
 	line-height: 1.2;
+}
+/* A city card's tap: the name's button, whose area covers the card; «Маршрут» stays over it. */
+.c-card-tap {
+	all: unset;
+	cursor: pointer;
+}
+.c-card-tap::after {
+	content: '';
+	position: absolute;
+	inset: 0;
+	border-radius: 18px;
+}
+.c-card-tap:focus-visible {
+	outline: none;
+}
+.c-card-tap:focus-visible::after {
+	outline: 2px solid var(--ring);
+	outline-offset: 2px;
 }
 .c-card h3.err {
 	color: var(--err);
@@ -672,6 +691,7 @@ a {
 	font-weight: 600;
 }
 .c-card .acts {
+	position: relative;
 	display: flex;
 	gap: 8px;
 	flex-wrap: wrap;

@@ -7,8 +7,11 @@ import type { Locator, Page } from '@playwright/test';
 import type { Access } from 'worker/api';
 import { allowGeolocation, expect, serveCities, squareRing, test, visaRules } from './fixtures.ts';
 import {
+	boxOf,
+	carousel,
 	citiesOnMap,
 	distanceFromTheMiddle,
+	dragMap,
 	expectRingCard,
 	firstCard,
 	labelsOnMap,
@@ -21,6 +24,8 @@ import {
 
 const BELGRADE = { lat: 44.8176, lon: 20.4573 };
 const LINK = '/#/?p=44.81760,20.45730&h=3';
+const BUDAPEST = { lat: 47.498, lon: 19.04 };
+const NIS = { lat: 43.325, lon: 21.903 };
 
 /** Longer than any easing of the map's camera: MapLibre's `easeTo` takes 500 ms. */
 const EASING_PAST_MS = 2000;
@@ -352,6 +357,21 @@ async function openTheList(page: Page): Promise<void> {
 	await page.clock.fastForward(1000);
 }
 
+/**
+ * Taps the card where the carousel shows it, on its heading's line, as a finger would: a card at the carousel's edge
+ * only peeks out of it, and a click of Playwright's would scroll it into view first.
+ */
+async function tapCard(page: Page, name: string): Promise<void> {
+	const [cardBox, headingBox, carouselBox] = await Promise.all([
+		boxOf(card(page, name)),
+		boxOf(card(page, name).getByRole('heading')),
+		boxOf(carousel(page)),
+	]);
+	const left = Math.max(cardBox.x, carouselBox.x);
+	const right = Math.min(cardBox.x + cardBox.width, carouselBox.x + carouselBox.width);
+	await page.mouse.click((left + right) / 2, headingBox.y + headingBox.height / 2);
+}
+
 /** How far the place is from the middle of the map once the camera went to it: past its easing, by the page's clock. */
 async function wentTo(page: Page, at: { readonly lat: number; readonly lon: number }): Promise<number> {
 	await page.clock.fastForward(EASING_PAST_MS);
@@ -392,6 +412,48 @@ test.describe('the carousel and the map', () => {
 		});
 		await expect(chosenCard(page)).toHaveCount(0);
 		await expect.poll(async () => (await labelsOnMap(page)).chosen).toEqual([]);
+	});
+
+	test('tapping a card at the edge of the carousel chooses its city, and the map goes to it at the same zoom', async ({ page }) => {
+		const zoom = await mapZoom(page);
+		await expect(card(page, 'Будапешт')).not.toBeInViewport({ ratio: 0.9 });
+
+		await tapCard(page, 'Будапешт');
+
+		await expect(chosenCard(page).locator('h3')).toHaveText('Будапешт');
+		await expect(chosenCard(page)).toBeInViewport({ ratio: 0.9 });
+		await expect.poll(async () => (await labelsOnMap(page)).chosen).toEqual(['Будапешт']);
+		expect(await wentTo(page, BUDAPEST)).toBeLessThan(25);
+		expect(await mapZoom(page)).toBeCloseTo(zoom);
+	});
+
+	test("tapping the chosen city's card brings the map back to it, at the same zoom", async ({ page }) => {
+		await scrollTo(page, 'Ниш');
+		await expect(chosenCard(page).locator('h3')).toHaveText('Ниш');
+		expect(await wentTo(page, NIS)).toBeLessThan(25);
+		await dragMap(page, -150, -100);
+		const zoom = await mapZoom(page);
+		expect(await distanceFromTheMiddle(page, NIS)).toBeGreaterThan(100);
+
+		await tapCard(page, 'Ниш');
+
+		expect(await wentTo(page, NIS)).toBeLessThan(25);
+		expect(await mapZoom(page)).toBeCloseTo(zoom);
+		await expect(chosenCard(page).locator('h3')).toHaveText('Ниш');
+	});
+
+	test('tapping «Маршрут» of a card opens the route, as before', async ({ page, network }) => {
+		await scrollTo(page, 'Ниш');
+		await expect(chosenCard(page).locator('h3')).toHaveText('Ниш');
+
+		const route = page.waitForEvent('popup');
+		await chosenCard(page).getByRole('link', { name: 'Маршрут' }).click();
+
+		// A new tab asks Google Maps for the route; the fixtures cut that host off.
+		await route;
+		await expect
+			.poll(() => network.blocked)
+			.toContain('https://www.google.com/maps/dir/?api=1&origin=44.81760%2C20.45730&destination=43.325%2C21.903&travelmode=driving');
 	});
 
 	test('tapping a city of the carousel on the map scrolls the carousel to its card', async ({ page }) => {
