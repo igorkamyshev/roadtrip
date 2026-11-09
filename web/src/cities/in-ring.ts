@@ -24,7 +24,7 @@ export function citiesInRing(cities: readonly City[], ring: RingGeometry, access
 			// A zone `access` does not name is not open.
 			return city.zone in access && access[city.zone].mode !== 'closed' && inside(city.lat, city.lon);
 		})
-		.sort(biggestFirst);
+		.toSorted(biggestFirst);
 }
 
 /** The ring's edges per latitude band, so that a point crosses only the edges at its latitude: rings have 10⁵ points. */

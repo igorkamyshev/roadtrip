@@ -31,7 +31,7 @@ function byName(one: string, two: string): number {
 /** Sherpa's passports in the sheet's order: the default first, then by name. */
 export const CITIZENSHIP_CHOICES: readonly string[] = [
 	DEFAULT_CITIZENSHIP,
-	...SHERPA_PASSPORTS.filter((code) => code !== DEFAULT_CITIZENSHIP).sort(byName),
+	...SHERPA_PASSPORTS.filter((code) => code !== DEFAULT_CITIZENSHIP).toSorted(byName),
 ];
 
 const VISA_NAMES: Readonly<Partial<Record<string, string>>> = { [SCHENGEN]: 'Шенген', USA: 'США' };
@@ -60,10 +60,10 @@ export function visasLabel(visas: readonly string[]): string {
 	return visas.length === 0
 		? 'нет'
 		: [...visas]
-				.sort(byVisaOrder)
+				.toSorted(byVisaOrder)
 				.map((code) => visaName(code))
 				.join(', ');
 }
 
 /** The sheet's «Виза одной страны»: every held visa but the four of the first section, by name. */
-export const SINGLE_COUNTRY_VISAS: readonly string[] = HELD_VISAS.filter((code) => !EXEMPTION_CODES.includes(code)).sort(byName);
+export const SINGLE_COUNTRY_VISAS: readonly string[] = HELD_VISAS.filter((code) => !EXEMPTION_CODES.includes(code)).toSorted(byName);

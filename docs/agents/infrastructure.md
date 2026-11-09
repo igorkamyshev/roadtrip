@@ -48,6 +48,39 @@ A merge's deploy result is only in Cloudflare, not on GitHub. Through the API:
 - `GET /accounts/{account_id}/builds/builds/<build_uuid>/logs`: the log, `result.lines` as `[timestamp in ms, text]`; the error is near the end. `fetch-dataset` prints each file it took with its size and time, and the dataset's version.
 - `GET /accounts/{account_id}/builds/builds/<build_uuid>`: one build; `build_trigger_metadata` has the branch and commit.
 
+Both Workers' latest builds after a merge, one call (no waiting inside it: a call is cut off after about 30 s, so call again a minute later until both are `stopped`):
+
+```js
+async () => {
+	const tags = { 'roadtrip-error-tracking': '44628a3a33c14a7a98ad064976904dda', roadtrip: '9cb118bdadc145da87a91743d9d461b9' };
+	const builds = {};
+	for (const [name, tag] of Object.entries(tags)) {
+		const { result } = await cloudflare.request({
+			method: 'GET',
+			path: `/accounts/${accountId}/builds/workers/${tag}/builds`,
+			query: { per_page: 1 },
+		});
+		const [build] = result;
+		builds[name] = {
+			build: build.build_uuid,
+			status: build.status,
+			outcome: build.build_outcome,
+			commit: build.build_trigger_metadata?.commit_hash,
+		};
+	}
+	return builds;
+};
+```
+
+A build's last lines, for a failure or to see how far it got:
+
+```js
+async () => {
+	const { result } = await cloudflare.request({ method: 'GET', path: `/accounts/${accountId}/builds/builds/<build_uuid>/logs` });
+	return result.lines.slice(-15).map(([, text]) => text);
+};
+```
+
 Then the site itself: `https://roadtrip.kamyshev.me/` (the client), `/data/cities.json` and `/data/zones.json` (the dataset's static files), `/tiles/0/0/0` (the basemap) and `/api/ring?lat=…&lon=…&hours=1&cit=RUS`, which needs the Owner's `SHERPA_API_KEY`: without it every ring is `visa_rules_missing`.
 
 ### Run a build again

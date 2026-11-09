@@ -14,5 +14,12 @@
 		"allowImportingTsExtensions": true,
 		"types": ["node"]
 	},
-	"include": ["./**/*.ts", "../vite.config.ts", "../playwright.config.ts", "../bundle-budget.ts", "../bundle-budget.test.ts"]
+	"include": [
+		"./**/*.ts",
+		"../vite.config.ts",
+		"../playwright.config.ts",
+		"../bundle-budget.ts",
+		"../bundle-budget.test.ts",
+		"../older-browsers.ts"
+	]
 }

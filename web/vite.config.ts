@@ -4,6 +4,7 @@ import posthog from '@posthog/rollup-plugin';
 import react from '@vitejs/plugin-react';
 import { defineConfig, type PluginOption } from 'vite';
 import { bundleBudget } from './bundle-budget.ts';
+import { olderBrowsers } from './older-browsers.ts';
 
 /**
  * What the first paint may load, the entry chunk and the chunks it imports statically, in KB gzipped: 136 KB on
@@ -11,6 +12,12 @@ import { bundleBudget } from './bundle-budget.ts';
  * view with MapLibre and the basemap's style (297 KB) and posthog-js (124 KB) are chunks of their own, after it.
  */
 const FIRST_PAINT_BUDGET_KB = 165;
+
+/**
+ * The oldest browsers the screen supports, those MapLibre 6 runs in: its worker calls `.at()` and `Object.hasOwn`
+ * (Safari 15.4). The build lowers the syntax to them, and they get the polyfills of what the client uses and they lack.
+ */
+const BROWSERS = ['chrome >= 93', 'edge >= 93', 'firefox >= 92', 'safari >= 15.4', 'ios_saf >= 15.4'];
 
 /**
  * PostHog's source maps (spec «Аналитика и ошибки», «Браузер»), so that the stack of an error in the browser reads as
@@ -40,11 +47,7 @@ function sourceMaps(env: NodeJS.ProcessEnv): PluginOption {
 }
 
 export default defineConfig({
-	plugins: [react(), sourceMaps(process.env), bundleBudget(FIRST_PAINT_BUDGET_KB)],
-	build: {
-		// MapLibre 6 needs WebGL2 and modern JS anyway; the entry awaits the opening state at the top level.
-		target: 'es2022',
-	},
+	plugins: [react(), olderBrowsers(BROWSERS), sourceMaps(process.env), bundleBudget(FIRST_PAINT_BUDGET_KB)],
 	server: {
 		// `pnpm dev` of the worker (wrangler dev) answers the ring.
 		proxy: { '/api': 'http://localhost:8787' },

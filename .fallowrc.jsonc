@@ -82,7 +82,13 @@
 			{ "name": "web-e2e", "patterns": ["web/e2e/**"] },
 			{
 				"name": "web-config",
-				"patterns": ["web/vite.config.ts", "web/playwright.config.ts", "web/bundle-budget.ts", "web/bundle-budget.test.ts"],
+				"patterns": [
+					"web/vite.config.ts",
+					"web/playwright.config.ts",
+					"web/bundle-budget.ts",
+					"web/bundle-budget.test.ts",
+					"web/older-browsers.ts",
+				],
 			},
 			{ "name": "web", "patterns": ["web/**"] },
 			{ "name": "lint", "patterns": ["lint/**"] },

@@ -28,7 +28,7 @@ const version = await dataVersion(datasetVersion, borderTable);
 const server = await listen(createEngineServer({ calculate: calculator.calculate, dataVersion: version }), port);
 const address = server.address();
 console.log(
-	`engine listening on port ${typeof address === 'object' && address !== null ? address.port : port}: data version ${version}, ` +
+	`engine listening on port ${typeof address === 'string' || address === null ? port : address.port}: data version ${version}, ` +
 		`graph of ${calculator.nodes} nodes and ${calculator.edges} edges loaded in ${calculator.loadMs.toFixed(0)} ms, ` +
 		`ready ${performance.now().toFixed(0)} ms after the process started`,
 );

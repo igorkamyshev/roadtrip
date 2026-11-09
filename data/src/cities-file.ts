@@ -34,9 +34,7 @@ export interface CitiesFile {
 
 /** The file of the cities. */
 export function encodeCities(cities: readonly CityRow[]): CitiesFile {
-	// A copy sorted in place, here and below: the client's bundle targets ES2022 (web/vite.config.ts), without toSorted.
-	const byId = [...cities];
-	byId.sort((one, two) => one[0] - two[0]);
+	const byId = cities.toSorted((one, two) => one[0] - two[0]);
 	let previous = 0;
 	const rows = byId.map((row) => {
 		const [id] = row;
@@ -70,8 +68,7 @@ export function decodeCities(file: CitiesFile): CityRow[] {
 		id += row[0];
 		return withId(row, id);
 	});
-	rows.sort((one, two) => biggestFirst(ranked(one), ranked(two)));
-	return rows;
+	return rows.toSorted((one, two) => biggestFirst(ranked(one), ranked(two)));
 }
 
 /** The row with another first column. */

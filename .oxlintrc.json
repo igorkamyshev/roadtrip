@@ -123,6 +123,16 @@
 			"rules": { "roadtrip/no-capture-exception": "error" }
 		},
 		{
+			// One reader of untyped JSON for the packages that can import the engine (CODING_STANDARDS.md, Where code goes).
+			"files": ["engine/**", "data/**", "worker/**"],
+			"rules": { "roadtrip/json-through-engine": "error" }
+		},
+		{
+			// The reader itself.
+			"files": ["engine/src/json.ts"],
+			"rules": { "roadtrip/json-through-engine": "off" }
+		},
+		{
 			// The Worker's clock and timers come from deps (CODING_STANDARDS.md, Where code goes; ADR 0002), its tests move them on their own clock.
 			"files": ["worker/src/**", "worker/test/**"],
 			"rules": { "roadtrip/time-through-deps": "error" }
@@ -153,9 +163,6 @@
 				// Imported for what they do: the styles, the fonts, and the parts of posthog-js the SDK would load later.
 				"import/no-unassigned-import": ["error", { "allow": ["**/*.css", "@fontsource/**", "posthog-js/dist/*"] }],
 				// Off, each for its reason:
-				// its fix, `toSorted`, is ES2023: newer than the client's target (es2022, web/vite.config.ts), it is missing
-				// in Safari 15, so the screen sorts a copy (`[...codes].sort()`);
-				"unicorn/no-array-sort": "off",
 				// wrong with the automatic JSX runtime (`jsx: react-jsx`), and `settings.react.version` does not quiet it;
 				"react/react-in-jsx-scope": "off",
 				// they report the same calls as react-hooks/exhaustive-deps, which stays;
