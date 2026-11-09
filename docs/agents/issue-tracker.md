@@ -37,6 +37,8 @@ GitHub shares one number space across issues and PRs, so a bare `#42` may be eit
 
 Create a GitHub issue.
 
+Two tickets that change the same thing (a panel, a file's layout, a table) go in order: the later one is `blocked-by` the earlier one, and its acceptance criteria are written for the code after the earlier one, so each criterion can be met as it stands (#47 asked for a constant gap under the phrase while #44 pinned the slider to the carousel).
+
 ## When a skill says "fetch the relevant ticket"
 
 Read it as in **Read an issue** above.
