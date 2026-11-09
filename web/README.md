@@ -48,7 +48,7 @@ One line per file, so that two changes of the screen seldom touch the same line.
   - `use-screen.ts`: the screen's state and what changes it (`useScreen`, the `ScreenModel` the parts take): the link's state, then the hooks below, and the sheet open.
   - `use-shown-ring.ts`: the ring asked for, the answer shown, the ring's cities, the hours in memory, the events.
   - `use-start-methods.ts`: geolocation, at «Где я» and on a load without an origin; the search; the pin mode.
-  - `use-chosen-city.ts`: the carousel's middle card, a city tapped on the map or picked in the list; a new ring chooses none.
+  - `use-chosen-city.ts`: the carousel's middle card, a card tapped (the name's button, whose area covers the card but «Маршрут»), a city tapped on the map or picked in the list; a new ring chooses none.
   - `first-card-state.ts`: the first card's state.
   - `phrase.tsx`: the phrase, with `VisaRulesDate`, «визовые правила от <дата>».
   - `attribution.tsx`: the map's attribution: `DataSources`, the line of «Что важно знать», and `SourcesOnOpen`, the same line under the phrase for 5 s once the screen opens, as OpenStreetMap's attribution guidelines want it seen before it folds into ⓘ.

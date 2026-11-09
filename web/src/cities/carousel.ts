@@ -50,6 +50,11 @@ function cityInTheMiddle(carousel: HTMLElement): number | undefined {
 	return city === undefined ? undefined : Number(city);
 }
 
+/** Whether the card of `city` is the one in the carousel's middle: scrolling to it would not stop the carousel. */
+export function inTheMiddle(carousel: HTMLElement | null, city: number): boolean {
+	return carousel !== null && cityInTheMiddle(carousel) === city;
+}
+
 /** Scrolls the card of `city` into the carousel's middle; false when the city has no card. */
 export function scrollToCard(carousel: HTMLElement | null, city: number): boolean {
 	const card = carousel?.querySelector(`[data-city="${city}"]`);

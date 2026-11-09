@@ -17,9 +17,11 @@ export interface CityCardProps {
 	readonly citizenships: readonly string[];
 	/** The chosen city: in the carousel's middle, labelled larger on the map. */
 	readonly chosen: boolean;
+	/** A tap anywhere on the card but «Маршрут». */
+	readonly onTap: () => void;
 }
 
-export function CityCard({ city, origin, access, citizenships, chosen }: CityCardProps): ReactElement {
+export function CityCard({ city, origin, access, citizenships, chosen, onTap }: CityCardProps): ReactElement {
 	return (
 		<div
 			className={chosen ? 'c-card focus' : 'c-card'}
@@ -27,7 +29,12 @@ export function CityCard({ city, origin, access, citizenships, chosen }: CityCar
 			data-city={city.id}
 			aria-current={chosen ? 'true' : undefined}
 		>
-			<h3>{city.name}</h3>
+			<h3>
+				{/* Its tap area covers the card, and the keyboard reaches it: a card with a link in it is no button. */}
+				<button type="button" className="c-card-tap" onClick={onTap}>
+					{city.name}
+				</button>
+			</h3>
 			<div className="muted small">{cityFacts(city)}</div>
 			<EntryMark city={city} access={access} />
 			{platesBanned(city, citizenships) ? <div className="small plates">Российские номера не пустят</div> : null}

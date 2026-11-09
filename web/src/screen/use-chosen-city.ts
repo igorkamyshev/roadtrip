@@ -1,8 +1,8 @@
-// The chosen city (spec #20 «Экран», «Карусель»): the card in the carousel's middle, a city tapped on the map or picked
-// in the list of all. The map goes to it and names it larger. A new ring chooses none and shows the carousel from its
-// start.
+// The chosen city (spec #20 «Экран», «Карусель»): the card in the carousel's middle, a card tapped, a city tapped on
+// the map or picked in the list of all. The map goes to it and names it larger. A new ring chooses none and shows the
+// carousel from its start.
 import { useEffect, useRef, useState, type RefObject } from 'react';
-import { scrollToCard, useCarouselStops } from '../cities/carousel.ts';
+import { inTheMiddle, scrollToCard, useCarouselStops } from '../cities/carousel.ts';
 import type { City } from '../cities/cities.ts';
 import type { MapHandle } from '../map/camera.ts';
 import type { ShownRing } from './use-shown-ring.ts';
@@ -18,6 +18,8 @@ export interface ChosenCity {
 	readonly onCarouselScroll: () => void;
 	/** A city tapped on the map: its card comes to the carousel's middle; a city with no card opens the list of all. */
 	readonly tap: (city: number) => void;
+	/** A city's card tapped: it comes to the carousel's middle, and the map goes to the city at the zoom it has. */
+	readonly tapCard: (city: City) => void;
 	/** A city picked in the list of all: chosen, and the map comes close to it. */
 	readonly pick: (city: City) => void;
 }
@@ -49,6 +51,15 @@ export function useChosenCity(shown: ShownRing, map: RefObject<MapHandle | null>
 		}
 	});
 
+	// A city whose card is off the carousel's middle is chosen when the carousel stops at it, which moves the map. A
+	// city whose card is in the middle, or that has no card, is chosen and the map moved to it at once.
+	const chooseAndShow = (place: City, minZoom?: number): void => {
+		if (inTheMiddle(carousel.current, place.id) || !scrollToCard(carousel.current, place.id)) {
+			choose(place.id);
+			map.current?.goTo(place, minZoom);
+		}
+	};
+
 	return {
 		city,
 		carousel,
@@ -59,13 +70,12 @@ export function useChosenCity(shown: ShownRing, map: RefObject<MapHandle | null>
 				openList();
 			}
 		},
+		tapCard: (tapped) => {
+			chooseAndShow(tapped);
+		},
 		pick: (picked) => {
-			// A city with a card is chosen when the carousel stops at it, which moves the map; another one here, and the
-			// map comes close to it.
-			if (picked.id === city || !scrollToCard(carousel.current, picked.id)) {
-				choose(picked.id);
-				map.current?.goTo(picked, PICKED_CITY_ZOOM);
-			}
+			// The map comes close to a city with no card.
+			chooseAndShow(picked, PICKED_CITY_ZOOM);
 		},
 	};
 }

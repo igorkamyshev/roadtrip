@@ -36,18 +36,19 @@ export function Carousel({ screen }: { readonly screen: ScreenModel }): ReactEle
 			/>
 			{origin === undefined || access === undefined
 				? null
-				: cities
-						?.slice(0, CAROUSEL_CITIES)
-						.map((city) => (
-							<CityCard
-								key={city.id}
-								city={city}
-								origin={origin}
-								access={access}
-								citizenships={state.citizenships}
-								chosen={city.id === chosen.city}
-							/>
-						))}
+				: cities?.slice(0, CAROUSEL_CITIES).map((city) => (
+						<CityCard
+							key={city.id}
+							city={city}
+							origin={origin}
+							access={access}
+							citizenships={state.citizenships}
+							chosen={city.id === chosen.city}
+							onTap={() => {
+								chosen.tapCard(city);
+							}}
+						/>
+					))}
 			{cities !== undefined && cities.length > CAROUSEL_CITIES ? (
 				<MoreCard
 					more={cities.length - CAROUSEL_CITIES}
