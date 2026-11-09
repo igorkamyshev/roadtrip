@@ -91,12 +91,25 @@ for (const { lowestHour, ...viewport } of PHONES) {
 			await open(page, LONGEST);
 			await expect(rulesDate(page)).toBeVisible();
 
-			await expectApart(page, {
-				phrase: phrase(page),
-				sources: sources(page),
-				slider: slider(page),
-				'current card': firstCard(page),
-			});
+			await expectApart(page, { phrase: phrase(page), slider: slider(page), 'current card': firstCard(page) });
+			// The sources may cover the slider's top for their 5 s, where it reaches up to the phrase.
+			await expectApart(page, { phrase: phrase(page), sources: sources(page), 'current card': firstCard(page) });
+		});
+
+		test('the data’s sources are as wide as the phrase', async ({ page }) => {
+			await open(page, LONGEST);
+
+			const [phraseBox, sourcesBox] = await Promise.all([boxOf(phrase(page)), boxOf(sources(page))]);
+			expect(sourcesBox.x).toBeCloseTo(phraseBox.x, 0);
+			expect(sourcesBox.width).toBeCloseTo(phraseBox.width, 0);
+		});
+
+		test('the current card leaves 40 px for the next one to peek out before the slider', async ({ page }) => {
+			await open(page, SHORTEST);
+
+			const [cardBox, sliderBox] = await Promise.all([boxOf(firstCard(page)), boxOf(slider(page))]);
+			// The card, 8 px, the 40 px of the next card, the slider.
+			expect(sliderBox.x - (cardBox.x + cardBox.width)).toBeGreaterThanOrEqual(8 + 40 - 0.5);
 		});
 
 		for (const [unit, path, ring] of [
