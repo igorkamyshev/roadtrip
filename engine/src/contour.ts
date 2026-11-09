@@ -1,4 +1,4 @@
-// The ring's contour (spec «Движок», «Кольцо»): the reached roads are painted into a raster of ~500 m cells with
+// The ring's contour (spec #20 «Движок», «Кольцо»): the reached roads are painted into a raster of ~500 m cells with
 // their travel times, the land near them gets a road's time plus the drive off-road to it at 30 km/h, and
 // marching squares (trace.ts) trace the cells whose time is in (N − 1, N], as Valhalla does, with the small plots
 // without roads that the roads of N h first wall in (#43), leaving out the cells in closed countries and
@@ -31,7 +31,7 @@ const NEAR_ROAD_METERS = 1000;
  * mountains of Slovakia went in the ring.
  */
 const SMALL_PLOT_SQUARE_METERS = 200_000_000;
-/** Off-road travel to and from a road, in seconds of travel per metre: 30 km/h of driving (spec «Привязка»). */
+/** Off-road travel to and from a road, in seconds of travel per metre: 30 km/h of driving (spec #20 «Привязка»). */
 export const OFF_ROAD_SECONDS_PER_METER = (3.6 / 30) * TRAVEL_PER_DRIVING;
 /** A raster larger than this gets coarser cells: ~120 MB of time and distance. */
 const MAX_CELLS = 16_000_000;

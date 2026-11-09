@@ -1,4 +1,4 @@
-// The small plots of land without roads that the reached roads wall in, which the ring takes in (spec «Движок»,
+// The small plots of land without roads that the reached roads wall in, which the ring takes in (spec #20 «Движок»,
 // «Кольцо»; #43): the holes of a raster of cells smaller than a given area, filled.
 
 /** The raster's shape, and the area of a cell of each row: cells narrow away from the equator. */

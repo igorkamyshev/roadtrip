@@ -1,4 +1,4 @@
-// The engine's seam (spec «Решения по тестам», seam 1): graph, border table, origin, N and closed countries in,
+// The engine's seam (spec #20 «Решения по тестам», seam 1): graph, border table, origin, N and closed countries in,
 // the result out. The graphs are built from the OSM files in fixtures/ by the same builder as the world's, so
 // these tests check the builder too. Expected values are worked out by hand in each fixture's header.
 import { computeRing, type RingRequest } from 'engine';

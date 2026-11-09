@@ -1,4 +1,4 @@
-// The cells of the ring traced into GeoJSON polygons (spec «Движок», «Кольцо»): marching squares over the cell
+// The cells of the ring traced into GeoJSON polygons (spec #20 «Движок», «Кольцо»): marching squares over the cell
 // centres, holes (large plots without roads, closed zones, the land reached sooner) put in the outer rings around
 // them, and every ring simplified by Douglas–Peucker.
 import { type CellGrid, E7 } from './geo.ts';
