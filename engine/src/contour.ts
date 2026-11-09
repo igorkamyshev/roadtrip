@@ -36,7 +36,7 @@ function nearRoadMeters(cellMeters: number): number {
 }
 /**
  * A plot of land further than NEAR_ROAD_METERS from every road, which the roads reached within N h wall in on every
- * side, is in the ring when it is smaller than this: land between the roads, not a mountain range, a steppe inside
+ * side, is in a ring up to 12 h when it is smaller than this (past 12 h see SMALL_PLOT_GROWTH): land between the roads, not a mountain range, a steppe inside
  * a loop of roads or a large lake (#43). Without it the ring is lace, a hole between every two roads 2 km apart.
  * The area is the plot's own, beyond NEAR_ROAD_METERS: 200 km² is a loop of roads ~16 km across. Picked by looking
  * at the rings of 3 and 6 h from Vienna, Prague, Madrid, Oslo and Östersund drawn with each threshold: at 100 km²
@@ -44,6 +44,16 @@ function nearRoadMeters(cellMeters: number): number {
  * mountains of Slovakia went in the ring.
  */
 const SMALL_PLOT_SQUARE_METERS = 200_000_000;
+/**
+ * Past 12 h a ring is seen whole on a smaller scale, and in a sparse network of roads (Russia, Scandinavia) they are
+ * 30–80 km apart: with plots of 200 km² a ring of days is lace (#77). So past 12 h the small plot grows with the
+ * square of the ring's upper bound, SMALL_PLOT_GROWTH × (upper / 12 h)² times SMALL_PLOT_SQUARE_METERS: 3 200 km² up
+ * to 24 h, 20 000 km² up to 60 h, a square of 140 km. Picked by the rings of days of the world drawn with growths 1, 4
+ * and 9 (docs/container-bench.md, «Кружево колец дней»): at 1 the networks of Russia and Iran stayed lace, at 4 they
+ * were land, and 9 closed only a few holes more with plots of up to 45 000 km², the size of a large lake.
+ */
+const SMALL_PLOT_FROM_SECONDS = 12 * 3600;
+const SMALL_PLOT_GROWTH = 4;
 /** Off-road travel to and from a road, in seconds of travel per metre: 30 km/h of driving (spec #20 «Привязка»). */
 export const OFF_ROAD_SECONDS_PER_METER = (3.6 / 30) * TRAVEL_PER_DRIVING;
 /** A raster larger than this gets coarser cells: ~120 MB of time and distance. */
@@ -88,8 +98,9 @@ function ringCells({ passage, locator, lowerSeconds, upperSeconds }: ContourInpu
 		rows: grid.rows,
 		rowCellSquareMeters: eastMetersOfRows(grid).map((east) => east * grid.cellMeters),
 	};
-	const inRing = reachedWithin(grid, raster, upperSeconds);
-	const reachedSooner = reachedWithin(grid, raster, lowerSeconds);
+	const plot = smallPlotSquareMeters(upperSeconds);
+	const inRing = reachedWithin(grid, { raster, plot }, upperSeconds);
+	const reachedSooner = reachedWithin(grid, { raster, plot }, lowerSeconds);
 	for (let cell = 0; cell < inRing.length; cell++) {
 		inRing[cell] &= reachedSooner[cell] ^ 1;
 	}
@@ -104,13 +115,26 @@ function ringCells({ passage, locator, lowerSeconds, upperSeconds }: ContourInpu
 	return inRing;
 }
 
-/** 1 for each cell reached within `seconds`, and for each cell of a small plot the cells reached within it wall in. */
-function reachedWithin(grid: Grid, raster: PlotRaster, seconds: number): Uint8Array {
+/**
+ * The small plot of a ring up to `upperSeconds`, in m². One for both of its bounds, so that a plot walled in within
+ * the lower bound is walled in within the upper one too, and the ring holds no part of it.
+ */
+function smallPlotSquareMeters(upperSeconds: number): number {
+	return upperSeconds <= SMALL_PLOT_FROM_SECONDS
+		? SMALL_PLOT_SQUARE_METERS
+		: SMALL_PLOT_SQUARE_METERS * SMALL_PLOT_GROWTH * (upperSeconds / SMALL_PLOT_FROM_SECONDS) ** 2;
+}
+
+/**
+ * 1 for each cell reached within `seconds`, and for each cell of a plot smaller than `plot` m² that the cells
+ * reached within it wall in.
+ */
+function reachedWithin(grid: Grid, { raster, plot }: { readonly raster: PlotRaster; readonly plot: number }, seconds: number): Uint8Array {
 	const reached = new Uint8Array(grid.time.length);
 	for (let cell = 0; cell < reached.length; cell++) {
 		reached[cell] = grid.time[cell] <= seconds ? 1 : 0;
 	}
-	fillSmallPlots(reached, raster, SMALL_PLOT_SQUARE_METERS);
+	fillSmallPlots(reached, raster, plot);
 	return reached;
 }
 

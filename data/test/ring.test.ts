@@ -29,6 +29,11 @@ function inDayRing(result: ReturnType<typeof computeRing>, lon: number): boolean
 
 const ORIGIN = { lat: 0, lon: 0 };
 
+/** On far-loop.osm: is the middle of the loop's plot in the ring? */
+function inLoopPlot(result: ReturnType<typeof computeRing>): boolean {
+	return result.outcome === 'ring' && ringContains(result.ring, 0.1, 10.1);
+}
+
 describe('a ring', () => {
 	it('holds the points reached in (N − 1, N] hours of travel and no others', () => {
 		const result = computeRing(straightRoad, borderTable, request(0, 0, 2));
@@ -75,6 +80,14 @@ describe('a ring of a day', () => {
 		expect(points).toBeGreaterThanOrEqual(5); // four corners and the closing point
 		expect(points).toBeLessThanOrEqual(13); // a dozen, and the closing point
 		expect(result.outcome === 'ring' && ringContains(result.ring, 0, 0)).toBe(true); // the road's middle, ~62 h
+	});
+
+	it('takes in a plot of 410 km² that its roads wall in: a small plot grows with the square of its upper bound', () => {
+		const farLoop = fixtureGraph('far-loop.osm');
+
+		expect(inLoopPlot(computeRing(farLoop, borderTable, band(ORIGIN, 12, 24)))).toBe(true);
+		// Up to 12 h a plot of 410 km² is no small plot: the ring walls it in and leaves it out.
+		expect(inLoopPlot(computeRing(farLoop, borderTable, band({ lat: 0, lon: 9 }, 0, 12)))).toBe(false);
 	});
 
 	it('is not the ring of its last hour, (23, 24]', () => {

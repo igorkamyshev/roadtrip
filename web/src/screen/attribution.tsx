@@ -1,7 +1,8 @@
 // The data's sources (spec #20 «Экран»: the map's attribution and ⓘ «Что важно знать»), one line for both. They live
 // behind ⓘ; OpenStreetMap's attribution guidelines want them seen when the map opens, so they also show under the
-// phrase for 5 s once the screen opens, then fold into ⓘ, as the guidelines allow. What each licence asks, with its
-// words: docs/attribution.md.
+// phrase for 5 s once the screen opens, then fold into ⓘ, as the guidelines allow. Their place under the phrase stays
+// when they go, so the slider under them never moves (#77). What each licence asks, with its words:
+// docs/attribution.md.
 import { useEffect, useState, type ReactElement } from 'react';
 
 /** How long the sources show under the phrase once the screen opens. */
@@ -24,8 +25,8 @@ export function DataSources(): ReactElement {
 	);
 }
 
-/** The sources under the phrase for 5 s once the screen opens; nothing after. */
-export function SourcesOnOpen(): ReactElement | null {
+/** The sources under the phrase for 5 s once the screen opens; after that their place, empty. */
+export function SourcesOnOpen(): ReactElement {
 	const [shown, setShown] = useState(true);
 	useEffect(() => {
 		const timer = setTimeout(() => {
@@ -35,9 +36,9 @@ export function SourcesOnOpen(): ReactElement | null {
 			clearTimeout(timer);
 		};
 	}, []);
-	return shown ? (
-		<p className="c-sources">
+	return (
+		<p className={shown ? 'c-sources' : 'c-sources gone'}>
 			<DataSources />
 		</p>
-	) : null;
+	);
 }

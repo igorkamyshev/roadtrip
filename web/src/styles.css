@@ -47,7 +47,7 @@
 	--radius: 18px;
 	--radius-inner: 12px;
 
-	/* The slider's panel; the carousel's cards end --between left of it. */
+	/* The slider's panel; the carousel's current card ends --between and the next card's --peek left of it. */
 	--slider-width: 52px;
 	--beside-slider: calc(var(--edge-right) + var(--slider-width) + var(--between));
 }
@@ -541,14 +541,14 @@ a {
 	min-height: 0;
 	box-sizing: border-box;
 	padding: 6px;
-	background: color-mix(in srgb, var(--surface) 88%, transparent);
+	background: var(--surface);
 	border-radius: var(--radius);
 	box-shadow: var(--shadow);
 }
 
 /* Its rows, one a cell, are set by the slider: twelve hours or the days. */
 .sl-cells {
-	--gap: 3px;
+	--gap: 2px;
 
 	position: relative;
 	isolation: isolate;
@@ -557,21 +557,29 @@ a {
 	gap: var(--gap);
 }
 
-/* The other unit's tab: a pill of its own over or under the panel, centred on it. */
+/* The other unit's tab: a pill of its own over or under the panel, as wide as it. A tap --reach past it, over the map
+   or in the gap to the panel, takes it too: the slider chooses the tab past the panel's edge. */
 .sl-tab {
+	--reach: 8px;
+
+	position: relative;
 	flex: none;
-	align-self: center;
 	display: grid;
 	place-items: center;
-	width: 44px;
-	height: 24px;
+	height: 32px;
 	border-radius: var(--radius);
-	background: color-mix(in srgb, var(--surface) 92%, transparent);
+	background: var(--surface);
 	box-shadow: var(--shadow);
 	color: var(--ring);
-	font-size: 11px;
+	font-size: 13px;
 	font-weight: 600;
 	white-space: nowrap;
+}
+
+.sl-tab::before {
+	content: '';
+	position: absolute;
+	inset: calc(-1 * var(--reach)) 0;
 }
 
 .sl-tab.on {
@@ -683,13 +691,12 @@ a {
 	text-wrap: balance;
 }
 
-/* The data's sources under the phrase for 5 s once the screen opens, over the map, left of the slider. Out of the
-   column's layout, so the slider stays where it is when they go. */
-.c-phrase p.c-sources {
-	position: absolute;
-	top: calc(100% + var(--between));
-	right: calc(var(--slider-width) + var(--between));
-	max-width: calc(100% - var(--slider-width) - var(--between));
+/* The data's sources under the phrase for 5 s once the screen opens, as wide as it, in the column: when they go,
+   their place stays, so the slider under them never moves and they never cover it (#77). */
+.c-sources {
+	align-self: stretch;
+	flex: none;
+	margin: 0;
 	box-sizing: border-box;
 	padding: 4px 10px;
 	border-radius: var(--radius);
@@ -698,6 +705,10 @@ a {
 	color: var(--muted);
 	font-size: 12px;
 	line-height: 1.35;
+}
+
+.c-sources.gone {
+	visibility: hidden;
 }
 
 /* «визовые правила от <дата>» under the phrase. */
@@ -764,14 +775,16 @@ a {
 	width: var(--slider-width);
 }
 
-/* The carousel, the whole width of the screen under the slider (#85): the current card at the left edge, ending
-   --between left of the slider's panel, up to 300 px wide; the cards right of it fade out before the panel, so none
-   shows under it. */
+/* The carousel, the whole width of the screen under the slider (#85): the current card at the left edge, up to
+   280 px wide, and --peek of the next one out, between the current card and the slider's panel, so it shows that the
+   cards scroll; the next one fades out in the last 12 px before the panel, so none shows under it. */
 .c-car {
-	--card: min(300px, 100% - var(--edge-left) - var(--beside-slider));
+	--peek: 64px;
+	--card-max: 280px;
+	--card: min(var(--card-max), 100% - var(--edge-left) - var(--beside-slider) - var(--peek));
 	--fade: linear-gradient(
 		to right,
-		#000 calc(var(--edge-left) + var(--card)),
+		#000 calc(100% - var(--edge-right) - var(--slider-width) - 12px),
 		transparent calc(100% - var(--edge-right) - var(--slider-width))
 	);
 
@@ -802,12 +815,12 @@ a {
 .c-car::after {
 	content: '';
 	flex: none;
-	width: max(0px, 100% - min(300px, 100%) - var(--between));
+	width: max(0px, 100% - min(var(--card-max), 100% - var(--peek)) - var(--between));
 }
 
 .c-card {
 	flex: none;
-	width: min(300px, 100%);
+	width: min(var(--card-max), 100% - var(--peek));
 	scroll-snap-align: start;
 	background: var(--surface);
 	border-radius: var(--radius);

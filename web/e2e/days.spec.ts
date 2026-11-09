@@ -124,6 +124,17 @@ test('a tap on the panel over the cell of 12 h, short of the tab, chooses 12 h',
 	expect(ringApi.calls.at(-1)).toMatchObject({ from: 11, hours: 12 });
 });
 
+test('the tab is as wide as the panel, and a tap just past it, over the map, takes it too', async ({ page }) => {
+	await page.goto(AT_12_HOURS);
+	await expectRingCard(page, '11–12 ч');
+	const [tab, panel] = await Promise.all([boxOf(sliderTab(page)), boxOf(sliderPanel(page))]);
+	expect(tab.width).toBeCloseTo(panel.width, 0);
+
+	await page.mouse.click(tab.x + tab.width / 2, tab.y - 6);
+
+	await expectRingCard(page, '1–2 дня');
+});
+
 test('the chosen day reads as its span over «дня», the others as their day', async ({ page }) => {
 	await page.goto('/#/?p=44.81760,20.45730&d=3&cit=RUS');
 	await expectRingCard(page, '2–3 дня');

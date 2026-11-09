@@ -415,23 +415,18 @@ test.describe('the carousel and the map', () => {
 		await expect.poll(async () => (await labelsOnMap(page)).chosen).toEqual([]);
 	});
 
-	// On a large phone the card after the current one peeks out from under the slider (#85); on a smaller one it starts
-	// at the slider and fades out.
-	test.describe('on a large phone', () => {
-		test.use({ viewport: { width: 430, height: 932 } });
+	// The card after the current one peeks out between it and the slider (#77), then fades out before the slider.
+	test('tapping the card that peeks out chooses its city, and the map goes to it at the same zoom', async ({ page }) => {
+		const zoom = await mapZoom(page);
+		await expect(card(page, 'Будапешт')).not.toBeInViewport({ ratio: 0.9 });
 
-		test('tapping the card that peeks out chooses its city, and the map goes to it at the same zoom', async ({ page }) => {
-			const zoom = await mapZoom(page);
-			await expect(card(page, 'Будапешт')).not.toBeInViewport({ ratio: 0.9 });
+		await tapCard(page, 'Будапешт');
 
-			await tapCard(page, 'Будапешт');
-
-			await expect(chosenCard(page).locator('h3')).toHaveText('Будапешт');
-			await expect(chosenCard(page)).toBeInViewport({ ratio: 0.9 });
-			await expect.poll(async () => (await labelsOnMap(page)).chosen).toEqual(['Будапешт']);
-			expect(await wentTo(page, BUDAPEST)).toBeLessThan(25);
-			expect(await mapZoom(page)).toBeCloseTo(zoom);
-		});
+		await expect(chosenCard(page).locator('h3')).toHaveText('Будапешт');
+		await expect(chosenCard(page)).toBeInViewport({ ratio: 0.9 });
+		await expect.poll(async () => (await labelsOnMap(page)).chosen).toEqual(['Будапешт']);
+		expect(await wentTo(page, BUDAPEST)).toBeLessThan(25);
+		expect(await mapZoom(page)).toBeCloseTo(zoom);
 	});
 
 	test("tapping the chosen city's card brings the map back to it, at the same zoom", async ({ page }) => {
