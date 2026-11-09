@@ -13,9 +13,10 @@ test('the sources show under the phrase when the screen opens, then only behind 
 
 	const osm = phrase(page).getByRole('link', { name: 'OpenStreetMap' });
 	await expect(osm).toHaveAttribute('href', 'https://www.openstreetmap.org/copyright');
-	for (const name of ['GeoNames', 'CC BY 4.0', 'Protomaps', 'Sherpa']) {
+	for (const name of ['GeoNames', 'Protomaps', 'ESA WorldCover', 'Sherpa']) {
 		await expect(phrase(page).getByRole('link', { name })).toBeVisible();
 	}
+	await expect(phrase(page).getByRole('link', { name: 'CC BY 4.0' })).toHaveCount(2);
 
 	await page.clock.runFor(4900);
 	await expect(osm).toBeVisible();
