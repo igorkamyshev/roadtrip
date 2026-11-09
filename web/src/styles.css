@@ -769,6 +769,16 @@ a {
 	padding-top: 2px;
 	margin: 1px 4px;
 }
+.pv-mark.pv-top {
+	border-top: none;
+	padding-top: 0;
+}
+.pv-b1 .pv-cell.on b,
+.pv-b2 .pv-cell.on b,
+.pv-b3 .pv-cell.on b {
+	font-size: 10px;
+	letter-spacing: -0.04em;
+}
 /* B: day cells taller and tinted. */
 .pv-b .pv-cell[data-day] {
 	flex-grow: 1.9;
