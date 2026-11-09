@@ -1,13 +1,13 @@
-// The carousel's link with the map (spec #20 «Экран», «Карусель»): the card in its middle when it stops is the chosen
-// city, which the map goes to; a city tapped on the map scrolls its card into the middle.
+// The carousel's link with the map (spec #20 «Экран», «Карусель»): the current card when it stops, the one at its left
+// edge (#85), is the chosen city, which the map goes to; a city tapped on the map scrolls its card there.
 import { useEffect, useLayoutEffect, useRef, type RefObject } from 'react';
 
 /** How long the carousel stays still before its stop counts: a swipe scrolls in many steps, then snaps. */
 const STOP_AFTER_MS = 140;
 
 /**
- * A scroll handler for the carousel that calls `onStop` once it stops, with the city of the card in its middle, or
- * undefined for another card (the first one, «и ещё»).
+ * A scroll handler for the carousel that calls `onStop` once it stops, with the city of the current card, or undefined
+ * for another card (the first one, «и ещё»).
  */
 export function useCarouselStops(carousel: RefObject<HTMLElement | null>, onStop: (city: number | undefined) => void): () => void {
 	// The latest handler, for the stop that comes after a render.
@@ -27,19 +27,24 @@ export function useCarouselStops(carousel: RefObject<HTMLElement | null>, onStop
 		timer.current = setTimeout(() => {
 			const element = carousel.current;
 			if (element !== null) {
-				latest.current(cityInTheMiddle(element));
+				latest.current(currentCity(element));
 			}
 		}, STOP_AFTER_MS);
 	};
 }
 
-function cityInTheMiddle(carousel: HTMLElement): number | undefined {
-	const middle = carousel.scrollLeft + carousel.clientWidth / 2;
+/**
+ * The city of the card nearest the carousel's left edge, where a card snaps: where the first card stands before any
+ * scroll.
+ */
+function currentCity(carousel: HTMLElement): number | undefined {
+	const first = carousel.firstElementChild;
+	const start = carousel.scrollLeft + (first instanceof HTMLElement ? first.offsetLeft : 0);
 	let nearest: HTMLElement | undefined;
 	let distance = Infinity;
 	for (const card of carousel.children) {
 		if (card instanceof HTMLElement) {
-			const from = Math.abs(card.offsetLeft + card.offsetWidth / 2 - middle);
+			const from = Math.abs(card.offsetLeft - start);
 			if (from < distance) {
 				distance = from;
 				nearest = card;
@@ -50,14 +55,14 @@ function cityInTheMiddle(carousel: HTMLElement): number | undefined {
 	return city === undefined ? undefined : Number(city);
 }
 
-/** Whether the card of `city` is the one in the carousel's middle: scrolling to it would not stop the carousel. */
-export function inTheMiddle(carousel: HTMLElement | null, city: number): boolean {
-	return carousel !== null && cityInTheMiddle(carousel) === city;
+/** Whether the card of `city` is the current one: scrolling to it would not stop the carousel. */
+export function isCurrentCard(carousel: HTMLElement | null, city: number): boolean {
+	return carousel !== null && currentCity(carousel) === city;
 }
 
-/** Scrolls the card of `city` into the carousel's middle; false when the city has no card. */
+/** Scrolls the card of `city` to the carousel's left edge, the current card's place; false when the city has no card. */
 export function scrollToCard(carousel: HTMLElement | null, city: number): boolean {
 	const card = carousel?.querySelector(`[data-city="${city}"]`);
-	card?.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' });
+	card?.scrollIntoView({ inline: 'start', block: 'nearest', behavior: 'smooth' });
 	return card !== null && card !== undefined;
 }

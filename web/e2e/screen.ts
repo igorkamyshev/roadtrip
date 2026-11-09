@@ -95,8 +95,18 @@ export async function expectRingCard(page: Page, hours: string): Promise<void> {
 	await expect(firstCard(page)).toHaveAttribute('data-state', /^(?:ring|no_cities)$/u);
 }
 
-/** The slider's cell of `hours`: N, or the span («6–7») when it is the one chosen. */
+/**
+ * The slider's cell of `hours`, its ring's upper bound: N, or 12·D for day D; it reads N or D, or the span («6–7»,
+ * «2–3 дня») when it is the one chosen.
+ */
 export const sliderHour = (page: Page, hours: number): Locator => slider(page).locator(`[data-hours="${hours}"]`);
+
+/** The slider's cells in the unit it shows: the twelve hours, or the days (#83). */
+export const sliderCells = (page: Page): Locator => slider(page).locator('[data-hours]');
+
+/** The slider's panel of cells, and its tab of the other unit: «дни ↑» over the hours, «часы ↓» under the days. */
+export const sliderPanel = (page: Page): Locator => slider(page).locator('.sl-panel');
+export const sliderTab = (page: Page): Locator => slider(page).locator('[data-tab]');
 
 /** The middle of the slider's cell of `hours`. */
 async function middleOfHour(page: Page, hours: number): Promise<{ x: number; y: number }> {

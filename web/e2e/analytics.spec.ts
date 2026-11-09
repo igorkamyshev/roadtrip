@@ -350,6 +350,14 @@ test.describe('ring result', () => {
 		expect(result.wait_ms).toBe(1000);
 	});
 
+	test('tells a ring of days by its upper bound in hours: 24 for day 2', async ({ page, ringApi, posthog }) => {
+		ringApi.respond(() => belgradeRing());
+
+		await openInProduction(page, '/#/?p=44.81760,20.45730&d=2&cit=RUS');
+
+		await expect.poll(() => posthog.named('ring result'), SENT).toEqual([expect.objectContaining({ outcome: 'ring', hours: 24 })]);
+	});
+
 	for (const source of ['cache', 'joined'] as const) {
 		test(`tells the source ${source}`, async ({ page, ringApi, posthog }) => {
 			ringApi.respond(() => belgradeRing(source));
