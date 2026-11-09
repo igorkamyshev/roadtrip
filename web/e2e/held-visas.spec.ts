@@ -197,6 +197,8 @@ test.describe('the held visas of a link', () => {
 	test('without visas has none, though some were saved: the link wins', async ({ page, ringApi }) => {
 		await page.goto(`${LINK}&visas=USA`);
 		await expect(phrase(page)).toContainText('мои визы: США');
+		// The ring's request goes after the phrase shows: wait for it, or the page closes before it is sent.
+		expect((await ringApi.waitForCalls(1))[0].visas).toBe('USA');
 
 		await reopen(page, LINK);
 
