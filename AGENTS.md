@@ -15,7 +15,7 @@ Read a package's `AGENTS.md` before working in it:
 
 `worker` is the Worker `roadtrip`: `GET /api/ring` from the ring cache in KV or the Container with the engine, the visa rules from Sherpa with their copies in KV and their reduction, the Worker's events in PostHog (`ring served`, `sherpa fetched`), the `EngineContainer` class and the wrangler config. Its `README.md` says how a request goes, how the visa rules are loaded and kept, what the events say, where the routes and `deps` are built, and how to run it locally with the Container.
 
-`web` is the client, the one screen, built into the Worker's static assets. Its `README.md` says where the state, the ring requests, the map's layers, the phrase's slots and the events to PostHog are, how the source maps are uploaded, and how the screen tests run (`pnpm e2e`, Playwright).
+`web` is the client, the one screen, built into the Worker's static assets. Its `README.md` says where the state, the ring requests, the map's layers, the phrase's slots and the events to PostHog are, how the source maps are uploaded, how the screen tests run (`pnpm e2e`, Playwright), and how to show the screen without the Worker (`pnpm --filter web demo`, a video of it).
 
 `lint` holds roadtrip's own lint rules (an Oxlint JS plugin, `lint/plugin.ts`, each rule in `lint/rules/` with its tests), the checks of the project that fallow cannot express, fallow's policy pack, and the Claude Code hook that lints an agent's edits.
 
