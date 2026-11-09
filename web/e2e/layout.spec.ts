@@ -1,9 +1,10 @@
-// The screen's layout (spec #20 «Экран»; #47): the panels over the map, the phrase, the slider, the carousel or the
-// pin's bar and the data's sources of the first 5 s, never on one another nor off the screen, on the phones the
-// screen is made for, with the longest phrase. Read by the elements' boxes, never by pixels.
+// The screen's layout (spec #20 «Экран»; #47, #85): the panels over the map, the phrase, the slider, the carousel's
+// current card or the pin's bar and the data's sources of the first 5 s, never on one another nor off the screen, each
+// 12 px from its edges of the screen, on the phones the screen is made for, with the longest phrase and the shortest.
+// The slider goes down to the bottom of the screen over the carousel. Read by the elements' boxes, never by pixels.
 import type { Locator, Page } from '@playwright/test';
 import { expect, squareRing, test, visaRules } from './fixtures.ts';
-import { boxOf, carousel, expectRingCard, phrase, slider } from './screen.ts';
+import { boxOf, expectRingCard, firstCard, phrase, slider, sliderHour, sliderPanel, sliderTab } from './screen.ts';
 
 /** Where the page's clock stands, held, while the screen opens: the sources stay under the phrase. */
 const START = Date.parse('2026-11-09T12:00:00Z');
@@ -15,16 +16,23 @@ const OLD_RULES = '2026-11-06T12:00:00Z';
 const LONGEST = '/#/?p=44.81760,20.45730&h=12&cit=BIH,MNE,RUS,SRB&visas=CAN,GBR,SCHENGEN,USA';
 /** Belgrade at 12 h with one citizenship and no visas. */
 const SHORTEST = '/#/?p=44.81760,20.45730&h=12&cit=RUS';
+/** The longest phrase in days, at 4–5 days: the tab «часы ↓» under the slider's panel (#83). */
+const LONGEST_IN_DAYS = '/#/?p=44.81760,20.45730&d=5&cit=BIH,MNE,RUS,SRB&visas=CAN,GBR,SCHENGEN,USA';
 
-/** The phones of the ticket: small, the most common, large. */
+/**
+ * The phones of the tickets: small, the most common, large; and what Safari leaves of the iPhone 15/16 and the
+ * iPhone SE under its bars (#85), with the slider's hour no lower than this there.
+ */
 const PHONES = [
 	{ width: 360, height: 640 },
 	{ width: 390, height: 844 },
 	{ width: 430, height: 932 },
+	{ width: 393, height: 660, lowestHour: 31 },
+	{ width: 375, height: 550, lowestHour: 27 },
 ];
 
-/** The slider's panel ends this far above the bottom of the screen, over the carousel (#44). */
-const ABOVE_THE_CAROUSEL = 214;
+/** Every floating panel stands this far from the screen's edges (#85). */
+const EDGE = 12;
 /** The slider's panel is at most this high (#44). */
 const TALLEST_SLIDER = 450;
 /** The gap between the phrase and the slider under it (#47). */
@@ -57,19 +65,25 @@ async function expectApart(page: Page, panels: Record<string, Locator>): Promise
 	expect(onOneAnother, 'panels on one another').toEqual([]);
 }
 
-/** Opens `path` with the clock held 1 s after the load, and waits for the ring of 12 h. */
-async function open(page: Page, path: string): Promise<void> {
+/** Opens `path` with the clock held 1 s after the load, and waits for the ring of 12 h, or of the days it names. */
+async function open(page: Page, path: string, ring = '11–12 ч'): Promise<void> {
 	await page.clock.install({ time: START });
 	await page.clock.pauseAt(START + 1000);
 	await page.goto(path);
-	await expectRingCard(page, '11–12 ч');
+	await expectRingCard(page, ring);
 }
 
 test.beforeEach(({ ringApi }) => {
 	ringApi.respond((call) => ({ ...squareRing(Number(call.lat), Number(call.lon), [0.05, 0.5]), ...visaRules(undefined, OLD_RULES) }));
 });
 
-for (const viewport of PHONES) {
+/** How far the box stands from each edge of the screen. */
+function fromEdges(page: Page, box: Box): { top: number; right: number; bottom: number; left: number } {
+	const { width, height } = page.viewportSize() ?? { width: 0, height: 0 };
+	return { top: box.y, right: width - box.x - box.width, bottom: height - box.y - box.height, left: box.x };
+}
+
+for (const { lowestHour, ...viewport } of PHONES) {
 	test.describe(`on ${viewport.width}×${viewport.height}`, () => {
 		test.use({ viewport });
 
@@ -81,8 +95,31 @@ for (const viewport of PHONES) {
 				phrase: phrase(page),
 				sources: sources(page),
 				slider: slider(page),
-				carousel: carousel(page),
+				'current card': firstCard(page),
 			});
+		});
+
+		for (const [unit, path, ring] of [
+			['hours', LONGEST, '11–12 ч'],
+			['days', LONGEST_IN_DAYS, '4–5 дней'],
+		]) {
+			test(`in ${unit}, the slider's tab and panel are apart from the phrase and the current card, and on the screen`, async ({ page }) => {
+				await open(page, path, ring);
+
+				await expectApart(page, { phrase: phrase(page), 'slider tab': sliderTab(page), 'current card': firstCard(page) });
+				await expectApart(page, { phrase: phrase(page), 'slider panel': sliderPanel(page), 'current card': firstCard(page) });
+				const sliderBox = await boxOf(slider(page));
+				expect(fromEdges(page, sliderBox)).toMatchObject({ right: EDGE, bottom: EDGE });
+			});
+		}
+
+		test('the phrase, the slider and the current card stand 12 px from their edges of the screen', async ({ page }) => {
+			await open(page, LONGEST);
+
+			const [phraseBox, sliderBox, cardBox] = await Promise.all([boxOf(phrase(page)), boxOf(slider(page)), boxOf(firstCard(page))]);
+			expect(fromEdges(page, phraseBox)).toMatchObject({ top: EDGE, right: EDGE, left: EDGE });
+			expect(fromEdges(page, sliderBox)).toMatchObject({ right: EDGE, bottom: EDGE });
+			expect(fromEdges(page, cardBox)).toMatchObject({ bottom: EDGE, left: EDGE });
 		});
 
 		test('in the pin mode, the panels of the longest phrase are apart and on the screen', async ({ page }) => {
@@ -96,21 +133,35 @@ for (const viewport of PHONES) {
 				sources: sources(page),
 				'pin bar': page.locator('.c-pickbar'),
 			});
+			expect(fromEdges(page, await boxOf(page.locator('.c-pickbar')))).toMatchObject({ right: EDGE, bottom: EDGE, left: EDGE });
 		});
 
 		for (const [settings, path] of [
 			['one citizenship', SHORTEST],
 			['four citizenships', LONGEST],
 		]) {
-			test(`with ${settings}, the slider ends over the carousel and starts 8 px under the phrase or 450 px up`, async ({ page }) => {
+			test(`with ${settings}, the slider ends 12 px over the bottom and starts 8 px under the phrase or 450 px up`, async ({ page }) => {
 				await open(page, path);
 
-				const phraseBox = await boxOf(phrase(page));
-				const sliderBox = await boxOf(slider(page));
-				const bottom = viewport.height - ABOVE_THE_CAROUSEL;
+				const [phraseBox, sliderBox, cardBox] = await Promise.all([boxOf(phrase(page)), boxOf(slider(page)), boxOf(firstCard(page))]);
+				const bottom = viewport.height - EDGE;
 				expect(sliderBox.y + sliderBox.height).toBeCloseTo(bottom, 0);
 				expect(sliderBox.y).toBeCloseTo(Math.max(phraseBox.y + phraseBox.height + UNDER_THE_PHRASE, bottom - TALLEST_SLIDER), 0);
 				expect(sliderBox.height).toBeGreaterThanOrEqual(LOWEST_SLIDER);
+				expect(overlap(sliderBox, phraseBox), 'the slider on the phrase').toBe(false);
+				expect(overlap(sliderBox, cardBox), 'the slider on the current card').toBe(false);
+			});
+		}
+
+		// Read with the shortest phrase and fresh visa rules, as on the prototype (#85, #83): under the longest one, with
+		// its date of the visa rules, the slider of a short screen keeps only its 120 px. The tab «дни ↑» is over it.
+		for (const lowest of lowestHour === undefined ? [] : [lowestHour]) {
+			test(`with one citizenship, an hour of the slider is ${lowest} px high or more`, async ({ page, ringApi }) => {
+				ringApi.respond((call) => ({ ...squareRing(Number(call.lat), Number(call.lon), [0.05, 0.5]), ...visaRules() }));
+				await open(page, SHORTEST);
+				await expect(sliderTab(page)).toBeVisible();
+
+				expect((await boxOf(sliderHour(page, 1))).height).toBeGreaterThanOrEqual(lowest);
 			});
 		}
 

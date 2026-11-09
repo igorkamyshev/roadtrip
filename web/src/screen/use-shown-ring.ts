@@ -36,7 +36,7 @@ export interface ShownRing {
 	 * cities came.
 	 */
 	readonly shownCities: readonly City[] | undefined;
-	/** The hours whose rings are in memory for this origin and settings: the slider's marked cells. */
+	/** The cells, hours and days, whose rings are in memory for this origin and settings: the slider's marked ones. */
 	readonly cachedHours: ReadonlySet<number>;
 }
 

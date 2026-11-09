@@ -7,6 +7,8 @@ import type { RingResponse } from 'worker/api';
 interface RingCall {
 	readonly lat: string;
 	readonly lon: string;
+	/** The ring's bounds, `from` and `to`: `hours` is the upper one, which names the slider's cell. */
+	readonly from: number;
 	readonly hours: number;
 	readonly cit: string | null;
 	readonly visas: string | null;
@@ -80,7 +82,8 @@ export class RingApi {
 		const call: RingCall = {
 			lat: url.searchParams.get('lat') ?? '',
 			lon: url.searchParams.get('lon') ?? '',
-			hours: Number(url.searchParams.get('hours')),
+			from: Number(url.searchParams.get('from')),
+			hours: Number(url.searchParams.get('to')),
 			cit: url.searchParams.get('cit'),
 			visas: url.searchParams.get('visas'),
 			query: url.search,

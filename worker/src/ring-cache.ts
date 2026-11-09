@@ -1,5 +1,5 @@
 // The ring cache (spec #20 «Кэш колец», #15): the rings in KV under a key of the data version, the origin rounded to
-// 0.001°, N and the SHA-256 of the sorted closed countries. A calculation gets only these fields, so a ring cached
+// 0.001°, the ring's two bounds (#82) and the SHA-256 of the sorted closed countries. A calculation gets only these fields, so a ring cached
 // under a key is the ring of that key.
 import { dataVersion, type LatLon, sha256Hex } from 'engine';
 import type { CalculationRequest, RingOutcome } from 'engine/protocol';
@@ -35,13 +35,15 @@ export function workerDataVersion(datasetVersion: string): Promise<string> {
 }
 
 /**
- * The key of the calculation's ring: `ring:<data version>:<lat>,<lon>:<N>:<SHA-256 of the closed countries, sorted,
- * once each, joined by commas, hex>`. The hash keeps the key within KV's 512 bytes, whatever the number of closed
+ * The key of the calculation's ring: `ring:<data version>:<lat>,<lon>:<lower>-<upper>:<SHA-256 of the closed
+ * countries, sorted, once each, joined by commas, hex>`, the ring's bounds in hours. The rings 12–24 and 23–24 share
+ * the upper bound, not the key. The hash keeps the key within KV's 512 bytes, whatever the number of closed
  * countries; the order and repeats of the set given do not change it.
  */
-export async function ringKey(version: string, { origin, hours, closedCountries }: CalculationRequest): Promise<string> {
+export async function ringKey(version: string, calculation: CalculationRequest): Promise<string> {
+	const { origin, lowerHours, upperHours, closedCountries } = calculation;
 	const closed = await sha256Hex([...new Set(closedCountries)].toSorted().join(','));
-	return `ring:${version}:${origin.lat.toFixed(3)},${origin.lon.toFixed(3)}:${hours}:${closed}`;
+	return `ring:${version}:${origin.lat.toFixed(3)},${origin.lon.toFixed(3)}:${lowerHours}-${upperHours}:${closed}`;
 }
 
 /** The ring cached under `key`, or undefined on a miss. */

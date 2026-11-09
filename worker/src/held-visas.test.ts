@@ -42,7 +42,7 @@ describe('a held visa', () => {
 		const container = recorded(await engineContainer(straightRoad));
 		const { get } = api({ container, sherpa: sherpaClosing(), visaExemptions: [] });
 
-		const { body } = await get('lat=0&lon=0&hours=2&cit=RUS&visas=GEO');
+		const { body } = await get('lat=0&lon=0&from=1&to=2&cit=RUS&visas=GEO');
 
 		expect(body.access).toMatchObject({ GEO: { mode: 'held_visa', visa: 'GEO' }, ARM: { mode: 'closed' } });
 		expect(closedCountries(container)).not.toContain('GEO');
@@ -53,7 +53,7 @@ describe('a held visa', () => {
 		const container = recorded(await engineContainer(straightRoad));
 		const { get } = api({ container, sherpa: sherpaClosing(), visaExemptions: [] });
 
-		const { body } = await get('lat=0&lon=0&hours=2&cit=RUS&visas=GRL,NX');
+		const { body } = await get('lat=0&lon=0&from=1&to=2&cit=RUS&visas=GRL,NX');
 
 		expect(body.access).toMatchObject({ GRL: { mode: 'held_visa', visa: 'GRL' }, NX: { mode: 'held_visa', visa: 'NX' } });
 		expect(closedCountries(container)).not.toContain('GRL');
@@ -63,7 +63,7 @@ describe('a held visa', () => {
 		const container = recorded(await engineContainer(straightRoad));
 		const { get } = api({ container, sherpa: sherpaClosing(), visaExemptions: [] });
 
-		const { body } = await get('lat=0&lon=0&hours=2&cit=RUS&visas=SCHENGEN');
+		const { body } = await get('lat=0&lon=0&from=1&to=2&cit=RUS&visas=SCHENGEN');
 
 		// The 29 states (home-affairs.ec.europa.eu, 2026-11-07), then Gibraltar, Monaco, San Marino and the Vatican.
 		const schengen = [
@@ -122,7 +122,7 @@ describe("the visa exemptions' rows", () => {
 			visaExemptions: [exemption('MNE', 'SCHENGEN'), exemption('MNE', 'USA'), exemption('MEX', 'USA')],
 		});
 
-		const { body } = await get('lat=0&lon=0&hours=2&cit=RUS&visas=SCHENGEN');
+		const { body } = await get('lat=0&lon=0&from=1&to=2&cit=RUS&visas=SCHENGEN');
 
 		expect(body.access).toMatchObject({ MNE: { mode: 'held_visa', visa: 'SCHENGEN' }, MEX: { mode: 'closed' } });
 		expect(closedCountries(container)).not.toContain('MNE');
@@ -140,12 +140,12 @@ describe("the visa exemptions' rows", () => {
 		});
 
 		// Already 1 January in Skopje, still 31 December in UTC.
-		expect((await get('lat=0&lon=0&hours=2&cit=RUS&visas=USA')).body.access).toMatchObject({ MKD: { mode: 'held_visa', visa: 'USA' } });
+		expect((await get('lat=0&lon=0&from=1&to=2&cit=RUS&visas=USA')).body.access).toMatchObject({ MKD: { mode: 'held_visa', visa: 'USA' } });
 		clock.now = Date.parse('2027-01-01T00:00:00Z');
-		expect((await get('lat=0&lon=0&hours=2&cit=RUS&visas=USA')).body.access).toMatchObject({ MKD: { mode: 'closed' } });
+		expect((await get('lat=0&lon=0&from=1&to=2&cit=RUS&visas=USA')).body.access).toMatchObject({ MKD: { mode: 'closed' } });
 		expect(closedCountries(container)).toContain('MKD');
 		// A row without a last day goes on.
-		expect((await get('lat=0&lon=0&hours=2&cit=RUS&visas=SCHENGEN')).body.access).toMatchObject({
+		expect((await get('lat=0&lon=0&from=1&to=2&cit=RUS&visas=SCHENGEN')).body.access).toMatchObject({
 			MKD: { mode: 'held_visa', visa: 'SCHENGEN' },
 		});
 	});
@@ -158,13 +158,15 @@ describe("the visa exemptions' rows", () => {
 			visaExemptions: [exemption('COL', 'USA', { citizenships: ['CHN', 'IND'] }), exemption('MEX', 'USA')],
 		});
 
-		expect((await get('lat=0&lon=0&hours=2&cit=RUS&visas=USA')).body.access).toMatchObject({
+		expect((await get('lat=0&lon=0&from=1&to=2&cit=RUS&visas=USA')).body.access).toMatchObject({
 			COL: { mode: 'closed' },
 			MEX: { mode: 'held_visa', visa: 'USA' },
 		});
 		expect(closedCountries(container)).toContain('COL');
 		// One of the citizenships is enough.
-		expect((await get('lat=0&lon=0&hours=2&cit=IND,RUS&visas=USA')).body.access).toMatchObject({ COL: { mode: 'held_visa', visa: 'USA' } });
+		expect((await get('lat=0&lon=0&from=1&to=2&cit=IND,RUS&visas=USA')).body.access).toMatchObject({
+			COL: { mode: 'held_visa', visa: 'USA' },
+		});
 		expect(closedCountries(container)).not.toContain('COL');
 	});
 
@@ -172,7 +174,7 @@ describe("the visa exemptions' rows", () => {
 		const container = recorded(await engineContainer(straightRoad));
 		const { get } = api({ container, sherpa: sherpaClosing(), visaExemptions: [exemption('MAR', 'SCHENGEN', { gives: 'evisa' })] });
 
-		const { body } = await get('lat=0&lon=0&hours=2&cit=RUS&visas=SCHENGEN');
+		const { body } = await get('lat=0&lon=0&from=1&to=2&cit=RUS&visas=SCHENGEN');
 
 		expect(body.access).toMatchObject({ MAR: { mode: 'evisa', visa: 'SCHENGEN' } });
 		expect(closedCountries(container)).not.toContain('MAR');
@@ -203,7 +205,7 @@ describe('the entry mode', () => {
 			],
 		});
 
-		const { body } = await get('lat=0&lon=0&hours=2&cit=RUS&visas=GEO,KHM,MNE,SCHENGEN,SRB,USA');
+		const { body } = await get('lat=0&lon=0&from=1&to=2&cit=RUS&visas=GEO,KHM,MNE,SCHENGEN,SRB,USA');
 
 		expect(body.access).toMatchObject({
 			// Without a visa by the citizenship, over a held visa and a row.
@@ -232,7 +234,7 @@ describe('the entry mode', () => {
 			visaExemptions: [exemption('GEO', 'CAN'), exemption('GEO', 'GBR'), exemption('MEX', 'CAN'), exemption('MEX', 'USA')],
 		});
 
-		const { body } = await get('lat=0&lon=0&hours=2&cit=RUS&visas=CAN,GBR,USA');
+		const { body } = await get('lat=0&lon=0&from=1&to=2&cit=RUS&visas=CAN,GBR,USA');
 
 		expect(body.access).toMatchObject({ GEO: { mode: 'held_visa', visa: 'GBR' }, MEX: { mode: 'held_visa', visa: 'USA' } });
 	});
@@ -241,7 +243,7 @@ describe('the entry mode', () => {
 		const container = recorded(await engineContainer(straightRoad));
 		const { get } = api({ container, sherpa: sherpaClosing() });
 
-		const { body } = await get('lat=0&lon=0&hours=2&cit=SRB&visas=SRB,UKR');
+		const { body } = await get('lat=0&lon=0&from=1&to=2&cit=SRB&visas=SRB,UKR');
 
 		expect(body.access).toMatchObject({
 			UKR: { mode: 'closed', closedForEveryone: true },
@@ -260,7 +262,7 @@ describe('the held visas of a request', () => {
 		const container = counted(await engineContainer(straightRoad));
 		const { get } = api({ container });
 
-		const { status, body } = await get(`lat=0&lon=0&hours=2&cit=RUS&visas=${visas}`);
+		const { status, body } = await get(`lat=0&lon=0&from=1&to=2&cit=RUS&visas=${visas}`);
 
 		expect(status).toBe(400);
 		expect(body).toEqual({ error: stringContaining('visas') });
@@ -274,6 +276,6 @@ describe('the held visas of a request', () => {
 	])('with %s is answered', async (_, visas) => {
 		const { get } = api({ container: await engineContainer(straightRoad) });
 
-		expect((await get(`lat=0&lon=0&hours=2&cit=RUS&visas=${visas}`)).status).toBe(200);
+		expect((await get(`lat=0&lon=0&from=1&to=2&cit=RUS&visas=${visas}`)).status).toBe(200);
 	});
 });

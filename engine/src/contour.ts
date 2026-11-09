@@ -2,7 +2,8 @@
 // their travel times, the land near them gets a road's time plus the drive off-road to it at 30 km/h, and
 // marching squares (trace.ts) trace the cells whose time is in (N − 1, N], as Valhalla does, with the small plots
 // without roads that the roads of N h first wall in (#43), leaving out the cells in closed countries and
-// territories. The contour is then simplified to ~500 m.
+// territories. The contour is then simplified to ~500 m. Where the raster's cells are coarser (a ring of days, #82),
+// the land near a road reaches a cell and the contour is simplified to a cell.
 import type { Passage } from './borders.ts';
 import { type CellGrid, E7, LocalProjection } from './geo.ts';
 import type { Graph } from './graph.ts';
@@ -14,6 +15,10 @@ import { edgeTravelSeconds, TRAVEL_PER_DRIVING } from './traverse.ts';
 import type { ZoneLocator } from './zones.ts';
 
 const CELL_METERS = 500;
+/**
+ * The contour is simplified to this, or to a cell where the raster's cells are coarser (MAX_CELLS): a smaller
+ * tolerance keeps every step of the cells' staircase (#82).
+ */
 const SIMPLIFY_METERS = 500;
 /**
  * Land up to this far from a reached road is in the ring when its time is; land further away is not. Tuned
@@ -21,6 +26,14 @@ const SIMPLIFY_METERS = 500;
  * cross, and 1 km fits its rings best, where 3 km made the rings of 1 h a third too large.
  */
 const NEAR_ROAD_METERS = 1000;
+/**
+ * The land near a road on the raster: NEAR_ROAD_METERS, or a cell where the cells are coarser. With less than a cell,
+ * the cells a road crosses diagonally touch only at their corners, and its ring falls apart into a polygon a cell:
+ * a ring of days from Istanbul came to 16 000 polygons and 5.2 MB of JSON (#82).
+ */
+function nearRoadMeters(cellMeters: number): number {
+	return Math.max(NEAR_ROAD_METERS, cellMeters);
+}
 /**
  * A plot of land further than NEAR_ROAD_METERS from every road, which the roads reached within N h wall in on every
  * side, is in the ring when it is smaller than this: land between the roads, not a mountain range, a steppe inside
@@ -60,7 +73,8 @@ export function ringContour(input: ContourInput): MultiPolygon {
 	const grid = paintRoads(input);
 	spreadOffRoad(grid);
 	const rings = traceRings(ringCells(input, grid), grid.columns, grid.rows);
-	return { type: 'MultiPolygon', coordinates: polygons(rings, grid, (2 * SIMPLIFY_METERS) / grid.cellMeters) };
+	const simplifyMeters = Math.max(SIMPLIFY_METERS, grid.cellMeters);
+	return { type: 'MultiPolygon', coordinates: polygons(rings, grid, (2 * simplifyMeters) / grid.cellMeters) };
 }
 
 /**
@@ -189,7 +203,7 @@ function reachedBounds(graph: Graph, seconds: Float64Array, origin: Bounds): Bou
 }
 
 /**
- * A raster of unreached cells over the bounds and a margin past NEAR_ROAD_METERS, of CELL_METERS cells, or coarser
+ * A raster of unreached cells over the bounds and a margin past the land near a road, of CELL_METERS cells, or coarser
  * ones where that would make more than MAX_CELLS.
  */
 function emptyGrid({ minLat, maxLat, minLon, maxLon }: Bounds, projection: LocalProjection): Grid {
@@ -201,7 +215,7 @@ function emptyGrid({ minLat, maxLat, minLon, maxLon }: Bounds, projection: Local
 	}
 	const cellLat = cellMeters / projection.metersPerE7Lat;
 	const cellLon = cellMeters / projection.metersPerE7Lon;
-	const margin = Math.ceil(NEAR_ROAD_METERS / cellMeters) + 2;
+	const margin = Math.ceil(nearRoadMeters(cellMeters) / cellMeters) + 2;
 	const columns = Math.ceil((maxLon - minLon) / cellLon) + 2 * margin + 1;
 	const rows = Math.ceil((maxLat - minLat) / cellLat) + 2 * margin + 1;
 	return {
@@ -243,7 +257,7 @@ function painter(grid: Grid, upperSeconds: number) {
 }
 
 /**
- * Gives each cell within NEAR_ROAD_METERS of a painted road the time of the nearest one plus the drive off-road
+ * Gives each cell near a painted road (nearRoadMeters) the time of the nearest one plus the drive off-road
  * from it: a two-pass chamfer distance transform that carries the nearest road's time along.
  */
 function spreadOffRoad(grid: Grid): void {
@@ -260,7 +274,7 @@ function spreadOffRoad(grid: Grid): void {
 	}
 }
 
-/** The nearest painted road of each cell within NEAR_ROAD_METERS, found by passes over the grid's rows. */
+/** The nearest painted road of each cell near one (nearRoadMeters), found by passes over the grid's rows. */
 class NearestRoad {
 	/** The distance to the nearest painted road in metres: 0 on one, Infinity when none is near. */
 	readonly distance: Float32Array;
@@ -269,6 +283,8 @@ class NearestRoad {
 	readonly #columns: number;
 	readonly #rows: number;
 	readonly #northMeters: number;
+	/** The land near a road, in metres (nearRoadMeters). */
+	readonly #nearMeters: number;
 	/** Cells narrow away from the equator: a step east is shorter in metres than a step north. */
 	readonly #eastMeters: Float64Array;
 
@@ -284,6 +300,7 @@ class NearestRoad {
 			}
 		}
 		this.#northMeters = grid.cellMeters;
+		this.#nearMeters = nearRoadMeters(grid.cellMeters);
 		this.#eastMeters = eastMetersOfRows(grid);
 	}
 
@@ -341,7 +358,7 @@ class NearestRoad {
 		const { distance, roadTime } = this;
 		const fromDistance = distance[from] + meters;
 		if (
-			fromDistance <= NEAR_ROAD_METERS &&
+			fromDistance <= this.#nearMeters &&
 			(fromDistance < distance[cell] || (fromDistance === distance[cell] && roadTime[from] < roadTime[cell]))
 		) {
 			distance[cell] = fromDistance;

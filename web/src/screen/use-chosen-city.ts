@@ -2,7 +2,7 @@
 // at, of a card tapped, a city tapped on the map or picked in the list of all. The map goes to it and names it larger.
 // A new ring chooses none and shows the carousel from its start.
 import { useEffect, useRef, useState, type RefObject } from 'react';
-import { inTheMiddle, scrollToCard, useCarouselStops } from '../cities/carousel.ts';
+import { isCurrentCard, scrollToCard, useCarouselStops } from '../cities/carousel.ts';
 import type { City } from '../cities/cities.ts';
 import type { MapHandle } from '../map/camera.ts';
 import type { ShownRing } from './use-shown-ring.ts';
@@ -13,12 +13,12 @@ const PICKED_CITY_ZOOM = 8;
 export interface ChosenCity {
 	/** The chosen city's id; undefined for none. */
 	readonly city: number | undefined;
-	/** The carousel, whose card in the middle is the chosen city. */
+	/** The carousel, whose current card, at its left edge, is the chosen city. */
 	readonly carousel: RefObject<HTMLDivElement | null>;
 	readonly onCarouselScroll: () => void;
-	/** A city tapped on the map: its card comes to the carousel's middle; a city with no card opens the list of all. */
+	/** A city tapped on the map: its card becomes the current one; a city with no card opens the list of all. */
 	readonly tap: (city: number) => void;
-	/** A city's card tapped: it comes to the carousel's middle, and the map goes to the city at the zoom it has. */
+	/** A city's card tapped: it becomes the current one, and the map goes to the city at the zoom it has. */
 	readonly tapCard: (city: City) => void;
 	/** A city picked in the list of all: chosen, and the map comes close to it. */
 	readonly pick: (city: City) => void;
@@ -51,10 +51,10 @@ export function useChosenCity(shown: ShownRing, map: RefObject<MapHandle | null>
 		}
 	});
 
-	// A city whose card is off the carousel's middle is chosen when the carousel stops at it, which moves the map. A
-	// city whose card is in the middle, or that has no card, is chosen and the map moved to it at once.
+	// A city whose card is not the current one is chosen when the carousel stops at it, which moves the map. A city
+	// whose card is the current one, or that has no card, is chosen and the map moved to it at once.
 	const chooseAndShow = (place: City, minZoom?: number): void => {
-		if (inTheMiddle(carousel.current, place.id) || !scrollToCard(carousel.current, place.id)) {
+		if (isCurrentCard(carousel.current, place.id) || !scrollToCard(carousel.current, place.id)) {
 			choose(place.id);
 			map.current?.goTo(place, minZoom);
 		}

@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  A ring of days (#82): one country, AAA, a square from 1°W to 16°E and 1°S to 1°N, and one secondary road
+  (60 km/h) along the equator from 0° to 14°E, drawn with a node every degree.
+
+  On the equator 1° is 111.2 km (the engine's sphere has a radius of 6371.0088 km): 1.853 h at the wheel, 2.224 h
+  of travel. The whole road, 1557 km, takes 25.9 h at the wheel and 31.1 h of travel. From 0°:
+
+    5°E    11.12 h        10°E   22.24 h        11°E   24.46 h
+    5.5°E  12.23 h        10.5°E 23.35 h        12°E   26.69 h
+
+        1°N +-------------------------------------------------+
+            |                        AAA                      |
+         0° |   1 . . . . 6 . . . . 11  . . . 15              |
+            |   0°        5°E       10°E      14°E            |
+        1°S +-------------------------------------------------+
+           1°W                                               16°E
+-->
+<osm version="0.6" generator="hand">
+	<node id="1" lat="0" lon="0"/>
+	<node id="2" lat="0" lon="1"/>
+	<node id="3" lat="0" lon="2"/>
+	<node id="4" lat="0" lon="3"/>
+	<node id="5" lat="0" lon="4"/>
+	<node id="6" lat="0" lon="5"/>
+	<node id="7" lat="0" lon="6"/>
+	<node id="8" lat="0" lon="7"/>
+	<node id="9" lat="0" lon="8"/>
+	<node id="10" lat="0" lon="9"/>
+	<node id="11" lat="0" lon="10"/>
+	<node id="12" lat="0" lon="11"/>
+	<node id="13" lat="0" lon="12"/>
+	<node id="14" lat="0" lon="13"/>
+	<node id="15" lat="0" lon="14"/>
+
+	<node id="101" lat="-1" lon="-1"/>
+	<node id="102" lat="-1" lon="16"/>
+	<node id="103" lat="1" lon="16"/>
+	<node id="104" lat="1" lon="-1"/>
+
+	<way id="1">
+		<nd ref="1"/><nd ref="2"/><nd ref="3"/><nd ref="4"/><nd ref="5"/><nd ref="6"/><nd ref="7"/><nd ref="8"/>
+		<nd ref="9"/><nd ref="10"/><nd ref="11"/><nd ref="12"/><nd ref="13"/><nd ref="14"/><nd ref="15"/>
+		<tag k="highway" v="secondary"/>
+	</way>
+
+	<way id="100">
+		<nd ref="101"/><nd ref="102"/><nd ref="103"/><nd ref="104"/><nd ref="101"/>
+		<tag k="boundary" v="administrative"/>
+		<tag k="admin_level" v="2"/>
+	</way>
+	<relation id="1000">
+		<member type="way" ref="100" role="outer"/>
+		<tag k="type" v="boundary"/>
+		<tag k="boundary" v="administrative"/>
+		<tag k="admin_level" v="2"/>
+		<tag k="ISO3166-1:alpha3" v="AAA"/>
+	</relation>
+</osm>

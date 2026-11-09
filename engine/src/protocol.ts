@@ -13,8 +13,23 @@ export const CALCULATION_PATH = '/ring';
  */
 export const COLD_START_HEADER = 'x-cold-start-ms';
 
-/** The origin rounded by the Worker, N and the sorted closed countries: only the fields of the cache key. */
+/**
+ * The origin rounded by the Worker, the ring's two bounds and the sorted closed countries: only the fields of the
+ * cache key.
+ *
+ * Before the two bounds (#82) a calculation carried N alone, `hours`. In a rollout:
+ *
+ * - a Container from before them reads only `hours` and answers 400 without it. The Worker adds `hours`, the upper
+ *   bound, to a ring of one hour, (N − 1, N], which such a Container calculates as it should (`legacyHours`); a ring
+ *   of days fails with 502 until the Container moves too.
+ * - the Container takes a lone `hours` from a Worker from before them as the ring (N − 1, N].
+ */
 export type CalculationRequest = RingRequest;
+
+/** What a Worker sends a Container from before the two bounds besides them: N of a ring of one hour, or nothing. */
+export function legacyHours({ lowerHours, upperHours }: CalculationRequest): { readonly hours?: number } {
+	return upperHours - lowerHours === 1 ? { hours: upperHours } : {};
+}
 
 type WithoutTimings<Result> = Result extends unknown ? Omit<Result, 'timings'> : never;
 

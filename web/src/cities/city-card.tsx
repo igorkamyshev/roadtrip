@@ -15,7 +15,7 @@ export interface CityCardProps {
 	/** The entry modes of the answer shown. */
 	readonly access: Access;
 	readonly citizenships: readonly string[];
-	/** The chosen city: in the carousel's middle, labelled larger on the map. */
+	/** The chosen city: the carousel's current card, labelled larger on the map. */
 	readonly chosen: boolean;
 	/** A tap anywhere on the card but «Маршрут». */
 	readonly onTap: () => void;

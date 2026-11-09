@@ -30,12 +30,17 @@ function ringResult(traversalMs = 1200, contourMs = 300): RingResult {
 	return { outcome: 'ring', ring: structuredClone(RING), startCountry: 'AAA', timings: { traversalMs, contourMs } };
 }
 
-/** A calculation from `lat`, by default from 0° of longitude, for 3 h, with no closed countries. */
+/** A calculation from `lat`, by default from 0° of longitude, of the ring (2, 3] h, with no closed countries. */
 function request(
 	lat: number,
-	{ lon = 0, hours = 3, closedCountries = [] }: { lon?: number; hours?: number; closedCountries?: string[] } = {},
+	{
+		lon = 0,
+		lowerHours = 2,
+		upperHours = 3,
+		closedCountries = [],
+	}: { lon?: number; lowerHours?: number; upperHours?: number; closedCountries?: string[] } = {},
 ): RingRequest {
-	return { origin: { lat, lon }, hours, closedCountries };
+	return { origin: { lat, lon }, lowerHours, upperHours, closedCountries };
 }
 
 /** The calculations the server started, in order; each ends when the test calls `finish` or `fail`. */
@@ -119,7 +124,7 @@ describe('the engine server', () => {
 	it('answers a calculation with the engine’s result, the data version and the timings', async () => {
 		const { calculations, post } = await startServer();
 
-		const answer = post(request(0.5, { lon: 1.2, hours: 3, closedCountries: ['AFG', 'PRK'] }));
+		const answer = post(request(0.5, { lon: 1.2, lowerHours: 12, upperHours: 24, closedCountries: ['AFG', 'PRK'] }));
 		await vi.waitFor(() => {
 			expect(calculations.started).toHaveLength(1);
 		});
@@ -136,7 +141,38 @@ describe('the engine server', () => {
 				timings: { queueMs: 0, traversalMs: 1200, contourMs: 300 },
 			},
 		});
-		expect(calculations.started).toEqual([request(0.5, { lon: 1.2, hours: 3, closedCountries: ['AFG', 'PRK'] })]);
+		expect(calculations.started).toEqual([request(0.5, { lon: 1.2, lowerHours: 12, upperHours: 24, closedCountries: ['AFG', 'PRK'] })]);
+	});
+
+	it('takes the N of a Worker from before the ring’s two bounds as the ring (N − 1, N], for a rollout', async () => {
+		const { calculations, send } = await startServer();
+
+		const answer = send(JSON.stringify({ origin: { lat: 1, lon: 0 }, hours: 3, closedCountries: [] }));
+		await vi.waitFor(() => {
+			expect(calculations.started).toHaveLength(1);
+		});
+		calculations.finish();
+
+		expect((await answer).status).toBe(200);
+		expect(calculations.started).toEqual([request(1, { lowerHours: 2, upperHours: 3 })]);
+	});
+
+	it('calculates rings with the same upper bound and another lower one apart', async () => {
+		const { calculations, post } = await startServer();
+
+		const day = post(request(1, { lowerHours: 12, upperHours: 24 }));
+		const hour = post(request(1, { lowerHours: 23, upperHours: 24 }));
+		await vi.waitFor(() => {
+			expect(calculations.started).toHaveLength(1);
+		});
+		calculations.finish();
+		await vi.waitFor(() => {
+			expect(calculations.started).toHaveLength(2);
+		});
+		calculations.finish();
+
+		expect((await day).body.joined).toBe(false);
+		expect((await hour).body.joined).toBe(false);
 	});
 
 	it('calculates one ring at a time, and the others wait in order and say for how long', async () => {
@@ -262,12 +298,16 @@ describe('the engine server', () => {
 
 	it.each([
 		['not JSON', 'lat=1'],
-		['no origin', { hours: 3, closedCountries: [] }],
-		['a latitude that is not a number', { origin: { lat: '1', lon: 0 }, hours: 3, closedCountries: [] }],
-		['no N', { origin: { lat: 1, lon: 0 }, closedCountries: [] }],
-		['N that is not a whole number of hours', { origin: { lat: 1, lon: 0 }, hours: 2.5, closedCountries: [] }],
-		['no closed countries', { origin: { lat: 1, lon: 0 }, hours: 3 }],
-		['a closed country that is not a code', { origin: { lat: 1, lon: 0 }, hours: 3, closedCountries: [3] }],
+		['no origin', { lowerHours: 2, upperHours: 3, closedCountries: [] }],
+		['a latitude that is not a number', { origin: { lat: '1', lon: 0 }, lowerHours: 2, upperHours: 3, closedCountries: [] }],
+		['no bounds', { origin: { lat: 1, lon: 0 }, closedCountries: [] }],
+		['only an upper bound', { origin: { lat: 1, lon: 0 }, upperHours: 3, closedCountries: [] }],
+		['a bound that is not a whole number of hours', { origin: { lat: 1, lon: 0 }, lowerHours: 2, upperHours: 2.5, closedCountries: [] }],
+		['a negative lower bound', { origin: { lat: 1, lon: 0 }, lowerHours: -1, upperHours: 3, closedCountries: [] }],
+		['the lower bound not below the upper', { origin: { lat: 1, lon: 0 }, lowerHours: 3, upperHours: 3, closedCountries: [] }],
+		['an old N that is not a whole number of hours', { origin: { lat: 1, lon: 0 }, hours: 2.5, closedCountries: [] }],
+		['no closed countries', { origin: { lat: 1, lon: 0 }, lowerHours: 2, upperHours: 3 }],
+		['a closed country that is not a code', { origin: { lat: 1, lon: 0 }, lowerHours: 2, upperHours: 3, closedCountries: [3] }],
 	])('answers 400 to a calculation with %s, and calculates nothing', async (_, body) => {
 		const { calculations, send } = await startServer();
 

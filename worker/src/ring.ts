@@ -54,7 +54,7 @@ export async function handleRing(request: Request, deps: RingDeps): Promise<Resp
 		return refused(json(400, { error: query.problem } satisfies RingError));
 	}
 	const { status, body, served } = await serve(query, browserIds(request), deps);
-	deps.analytics.capture('ring served', { ...served, hours: query.hours, duration_ms: deps.now() - started });
+	deps.analytics.capture('ring served', { ...served, hours: query.upperHours, duration_ms: deps.now() - started });
 	return json(status, body);
 }
 
@@ -68,7 +68,7 @@ async function serve(
 	deps: RingDeps,
 ): Promise<{ status: number; body: RingResponse | RingError; served: Served }> {
 	// What logger.error gets with an error. Never the origin: it must not reach PostHog.
-	const context = { ...browser, hours: query.hours };
+	const context = { ...browser, hours: query.upperHours };
 	// Step 2: the citizenships' visa rules, or `visa_rules_missing` for the first without any.
 	const rules = await citizenshipsRules(query.citizenships, deps, context);
 	if ('missing' in rules) {
@@ -92,7 +92,8 @@ async function serve(
 	const visa = (startCountry: string | null) => ({ access: withStartCountry(access, startCountry), visaRulesLoadedAt });
 
 	// Steps 4–5: the key, from the fields the calculation gets and the data version.
-	const calculation = { origin: roundOrigin(query.origin), hours: query.hours, closedCountries: closed };
+	const { origin, lowerHours, upperHours } = query;
+	const calculation = { origin: roundOrigin(origin), lowerHours, upperHours, closedCountries: closed };
 	const version = await workerDataVersion(deps.datasetVersion);
 	const key = await ringKey(version, calculation);
 	const cached = await cachedRing(deps.rings, key);

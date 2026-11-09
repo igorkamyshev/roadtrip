@@ -31,7 +31,7 @@ export function graphWithoutZones(path: string): Graph {
 
 /** The engine's ring of N hours; undefined when it gives none (an empty ring, or no roads). */
 export function ourRing(graph: Graph, origin: LatLon, hours: number): MultiPolygon | undefined {
-	const result = computeRing(graph, borderTable, { origin, hours, closedCountries: [] });
+	const result = computeRing(graph, borderTable, { origin, lowerHours: hours - 1, upperHours: hours, closedCountries: [] });
 	return result.outcome === 'ring' ? result.ring : undefined;
 }
 

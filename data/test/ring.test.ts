@@ -1,4 +1,4 @@
-// The engine's seam (spec #20 «Решения по тестам», seam 1): graph, border table, origin, N and closed countries in,
+// The engine's seam (spec #20 «Решения по тестам», seam 1): graph, border table, origin, the ring's bounds and closed countries in,
 // the result out. The graphs are built from the OSM files in fixtures/ by the same builder as the world's, so
 // these tests check the builder too. Expected values are worked out by hand in each fixture's header.
 import { computeRing, type RingRequest } from 'engine';
@@ -10,10 +10,24 @@ import { crossing, pair, rules } from './rules.ts';
 
 const straightRoad = fixtureGraph('straight-road.osm');
 const twoCountries = fixtureGraph('two-countries.osm');
+const longRoad = fixtureGraph('long-road.osm');
 
+/** The ring of N hours: (N − 1, N]. */
 function request(lat: number, lon: number, hours: number): RingRequest {
-	return { origin: { lat, lon }, hours, closedCountries: [] };
+	return band({ lat, lon }, hours - 1, hours);
 }
+
+/** The ring of (lower, upper] hours. */
+function band(origin: RingRequest['origin'], lowerHours: number, upperHours: number): RingRequest {
+	return { origin, lowerHours, upperHours, closedCountries: [] };
+}
+
+/** On the long road's equator: is the point at `lon` in the ring? */
+function inDayRing(result: ReturnType<typeof computeRing>, lon: number): boolean {
+	return result.outcome === 'ring' && ringContains(result.ring, 0, lon);
+}
+
+const ORIGIN = { lat: 0, lon: 0 };
 
 describe('a ring', () => {
 	it('holds the points reached in (N − 1, N] hours of travel and no others', () => {
@@ -34,6 +48,42 @@ describe('a ring', () => {
 		const inRing = (lat: number, lon: number) => result.outcome === 'ring' && ringContains(result.ring, lat, lon);
 		expect(inRing(0.005, 0.7)).toBe(true); // 0.6 km north of the road
 		expect(inRing(0.1, 0.7)).toBe(false); // 11 km north of it
+	});
+});
+
+describe('a ring of a day', () => {
+	it('holds the points reached in (12, 24] hours of travel and no others', () => {
+		const result = computeRing(longRoad, borderTable, band(ORIGIN, 12, 24));
+
+		expect(result.outcome).toBe('ring');
+		// Along the road, 2.224 h of travel per 1°.
+		expect(inDayRing(result, 2)).toBe(false); // 4.45 h
+		expect(inDayRing(result, 5)).toBe(false); // 11.12 h
+		expect(inDayRing(result, 5.5)).toBe(true); // 12.23 h
+		expect(inDayRing(result, 8)).toBe(true); // 17.79 h
+		expect(inDayRing(result, 10.5)).toBe(true); // 23.35 h
+		expect(inDayRing(result, 11)).toBe(false); // 24.46 h
+		expect(inDayRing(result, 12)).toBe(false); // 26.69 h
+	});
+
+	it('on cells coarser than 500 m is simplified to a cell, without the steps of the cells along a diagonal road', () => {
+		const result = computeRing(fixtureGraph('diagonal-road.osm'), borderTable, band({ lat: -20, lon: -20 }, 0, 130));
+
+		expect(result.outcome).toBe('ring');
+		const points = result.outcome === 'ring' ? result.ring.coordinates.flat(2).length : 0;
+		expect(result.outcome === 'ring' && result.ring.coordinates).toHaveLength(1);
+		expect(points).toBeGreaterThanOrEqual(5); // four corners and the closing point
+		expect(points).toBeLessThanOrEqual(13); // a dozen, and the closing point
+		expect(result.outcome === 'ring' && ringContains(result.ring, 0, 0)).toBe(true); // the road's middle, ~62 h
+	});
+
+	it('is not the ring of its last hour, (23, 24]', () => {
+		const result = computeRing(longRoad, borderTable, band(ORIGIN, 23, 24));
+
+		expect(inDayRing(result, 8)).toBe(false); // 17.79 h
+		expect(inDayRing(result, 10)).toBe(false); // 22.24 h
+		expect(inDayRing(result, 10.5)).toBe(true); // 23.35 h
+		expect(inDayRing(result, 11)).toBe(false); // 24.46 h
 	});
 });
 
@@ -379,5 +429,14 @@ describe('a ring past the end of the roads', () => {
 		// Half the road each way: 1.85 h at the wheel, 2.22 h of travel.
 		expect(computeRing(straightRoad, borderTable, request(0, 1, 6))).toMatchObject({ outcome: 'empty', maxHours: 3 });
 		expect(computeRing(straightRoad, borderTable, request(0, 1, 4))).toMatchObject({ outcome: 'empty', maxHours: 3 });
+	});
+
+	it('is empty only when nothing is reached after its lower bound', () => {
+		// The whole road takes 4.45 h of travel: past 4 h, short of 5 h.
+		expect(computeRing(straightRoad, borderTable, band(ORIGIN, 4, 6)).outcome).toBe('ring');
+		expect(computeRing(straightRoad, borderTable, band(ORIGIN, 5, 6))).toMatchObject({ outcome: 'empty', maxHours: 5 });
+		// A day's ring: the long road's 31.1 h end before 36 h.
+		expect(computeRing(longRoad, borderTable, band(ORIGIN, 36, 48))).toMatchObject({ outcome: 'empty', maxHours: 32 });
+		expect(computeRing(longRoad, borderTable, band(ORIGIN, 24, 36)).outcome).toBe('ring');
 	});
 });

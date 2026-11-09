@@ -63,7 +63,7 @@ jobs:
           docker build -f engine/Dockerfile -t roadtrip-engine .
           docker run -d --name engine -p 8080:8080 roadtrip-engine
           if ! curl -fsS --retry 30 --retry-all-errors --retry-delay 1 -X POST localhost:8080/ring \
-            -d '{"origin":{"lat":0,"lon":0.5},"hours":1,"closedCountries":[]}' | grep -q '"outcome":"ring"'; then
+            -d '{"origin":{"lat":0,"lon":0.5},"lowerHours":0,"upperHours":1,"closedCountries":[]}' | grep -q '"outcome":"ring"'; then
             docker logs engine
             exit 1
           fi

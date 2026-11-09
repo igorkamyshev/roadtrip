@@ -37,7 +37,7 @@ describe('the visa rules', () => {
 		const container = recorded(await engineContainer(straightRoad));
 		const { get } = api({ container, sherpa });
 
-		const { status, body } = await get('lat=0&lon=0&hours=2&cit=RUS');
+		const { status, body } = await get('lat=0&lon=0&from=1&to=2&cit=RUS');
 
 		expect(status).toBe(200);
 		expect(body.access).toMatchObject({
@@ -73,7 +73,7 @@ describe('the visa rules', () => {
 		const container = recorded(await engineContainer(straightRoad));
 		const { get } = api({ container, sherpa });
 
-		const { body } = await get('lat=0&lon=0&hours=2&cit=RUS,SRB');
+		const { body } = await get('lat=0&lon=0&from=1&to=2&cit=RUS,SRB');
 
 		expect(sherpa.passports.toSorted()).toEqual(['RUS', 'SRB']);
 		expect(body.access).toMatchObject({
@@ -96,7 +96,7 @@ describe('the visa rules', () => {
 		const container = recorded(await engineContainer(straightRoad));
 		const { get } = api({ container, sherpa });
 
-		const { body } = await get('lat=0&lon=0&hours=2&cit=RUS,SRB');
+		const { body } = await get('lat=0&lon=0&from=1&to=2&cit=RUS,SRB');
 
 		expect(body.access).toMatchObject({
 			RUS: { mode: 'visa_free', citizenship: 'RUS' },
@@ -116,7 +116,7 @@ describe('the visa rules', () => {
 		const container = recorded(await engineContainer(straightRoad));
 		const { get } = api({ container, sherpa });
 
-		const { body } = await get('lat=0&lon=0&hours=2&cit=UKR');
+		const { body } = await get('lat=0&lon=0&from=1&to=2&cit=UKR');
 
 		const closedForEveryone = { mode: 'closed', closedForEveryone: true };
 		expect(body.access).toMatchObject({
@@ -142,7 +142,7 @@ describe('Sherpa', () => {
 		const sherpa = new SherpaDouble();
 		const { get } = api({ container: await engineContainer(straightRoad), sherpa });
 
-		await get('lat=0&lon=0&hours=2&cit=RUS,SRB');
+		await get('lat=0&lon=0&from=1&to=2&cit=RUS,SRB');
 
 		expect(
 			sherpa.requests
@@ -170,9 +170,9 @@ describe("Sherpa's copies", () => {
 	it('are fresh for a day: Sherpa is asked once', async () => {
 		const { get, clock, sherpa } = api({ container: await engineContainer(straightRoad) });
 
-		await get('lat=0&lon=0&hours=2&cit=RUS');
+		await get('lat=0&lon=0&from=1&to=2&cit=RUS');
 		clock.now = START + DAY - 1;
-		const { body } = await get('lat=0&lon=0&hours=3&cit=RUS');
+		const { body } = await get('lat=0&lon=0&from=2&to=3&cit=RUS');
 
 		expect(sherpa.passports).toEqual(['RUS']);
 		expect(body.visaRulesLoadedAt).toBe('2026-11-07T00:00:00.000Z');
@@ -180,33 +180,33 @@ describe("Sherpa's copies", () => {
 
 	it('once stale are served at once, and refreshed in the background for the next request', async () => {
 		const { request, settle, get, clock, sherpa } = api({ container: await engineContainer(straightRoad) });
-		await get('lat=0&lon=0&hours=2&cit=RUS');
+		await get('lat=0&lon=0&from=1&to=2&cit=RUS');
 		sherpa.answer((passport) => ({ body: sherpaMap(passport, { groups: { GEO: 'EVISA_OR_ETA_REQUIRED' } }) }));
 		sherpa.hold();
 
 		clock.now = START + DAY;
-		const stale = await request('lat=0&lon=0&hours=2&cit=RUS');
+		const stale = await request('lat=0&lon=0&from=1&to=2&cit=RUS');
 
 		expect(stale.body).toMatchObject({ visaRulesLoadedAt: '2026-11-07T00:00:00.000Z', access: { GEO: { mode: 'visa_free' } } });
 		expect(sherpa.passports).toEqual(['RUS', 'RUS']);
 		sherpa.release();
 		await settle();
 		clock.now = START + DAY + HOUR;
-		const refreshed = await get('lat=0&lon=0&hours=2&cit=RUS');
+		const refreshed = await get('lat=0&lon=0&from=1&to=2&cit=RUS');
 		expect(refreshed.body).toMatchObject({ visaRulesLoadedAt: '2026-11-08T00:00:00.000Z', access: { GEO: { mode: 'evisa' } } });
 		expect(sherpa.passports).toEqual(['RUS', 'RUS']);
 	});
 
 	it('once stale are refreshed by one request at a time, however many come while it runs', async () => {
 		const { request, settle, get, clock, sherpa } = api({ container: await engineContainer(straightRoad) });
-		await get('lat=0&lon=0&hours=2&cit=RUS');
+		await get('lat=0&lon=0&from=1&to=2&cit=RUS');
 		sherpa.hold();
 
 		clock.now = START + DAY;
 		await Promise.all([
-			request('lat=0&lon=0&hours=2&cit=RUS'),
-			request('lat=0&lon=0&hours=3&cit=RUS'),
-			request('lat=0&lon=0&hours=4&cit=RUS'),
+			request('lat=0&lon=0&from=1&to=2&cit=RUS'),
+			request('lat=0&lon=0&from=2&to=3&cit=RUS'),
+			request('lat=0&lon=0&from=3&to=4&cit=RUS'),
 		]);
 		expect(sherpa.passports).toEqual(['RUS', 'RUS']);
 		sherpa.release();
@@ -215,12 +215,12 @@ describe("Sherpa's copies", () => {
 		// Once a refresh ended, the next stale copy is refreshed again: after one that came, and after one that failed,
 		// once the 15 min of the failure are over.
 		clock.now = START + 2 * DAY;
-		await get('lat=0&lon=0&hours=2&cit=RUS');
+		await get('lat=0&lon=0&from=1&to=2&cit=RUS');
 		sherpa.answer(() => ({ status: 503 }));
 		clock.now = START + 3 * DAY;
-		await get('lat=0&lon=0&hours=2&cit=RUS');
+		await get('lat=0&lon=0&from=1&to=2&cit=RUS');
 		clock.now = START + 3 * DAY + 15 * MINUTE;
-		await get('lat=0&lon=0&hours=2&cit=RUS');
+		await get('lat=0&lon=0&from=1&to=2&cit=RUS');
 		expect(sherpa.passports).toEqual(['RUS', 'RUS', 'RUS', 'RUS', 'RUS']);
 	});
 
@@ -229,7 +229,7 @@ describe("Sherpa's copies", () => {
 		sherpa.hold();
 
 		let answered = false;
-		const answer = request('lat=0&lon=0&hours=2&cit=RUS').then((result) => {
+		const answer = request('lat=0&lon=0&from=1&to=2&cit=RUS').then((result) => {
 			answered = true;
 			return result;
 		});
@@ -243,12 +243,12 @@ describe("Sherpa's copies", () => {
 
 	it('are never deleted: a year later, with Sherpa down, the copy is served', async () => {
 		const { get, clock, sherpa } = api({ container: await engineContainer(straightRoad) });
-		await get('lat=0&lon=0&hours=2&cit=RUS');
+		await get('lat=0&lon=0&from=1&to=2&cit=RUS');
 		sherpa.answer(() => ({ status: 503 }));
 
 		for (const days of [2, 40, 365]) {
 			clock.now = START + days * DAY;
-			const { body } = await get('lat=0&lon=0&hours=2&cit=RUS');
+			const { body } = await get('lat=0&lon=0&from=1&to=2&cit=RUS');
 			expect(body).toMatchObject({ outcome: 'ring', visaRulesLoadedAt: '2026-11-07T00:00:00.000Z' });
 		}
 	});
@@ -273,13 +273,13 @@ describe("Sherpa's copies", () => {
 		['not JSON', { text: '<html>Bad gateway</html>' }],
 	] as const)('are not overwritten by an answer with %s, a failure', async (_, reply) => {
 		const { get, clock, sherpa, errors } = api({ container: await engineContainer(straightRoad) });
-		await get('lat=0&lon=0&hours=2&cit=RUS');
+		await get('lat=0&lon=0&from=1&to=2&cit=RUS');
 		sherpa.answer(() => reply);
 
 		clock.now = START + 2 * DAY;
-		await get('lat=0&lon=0&hours=2&cit=RUS');
+		await get('lat=0&lon=0&from=1&to=2&cit=RUS');
 		clock.now = START + 3 * DAY;
-		const { body } = await get('lat=0&lon=0&hours=2&cit=RUS');
+		const { body } = await get('lat=0&lon=0&from=1&to=2&cit=RUS');
 
 		expect(body.visaRulesLoadedAt).toBe('2026-11-07T00:00:00.000Z');
 		expect(errors.map(([, , context]) => context)).toEqual([
@@ -298,7 +298,7 @@ describe('a failure of Sherpa', () => {
 		const container = recorded(await engineContainer(straightRoad));
 		const { get, errors } = api({ container, sherpa });
 
-		const { status, body } = await get('lat=0&lon=0&hours=2&cit=RUS,SRB', browser);
+		const { status, body } = await get('lat=0&lon=0&from=1&to=2&cit=RUS,SRB', browser);
 
 		expect(status).toBe(200);
 		expect(body).toEqual({ outcome: 'visa_rules_missing', missingCitizenship: 'SRB' });
@@ -325,7 +325,10 @@ describe('a failure of Sherpa', () => {
 		sherpa.answer(() => ({ status: 401 }));
 		const { get } = api({ container: await engineContainer(straightRoad), sherpa });
 
-		expect((await get('lat=0&lon=0&hours=2&cit=DEU,RUS,SRB')).body).toEqual({ outcome: 'visa_rules_missing', missingCitizenship: 'DEU' });
+		expect((await get('lat=0&lon=0&from=1&to=2&cit=DEU,RUS,SRB')).body).toEqual({
+			outcome: 'visa_rules_missing',
+			missingCitizenship: 'DEU',
+		});
 	});
 
 	it('is not asked again for that citizenship for 15 min, others are', async () => {
@@ -333,13 +336,13 @@ describe('a failure of Sherpa', () => {
 		sherpa.answer(() => ({ status: 429 }));
 		const { get, clock, errors } = api({ container: await engineContainer(straightRoad), sherpa });
 
-		await get('lat=0&lon=0&hours=2&cit=RUS');
+		await get('lat=0&lon=0&from=1&to=2&cit=RUS');
 		sherpa.answer((passport) => ({ body: sherpaMap(passport) }));
 		clock.now = START + 15 * MINUTE - 1;
-		const marked = await get('lat=0&lon=0&hours=2&cit=RUS');
-		const other = await get('lat=0&lon=0&hours=2&cit=SRB');
+		const marked = await get('lat=0&lon=0&from=1&to=2&cit=RUS');
+		const other = await get('lat=0&lon=0&from=1&to=2&cit=SRB');
 		clock.now = START + 15 * MINUTE;
-		const again = await get('lat=0&lon=0&hours=2&cit=RUS');
+		const again = await get('lat=0&lon=0&from=1&to=2&cit=RUS');
 
 		expect(marked.body).toEqual({ outcome: 'visa_rules_missing', missingCitizenship: 'RUS' });
 		expect(other.body.outcome).toBe('ring');
@@ -350,15 +353,15 @@ describe('a failure of Sherpa', () => {
 
 	it('with a stale copy serves it, goes to logger.error as served stale, and holds the next refresh for 15 min', async () => {
 		const { get, clock, sherpa, errors } = api({ container: await engineContainer(straightRoad) });
-		await get('lat=0&lon=0&hours=2&cit=RUS');
+		await get('lat=0&lon=0&from=1&to=2&cit=RUS');
 		sherpa.answer(() => 'network error');
 
 		clock.now = START + DAY;
-		const stale = await get('lat=0&lon=0&hours=2&cit=RUS');
+		const stale = await get('lat=0&lon=0&from=1&to=2&cit=RUS');
 		clock.now = START + DAY + 15 * MINUTE - 1;
-		await get('lat=0&lon=0&hours=2&cit=RUS');
+		await get('lat=0&lon=0&from=1&to=2&cit=RUS');
 		clock.now = START + DAY + 15 * MINUTE;
-		await get('lat=0&lon=0&hours=2&cit=RUS');
+		await get('lat=0&lon=0&from=1&to=2&cit=RUS');
 
 		expect(stale.body).toMatchObject({ outcome: 'ring', visaRulesLoadedAt: '2026-11-07T00:00:00.000Z' });
 		expect(sherpa.passports).toEqual(['RUS', 'RUS', 'RUS']);
@@ -374,7 +377,7 @@ describe('a failure of Sherpa', () => {
 		const { get, errors, timers } = api({ container: await engineContainer(straightRoad), sherpa });
 
 		let answered = false;
-		const answer = get('lat=0&lon=0&hours=2&cit=RUS').then((result) => {
+		const answer = get('lat=0&lon=0&from=1&to=2&cit=RUS').then((result) => {
 			answered = true;
 			return result;
 		});
@@ -395,11 +398,11 @@ describe('visaRulesLoadedAt', () => {
 	it('is when the oldest of the citizenships’ copies came from Sherpa', async () => {
 		const { get, clock } = api({ container: await engineContainer(straightRoad) });
 
-		await get('lat=0&lon=0&hours=2&cit=SRB');
+		await get('lat=0&lon=0&from=1&to=2&cit=SRB');
 		clock.now = START + 5 * HOUR;
-		await get('lat=0&lon=0&hours=2&cit=RUS');
+		await get('lat=0&lon=0&from=1&to=2&cit=RUS');
 		clock.now = START + 6 * HOUR;
-		const { body } = await get('lat=0&lon=0&hours=2&cit=RUS,SRB');
+		const { body } = await get('lat=0&lon=0&from=1&to=2&cit=RUS,SRB');
 
 		expect(body.visaRulesLoadedAt).toBe('2026-11-07T00:00:00.000Z');
 	});
@@ -416,8 +419,8 @@ describe('the start country', () => {
 		const { get } = api({ container, sherpa });
 
 		// In Cyprus, outside Northern Cyprus.
-		const calculated = await get('lat=0.5&lon=3.5&hours=2&cit=RUS');
-		const cached = await get('lat=0.5&lon=3.5&hours=2&cit=RUS');
+		const calculated = await get('lat=0.5&lon=3.5&from=1&to=2&cit=RUS');
+		const cached = await get('lat=0.5&lon=3.5&from=1&to=2&cit=RUS');
 
 		for (const { body } of [calculated, cached]) {
 			expect(body).toMatchObject({ outcome: 'no_roads', startCountry: 'CYP' });
@@ -431,7 +434,7 @@ describe('the start country', () => {
 		const { get } = api({ container: await engineContainer(zones) });
 
 		// In Kosovo.
-		const { body } = await get('lat=0.5&lon=0.5&hours=2&cit=RUS');
+		const { body } = await get('lat=0.5&lon=0.5&from=1&to=2&cit=RUS');
 
 		expect(body).toMatchObject({ outcome: 'no_ring', startCountry: 'RKS' });
 		expect(body.access).toMatchObject({ RKS: { mode: 'closed', closedForEveryone: true } });
@@ -443,8 +446,8 @@ describe('the start country', () => {
 		const { get } = api({ container: await engineContainer(zones), sherpa });
 
 		// In Northern Cyprus, then in Abkhazia.
-		const northernCyprus = await get('lat=0.5&lon=2.5&hours=2&cit=RUS');
-		const abkhazia = await get('lat=0.5&lon=13.5&hours=2&cit=RUS');
+		const northernCyprus = await get('lat=0.5&lon=2.5&from=1&to=2&cit=RUS');
+		const abkhazia = await get('lat=0.5&lon=13.5&from=1&to=2&cit=RUS');
 
 		expect(northernCyprus.body).toMatchObject({ startCountry: 'NX', access: { NX: { mode: 'visa_on_arrival' }, CYP: { mode: 'closed' } } });
 		expect(abkhazia.body).toMatchObject({
@@ -466,7 +469,7 @@ describe('the citizenships', () => {
 		const container = recorded(await engineContainer(straightRoad));
 		const { get } = api({ container, sherpa });
 
-		const { status } = await get(`lat=0&lon=0&hours=2&cit=${citizenship}`);
+		const { status } = await get(`lat=0&lon=0&from=1&to=2&cit=${citizenship}`);
 
 		expect(status).toBe(400);
 		expect(sherpa.requests).toEqual([]);
@@ -476,8 +479,8 @@ describe('the citizenships', () => {
 	it('are any of the 199 passports Sherpa takes, Kosovo as RKS among them', async () => {
 		const { get } = api({ container: await engineContainer(straightRoad) });
 
-		expect((await get('lat=0&lon=0&hours=2&cit=RKS')).status).toBe(200);
-		expect((await get('lat=0&lon=0&hours=2&cit=PSE,TWN,VAT')).status).toBe(200);
+		expect((await get('lat=0&lon=0&from=1&to=2&cit=RKS')).status).toBe(200);
+		expect((await get('lat=0&lon=0&from=1&to=2&cit=PSE,TWN,VAT')).status).toBe(200);
 	});
 });
 
@@ -491,8 +494,8 @@ describe('sherpa fetched', () => {
 		});
 		const { get, analytics } = api({ container: await engineContainer(straightRoad), sherpa, clock });
 
-		await get('lat=0&lon=0&hours=2&cit=RUS');
-		await get('lat=0&lon=0&hours=2&cit=RUS');
+		await get('lat=0&lon=0&from=1&to=2&cit=RUS');
+		await get('lat=0&lon=0&from=1&to=2&cit=RUS');
 
 		expect(analytics.named('sherpa fetched')).toEqual([
 			{ citizenship: 'RUS', result: 'ok', status: 201, duration_ms: 480, mode: 'blocking' },
@@ -501,10 +504,10 @@ describe('sherpa fetched', () => {
 
 	it('tells the background refresh of a stale copy', async () => {
 		const { get, clock, analytics } = api({ container: await engineContainer(straightRoad) });
-		await get('lat=0&lon=0&hours=2&cit=SRB');
+		await get('lat=0&lon=0&from=1&to=2&cit=SRB');
 
 		clock.now = START + DAY;
-		await get('lat=0&lon=0&hours=2&cit=SRB');
+		await get('lat=0&lon=0&from=1&to=2&cit=SRB');
 
 		expect(analytics.named('sherpa fetched')).toEqual([
 			expect.objectContaining({ citizenship: 'SRB', result: 'ok', mode: 'blocking' }),
@@ -521,7 +524,7 @@ describe('sherpa fetched', () => {
 		sherpa.answer(() => reply);
 		const { get, analytics } = api({ container: await engineContainer(straightRoad), sherpa });
 
-		await get('lat=0&lon=0&hours=2&cit=RUS');
+		await get('lat=0&lon=0&from=1&to=2&cit=RUS');
 
 		expect(analytics.named('sherpa fetched')).toEqual([{ citizenship: 'RUS', ...failure, duration_ms: 0, mode: 'blocking' }]);
 	});
@@ -531,7 +534,7 @@ describe('sherpa fetched', () => {
 		sherpa.answer(() => 'no answer');
 		const { get, analytics, timers } = api({ container: await engineContainer(straightRoad), sherpa });
 
-		const answer = get('lat=0&lon=0&hours=2&cit=RUS');
+		const answer = get('lat=0&lon=0&from=1&to=2&cit=RUS');
 		await timers.advance(10_000);
 		await answer;
 
@@ -543,7 +546,7 @@ describe('sherpa fetched', () => {
 		sherpa.answer((passport) => ({ body: sherpaMap(passport), headers: { [header]: '997' } }));
 		const { get, analytics } = api({ container: await engineContainer(straightRoad), sherpa });
 
-		await get('lat=0&lon=0&hours=2&cit=RUS');
+		await get('lat=0&lon=0&from=1&to=2&cit=RUS');
 
 		expect(analytics.named('sherpa fetched')).toEqual([expect.objectContaining({ result: 'ok', quota_remaining: 997 })]);
 	});
@@ -553,9 +556,9 @@ describe('sherpa fetched', () => {
 		sherpa.answer((passport) => (passport === 'RUS' ? { status: 503 } : { body: sherpaMap(passport) }));
 		const { get, clock, analytics } = api({ container: await engineContainer(straightRoad), sherpa });
 
-		await get('lat=0&lon=0&hours=2&cit=RUS,SRB');
+		await get('lat=0&lon=0&from=1&to=2&cit=RUS,SRB');
 		clock.now = START + 15 * MINUTE - 1;
-		await get('lat=0&lon=0&hours=2&cit=RUS,SRB');
+		await get('lat=0&lon=0&from=1&to=2&cit=RUS,SRB');
 
 		expect(
 			analytics

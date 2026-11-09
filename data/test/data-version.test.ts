@@ -12,7 +12,7 @@ const RULES_HASH = '1417ac76925644a73770f82f36bd198d0ba624cceb4c8999c1570931aa07
 describe('the data version', () => {
 	it('holds the dataset version, the border table’s hash and the engine version', async () => {
 		expect(await borderTableHash(rules())).toBe(RULES_HASH);
-		expect(await dataVersion('2026-11-01', rules())).toBe('2026-11-01.1417ac76925644a7.6');
+		expect(await dataVersion('2026-11-01', rules())).toBe('2026-11-01.1417ac76925644a7.7');
 	});
 
 	it('is the same for an equal border table', async () => {

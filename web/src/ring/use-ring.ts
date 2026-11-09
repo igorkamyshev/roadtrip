@@ -6,13 +6,12 @@
 // src/analytics/, tells an answer from memory as `source: memory`).
 import { queryOptions, skipToken, useQuery, useQueryClient, type QueryClient, type UseQueryResult } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useSyncExternalStore } from 'react';
-import type { RingResponse } from 'worker/api';
+import { cellRing, type RingResponse, SLIDER_CELLS } from 'worker/api';
 import { pointText, type LatLon } from '../state/point.ts';
-import { MAX_HOURS, MIN_HOURS } from '../state/search.ts';
 import type { Settings } from '../state/settings.ts';
 import { fetchRing, type RingRequestError } from './fetch-ring.ts';
 
-/** The query key of a ring: ['ring', origin, N, citizenships, visas]. */
+/** The query key of a ring: ['ring', origin, the slider's cell (its upper bound in hours), citizenships, visas]. */
 export function ringKey(origin: LatLon, hours: number, settings: Settings): readonly ['ring', string, number, string, string] {
 	return ['ring', pointText(origin), hours, settings.citizenships.join(','), settings.visas.join(',')];
 }
@@ -21,7 +20,9 @@ function ringQuery(origin: LatLon | undefined, hours: number, settings: Settings
 	return queryOptions<RingResponse, RingRequestError>({
 		queryKey: origin === undefined ? ['ring'] : ringKey(origin, hours, settings),
 		queryFn:
-			origin === undefined ? skipToken : () => fetchRing({ origin, hours, citizenships: settings.citizenships, visas: settings.visas }),
+			origin === undefined
+				? skipToken
+				: () => fetchRing({ origin, ...cellRing(hours), citizenships: settings.citizenships, visas: settings.visas }),
 		staleTime: Infinity,
 		gcTime: Infinity,
 		retry: false,
@@ -62,7 +63,7 @@ function isMissing(answer: RingResponse | undefined): boolean {
 	return answer?.outcome === 'visa_rules_missing';
 }
 
-/** The hours whose rings are in memory for this origin and settings: the slider's marked cells. */
+/** The cells, hours and days, whose rings are in memory for this origin and settings: the slider's marked ones. */
 export function useCachedHours(origin: LatLon | undefined, settings: Settings): ReadonlySet<number> {
 	const client = useQueryClient();
 	const subscribe = useCallback((onChange: () => void) => client.getQueryCache().subscribe(onChange), [client]);
@@ -71,7 +72,7 @@ export function useCachedHours(origin: LatLon | undefined, settings: Settings): 
 			return '';
 		}
 		const cached: number[] = [];
-		for (let hours = MIN_HOURS; hours <= MAX_HOURS; hours++) {
+		for (const hours of SLIDER_CELLS) {
 			const answer = client.getQueryData<RingResponse>(ringKey(origin, hours, settings));
 			if (answer !== undefined && !isMissing(answer)) {
 				cached.push(hours);

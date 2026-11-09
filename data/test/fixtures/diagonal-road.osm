@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  A ring on coarse cells (#82): one country, AAA, a square from 21°S 21°W to 21°N 21°E, and one secondary road
+  (60 km/h) straight from 20°S 20°W to 20°N 20°E, ~6 250 km: ~104 h at the wheel, ~125 h of travel.
+
+  The ring of the whole road spans ~4 450 km each way: past the 16 million cells of ~500 m, so its raster's cells
+  are over 1 km. The road crosses them diagonally, so the cells near it make a staircase of a step a cell; the ring is
+  the band along the road, a long thin polygon a few cells wide: its four corners, and at most a couple of points
+  more at each end where the band rounds off, so a dozen at most. Simplified to 500 m, less than a cell, it kept a
+  point at every step, thousands; with the land near a road less than a cell it fell apart into hundreds of
+  polygons, a cell each.
+
+   20°N +                         2
+        |                     .
+        |       AAA       .
+        |             .
+        |         .
+   20°S +     1
+       20°W                      20°E
+-->
+<osm version="0.6" generator="hand">
+	<node id="1" lat="-20" lon="-20"/>
+	<node id="2" lat="20" lon="20"/>
+
+	<node id="101" lat="-21" lon="-21"/>
+	<node id="102" lat="-21" lon="21"/>
+	<node id="103" lat="21" lon="21"/>
+	<node id="104" lat="21" lon="-21"/>
+
+	<way id="1">
+		<nd ref="1"/><nd ref="2"/>
+		<tag k="highway" v="secondary"/>
+	</way>
+
+	<way id="100">
+		<nd ref="101"/><nd ref="102"/><nd ref="103"/><nd ref="104"/><nd ref="101"/>
+		<tag k="boundary" v="administrative"/>
+		<tag k="admin_level" v="2"/>
+	</way>
+	<relation id="1000">
+		<member type="way" ref="100" role="outer"/>
+		<tag k="type" v="boundary"/>
+		<tag k="boundary" v="administrative"/>
+		<tag k="admin_level" v="2"/>
+		<tag k="ISO3166-1:alpha3" v="AAA"/>
+	</relation>
+</osm>
