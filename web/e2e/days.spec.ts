@@ -2,7 +2,7 @@
 // amendments): after the hours 1–12, the days 2…MAX_DAYS, day D the ring 12·(D − 1) to 12·D h. The slider shows one
 // unit at a time and folds the other into a tab, «дни ↑» over the hours' panel or «часы ↓» under the days'; it turns
 // to the other unit only once that is committed. The link says `d=D` for a day.
-import { MAX_DAYS } from 'worker/api';
+import type { Page } from '@playwright/test';
 import { allowGeolocation, expect, squareRing, test, visaRules } from './fixtures.ts';
 import {
 	boxOf,
@@ -25,7 +25,7 @@ const ringFor = (call: { lat: string; lon: string; from: number; hours: number }
 	squareRing(Number(call.lat), Number(call.lon), [call.from / 10, call.hours / 10]);
 
 /** Whether the tab stands over the panel (true) or under it (false), apart from it. */
-async function tabOverPanel(page: Parameters<typeof slider>[0]): Promise<boolean> {
+async function tabOverPanel(page: Page): Promise<boolean> {
 	const [tab, panel] = await Promise.all([boxOf(sliderTab(page)), boxOf(sliderPanel(page))]);
 	if (tab.y + tab.height <= panel.y) {
 		return true;
@@ -54,7 +54,8 @@ test('in hours the slider has twelve cells and «дни ↑» over them; a key u
 	await slider(page).press('ArrowUp');
 
 	await expectRingCard(page, '1–2 дня');
-	await expect(sliderCells(page)).toHaveCount(MAX_DAYS - 1);
+	// Days 2 to 5 (MAX_DAYS, docs/container-bench.md).
+	await expect(sliderCells(page)).toHaveCount(4);
 	await expect(sliderTab(page)).toHaveText('часы ↓');
 	expect(await tabOverPanel(page)).toBe(false);
 	expect(ringApi.calls.at(-1)).toMatchObject({ from: 12, hours: 24 });
@@ -104,11 +105,23 @@ test('a drag from an hour onto «дни ↑» chooses day 2 when let go, and the
 	await page.mouse.up();
 
 	await expectRingCard(page, '1–2 дня');
-	await expect(sliderCells(page)).toHaveCount(MAX_DAYS - 1);
+	await expect(sliderCells(page)).toHaveCount(4);
 	expect(ringApi.calls.map((call) => [call.from, call.hours])).toEqual([
 		[11, 12],
 		[12, 24],
 	]);
+});
+
+test('a tap on the panel over the cell of 12 h, short of the tab, chooses 12 h', async ({ page, ringApi }) => {
+	await page.goto('/#/?p=44.81760,20.45730&h=11&cit=RUS');
+	await expectRingCard(page, '10–11 ч');
+	const [panel, cell] = await Promise.all([boxOf(sliderPanel(page)), boxOf(sliderHour(page, 12))]);
+
+	// The panel's padding over the top cell.
+	await page.mouse.click(cell.x + cell.width / 2, (panel.y + cell.y) / 2);
+
+	await expectRingCard(page, '11–12 ч');
+	expect(ringApi.calls.at(-1)).toMatchObject({ from: 11, hours: 12 });
 });
 
 test('the chosen day reads as its span over «дня», the others as their day', async ({ page }) => {
@@ -117,7 +130,7 @@ test('the chosen day reads as its span over «дня», the others as their day'
 
 	await expect(sliderHour(page, 36)).toHaveText('2–3дня');
 	await expect(sliderHour(page, 24)).toHaveText('2');
-	await expect(sliderHour(page, 12 * MAX_DAYS)).toHaveText(String(MAX_DAYS));
+	await expect(sliderHour(page, 60)).toHaveText('5');
 });
 
 test('the link d=3 opens the ring of 2–3 days', async ({ page, ringApi }) => {
@@ -137,7 +150,7 @@ test('the link d=3 opens the ring of 2–3 days', async ({ page, ringApi }) => {
 
 for (const [what, search] of [
 	['both h and d', 'h=5&d=3'],
-	['a day after the last', `d=${MAX_DAYS + 1}`],
+	['a day after the last, 5', 'd=6'],
 	['day 1, which the hours are', 'd=1'],
 ]) {
 	test(`a link with ${what} opens 1 h`, async ({ page, ringApi }) => {

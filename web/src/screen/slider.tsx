@@ -155,8 +155,8 @@ interface Held {
 }
 
 /**
- * A drag along the column: the cell under the pointer is chosen, or the tab past the column's end on the tab's side,
- * and committed when the pointer is let go.
+ * A drag along the column: the cell under the pointer is chosen, or the tab past the panel's edge on the tab's side
+ * (the panel's padding is its end cell's), and committed when the pointer is let go.
  */
 function useDrag(
 	{ column, unit, inDays }: { readonly column: RefObject<HTMLDivElement | null>; readonly unit: Unit; readonly inDays: boolean },
@@ -171,10 +171,11 @@ function useDrag(
 	const dragging = held !== undefined && held.letGoAt === undefined;
 	const hoursAt = (event: PointerEvent): number => {
 		const box = column.current?.getBoundingClientRect();
-		if (box === undefined || box.height === 0) {
+		const panel = column.current?.parentElement?.getBoundingClientRect();
+		if (box === undefined || panel === undefined || box.height === 0) {
 			return value;
 		}
-		if (inDays ? event.clientY > box.bottom : event.clientY < box.top) {
+		if (inDays ? event.clientY > panel.bottom : event.clientY < panel.top) {
 			return unit.tab.hours;
 		}
 		// The column's cells from the bottom, the gaps split between them; past its other end, the end cell.

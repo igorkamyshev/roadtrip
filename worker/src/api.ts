@@ -13,7 +13,7 @@ export const PRODUCTION_HOST = 'roadtrip.kamyshev.me';
 
 export const RING_PATH = '/api/ring';
 
-/** The slider's hours: the rings of 1…MAX_HOURS hours (spec #20 «Ползунок»). */
+/** The slider's hours: the rings of 1…MAX_HOURS hours (spec #20 «Экран», «Ползунок»). */
 export const MAX_HOURS = 12;
 
 /** A day is this many hours of travel in a row, without nights or borders closed at night (GLOSSARY «День»). */

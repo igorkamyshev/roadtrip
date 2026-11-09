@@ -5,8 +5,10 @@
 
   The ring of the whole road spans ~4 450 km each way: past the 16 million cells of ~500 m, so its raster's cells
   are over 1 km. The road crosses them diagonally, so the cells near it make a staircase of a step a cell; the ring is
-  the band along the road, a long thin polygon. Simplified to a cell, it keeps a few points at each end and none of
-  the steps; simplified to 500 m, less than a cell, it kept a point at every step, thousands.
+  the band along the road, a long thin polygon a few cells wide: its four corners, and at most a couple of points
+  more at each end where the band rounds off, so a dozen at most. Simplified to 500 m, less than a cell, it kept a
+  point at every step, thousands; with the land near a road less than a cell it fell apart into hundreds of
+  polygons, a cell each.
 
    20°N +                         2
         |                     .

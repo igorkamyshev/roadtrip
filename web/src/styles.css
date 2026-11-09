@@ -781,7 +781,7 @@ a {
 	bottom: 0;
 	z-index: 10;
 	display: flex;
-	gap: 10px;
+	gap: var(--between);
 	overflow-x: auto;
 	scroll-snap-type: x mandatory;
 	scroll-padding-left: var(--edge-left);
@@ -802,7 +802,7 @@ a {
 .c-car::after {
 	content: '';
 	flex: none;
-	width: max(0px, 100% - min(300px, 100%) - 10px);
+	width: max(0px, 100% - min(300px, 100%) - var(--between));
 }
 
 .c-card {

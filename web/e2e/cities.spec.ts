@@ -449,7 +449,7 @@ test.describe('the carousel and the map', () => {
 		await expect(chosenCard(page).locator('h3')).toHaveText('Ниш');
 	});
 
-	test('tapping the card in the middle chooses its city when another city is chosen, and the map goes to it', async ({ page }) => {
+	test('tapping the current card chooses its city when another city is chosen, and the map goes to it', async ({ page }) => {
 		await scrollTo(page, 'Ниш');
 		await expect(chosenCard(page).locator('h3')).toHaveText('Ниш');
 		// Reşiţa, the 13th, has no card: the list of all opens at it, and the carousel stays at Niš.
