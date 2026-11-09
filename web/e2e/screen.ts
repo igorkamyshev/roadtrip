@@ -73,6 +73,18 @@ export const firstCard = (page: Page): Locator => page.getByTestId('first-card')
 
 export const slider = (page: Page): Locator => page.getByRole('slider', { name: 'Время в пути' });
 
+/** The carousel at the bottom of the screen: the first card, the city cards, «и ещё». */
+export const carousel = (page: Page): Locator => page.locator('.c-car');
+
+/** Where an element is on the screen, its box in CSS pixels; it must be there. */
+export async function boxOf(element: Locator): Promise<{ x: number; y: number; width: number; height: number }> {
+	const box = await element.boundingBox();
+	if (box === null) {
+		throw new Error(`${String(element)} is not on the screen`);
+	}
+	return box;
+}
+
 /**
  * Waits for the answer of a ring of `hours` («2–3 ч»): the slider at those hours and the first card a ring's, with
  * its cities, before the cities file comes or without any (`ring`, `no_cities`). Its copy is not read: the tests of
@@ -242,11 +254,8 @@ export async function tapMap(page: Page, at: { readonly lat: number; readonly lo
 export async function distanceFromTheMiddle(page: Page, at: { readonly lat: number; readonly lon: number }): Promise<number> {
 	await mapAtRest(page);
 	const [phraseBox, carouselBox, sliderBox, canvasBox] = await Promise.all(
-		[phrase(page), page.locator('.c-car'), page.locator('.c-vs'), page.locator('.map-canvas')].map((element) => element.boundingBox()),
+		[phrase(page), carousel(page), page.locator('.c-vs'), page.locator('.map-canvas')].map(async (element) => boxOf(element)),
 	);
-	if (phraseBox === null || carouselBox === null || sliderBox === null || canvasBox === null) {
-		throw new Error('the phrase, the carousel, the slider or the map is not on the screen');
-	}
 	const { x, y } = offTheMap(await page.evaluate(([lat, lon]) => window.mapForTests?.project([lon, lat]), [at.lat, at.lon]));
 	const middle = { x: (canvasBox.x + sliderBox.x) / 2, y: (phraseBox.y + phraseBox.height + carouselBox.y) / 2 };
 	return Math.hypot(canvasBox.x + x - middle.x, canvasBox.y + y - middle.y);

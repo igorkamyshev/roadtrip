@@ -3,7 +3,7 @@
 // screen is made for, with the longest phrase. Read by the elements' boxes, never by pixels.
 import type { Locator, Page } from '@playwright/test';
 import { expect, squareRing, test, visaRules } from './fixtures.ts';
-import { expectRingCard, phrase, slider } from './screen.ts';
+import { boxOf, carousel, expectRingCard, phrase, slider } from './screen.ts';
 
 /** Where the page's clock stands, held, while the screen opens: the sources stay under the phrase. */
 const START = Date.parse('2026-11-09T12:00:00Z');
@@ -32,23 +32,13 @@ const UNDER_THE_PHRASE = 8;
 /** The slider is never lower than this, to be taken by a finger (#47). */
 const LOWEST_SLIDER = 120;
 
-interface Box {
-	readonly x: number;
-	readonly y: number;
-	readonly width: number;
-	readonly height: number;
-}
-
-async function box(element: Locator): Promise<Box> {
-	const found = await element.boundingBox();
-	if (found === null) {
-		throw new Error(`${String(element)} is not on the screen`);
-	}
-	return found;
-}
+type Box = Awaited<ReturnType<typeof boxOf>>;
 
 /** The data's sources under the phrase, shown for 5 s once the screen opens. */
 const sources = (page: Page): Locator => phrase(page).locator('p', { hasText: 'Источники данных' });
+
+/** The line under the phrase that dates old visa rules, «визовые правила от <дата>». */
+const rulesDate = (page: Page): Locator => phrase(page).locator('.c-rules-date');
 
 /** Whether two boxes share any area: touching edges do not. */
 function overlap(a: Box, b: Box): boolean {
@@ -58,12 +48,12 @@ function overlap(a: Box, b: Box): boolean {
 /** Each box inside the screen, and no two of them on one another. */
 async function expectApart(page: Page, panels: Record<string, Locator>): Promise<void> {
 	const { width, height } = page.viewportSize() ?? { width: 0, height: 0 };
-	const boxes = await Promise.all(Object.entries(panels).map(async ([name, element]) => ({ name, box: await box(element) })));
-	const off = boxes.filter(({ box: b }) => b.x < 0 || b.y < 0 || b.x + b.width > width || b.y + b.height > height).map(({ name }) => name);
+	const boxes = await Promise.all(Object.entries(panels).map(async ([name, element]) => ({ name, at: await boxOf(element) })));
+	const off = boxes
+		.filter(({ at }) => at.x < 0 || at.y < 0 || at.x + at.width > width || at.y + at.height > height)
+		.map(({ name }) => name);
 	expect(off, 'panels off the screen').toEqual([]);
-	const onOneAnother = boxes.flatMap((a, i) =>
-		boxes.slice(i + 1).flatMap((b) => (overlap(a.box, b.box) ? [`${a.name} and ${b.name}`] : [])),
-	);
+	const onOneAnother = boxes.flatMap((a, i) => boxes.slice(i + 1).flatMap((b) => (overlap(a.at, b.at) ? [`${a.name} and ${b.name}`] : [])));
 	expect(onOneAnother, 'panels on one another').toEqual([]);
 }
 
@@ -85,13 +75,13 @@ for (const viewport of PHONES) {
 
 		test('the panels of the longest phrase are apart and on the screen', async ({ page }) => {
 			await open(page, LONGEST);
-			await expect(phrase(page).getByText('визовые правила от 6 ноября')).toBeVisible();
+			await expect(rulesDate(page)).toBeVisible();
 
 			await expectApart(page, {
 				phrase: phrase(page),
 				sources: sources(page),
 				slider: slider(page),
-				carousel: page.locator('.c-car'),
+				carousel: carousel(page),
 			});
 		});
 
@@ -108,15 +98,15 @@ for (const viewport of PHONES) {
 			});
 		});
 
-		for (const [phraseOf, path] of [
+		for (const [settings, path] of [
 			['one citizenship', SHORTEST],
 			['four citizenships', LONGEST],
 		]) {
-			test(`with ${phraseOf}, the slider ends over the carousel and starts 8 px under the phrase or 450 px up`, async ({ page }) => {
+			test(`with ${settings}, the slider ends over the carousel and starts 8 px under the phrase or 450 px up`, async ({ page }) => {
 				await open(page, path);
 
-				const phraseBox = await box(phrase(page));
-				const sliderBox = await box(slider(page));
+				const phraseBox = await boxOf(phrase(page));
+				const sliderBox = await boxOf(slider(page));
 				const bottom = viewport.height - ABOVE_THE_CAROUSEL;
 				expect(sliderBox.y + sliderBox.height).toBeCloseTo(bottom, 0);
 				expect(sliderBox.y).toBeCloseTo(Math.max(phraseBox.y + phraseBox.height + UNDER_THE_PHRASE, bottom - TALLEST_SLIDER), 0);
@@ -127,12 +117,12 @@ for (const viewport of PHONES) {
 		test('the slider stays where it is when the sources leave', async ({ page }) => {
 			await open(page, LONGEST);
 			await expect(sources(page)).toBeVisible();
-			const before = await box(slider(page));
+			const before = await boxOf(slider(page));
 
 			await page.clock.runFor(5000);
 
 			await expect(sources(page)).toHaveCount(0);
-			expect(await box(slider(page))).toEqual(before);
+			expect(await boxOf(slider(page))).toEqual(before);
 		});
 	});
 }
