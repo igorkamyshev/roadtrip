@@ -49,6 +49,8 @@ Reviewing a branch or merging a ticket's work: check the diff against `CODING_ST
 
 Issues live in GitHub Issues for `igorkamyshev/roadtrip`. See `docs/agents/issue-tracker.md`.
 
+Every change starts from an issue: file one before the first edit when none exists, and the PR's description says `Closes #N` (or `Part of #N`), which CI's check «Issue» reads.
+
 ### Triage labels
 
 Default labels: `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`. See `docs/agents/triage-labels.md`.

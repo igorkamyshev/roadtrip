@@ -1,6 +1,6 @@
 # Monthly review of the visa exemptions' table
 
-The Owner's schedule starts an agent with this file once a month (spec «Ежемесячная сверка таблицы исключений», #11). The run ends in one pull request that brings the visa exemptions' table and the Schengen area up to date with their sources. A country opens or closes only when the Owner merges it.
+The Owner's schedule starts an agent with this file once a month ([spec #20](https://github.com/igorkamyshev/roadtrip/issues/20) «Ежемесячная сверка таблицы исключений», #11). The run starts by filing its issue, «Сверка таблицы исключений, <месяц> <год>» with the label `ready-for-agent`, and ends in one pull request that closes it and brings the visa exemptions' table and the Schengen area up to date with their sources. A country opens or closes only when the Owner merges it.
 
 What you edit:
 
@@ -38,6 +38,7 @@ The Owner's routine «roadtrip: ежемесячная сверка визово
 6. **Check.** Run `pnpm test` (the table's check, `visaExemptionsProblems`), `pnpm typecheck` and `pnpm e2e`. The screen test `web/e2e/held-visas.spec.ts` counts what each visa opens for a Russian and an Indian on fixed days and names the countries behind each count: when a change of the table changes a count, update the numbers and the list of countries in its comment together.
 
 7. **PR.** Open the pull request into the default branch, its title and body in Russian, like the issues:
+   - `Closes #N` of the run's issue;
    - every row changed, added or removed: the country, the visa, what changed, the source with the article or section;
    - every country that opens or closes for someone as a result, and for which citizenships;
    - the rows confirmed unchanged, and the unreachable ones;

@@ -1,0 +1,24 @@
+name: Issue
+
+# Every change starts from an issue (AGENTS.md, «Issue tracker»): a pull request's description names the one it
+# closes or is part of. Rerun when the description is edited.
+on:
+  pull_request:
+    types: [opened, edited, reopened, synchronize]
+
+permissions: {}
+
+jobs:
+  linked:
+    runs-on: ubuntu-latest
+    timeout-minutes: 1
+
+    steps:
+      # The description through env, never inside the script: it is anyone's text.
+      - env:
+          BODY: ${{ github.event.pull_request.body }}
+        run: |
+          if ! printf '%s' "$BODY" | grep -qiE '\b(close[sd]?|fix(e[sd])?|resolve[sd]?|part of)[: ]+([a-z0-9_.-]+/[a-z0-9_.-]+)?#[0-9]+'; then
+            echo '::error::The description names no issue: add «Closes #N» (or Fixes, Resolves, Part of).'
+            exit 1
+          fi
