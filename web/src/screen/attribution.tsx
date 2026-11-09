@@ -1,6 +1,7 @@
-// The data's sources (spec «Экран»: the map's attribution and ⓘ «Что важно знать»), one line for both. They live
+// The data's sources (spec #20 «Экран»: the map's attribution and ⓘ «Что важно знать»), one line for both. They live
 // behind ⓘ; OpenStreetMap's attribution guidelines want them seen when the map opens, so they also show under the
-// phrase for 5 s once the screen opens, then fold into ⓘ, as the guidelines allow.
+// phrase for 5 s once the screen opens, then fold into ⓘ, as the guidelines allow. What each licence asks, with its
+// words: docs/attribution.md.
 import { useEffect, useState, type ReactElement } from 'react';
 
 /** How long the sources show under the phrase once the screen opens. */
