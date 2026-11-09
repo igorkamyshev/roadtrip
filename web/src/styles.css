@@ -779,6 +779,74 @@ a {
 	font-size: 10px;
 	letter-spacing: -0.04em;
 }
+/* Round 3: the chosen label compact, as B1–B3. */
+.pv-r .pv-cell.on b,
+.pv-h .pv-cell.on b,
+.pv-s .pv-cell.on b,
+.pv-m .pv-cell.on b {
+	font-size: 10px;
+	letter-spacing: -0.04em;
+}
+/* R: the hours as a ruler. */
+.pv-r .pv-cell:not([data-day]) b {
+	display: flex;
+	align-items: center;
+	gap: 3px;
+	font-size: 11px;
+}
+.pv-tick {
+	display: block;
+	width: 6px;
+	height: 1.5px;
+	border-radius: 1px;
+	background: color-mix(in srgb, var(--muted) 55%, transparent);
+}
+.pv-tick.long {
+	width: 10px;
+	background: var(--muted);
+}
+/* M: the hours as dots. */
+.pv-dot {
+	display: block;
+	width: 4px;
+	height: 4px;
+	border-radius: 50%;
+	background: color-mix(in srgb, var(--muted) 60%, transparent);
+}
+/* S: the groups, their names written sideways in a gutter on the left. */
+.c-vs.pv-s {
+	width: 60px;
+}
+.pv-group {
+	position: relative;
+	display: flex;
+	flex-direction: column;
+	gap: 3px;
+	padding-left: 13px;
+	min-height: 0;
+}
+.pv-group-days {
+	flex: 7.6 1 0;
+}
+.pv-group-hours {
+	flex: 12 1 0;
+}
+.pv-group::before {
+	content: attr(data-caption);
+	position: absolute;
+	left: 0;
+	top: 0;
+	bottom: 0;
+	width: 11px;
+	writing-mode: vertical-rl;
+	transform: rotate(180deg);
+	text-align: center;
+	font-size: 9px;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	color: var(--muted);
+	border-left: 1px solid color-mix(in srgb, var(--muted) 30%, transparent);
+}
 /* B: day cells taller and tinted. */
 .pv-b .pv-cell[data-day] {
 	flex-grow: 1.9;

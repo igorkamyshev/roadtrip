@@ -1,24 +1,23 @@
 // PROTOTYPE (#77), throwaway branch only: the slider's scale of 1–12 h and then days 2–5 (a day is 12 h of travel),
 // on the real screen, switched by `?variant=` before the `#` (the hash router keeps it) or the bar at the bottom.
-// Round 1 picked B (one column, the day cells taller and tinted, «2д»…«5д») over A (16 equal cells) and C (two
-// panels). Round 2, the hours' labels on B:
-// B: hours as bare numbers, as in round 1.
-// B1: every cell with its unit, «1ч»…«12ч» and «2д»…«5д».
-// B2: bare numbers, small captions «дни» over the days and «часы» over the hours.
-// B3: the unit on the first cell of each group only, «1ч» and «2д».
-// B1–B3 label the chosen cell with its unit, compact: «11–12ч», «1–2д».
+// Round 1 picked B (one column, the day cells taller and tinted) over A (16 equal cells) and C (two panels). Round 2
+// (units on the hours: on each cell, as group captions, on the first cell) was too noisy. Round 3, on B:
+// R: a ruler, the hours as ticks with numbers at 1, 6 and 12, the days numbered blocks.
+// H: everything in hours, the days labelled 24, 36, 48, 60; the phrase says days.
+// S: numbers only, «часы» and «дни» written sideways along each group.
+// M: only the chosen cell is labelled; the hours are dots, the days blank blocks.
 // The step of the scale is the screen's N: 1–12 are hours, 13–16 days 2–5.
 import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent, type ReactElement, type RefObject } from 'react';
 import { MAX_HOURS, MIN_HOURS } from '../state/search.ts';
 import { dayOfStep, hoursShort, hoursSpan } from './copy.ts';
 
-const VARIANTS = ['b', 'b1', 'b2', 'b3'] as const;
+const VARIANTS = ['r', 'h', 's', 'm'] as const;
 type Variant = (typeof VARIANTS)[number];
 const NAMES: Readonly<Record<Variant, string>> = {
-	b: 'B · часы числом',
-	b1: 'B1 · «ч» у каждой',
-	b2: 'B2 · подписи групп',
-	b3: 'B3 · «ч» у первой',
+	r: 'R · линейка',
+	h: 'H · всё в часах',
+	s: 'S · подписи сбоку',
+	m: 'M · только выбранная',
 };
 
 const HOUR_STEPS = Array.from({ length: 12 }, (_, index) => 12 - index);
@@ -26,7 +25,7 @@ const DAY_STEPS = Array.from({ length: MAX_HOURS - 12 }, (_, index) => MAX_HOURS
 
 function variantOfLocation(): Variant {
 	const value = new URLSearchParams(window.location.search).get('variant');
-	return VARIANTS.find((variant) => variant === value) ?? 'b1';
+	return VARIANTS.find((variant) => variant === value) ?? 'r';
 }
 
 /** The variant of `?variant=`, and its setter, which writes it back before the hash. */
@@ -88,6 +87,39 @@ export function PrototypeSlider({ variant, value, onCommit, cached }: PrototypeS
 	);
 }
 
+/** The chosen cell's label: «11–12ч», «1–2д»; in H, hours throughout, «12–24». */
+function chosenLabel(variant: Variant, step: number): string {
+	const day = dayOfStep(step);
+	if (day === undefined) {
+		return variant === 'h' ? hoursSpan(step) : `${hoursSpan(step)}ч`;
+	}
+	return variant === 'h' ? `${12 * (day - 1)}–${12 * day}` : `${day - 1}–${day}д`;
+}
+
+const RULER_NUMBERS: ReadonlySet<number> = new Set([1, 6, 12]);
+
+/** What an unchosen cell shows. */
+function idleLabel(variant: Variant, step: number): ReactElement | string {
+	const day = dayOfStep(step);
+	if (variant === 'm') {
+		return day === undefined ? <i className="pv-dot" /> : '';
+	}
+	if (day !== undefined) {
+		return variant === 'h' ? String(12 * day) : String(day);
+	}
+	if (variant === 'r') {
+		return RULER_NUMBERS.has(step) ? (
+			<>
+				<i className="pv-tick long" />
+				{step}
+			</>
+		) : (
+			<i className="pv-tick" />
+		);
+	}
+	return String(step);
+}
+
 function Cells({
 	variant,
 	shown,
@@ -97,14 +129,7 @@ function Cells({
 	readonly shown: number;
 	readonly cached: ReadonlySet<number>;
 }): ReactElement {
-	const chosenLabel = (step: number): string => {
-		const day = dayOfStep(step);
-		if (variant === 'b') {
-			return hoursSpan(step);
-		}
-		return day === undefined ? `${hoursSpan(step)}ч` : `${day - 1}–${day}д`;
-	};
-	const cell = (step: number, label: string): ReactElement => (
+	const cell = (step: number): ReactElement => (
 		<span
 			key={step}
 			className={step === shown ? 'pv-cell on' : 'pv-cell'}
@@ -112,20 +137,25 @@ function Cells({
 			data-day={dayOfStep(step) === undefined ? undefined : true}
 			data-cached={cached.has(step) || undefined}
 		>
-			<b>{step === shown ? chosenLabel(step) : label}</b>
+			<b>{step === shown ? chosenLabel(variant, step) : idleLabel(variant, step)}</b>
 		</span>
 	);
-	const hourLabel = (step: number): string => (variant === 'b1' || (variant === 'b3' && step === 1) ? `${step}ч` : String(step));
-	const dayLabel = (step: number): string => {
-		const day = dayOfStep(step) ?? 0;
-		return variant === 'b2' || (variant === 'b3' && day !== 2) ? String(day) : `${day}д`;
-	};
+	if (variant === 's') {
+		return (
+			<>
+				<div className="pv-group pv-group-days" data-caption="дни">
+					{DAY_STEPS.map((step) => cell(step))}
+				</div>
+				<div className="pv-group pv-group-hours" data-caption="часы">
+					{HOUR_STEPS.map((step) => cell(step))}
+				</div>
+			</>
+		);
+	}
 	return (
 		<>
-			{variant === 'b2' ? <i className="pv-mark pv-top">дни</i> : null}
-			{DAY_STEPS.map((step) => cell(step, dayLabel(step)))}
-			{variant === 'b2' ? <i className="pv-mark">часы</i> : null}
-			{HOUR_STEPS.map((step) => cell(step, hourLabel(step)))}
+			{DAY_STEPS.map((step) => cell(step))}
+			{HOUR_STEPS.map((step) => cell(step))}
 		</>
 	);
 }
