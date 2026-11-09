@@ -1,6 +1,6 @@
 # roadtrip
 
-The Worker `roadtrip` on `roadtrip.kamyshev.me` (spec «Устройство», «API кольца», «Кэш колец», «Container и очередь», «Экран» → «Карта»). Only on its own domain: `workers_dev` and preview URLs are off, so the zone's WAF rate limit on `/api/ring` always applies.
+The Worker `roadtrip` on `roadtrip.kamyshev.me` ([spec #20](https://github.com/igorkamyshev/roadtrip/issues/20) «Устройство», «API кольца», «Кэш колец», «Container и очередь», «Экран» → «Карта»). Only on its own domain: `workers_dev` and preview URLs are off, so the zone's WAF rate limit on `/api/ring` always applies.
 
 ## Routes
 
@@ -24,7 +24,7 @@ A Container failure answers 502: its 500 `{ name, message, stack }` is rebuilt i
 
 ## Analytics
 
-`src/analytics.ts` sends the Worker's events to PostHog (spec «Аналитика и ошибки», «Worker»; decision #18) through `posthog-node`, whose `workerd` build needs no `nodejs_compat`. The handlers capture through `deps.analytics`; `requestAnalytics` at the entry is the client of one request:
+`src/analytics.ts` sends the Worker's events to PostHog ([spec #20](https://github.com/igorkamyshev/roadtrip/issues/20) «Аналитика и ошибки», «Worker»; decision #18) through `posthog-node`, whose `workerd` build needs no `nodejs_compat`. The handlers capture through `deps.analytics`; `requestAnalytics` at the entry is the client of one request:
 
 - `flushAt: 1`, `flushInterval: 0`, each event a `captureImmediate` in `ctx.waitUntil`, and `shutdown()` once the answer is out. A background refresh from Sherpa's still sends after it.
 - `distinct_id` is the browser's `X-POSTHOG-DISTINCT-ID`, else `server`; `$session_id` its `X-POSTHOG-SESSION-ID`. The browser adds both to its requests to the production host (`tracing_headers`, web's `src/analytics/`). Every event has `$process_person_profile: false`.

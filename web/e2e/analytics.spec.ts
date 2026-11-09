@@ -506,6 +506,9 @@ test('taps on the map are no dead clicks or rage clicks; a tap on text that does
 	await openInProduction(page, LINK);
 	await expectRingCard(page, '2–3 ч');
 	await mapAtRest(page);
+	// The data's sources leave the phrase 5 s after the screen opens: PostHog would take that for the answer to a tap.
+	await page.clock.runFor(5000);
+	await expect(phrase(page).getByRole('link', { name: 'OpenStreetMap' })).toHaveCount(0);
 
 	/** Three quick taps at the middle of `box`, as on a map that zooms by double taps. */
 	const tapThrice = async (box: { x: number; y: number; width: number; height: number } | null) => {
