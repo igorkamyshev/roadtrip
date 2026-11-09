@@ -120,52 +120,45 @@ function changedSince(root: string, since: number): string[] {
 		.filter((file) => existsSync(file) && statSync(file).mtimeMs > since);
 }
 
-/** A linter of the checkout: its binary in `node_modules/.bin` and the arguments before the files. */
+/** A linter of the checkout: the files it takes, its binary in `node_modules/.bin`, the arguments before the files. */
 interface Linter {
+	readonly name: string;
+	readonly takes: (file: string) => boolean;
 	readonly bin: string;
 	readonly args: readonly string[];
+	/** What it prints when the config ignores every file it was given (generated code), which is no error. */
+	readonly nothingToLint?: string;
 }
 
-const OXLINT: Linter = { bin: 'oxlint', args: [] };
-// A stylesheet the config ignores (a build's) leaves Stylelint nothing to lint, which is no error.
-const STYLELINT: Linter = { bin: 'stylelint', args: ['--allow-empty-input'] };
+const LINTERS: readonly Linter[] = [
+	{ name: 'Oxlint', takes: (file) => !STYLESHEET.test(file), bin: 'oxlint', args: [], nothingToLint: 'No files found to lint' },
+	// Stylelint says nothing of a stylesheet its config ignores (a build's) once it may find none.
+	{ name: 'Stylelint', takes: (file) => STYLESHEET.test(file), bin: 'stylelint', args: ['--allow-empty-input'] },
+];
 
 /** What `linter` of the checkout at `root` reports on `files`; undefined when it finds nothing. */
-function report(root: string, linter: Linter, files: string[]): string | undefined {
-	if (files.length === 0) {
-		return undefined;
-	}
+function report(root: string, linter: Linter, files: readonly string[]): string | undefined {
 	const lint = spawnSync(join(root, 'node_modules/.bin', linter.bin), [...linter.args, ...files.map((file) => relative(root, file))], {
 		cwd: root,
 		encoding: 'utf8',
 	});
-	// A file the config ignores (generated code) leaves Oxlint with nothing to lint.
-	if (lint.status === 0 || lint.stdout.includes('No files found to lint')) {
+	if (lint.status === 0 || (linter.nothingToLint !== undefined && lint.stdout.includes(linter.nothingToLint))) {
 		return undefined;
 	}
 	return `${lint.stdout}${lint.stderr}`;
 }
 
-/** What the agent is told about `files` in the checkout at `root`: the linters' reports, or that they are not installed; undefined when there is nothing to say. */
+/** What the agent is told about `files` in the checkout at `root`: the linters' reports, or which are not installed; undefined when there is nothing to say. */
 function hookMessage(root: string, files: string[]): string | undefined {
-	if (files.length === 0) {
-		return undefined;
+	const runs = LINTERS.map((linter) => ({ linter, files: files.filter((file) => linter.takes(file)) })).filter(
+		(run) => run.files.length > 0,
+	);
+	const missing = runs.filter((run) => !existsSync(join(root, 'node_modules/.bin', run.linter.bin)));
+	if (missing.length > 0) {
+		const names = missing.map((run) => run.linter.name).join(' and ');
+		return `${names} ${missing.length === 1 ? 'is' : 'are'} not installed in ${root}: run \`pnpm install\` there, so your edits are linted.\n`;
 	}
-	if (!existsSync(join(root, 'node_modules/.bin/oxlint'))) {
-		return `Oxlint and Stylelint are not installed in ${root}: run \`pnpm install\` there, so your edits are linted.\n`;
-	}
-	const reports = [
-		report(
-			root,
-			OXLINT,
-			files.filter((file) => !STYLESHEET.test(file)),
-		),
-		report(
-			root,
-			STYLELINT,
-			files.filter((file) => STYLESHEET.test(file)),
-		),
-	].filter((text) => text !== undefined);
+	const reports = runs.map((run) => report(root, run.linter, run.files)).filter((text) => text !== undefined);
 	if (reports.length === 0) {
 		return undefined;
 	}

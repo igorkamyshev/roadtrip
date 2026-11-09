@@ -27,7 +27,8 @@ export default {
 		// Typos the browser drops without a word: a value the property does not take, a custom property never set.
 		'declaration-property-value-no-unknown': true,
 		'no-unknown-custom-properties': true,
-		// The cascade stays readable: no ids, no `!important`, nesting as shallow as the code's (ADR 0002, «Пределы»).
+		// The cascade stays readable: no ids, no `!important`, nesting as shallow as the code's (ADR 0002, «Пределы»), and
+		// colours as the tokens write them, never by name.
 		'selector-max-id': 0,
 		'declaration-no-important': true,
 		'max-nesting-depth': 3,

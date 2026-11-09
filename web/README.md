@@ -96,7 +96,7 @@ With both, the plugin writes a chunk id into each JS file, uploads the maps unde
 
 ## Older browsers
 
-The screen runs where MapLibre 6 runs: Safari 15.4, Chrome 93, Firefox 92 and newer (`BROWSERS` in `vite.config.ts`; MapLibre's worker calls `.at()` and `Object.hasOwn`). The build lowers the syntax to them, and `older-browsers.ts` gives them what the client calls and they lack: `@vitejs/plugin-legacy` makes the polyfills (core-js, by what the bundle uses) a chunk of their own, and the page loads its entry through a small loader that takes that chunk first only in a browser without `toSorted`, `Object.groupBy` or `Promise.withResolvers`. So the client may call what `tsconfig.json`'s lib (es2024) has, and a newer browser downloads no polyfill: the first paint's budget is its (`bundle-budget.ts`). `e2e/older-browsers.spec.ts` checks both: Chromium without those methods loads the polyfills and shows the screen, and as it is asks for none.
+The screen runs where MapLibre 6 runs: Safari 15.4, Chrome 93, Firefox 92 and newer (`browserslist` in `package.json`, which `vite.config.ts` reads and Stylelint checks the CSS against; MapLibre's worker calls `.at()` and `Object.hasOwn`). The build lowers the syntax to them, and `older-browsers.ts` gives them what the client calls and they lack: `@vitejs/plugin-legacy` makes the polyfills (core-js, by what the bundle uses) a chunk of their own, and the page loads its entry through a small loader that takes that chunk first only in a browser without `toSorted`, `Object.groupBy` or `Promise.withResolvers`. So the client may call what `tsconfig.json`'s lib (es2024) has, and a newer browser downloads no polyfill: the first paint's budget is its (`bundle-budget.ts`). `e2e/older-browsers.spec.ts` checks both: Chromium without those methods loads the polyfills and shows the screen, and as it is asks for none.
 
 ## Basemap
 
@@ -114,7 +114,7 @@ The screen runs where MapLibre 6 runs: Safari 15.4, Chrome 93, Firefox 92 and ne
 - Open `/#/?p=44.81760,20.45730&h=6&cit=RUS`: Belgrade, a ring with cities (at 3 h the band has none).
 - For a PR's «Evidence», screenshots and the video go into a private artifact (the Artifact tool), and the PR links it: a cloud session cannot attach a file to a PR.
 - In a cloud session, report its port to the app (`report_preview_port`). Where the app shows no preview, record a video instead.
-- `pnpm --filter web record <steps.ts> <out-dir>` records one: it builds, serves the demo on a free port, films a phone of 390×844 with a dot where the finger is, and writes `recording.mp4` (`.webm` without ffmpeg) and a PNG at 2× for each `shot`. The steps file, written anywhere (the scratchpad), default-exports the steps; `Recording` (`e2e/record.ts`) says what each gesture does, `tap` on a card that peeks from the carousel's edge included:
+- `pnpm --filter web record <steps.ts> <out-dir>` records one, and the frames for the artifact: what it writes is in `e2e/record.ts`, what each gesture does in its `Recording`. The steps file, written anywhere (the scratchpad), default-exports the steps:
 
   ```ts
   import type { Recording } from '<repo>/web/e2e/record.ts';

@@ -80,6 +80,20 @@ describe('the lint hook', () => {
 		expect(hook(shellCommand)).toEqual({ status: 0, told: '' });
 	});
 
+	it('says which linter is not installed, as in a checkout installed before it came', () => {
+		// Oxlint is there, Stylelint is not.
+		rmSync(join(checkout, 'node_modules'));
+		mkdirSync(join(checkout, 'node_modules/.bin'), { recursive: true });
+		writeFileSync(join(checkout, 'node_modules/.bin/oxlint'), '');
+		const file = join(checkout, 'src/styles.css');
+		writeFileSync(file, BAD_CSS);
+		hook({ tool_name: 'Edit', tool_input: { file_path: file } });
+		const { status, told } = hook(shellCommand);
+		expect(status).toBe(2);
+		expect(told).toContain('Stylelint is not installed');
+		expect(told).not.toContain('Oxlint');
+	});
+
 	it('lints a change made by two edits once both are done', () => {
 		const first = hook(edit(BAD)); // say, a call to a function the next edit adds
 		hook(edit('export {};\n'));

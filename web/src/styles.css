@@ -618,8 +618,6 @@ a {
 	position: absolute;
 	top: calc(100% + 8px);
 	right: 58px;
-	/* stylelint-disable-next-line plugin/no-unsupported-browser-features -- Firefox 92–93 lacks `fit-content`, and an absolute box with only `right` set shrinks to its content anyway. */
-	width: fit-content;
 	max-width: calc(100% - 58px);
 	box-sizing: border-box;
 	padding: 4px 10px;

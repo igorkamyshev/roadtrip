@@ -129,15 +129,15 @@ function isSteps(module: unknown): module is Steps {
 }
 
 // Paths are the caller's: pnpm runs the script in web/ and says where it was called from.
-const here = process.env.INIT_CWD ?? process.cwd();
+const callerDir = process.env.INIT_CWD ?? process.cwd();
 const stepsFile = process.argv.at(2);
 const outDir = process.argv.at(3);
 if (stepsFile === undefined || outDir === undefined) {
 	throw new Error('Usage: pnpm --filter web record <steps.ts> <out-dir>');
 }
-const out = resolve(here, outDir);
+const out = resolve(callerDir, outDir);
 mkdirSync(out, { recursive: true });
-const steps: unknown = await import(pathToFileURL(resolve(here, stepsFile)).href);
+const steps: unknown = await import(pathToFileURL(resolve(callerDir, stepsFile)).href);
 if (!isSteps(steps)) {
 	throw new Error(`${stepsFile} has no default export of the steps`);
 }
