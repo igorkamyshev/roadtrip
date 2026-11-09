@@ -1,4 +1,4 @@
-// Citizenships and the visa rules on the screen (spec «Экран»: the phrase, the sheet «Гражданство», the hatching,
+// Citizenships and the visa rules on the screen (spec #20 «Экран»: the phrase, the sheet «Гражданство», the hatching,
 // «визовые правила от», the card `visa_rules_missing`; «Состояние, ссылка и память браузера»; stories on
 // citizenships): what the person sees and what the screen asks the API.
 import type { Page } from '@playwright/test';

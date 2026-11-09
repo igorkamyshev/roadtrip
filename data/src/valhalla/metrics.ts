@@ -1,4 +1,4 @@
-// The metrics of the comparison with Valhalla (spec «Решения по тестам», «Сверка с Valhalla»).
+// The metrics of the comparison with Valhalla (spec #20 «Решения по тестам», «Сверка с Valhalla»).
 import { EARTH_RADIUS_M } from 'engine/geo';
 import type { MultiPolygon } from 'engine';
 

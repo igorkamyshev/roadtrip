@@ -1,4 +1,4 @@
-// The held visas in the ring API (spec «Визовые правила и сведение», «API кольца», «Решения по тестам», seam 2;
+// The held visas in the ring API (spec #20 «Визовые правила и сведение», «API кольца», «Решения по тестам», seam 2;
 // #11, #31): a country's visa opens the country, SCHENGEN all of Schengen, and the visa exemptions' rows open more,
 // by today's UTC date and the citizenships. Sherpa is a faked `fetch` (test/sherpa-double.ts); the exemptions' rows
 // are the test's own, so that the Owner's monthly edits of the table never touch these tests.

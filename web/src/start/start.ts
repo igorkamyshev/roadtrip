@@ -1,4 +1,4 @@
-// The origin and how it was set (spec «Экран»: the origin's label in the phrase; «Аналитика и ошибки»: `method` of
+// The origin and how it was set (spec #20 «Экран»: the origin's label in the phrase; «Аналитика и ошибки»: `method` of
 // `start set`). The link keeps only the point; how it was set lives in the screen's memory (useScreenState).
 import type { City } from '../cities/cities.ts';
 import { originCity } from '../cities/nearest.ts';

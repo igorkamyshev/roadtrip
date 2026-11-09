@@ -1,5 +1,5 @@
-// The visa rules in the ring API (spec «Визовые правила и сведение», «API кольца», «Решения по тестам», seam 2; #11):
-// Sherpa's classes per citizenship, reduced to an entry mode per country, whose closed countries the calculation
+// The visa rules in the ring API (spec #20 «Визовые правила и сведение», «API кольца», «Решения по тестам», seam 2;
+// #11): Sherpa's classes per citizenship, reduced to an entry mode per country, whose closed countries the calculation
 // avoids; Sherpa's copies in KV. Sherpa is a faked `fetch` (test/sherpa-double.ts) answering in the shape of 2026-11-07.
 import { fixtureGraph } from 'data/fixture-graph';
 import { describe, expect, it } from 'vitest';

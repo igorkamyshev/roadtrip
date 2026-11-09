@@ -1,4 +1,4 @@
-// The basemap under the ring (spec «Экран», «Карта»): the style of `@protomaps/basemaps` over the vector tiles the
+// The basemap under the ring (spec #20 «Экран», «Карта»): the style of `@protomaps/basemaps` over the vector tiles the
 // Worker serves from the world's PMTiles archive (`/tiles/{z}/{x}/{y}`, worker/src/tiles.ts), with Protomaps'
 // fonts and sprites from our own static assets (`public/basemap`, README «Basemap») and the labels in Russian,
 // else in the local language. The overlay (overlay.ts) goes on top. The screen tests answer the tiles themselves

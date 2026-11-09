@@ -7,7 +7,7 @@
 Read a package's `AGENTS.md` before working in it:
 
 - `engine/AGENTS.md`: the ring engine, keeping it portable, when to bump the engine version and record its fingerprint, where its tests live; the engine server of the Container and its image.
-- `data/AGENTS.md`: the graph builder, the zone outlines, the cities file, the `ring` and `build-cities` commands, the fixtures; the monthly world build (`.github/workflows/dataset.yml`) and the dataset in R2 with its pointer `current.json`.
+- `data/AGENTS.md`: the graph builder, the zone outlines, the cities file, the `ring` and `build-cities` commands, rings on real roads and their pictures (`region`, `render`), the fixtures; the monthly world build (`.github/workflows/dataset.yml`) and the dataset in R2 with its pointer `current.json`.
 
 `rules` holds the tables edited by hand: the border table, the visa exemptions' table (`VISA_EXEMPTIONS`), the Schengen area, the countries as zones (`COUNTRIES`), Sherpa's 199 passports (`SHERPA_PASSPORTS`) and the EU (`EU`, for the line on Russian plates); it has no `AGENTS.md` yet.
 
@@ -35,6 +35,10 @@ A merge to `main` deploys both Workers through Cloudflare Workers Builds, and th
 ## Review
 
 Reviewing a branch or merging a ticket's work, the review step of `mattpocock-skills:implement` included: `mattpocock-skills:code-review`, which checks the whole diff, tests too, against `CODING_STANDARDS.md` and the ticket.
+
+## A cloud session's branch
+
+A cloud session pushes to the one branch it was given, for every PR it opens, and may not force-push: that is how it is set up. Once a PR of it is merged, start the next one from `main` on the same branch, then merge the branch's old tip into it, which `main` holds already, so the push is a fast-forward: `git checkout -B <branch> origin/main`, `git merge origin/<branch>`, and take `main`'s side of any conflict.
 
 ## Subagents
 

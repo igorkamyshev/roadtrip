@@ -1,4 +1,4 @@
-// Which OSM ways are roads of the graph and how a car drives them (spec «Набор данных», «Граф»).
+// Which OSM ways are roads of the graph and how a car drives them (spec #20 «Набор данных», «Граф»).
 import type { Tags } from './osm/source.ts';
 
 /**

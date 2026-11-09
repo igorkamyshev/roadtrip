@@ -1,5 +1,5 @@
-// Takes the current dataset out of R2 for the deploy of the Worker roadtrip (spec «Набор данных», «Деплой»; #36): the
-// version `current.json` points at, each file checked by its SHA-256 (src/fetch-dataset.ts), into the places the
+// Takes the current dataset out of R2 for the deploy of the Worker roadtrip (spec #20 «Набор данных», «Деплой»; #36):
+// the version `current.json` points at, each file checked by its SHA-256 (src/fetch-dataset.ts), into the places the
 // deploy builds from:
 //
 // - the graph and its version into engine/dataset/, which the Container's image copies (engine/Dockerfile) and whose

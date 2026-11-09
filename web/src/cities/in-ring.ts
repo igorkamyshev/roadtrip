@@ -1,4 +1,4 @@
-// Which cities are in the ring (spec «Экран», «Города в кольце»): the phone picks them, not the server, since the
+// Which cities are in the ring (spec #20 «Экран», «Города в кольце»): the phone picks them, not the server, since the
 // engine's answer is only the ring's outline (#19). A city is in the ring when its point is inside the ring's
 // MultiPolygon, its zone is open by `access`, and that zone is not a closed territory (`access` closes those, and a
 // zone `access` does not name is not open either). The origin's city is never one of them, at any N (#45): no card,

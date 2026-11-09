@@ -1,4 +1,4 @@
-// Countries by name, in Russian (spec «Экран»): `Intl.DisplayNames('ru')` by the alpha-2 of rules' `COUNTRIES`, and
+// Countries by name, in Russian (spec #20 «Экран»): `Intl.DisplayNames('ru')` by the alpha-2 of rules' `COUNTRIES`, and
 // our own names where it has none or not ours: Kosovo (`RKS`) and Northern Cyprus (`NX`).
 import { COUNTRIES } from 'rules/countries';
 import { EXEMPTION_VISAS, HELD_VISAS, SCHENGEN } from 'rules/held-visas';
@@ -20,7 +20,7 @@ export function citizenshipsLabel(citizenships: readonly string[]): string {
 	return citizenships.map((code) => (code === 'RUS' ? 'РФ' : countryName(code))).join(' + ');
 }
 
-/** The default citizenship (spec «При загрузке»), first in the sheet. */
+/** The default citizenship (spec #20 «При загрузке»), first in the sheet. */
 export const DEFAULT_CITIZENSHIP = 'RUS';
 
 /** By the countries' names in Russian. */

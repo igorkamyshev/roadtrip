@@ -1,5 +1,5 @@
 /**
- * The border table (spec «Таблица границ»): how the engine crosses a border between two zones. The engine reads
+ * The border table (spec #20 «Таблица границ»): how the engine crosses a border between two zones. The engine reads
  * it on every calculation, so a change to it needs no new graph; its hash is part of the data version (engine's
  * `dataVersion`). The rows are in `border-table.ts`, their schema here, and `borderTableProblems` checks what the
  * types cannot.
@@ -95,7 +95,7 @@ export interface BorderTable {
 export type ExemptionVisa = 'SCHENGEN' | 'USA' | 'GBR' | 'CAN';
 
 /**
- * A row of the visa exemptions' table (spec «Визовые правила и сведение»; #9, #11): `country` lets in a person who
+ * A row of the visa exemptions' table (spec #20 «Визовые правила и сведение»; #9, #11): `country` lets in a person who
  * holds `visa`, or a residence permit of the same issuer (one held visa, #11), though their citizenship needs a
  * visa of its own. The reduction opens the country by that visa while the row acts: up to its last day, and for
  * the citizenships it names. The rows are in `visa-exemptions.ts`, and `visaExemptionsProblems` checks them.

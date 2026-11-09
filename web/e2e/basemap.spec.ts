@@ -1,4 +1,4 @@
-// The basemap (spec «Экран», «Карта»): Protomaps' vector tiles from our own domain, `/tiles/{z}/{x}/{y}`, the
+// The basemap (spec #20 «Экран», «Карта»): Protomaps' vector tiles from our own domain, `/tiles/{z}/{x}/{y}`, the
 // fonts and sprites from our static assets, the labels in Russian, else in the local language. The map is read by
 // its style and the requests it made, never by pixels. Its attribution is the screen's (attribution.spec.ts).
 import type { StyleSpecification } from 'maplibre-gl';

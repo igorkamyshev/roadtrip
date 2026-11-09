@@ -1,4 +1,4 @@
-// The cities file (spec «Набор данных», «Файл городов»): the cities of GeoNames from 15 000 people, each with its
+// The cities file (spec #20 «Набор данных», «Файл городов»): the cities of GeoNames from 15 000 people, each with its
 // Russian and local name, place, population and zone. `build-cities` writes it, the Worker serves it as a static
 // asset at `/data/cities.json`, and the screen picks the cities in the ring from it (web/src/cities/). Shared by the
 // builder and the client, so no Node APIs here.

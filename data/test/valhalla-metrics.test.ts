@@ -1,4 +1,4 @@
-// The metrics of the comparison with Valhalla (spec «Решения по тестам», «Сверка с Valhalla»): ring area, the
+// The metrics of the comparison with Valhalla (spec #20 «Решения по тестам», «Сверка с Valhalla»): ring area, the
 // median travel time to cities, and the ±10 % tolerance. A lat/lon rectangle's area on the sphere is
 // R² × Δλ × (sin φ2 − sin φ1), with R = 6371.0088 km; the expected areas below come from that formula.
 import { describe, expect, it } from 'vitest';

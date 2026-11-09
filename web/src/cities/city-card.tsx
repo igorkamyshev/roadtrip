@@ -1,4 +1,4 @@
-// The carousel's cards after the first one (spec «Экран», «Карусель», «Карточка города»): a card per city, made
+// The carousel's cards after the first one (spec #20 «Экран», «Карусель», «Карточка города»): a card per city, made
 // for any point of interest, and the last card «и ещё K / Все города →». Time to the city is not on it (#19). And
 // what a city says in a row of a list: the search's and the list of all.
 import type { ReactElement } from 'react';

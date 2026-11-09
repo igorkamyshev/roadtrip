@@ -40,6 +40,15 @@ The dataset build ([spec #20](../docs/specs/20.md) «Набор данных»):
 
 `build-graph … --report <report.md>` also writes the build report as Markdown.
 
+`ring` takes a negative coordinate either way, `--lon -3.7` or `--lon=-3.7`.
+
+Rings on real roads, as a ticket of the engine asks for pictures before and after:
+
+- `region <out.graph> <part | URL>… [--mirror <url>]` downloads the parts (paths in Geofabrik's layout, `europe/austria`), keeps what the world build keeps of them (the job `extract` below), merges them and writes the graph file. It needs osmium-tool on PATH (`apt-get install osmium-tool`).
+- `render <out.png> <label=ring.geojson>…` draws rings `ring --out` wrote side by side, on one scale, as the screen draws them, and prints what each is made of: polygons, holes, points, the GeoJSON's size, the contour's time. It uses `@playwright/test`'s Chromium.
+- Write the rings of the old engine before you change it, then the new ones, and render both. A picture for a PR goes on an artifact page that its description links to: GitHub's API attaches no images.
+- A cloud session reaches neither Geofabrik nor geo2day: both drop the connection. `--mirror https://download.openstreetmap.fr/extracts` serves Geofabrik's layout with `_` for a space (`europe/czech_republic`). Its `europe/` holds western and central Europe, Scandinavia, Poland, Czechia, Slovakia, Turkey and Ukraine, but no Hungary, Slovenia, the Balkans, Greece, Romania or the Baltics; its `asia/` holds Georgia and Armenia, but no Central Asia. A ticket that asks for rings on real roads picks its cities where the mirror has them: Vienna, Prague, Madrid, Oslo.
+
 `publish-dataset <dataset directory> [--bucket <name>] [--prefix <prefix>] [--trial]` puts a dataset in R2 (below); it needs the aws CLI, `CLOUDFLARE_ACCOUNT_ID` and R2's S3 credentials in `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`. Before it uploads anything, it checks that `zones.json` has a zone for every country of `COUNTRIES` but `ZONELESS_COUNTRIES` (`src/zoneless.ts`: the 35 without one in the world of 2026-11-07, each with the outline that holds its land) and names those that lack one; `--trial` skips that, for a dataset of some parts of the world. A country that loses its zone in OSM for good joins the list.
 
 `fetch-dataset [--bucket <name>]` is the first step of the `roadtrip` Worker's deploy (`worker/README.md`, «Deploy»): `fetchDataset` (`src/fetch-dataset.ts`) reads the pointer, downloads its version's `graph.graph` and `dataset.json` into `engine/dataset/`, `zones.json` and `cities.json` into `web/public/data/`, each next to its place, and moves them in only once every file's size and SHA-256 match the pointer's, so a bad download leaves the files there were. It reads R2 through Cloudflare's API with `CLOUDFLARE_API_TOKEN` (Workers R2 Storage: Read) and `CLOUDFLARE_ACCOUNT_ID`, which Workers Builds gives the deploy.
@@ -71,10 +80,12 @@ A run of only some of the parts is a trial: it publishes under `trials/<run id>/
 
 The fixtures in `test/fixtures/` are hand-written OSM XML of a few countries and tens of nodes near the equator, where 0.1° is 11.1 km. Each one's header works out the expected values by hand; a new case extends a fixture's header or gets its own fixture.
 
+- `fixtureGraph` (`test/fixture-graph.ts`) builds a whole fixture and fails when a way refers to a node the file lacks: the builder would drop that road's segments without a word. A cut extract (`edge-of-extract.osm`, `partial-zone.osm`) goes through `buildGraph` itself.
+- The builder collapses a chain of nodes no other road meets into one straight edge, so a road's bend holds only where a third road meets it: a square loop of road keeps its corners only with a stub of road at each (`plots.osm`).
 - `test/ring.test.ts`: the engine's seam ([spec #20](../docs/specs/20.md) «Решения по тестам», seam 1), borders included. Its border tests build their own small tables with `test/rules.ts`; the closed territories and the zones of #13 use the shipped table.
 - `test/build-graph.test.ts`: the graph itself, the PBF reader against the XML, the graph file, the build report.
 - `test/outlines.test.ts`: the zone outlines against the graph's `ZoneLocator` on `zones.osm`, and the simplification.
-- `test/border-table.test.ts`, `test/data-version.test.ts` and `test/engine-fingerprint.test.ts`: the border table's check, the data version and the engine's fingerprint (`engine/AGENTS.md`), here because every package's tests run under `data`'s vitest and types.
+- `test/border-table.test.ts`, `test/data-version.test.ts` and `test/engine-fingerprint.test.ts`: the border table's check, the data version and the engine's fingerprint (`engine/AGENTS.md`; `src/engine-fingerprint.ts`), here because every package's tests run under `data`'s vitest and types.
 - `test/cities.test.ts`: the cities file from lines in GeoNames' formats, a double of Wikidata and the zones of `zones.osm`, the parts of a city on real places of GeoNames around Belgrade, Sarajevo and Moscow; `test/wikidata.test.ts`: the Wikidata client against a double of the Query Service.
 - `test/commands.test.ts`: the commands as processes; `build-cities` reads the small GeoNames files in `test/fixtures/geonames/`.
 - `test/zone-locator.test.ts`: `ZoneLocator` and the builder's `ZoneCells` on squares of whole degrees.

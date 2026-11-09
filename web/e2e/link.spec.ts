@@ -1,4 +1,4 @@
-// The state in the link and in the browser (spec «Состояние, ссылка и память браузера»; stories 43–45): on load
+// The state in the link and in the browser (spec #20 «Состояние, ссылка и память браузера»; stories 43–45): on load
 // the link wins, then the saved state, then the defaults; every change is in the link, without new history
 // entries, and saved; invalid parameters take their defaults.
 import { allowGeolocation, expect, squareRing, test } from './fixtures.ts';

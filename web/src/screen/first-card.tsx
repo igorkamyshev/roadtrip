@@ -1,4 +1,4 @@
-// The first card of the carousel: the ring's summary or the screen's state (spec «Экран», «Первая карточка, по
+// The first card of the carousel: the ring's summary or the screen's state (spec #20 «Экран», «Первая карточка, по
 // состояниям»). The texts are the spec's table; the state comes from first-card-state.ts.
 import { useEffect, useState, type ReactElement, type ReactNode } from 'react';
 import type { CitiesCount } from '../cities/in-ring.ts';
