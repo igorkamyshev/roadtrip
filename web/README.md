@@ -9,16 +9,16 @@ One line per file, so that two changes of the screen seldom touch the same line.
 - `src/main.tsx`:
   - PostHog on the production host (`src/analytics/`, «Analytics» below). posthog-js and the map view with MapLibre are chunks of their own, which the first paint does not wait for: the screen's chunk is 0.42 MB, 132 KB in gzip.
   - The opening state (`src/state/startup.ts`: the link, else the saved state, else the defaults), then the router (its context says where the opening state came from) and the Query client.
-- `src/router.tsx`: one route `/` with hash history; `validateSearch`, `parseSearch` and `stringifySearch` from `src/state/search.ts` keep the link literal: `/#/?p=44.81760,20.45730&h=3&cit=RUS,SRB&visas=GEO,SCHENGEN`.
+- `src/router.tsx`: one route `/` with hash history; `validateSearch`, `parseSearch` and `stringifySearch` from `src/state/search.ts` keep the link literal: `/#/?p=44.81760,20.45730&h=3&cit=RUS,SRB&visas=GEO,SCHENGEN`, or `d=2` in place of `h` for a ring of days.
 - `src/state/`: the state in the link and its defaults.
-  - `search.ts`: the origin, N, the citizenships (Sherpa's passports sorted, `RUS` by default) and the held visas (`rules`' `HELD_VISAS` sorted, none by default and left out of the link then); anything else in `cit` or `visas` takes the default.
+  - `search.ts`: the origin, the slider's cell (`hours` of the state, its ring's upper bound: N, or 12·D for day D; `h=N` or `d=D` in the link, never both: both, or either off the scale, give 1 h), the citizenships (Sherpa's passports sorted, `RUS` by default) and the held visas (`rules`' `HELD_VISAS` sorted, none by default and left out of the link then); anything else in `cit` or `visas` takes the default.
   - `point.ts`: the origin as a point to 5 decimals.
   - `startup.ts`: the saved snapshot.
   - `use-screen-state.ts`: the changes, each a `navigate` with `replace: true` plus the snapshot, and how the origin was set, which the link does not keep (`start`, `setStart`).
   - `settings.ts`: what besides the origin and N a ring is asked for, the citizenships and the held visas, which `useScreenState` gives as `settings`, one object while they stay.
 - `src/ring/`:
   - `fetch-ring.ts`: the one place a ring request starts and ends.
-  - `use-ring.ts`: the rings in TanStack Query (infinite `staleTime` and `gcTime`, no retries, the previous ring of the same origin as `placeholderData`) and the hours in memory, whose cells the slider marks.
+  - `use-ring.ts`: the rings in TanStack Query (infinite `staleTime` and `gcTime`, no retries, the previous ring of the same origin as `placeholderData`) and the cells in memory, hours and days, which the slider marks; a ring is asked for with `from` and `to`, the bounds of its cell (`cellRing` of `worker/api`).
     - A `visa_rules_missing` is no ring: once the screen asks for something else it is removed from memory, so its hours get no mark and asking for it again asks the Worker (its card says «Попробуйте позже»).
 - `src/start/`: the origin.
   - `geolocation.ts`: the browser's position and why it failed.
@@ -53,12 +53,12 @@ One line per file, so that two changes of the screen seldom touch the same line.
   - `phrase.tsx`: the phrase, with `VisaRulesDate`, «визовые правила от <дата>».
   - `attribution.tsx`: the map's attribution: `DataSources`, the line of «Что важно знать», and `SourcesOnOpen`, the same line under the phrase for 5 s once the screen opens, as OpenStreetMap's attribution guidelines want it seen before it folds into ⓘ.
   - `clock.ts`: the time to the minute, for the rules' date and today's rows of «Мои визы».
-  - `slider.tsx`: N, a column of twelve cells, 1 h at the bottom, each the ring from N − 1 to N h; the chosen one blue and reading «6–7», the others N, those of the rings in memory light green and `data-cached`; a drag chooses the cell under the finger and asks for its ring when let go, a tap chooses one. Here the screen departs from the prototype, whose track and thumb it had.
+  - `slider.tsx`: the hours 1–12, then the days 2…`MAX_DAYS` (`SLIDER_CELLS` of `worker/api`, #83), one unit at a time: in hours a column of twelve cells, 1 h at the bottom, each the ring from N − 1 to N h, and the tab «дни ↑» over it; in days a large cell a day, 2 at the bottom, each the ring from 12·(D − 1) to 12·D h, and «часы ↓» under it. The chosen cell is blue and reads «6–7», or «2–3» over «дня», the others N or D, those of the rings in memory light green and `data-cached`; a drag chooses the cell under the finger, or the tab past the column's end, and asks for its ring when let go, a tap chooses one, a key steps through hours and days alike. The column turns to the other unit only once that is committed, never under the finger. Here the screen departs from the prototype, whose track and thumb it had; the days are the prototype Z2F of #77 (branch `claude/vibrant-mendel-47wxtt`, commit 25da3de).
   - `first-card.tsx`: the spec's table of states, each named by the card's `data-state` for the tests.
   - `sheets.tsx`: «Гражданство», «Мои визы», «Что важно знать», and `Sheet`, which every sheet is: a native `<dialog>` opened modal, so the focus stays in it and Esc, the scrim and «Закрыть» close it alike.
   - `held-visas.ts`: what each of Schengen, the USA, the UK and Canada opens: the rows of `rules/held-visas`' table acting today in UTC for the citizenships chosen, the same table and `actingExemptions` the Worker uses.
   - `countries.ts`: Russian names, `Intl.DisplayNames('ru')` by the alpha-2 of `rules/countries`, our own for `RKS` and `NX`; «РФ» in the phrase; `visaName`, «Шенген» and «США», for the phrase and the city card's «по визе: <страна>».
-  - `copy.ts`: hours and plurals.
+  - `copy.ts`: hours, days and plurals: «2–3 ч» and «2–3 часа» for hours, «1–2 дня» for days.
   - `icons.tsx`.
 - `src/styles.css`: the prototype's CSS for variant C, its tokens on `:root` with the dark scheme; the slider's `.sl*`, its panel `.c-vs`, the column `.c-top` and the carousel's layout are ours.
   - The tokens of the layout (#85): every floating panel stands `--edge` (12 px) from the screen's nearest edges past the safe area (`--edge-top` …), `--between` (8 px) from the panel next to it; the floating panels and plates have corners of `--radius` (18 px), what is nested in them, the slider's cells and the buttons, `--radius-inner` (12 px). A new panel takes them, not numbers of its own.
@@ -84,7 +84,7 @@ One line per file, so that two changes of the screen seldom touch the same line.
 - `events.ts`: the screen's own events and their properties, as decision #18 has them: `start set`, `geolocation failed`, `ring result`, `link opened`. Never the origin: a place is the nearest city of the cities file (`start_city`, `start_city_id`) and its country (`start_country`).
 - `screen-analytics.ts` says when each goes; `use-screen-analytics.ts` feeds it from the screen (`src/screen/use-shown-ring.ts`). `link opened` goes from `main.tsx`, `geolocation failed` from the screen's failed `locate()` (`src/screen/use-start-methods.ts`).
   - `start set` and `ring result` wait for the cities file for their place (and a ring for its `cities_count` and `countries_count`, counted as the first card does), and go with the time they happened; without the file they go without them.
-  - `ring result` is one for each ring asked for: the load, the slider let go (it changes N only then, so moving it sends nothing), other settings, another origin, «Повторить». A ring in memory is `memory` with `wait_ms` 0; a request ends with its answer (`source` the Worker's), its failure (`too_many_requests`, `error`), or `abandoned` when the screen asks for something else first, at once, or when the page goes away (`pagehide`), by `sendBeacon`, as everything still waiting.
+  - `ring result` is one for each ring asked for, its `hours` the ring's upper bound (24 for day 2, #83): the load, the slider let go (it changes N only then, so moving it sends nothing), other settings, another origin, «Повторить». A ring in memory is `memory` with `wait_ms` 0; a request ends with its answer (`source` the Worker's), its failure (`too_many_requests`, `error`), or `abandoned` when the screen asks for something else first, at once, or when the page goes away (`pagehide`), by `sendBeacon`, as everything still waiting.
 - The map's container has `ph-no-deadclick` and `ph-no-rageclick`: a tap on the map changes only the canvas, and PostHog's dead clicks (once the project turns them on) took every tap for one.
 
 ### Source maps
