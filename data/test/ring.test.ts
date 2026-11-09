@@ -66,6 +66,16 @@ describe('a ring of a day', () => {
 		expect(inDayRing(result, 12)).toBe(false); // 26.69 h
 	});
 
+	it('on cells coarser than 500 m is simplified to a cell, without the steps of the cells along a diagonal road', () => {
+		const result = computeRing(fixtureGraph('diagonal-road.osm'), borderTable, band({ lat: -20, lon: -20 }, 0, 130));
+
+		expect(result.outcome).toBe('ring');
+		const points = result.outcome === 'ring' ? result.ring.coordinates.flat(2).length : 0;
+		expect(points).toBeGreaterThan(0);
+		expect(points).toBeLessThan(40);
+		expect(result.outcome === 'ring' && ringContains(result.ring, 0, 0)).toBe(true); // the road's middle, ~62 h
+	});
+
 	it('is not the ring of its last hour, (23, 24]', () => {
 		const result = computeRing(longRoad, borderTable, band(ORIGIN, 23, 24));
 
