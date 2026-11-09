@@ -1,6 +1,6 @@
-// The held visas (spec «Визовые правила и сведение», «Мои визы»; #11): Schengen as a whole (`SCHENGEN`) or a country
-// outside it, and which rows of the visa exemptions' table act for a person today. The reduction (worker) opens the
-// countries by them; the client counts what each of the four visas opens. Both import this, the client by its own
+// The held visas (spec #20 «Визовые правила и сведение», «Мои визы»; #11): Schengen as a whole (`SCHENGEN`) or a
+// country outside it, and which rows of the visa exemptions' table act for a person today. The reduction (worker) opens
+// the countries by them; the client counts what each of the four visas opens. Both import this, the client by its own
 // path (`rules/held-visas`), without the border table.
 import type { ExemptionVisa, VisaExemption } from './index.ts';
 import { COUNTRIES } from './countries.ts';
@@ -15,9 +15,9 @@ export const SCHENGEN = 'SCHENGEN';
 export const EXEMPTION_VISAS: readonly ExemptionVisa[] = ['SCHENGEN', 'USA', 'GBR', 'CAN'];
 
 /**
- * Every visa a person may hold, sorted: `SCHENGEN`, and every country outside the Schengen area (spec «Экран»: «Виза
- * одной страны» lists all of them), by its code in `COUNTRIES`: alpha-3, `RKS`, `NX`. A Schengen country is held only
- * as Schengen.
+ * Every visa a person may hold, sorted: `SCHENGEN`, and every country outside the Schengen area (spec #20 «Экран»:
+ * «Виза одной страны» lists all of them), by its code in `COUNTRIES`: alpha-3, `RKS`, `NX`. A Schengen country is held
+ * only as Schengen.
  */
 export const HELD_VISAS: readonly string[] = heldVisas();
 

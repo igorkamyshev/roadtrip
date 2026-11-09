@@ -1,4 +1,4 @@
-// The zone outlines the screen hatches closed countries and territories with (spec «Набор данных», «Контуры зон для
+// The zone outlines the screen hatches closed countries and territories with (spec #20 «Набор данных», «Контуры зон для
 // штриховки»): the graph's zone polygons, simplified to ~2 km, as GeoJSON. What the hatching shows is the screen's
 // test; here, that an outline is where the graph's zone is.
 import { ZoneLocator, type Graph } from 'engine/graph';

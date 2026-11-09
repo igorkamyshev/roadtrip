@@ -1,4 +1,4 @@
-// The road graph: what the builder in data writes and the engine reads (spec «Набор данных», «Граф»). Typed
+// The road graph: what the builder in data writes and the engine reads (spec #20 «Набор данных», «Граф»). Typed
 // arrays only, so the graph of the world (12 M nodes, 25 M edges, 357 MB in 2026-11: docs/world-build.md) loads
 // without parsing. Nodes are junctions and ends of roads: the builder collapses chains of degree-2 nodes into one
 // edge each.

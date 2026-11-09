@@ -1,6 +1,6 @@
-// The ring API's seam (spec «Решения по тестам», seam 2): the handler of GET /api/ring with its dependencies through
-// `deps`. The Container is the engine server with the real engine in this process, on a graph the builder makes of an
-// OSM fixture (data/test/fixtures, values worked out in each header), or a double. Sherpa is a faked `fetch`
+// The ring API's seam (spec #20 «Решения по тестам», seam 2): the handler of GET /api/ring with its dependencies
+// through `deps`. The Container is the engine server with the real engine in this process, on a graph the builder makes
+// of an OSM fixture (data/test/fixtures, values worked out in each header), or a double. Sherpa is a faked `fetch`
 // (sherpa-double.ts). Both KV namespaces are doubles in memory (memory-kv.ts) whose entries expire by one clock the
 // test moves, the clock the handler reads too (timers.ts).
 import { computeRing, dataVersion } from 'engine';

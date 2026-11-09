@@ -1,4 +1,4 @@
-// The screen's state in the link (spec «Состояние, ссылка и память браузера»):
+// The screen's state in the link (spec #20 «Состояние, ссылка и память браузера»):
 // `/#/?p=44.81760,20.45730&h=3&cit=RUS,SRB&visas=SCHENGEN`. The router keeps it after `#` (hash history), parses it
 // with `parseSearch` and checks it with `validateSearch`; every change is a `navigate` with `replace: true`.
 import { HELD_VISAS } from 'rules/held-visas';

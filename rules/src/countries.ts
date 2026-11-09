@@ -1,4 +1,4 @@
-// The countries as zones (spec «Набор данных», «Зоны»): every country the graph may have, by the code Sherpa uses.
+// The countries as zones (spec #20 «Набор данных», «Зоны»): every country the graph may have, by the code Sherpa uses.
 // That is ISO 3166-1 (https://www.iso.org/iso-3166-country-codes.html, the 249 officially assigned codes) with
 // Kosovo as RKS and Northern Cyprus as NX (#13). The visa rules' reduction gives each an entry mode, so a country
 // Sherpa does not list (SYR, YEM, PRK) is closed; the client names them by the alpha-2.

@@ -1,4 +1,4 @@
-// The zones of the graph (spec «Набор данных», «Зоны»): countries by their admin_level=2 polygons, and the special
+// The zones of the graph (spec #20 «Набор данных», «Зоны»): countries by their admin_level=2 polygons, and the special
 // cases of #13 by relation id.
 import { MAX_ZONES, type ZoneRings } from 'engine/graph';
 import type { Locate } from './osm-nodes.ts';
@@ -9,7 +9,6 @@ import type { OsmRelation, OsmSource, OsmWay, Tags } from './osm/source.ts';
  * build's `osmium tags-filter` keeps these as well as the admin_level=2 relations. Transnistria needs no line:
  * it is admin_level=4 (r2607033) inside Moldova (r58974), so part of MDA.
  */
-// fallow-ignore-next-line unused-export -- the world build's workflow imports it for `osmium getid -r` (.github/workflows/dataset.yml)
 export const SPECIAL_ZONES: ReadonlyMap<number, string> = new Map([
 	// Kosovo: admin_level=2 with ISO3166-1:alpha3=XKK; Sherpa's code is RKS.
 	[2088990, 'RKS'],

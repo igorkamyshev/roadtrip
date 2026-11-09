@@ -1,4 +1,4 @@
-// The engine server of the Container (spec «Container и очередь») through its HTTP interface: one calculation at a
+// The engine server of the Container (spec #20 «Container и очередь») through its HTTP interface: one calculation at a
 // time, the others wait in order without a timeout, a request for a ring already being calculated gets the same
 // result with `joined`, and a failure answers 500 with the error. The calculations here are a double that ends when
 // the test says, on a clock the test moves; the engine itself on a graph file is in main.test.ts.

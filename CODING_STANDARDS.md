@@ -10,6 +10,7 @@ Rules a reviewer checks by judgement: when a ticket's work is merged, and when a
 - An e2e test drives the page's time with `page.clock`, paused, and waits on what the page shows.
 - An e2e test waits for a state (the ring card's `data-state`), not for copy; only a test about the copy checks the copy.
 - A failing test is fixed, not deleted or skipped.
+- A new test of a seam fails on the code before the change, or on a wrong way of doing it that the PR names: one that passes on both checks nothing.
 
 ## Product
 
@@ -28,4 +29,4 @@ Rules a reviewer checks by judgement: when a ticket's work is merged, and when a
 - A one-off harness (a benchmark, a probe workflow) is deleted when its ticket ends, or runs only on `workflow_dispatch`.
 - A change updates every README and agent doc line that describes what it changed.
 - The spec, `docs/specs/20.md` (issue #20 copied when its work ended), is frozen. A change that makes a section of it untrue adds a line under that section in `docs/specs/20-amendments.md`.
-- A mention of the spec names its issue and section: `spec #20 «Экран»` in code, `[spec #20](docs/specs/20.md) «Экран»` in Markdown (the path relative to the file). It means the section with its amendments.
+- A mention of the spec names its issue and section: `[spec #20](docs/specs/20.md) «Экран»` in Markdown (the path relative to the file), and `spec #20 «Экран»` in code, which `roadtrip/spec-names-its-issue` checks. It means the section with its amendments.

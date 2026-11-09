@@ -10,10 +10,11 @@ import { writeFileSync } from 'node:fs';
 import { parseArgs } from 'node:util';
 import { computeRing, ENGINE_VERSION } from 'engine';
 import { borderTable } from 'rules';
-import { log, userPath, withLocalFile } from './input.ts';
+import { log, userPath, withLocalFile, withNegativeValues } from './input.ts';
 import { loadGraph } from './load-graph.ts';
 
 const { values, positionals } = parseArgs({
+	args: withNegativeValues(process.argv.slice(2), ['--lat', '--lon']),
 	allowPositionals: true,
 	options: {
 		lat: { type: 'string' },

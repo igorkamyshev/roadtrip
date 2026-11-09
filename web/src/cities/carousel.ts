@@ -1,4 +1,4 @@
-// The carousel's link with the map (spec «Экран», «Карусель»): the card in its middle when it stops is the chosen
+// The carousel's link with the map (spec #20 «Экран», «Карусель»): the card in its middle when it stops is the chosen
 // city, which the map goes to; a city tapped on the map scrolls its card into the middle.
 import { useEffect, useLayoutEffect, useRef, type RefObject } from 'react';
 

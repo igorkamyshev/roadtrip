@@ -1,4 +1,4 @@
-// The cities file (spec «Набор данных», «Файл городов», #6): GeoNames' cities1000 (CC BY 4.0) from 15 000 people,
+// The cities file (spec #20 «Набор данных», «Файл городов», #6): GeoNames' cities1000 (CC BY 4.0) from 15 000 people,
 // without sections of cities (PPLX), vanished places and the parts of a city (GLOSSARY «Часть города», #45), with the
 // Russian name of GeoNames or else Wikidata's (CC0), and the zone by the graph's polygons. The format is
 // `cities-file.ts`.

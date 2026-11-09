@@ -1,4 +1,4 @@
-// The phrase over the map (spec «Экран»): «Из точки [Белград], 2–3 часа в пути. Гражданство [РФ], мои визы:
+// The phrase over the map (spec #20 «Экран»): «Из точки [Белград], 2–3 часа в пути. Гражданство [РФ], мои визы:
 // [нет] ⓘ», and under it «визовые правила от <дата>» when they are old. Each word in brackets opens a sheet.
 import type { ReactElement, ReactNode } from 'react';
 import { useMinute } from './clock.ts';
@@ -56,7 +56,7 @@ export function Phrase({ startLabel, hours, busy, onStart, onInfo, settings, foo
 const RULES_DATED_AFTER_MS = 2 * 24 * 60 * 60 * 1000;
 
 /**
- * «визовые правила от 5 ноября» (spec «Экран»): the line under the phrase when the visa rules of the answer came
+ * «визовые правила от 5 ноября» (spec #20 «Экран»): the line under the phrase when the visa rules of the answer came
  * from Sherpa more than two days before now (to the minute), with the year when it is not this year's. Nothing
  * otherwise.
  */

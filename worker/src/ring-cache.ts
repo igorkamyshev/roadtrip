@@ -1,4 +1,4 @@
-// The ring cache (spec «Кэш колец», #15): the rings in KV under a key of the data version, the origin rounded to
+// The ring cache (spec #20 «Кэш колец», #15): the rings in KV under a key of the data version, the origin rounded to
 // 0.001°, N and the SHA-256 of the sorted closed countries. A calculation gets only these fields, so a ring cached
 // under a key is the ring of that key.
 import { dataVersion, type LatLon, sha256Hex } from 'engine';

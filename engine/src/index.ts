@@ -1,4 +1,4 @@
-// The ring engine (spec «Движок», ADR 0001): a graph, the border table, an origin, N and the closed countries
+// The ring engine (spec #20 «Движок», ADR 0001): a graph, the border table, an origin, N and the closed countries
 // in; the outcome, the ring, maxHours, the start country and the timings out. Portable: no Node APIs, so it
 // can move to a Worker or a browser.
 import type { BorderTable } from 'rules';
@@ -25,7 +25,7 @@ export async function sha256Hex(text: string): Promise<string> {
 }
 
 /**
- * The data version of the ring cache key (spec «Кэш колец»): the dataset's version, the first 16 hex digits of the
+ * The data version of the ring cache key (spec #20 «Кэш колец»): the dataset's version, the first 16 hex digits of the
  * border table's hash and ENGINE_VERSION, as `2026-11-01.3f2a9c0d1e4b5a67.2`. A change to any of them puts rings
  * under new keys.
  */
@@ -45,7 +45,7 @@ export interface RingRequest {
 	/** N: the ring holds the places reached in (N − 1, N] hours of travel. */
 	readonly hours: number;
 	/**
-	 * The closed countries by the visa rules, alpha-3 (spec «Набор закрытых стран»): never entered, transit
+	 * The closed countries by the visa rules, alpha-3 (spec #20 «Набор закрытых стран»): never entered, transit
 	 * included, but for the start country. Countries and territories closed for everyone are closed by the border
 	 * table, whatever this holds.
 	 */

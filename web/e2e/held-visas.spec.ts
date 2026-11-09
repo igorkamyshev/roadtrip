@@ -1,4 +1,4 @@
-// The held visas on the screen (spec «Экран»: the phrase, the sheet «Мои визы», the card `empty`; «Состояние,
+// The held visas on the screen (spec #20 «Экран»: the phrase, the sheet «Мои визы», the card `empty`; «Состояние,
 // ссылка и память браузера»; stories 21, 25–27): what the person sees, what the screen asks the API, and the link.
 //
 // The counters come from the visa exemptions' table the client bundles (rules' VISA_EXEMPTIONS), on the date

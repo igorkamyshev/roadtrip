@@ -1,4 +1,4 @@
-// When the screen's events go and what they say (spec «Аналитика и ошибки», «Свои события браузера»; decision #18).
+// When the screen's events go and what they say (spec #20 «Аналитика и ошибки», «Свои события браузера»; decision #18).
 // The place of `start set` and `ring result` is the nearest city of the cities file, so both wait for the file:
 // they go once it came, or could not be had (then without a place), with the time they happened.
 //

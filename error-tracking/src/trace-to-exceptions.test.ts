@@ -156,7 +156,7 @@ describe('traceToExceptions', () => {
 		expect(event.distinct_id).toBe(BROWSER_ID);
 		expect(event.properties).toMatchObject({
 			$session_id: SESSION_ID,
-			// The browser's person is anonymous, and no Worker event makes one (spec «Аналитика и ошибки»)
+			// The browser's person is anonymous, and no Worker event makes one (spec #20 «Аналитика и ошибки»)
 			$process_person_profile: false,
 			log_message: '[sherpa] refresh failed, served the stale copy',
 			reason: '503',

@@ -1,4 +1,4 @@
-// The ring API as the client sees it (spec «API кольца»): `GET /api/ring`, the Worker's one endpoint for the
+// The ring API as the client sees it (spec #20 «API кольца»): `GET /api/ring`, the Worker's one endpoint for the
 // client. The client imports these types from `worker/api`.
 import type { LatLon } from 'engine';
 import type { RingOutcome } from 'engine/protocol';
@@ -36,7 +36,7 @@ export interface RingQuery {
 export type RingSource = 'cache' | 'calculation' | 'joined';
 
 /**
- * How a country lets the person in (spec «Визовые правила и сведение»), best first: without a visa, by a held visa,
+ * How a country lets the person in (spec #20 «Визовые правила и сведение»), best first: without a visa, by a held visa,
  * a visa on arrival, an e-visa; `start` is the start country, open although the visa rules close it; `closed` is
  * never entered.
  */
@@ -63,7 +63,7 @@ export interface CountryAccess {
 export type Access = Readonly<Record<string, CountryAccess>>;
 
 /**
- * The answer 200 with a ring or the engine's reason for none, by `outcome` (spec «API кольца»):
+ * The answer 200 with a ring or the engine's reason for none, by `outcome` (spec #20 «API кольца»):
  *
  * - `ring`: `ring` is the ring, a GeoJSON MultiPolygon with holes, in [lon, lat];
  * - `empty`: the ring N is empty, nothing is reached after N − 1 hours; `maxHours` is the longest travel time to

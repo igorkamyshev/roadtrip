@@ -1,4 +1,4 @@
-// The data version of the ring cache key (spec «Кэш колец»): the dataset's version, the border table's hash and
+// The data version of the ring cache key (spec #20 «Кэш колец»): the dataset's version, the border table's hash and
 // the engine's version.
 import { borderTableHash, dataVersion } from 'engine';
 import { borderTable } from 'rules';

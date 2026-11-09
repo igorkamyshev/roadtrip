@@ -1,4 +1,4 @@
-// The first card's state (spec «Экран», «Первая карточка, по состояниям») from the origin and the ring's query; the
+// The first card's state (spec #20 «Экран», «Первая карточка, по состояниям») from the origin and the ring's query; the
 // card (first-card.tsx) shows it, and the phrase's spinner turns with `calculating`.
 import type { UseQueryResult } from '@tanstack/react-query';
 import type { RingResponse } from 'worker/api';

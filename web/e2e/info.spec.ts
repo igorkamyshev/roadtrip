@@ -1,4 +1,4 @@
-// ⓘ in the phrase (spec «Экран», «ⓘ «Что важно знать»»; story 46): plates, the visa data's accuracy, Google
+// ⓘ in the phrase (spec #20 «Экран», «ⓘ «Что важно знать»»; story 46): plates, the visa data's accuracy, Google
 // Maps' routes, the travel-time formula and the data's sources.
 import { expect, test } from './fixtures.ts';
 import { phrase } from './screen.ts';

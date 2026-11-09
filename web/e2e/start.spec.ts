@@ -1,4 +1,4 @@
-// The origin (spec «Экран»: phrase, pin; stories 1, 3, 4, 6): geolocation on the first visit, the screen without
+// The origin (spec #20 «Экран»: phrase, pin; stories 1, 3, 4, 6): geolocation on the first visit, the screen without
 // it, the pin mode, and the marker where the person put it.
 import { allowGeolocation, expect, squareRing, test } from './fixtures.ts';
 import { dragMap, expectRingCard, firstCard, mapCenter, phrase, ringOnMap, slider, startOnMap } from './screen.ts';

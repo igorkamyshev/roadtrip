@@ -1,4 +1,4 @@
-// The start points of the comparison with Valhalla and the extracts both engines read for them (spec «Решения
+// The start points of the comparison with Valhalla and the extracts both engines read for them (spec #20 «Решения
 // по тестам», «Сверка с Валхаллой»: Europe, the Caucasus, Turkey, Central Asia, the Americas).
 //
 // A region is a country and some neighbours, merged into one extract: big enough for long rings, small enough for
