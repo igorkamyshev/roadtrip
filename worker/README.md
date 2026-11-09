@@ -12,15 +12,15 @@ The Worker `roadtrip` on `roadtrip.kamyshev.me` ([spec #20](../docs/specs/20.md)
 
 ## GET /api/ring
 
-1. The query: `lat`, `lon`, `hours` (1–12), `cit` (Sherpa's passports, `SHERPA_PASSPORTS` in `rules`) and `visas` (`SCHENGEN` and every country outside Schengen, `HELD_VISAS`: the codes of `COUNTRIES` outside `SCHENGEN_AREA`) as sorted comma-separated codes. Anything else is 400 with `{ error }`.
+1. The query: `lat`, `lon`, `from` and `to`, the ring's bounds in hours (`isScaleRing` in `src/api.ts`: an hour `N−1`–`N` up to the last day's end, 12·`MAX_DAYS`, or a day `12·(D−1)`–`12·D`, D from 2 to `MAX_DAYS`; #82), `cit` (Sherpa's passports, `SHERPA_PASSPORTS` in `rules`) and `visas` (`SCHENGEN` and every country outside Schengen, `HELD_VISAS`: the codes of `COUNTRIES` outside `SCHENGEN_AREA`) as sorted comma-separated codes. Anything else is 400 with `{ error }`.
 2. The visa rules of each citizenship (`src/visa-rules.ts`), from its copy in KV or from Sherpa (below). A citizenship without them ends the request: `{ outcome: "visa_rules_missing", missingCitizenship }`, the first such citizenship.
 3. Their reduction (`reduceVisaRules` in `src/access.ts`), a pure function: the entry mode of every country (`COUNTRIES` in `rules`: ISO 3166-1, `RKS`, `NX`) and closed territory, and the closed countries, those closed for everyone included. Besides the citizenships' classes it applies the held visas: a country's own visa opens it, `SCHENGEN` the Schengen area (`SCHENGEN_AREA`), and a row of the visa exemptions' table (`VISA_EXEMPTIONS`, in `deps`) opens its country to a holder of its visa while it acts: up to its `until` by the date in UTC of `deps.now`, and for one of its `citizenships` (`actingExemptions` in `rules`, which the client's counters share). `access` names the visa (`visa`) of every country it opens.
-4. The key: `ring:<data version>:<lat>,<lon>:<N>:<SHA-256 of the closed countries>`, with the origin rounded to 0.001°. The data version is the dataset's version (`engine/dataset/dataset.json`), the border table's hash and `ENGINE_VERSION`. Citizenships and visas are not in it: those that close the same countries share their rings.
-5. A hit answers with `source: "cache"`. A miss posts the origin, N and the closed countries to the Container and answers `calculation`, or `joined` when the engine server joined it to a calculation of the same ring.
+4. The key: `ring:<data version>:<lat>,<lon>:<lower>-<upper>:<SHA-256 of the closed countries>`, with the origin rounded to 0.001° and the ring's two bounds in hours. The data version is the dataset's version (`engine/dataset/dataset.json`), the border table's hash and `ENGINE_VERSION`. Citizenships and visas are not in it: those that close the same countries share their rings.
+5. A hit answers with `source: "cache"`. A miss posts the origin, the bounds and the closed countries to the Container (and `hours`, the upper bound, for a ring of one hour: a Container from before the bounds reads only that, `engine/src/protocol.ts`) and answers `calculation`, or `joined` when the engine server joined it to a calculation of the same ring.
 6. The ring goes to KV for 40 days in the background, unless the Container calculated with another data version (a rollout), the JSON is over 25 MiB, or the request joined another's calculation, which caches it. Every outcome is cached: `ring`, `empty`, `no_roads`, `no_ring`.
 7. The answer adds `access` (the start country, closed by the visa rules but not for everyone, becomes `start`: `withStartCountry`) and `visaRulesLoadedAt`, when the oldest of the citizenships' copies came from Sherpa.
 
-A Container failure answers 502: its 500 `{ name, message, stack }` is rebuilt into an `Error` for `logger.error`, as is anything else it answers (`ContainerError`) or a start that failed. The context holds the browser's PostHog ids from `X-POSTHOG-*` and N, never the origin.
+A Container failure answers 502: its 500 `{ name, message, stack }` is rebuilt into an `Error` for `logger.error`, as is anything else it answers (`ContainerError`) or a start that failed. The context holds the browser's PostHog ids from `X-POSTHOG-*` and `hours`, the ring's upper bound, never the origin.
 
 ## Analytics
 
@@ -33,9 +33,9 @@ A Container failure answers 502: its 500 `{ name, message, stack }` is rebuilt i
 
 The events, never with the origin:
 
-- `ring served`, for each request to `/api/ring` that reached the Worker, as the spec has it: `source` (`cache`, `calculation`, `joined`; none for `visa_rules_missing`), `outcome` (the engine's, `visa_rules_missing`, or `error`), `hours`, `duration_ms`, and for a calculation and a joined request the Container's timings `queue_ms`, `traversal_ms`, `contour_ms`, and `cold_start_ms` when it waited for the start.
+- `ring served`, for each request to `/api/ring` that reached the Worker, as the spec has it: `source` (`cache`, `calculation`, `joined`; none for `visa_rules_missing`), `outcome` (the engine's, `visa_rules_missing`, or `error`), `hours` (the ring's upper bound: N, or 24 for day 2, which names the slider's cell alone), `duration_ms`, and for a calculation and a joined request the Container's timings `queue_ms`, `traversal_ms`, `contour_ms`, and `cold_start_ms` when it waited for the start.
   - The 502 is `error` with `source: calculation`.
-  - A query that is no ring query (400) or a method other than GET (405) is `error` with `duration_ms` alone: it has no N, and asked neither the cache nor the Container. Decision #18 has no outcome of its own for it, and `error` is the one of its outcomes that fits; the missing `source` tells it from the 502.
+  - A query that is no ring query (400) or a method other than GET (405) is `error` with `duration_ms` alone: it has no bounds, and asked neither the cache nor the Container. Decision #18 has no outcome of its own for it, and `error` is the one of its outcomes that fits; the missing `source` tells it from the 502.
 - `sherpa fetched`, for each request to Sherpa (`load` in `src/visa-rules.ts`): `citizenship`, `result` (`ok`, `http_error`, `timeout`, `bad_response`), `status` when Sherpa answered, `duration_ms`, `mode` (`background` refreshed a stale copy, `blocking` was waited for), and `quota_remaining` when Sherpa's answer has `x-ratelimit-remaining` or `ratelimit-remaining` (research/sherpa-api saw neither: the quota is the count of these events an hour).
 
 ## Visa rules
@@ -83,8 +83,8 @@ pnpm --filter web build
 cd worker
 pnpm dev   # wrangler dev: builds the image, then http://localhost:8787
 
-curl 'http://localhost:8787/api/ring?lat=42.5063&lon=1.5218&hours=1&cit=RUS'   # source: calculation, after the cold start
-curl 'http://localhost:8787/api/ring?lat=42.5063&lon=1.5218&hours=1&cit=RUS'   # source: cache
+curl 'http://localhost:8787/api/ring?lat=42.5063&lon=1.5218&from=0&to=1&cit=RUS'   # source: calculation, after the cold start
+curl 'http://localhost:8787/api/ring?lat=42.5063&lon=1.5218&from=0&to=1&cit=RUS'   # source: cache
 ```
 
 - KV is local (`.wrangler/state`). The rings stay cached under the version in `dataset.json` (`local`): after building another graph, delete `.wrangler/state` or the next answers come from the cache of the old one.
@@ -92,7 +92,7 @@ curl 'http://localhost:8787/api/ring?lat=42.5063&lon=1.5218&hours=1&cit=RUS'   #
 - The Tail Worker shows as «not connected»; errors are only printed.
 - The engine server's own line (`engine listening on port 8080: data version …, graph … loaded in … ms`) is in the Container's log: `docker logs <container>`.
 - If Docker Hub answers 429 to the pull of `node:22-alpine`, pull it from a mirror and tag it: `docker pull mirror.gcr.io/library/node:22-alpine && docker tag mirror.gcr.io/library/node:22-alpine node:22-alpine`.
-- The engine server runs without Docker too: `DATASET_DIR=engine/dataset PORT=8080 node engine/server/main.ts`, then `curl -X POST localhost:8080/ring -d '{"origin":{"lat":42.506,"lon":1.522},"hours":1,"closedCountries":[]}'`.
+- The engine server runs without Docker too: `DATASET_DIR=engine/dataset PORT=8080 node engine/server/main.ts`, then `curl -X POST localhost:8080/ring -d '{"origin":{"lat":42.506,"lon":1.522},"lowerHours":0,"upperHours":1,"closedCountries":[]}'`.
 
 ### The basemap locally
 
