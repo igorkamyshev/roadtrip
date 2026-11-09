@@ -23,7 +23,9 @@ function worker(request: IncomingMessage, response: ServerResponse, next: () => 
 	const url = new URL(request.url ?? '/', 'http://demo');
 	if (url.pathname === '/api/ring') {
 		const hours = Number(url.searchParams.get('hours'));
-		const ring = squareRing(Number(url.searchParams.get('lat')), Number(url.searchParams.get('lon')), [(hours - 1) / 10, hours / 10]);
+		// PROTOTYPE (#77): a step over 12 is day D = step − 11, the band 12·(D − 1) to 12·D h, in tenths of a degree.
+		const bounds: [number, number] = hours > 12 ? [12 * (hours - 12), 12 * (hours - 11)] : [hours - 1, hours];
+		const ring = squareRing(Number(url.searchParams.get('lat')), Number(url.searchParams.get('lon')), [bounds[0] / 10, bounds[1] / 10]);
 		setTimeout(() => {
 			json(response, ring);
 		}, RING_DELAY_MS);

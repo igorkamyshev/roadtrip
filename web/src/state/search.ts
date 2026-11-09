@@ -33,7 +33,8 @@ export interface ScreenState {
 
 const DEFAULT_HOURS = 1;
 export const MIN_HOURS = 1;
-export const MAX_HOURS = 12;
+// PROTOTYPE (#77): steps 13–16 of the scale are days 2–5 (a day is 12 h of travel); throwaway branch only.
+export const MAX_HOURS = 16;
 const DEFAULT_CITIZENSHIPS: readonly string[] = ['RUS'];
 const NO_VISAS: readonly string[] = [];
 
