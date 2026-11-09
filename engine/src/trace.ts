@@ -1,5 +1,6 @@
 // The cells of the ring traced into GeoJSON polygons (spec «Движок», «Кольцо»): marching squares over the cell
-// centres, holes put in the outer rings around them, and every ring simplified by Douglas–Peucker.
+// centres, holes (large plots without roads, closed zones, the land reached sooner) put in the outer rings around
+// them, and every ring simplified by Douglas–Peucker.
 import { type CellGrid, E7 } from './geo.ts';
 
 /** The sides of a square of four cell centres, where a contour crosses it at the side's midpoint. */
@@ -37,7 +38,8 @@ const SEGMENTS: readonly (readonly number[])[] = [
 /**
  * Marching squares over the cell centres. A contour runs through the midpoints between an inside and an outside
  * centre, with the inside on its left: outer rings come out counter-clockwise, holes clockwise. Cells that touch
- * only at a corner are apart. A point is a key over doubled lattice coordinates, so midpoints are integers.
+ * only at a corner are apart, so the outside runs on between them: a hole is a plot of outside cells joined by their
+ * eight neighbours (plots.ts). A point is a key over doubled lattice coordinates, so midpoints are integers.
  */
 export function traceRings(inside: Uint8Array, columns: number, rows: number): number[][] {
 	const height = 2 * rows + 5;
@@ -92,7 +94,7 @@ export function polygons(rings: number[][], grid: CellGrid, tolerance: number): 
 	outers.sort((one, two) => one.area - two.area);
 	for (const hole of holes) {
 		const [x, y] = hole;
-		// The box first: a ring of the 12 h ring's thousands is the size of the whole ring.
+		// The box first: the outer ring of a 12 h ring is the size of the whole ring, with thousands of points.
 		outers
 			.find(({ box, ring }) => x >= box.minX && x <= box.maxX && y >= box.minY && y <= box.maxY && contains(ring, x, y))
 			?.holes.push(hole);

@@ -1,11 +1,13 @@
 // The ring's contour (spec «Движок», «Кольцо»): the reached roads are painted into a raster of ~500 m cells with
 // their travel times, the land near them gets a road's time plus the drive off-road to it at 30 km/h, and
-// marching squares (trace.ts) trace the cells whose time is in (N − 1, N], as Valhalla does, leaving out the cells
-// in closed countries and territories. The contour is then simplified to ~500 m.
+// marching squares (trace.ts) trace the cells whose time is in (N − 1, N], as Valhalla does, with the small plots
+// without roads that the roads of N h first wall in (#43), leaving out the cells in closed countries and
+// territories. The contour is then simplified to ~500 m.
 import type { Passage } from './borders.ts';
 import { type CellGrid, E7, LocalProjection } from './geo.ts';
 import type { Graph } from './graph.ts';
 import type { MultiPolygon } from './index.ts';
+import { fillSmallPlots } from './plots.ts';
 import type { OriginRoad } from './snap.ts';
 import { polygons, traceRings } from './trace.ts';
 import { edgeTravelSeconds, TRAVEL_PER_DRIVING } from './traverse.ts';
@@ -19,6 +21,15 @@ const SIMPLIFY_METERS = 500;
  * cross, and 1 km fits its rings best, where 3 km made the rings of 1 h a third too large.
  */
 const NEAR_ROAD_METERS = 1000;
+/**
+ * A plot of land further than NEAR_ROAD_METERS from every road, which the roads reached within N h wall in on every
+ * side, is in the ring when it is smaller than this: land between the roads, not a mountain range, a steppe inside
+ * a loop of roads or a large lake (#43). Without it the ring is lace, a hole between every two roads 2 km apart.
+ * Picked on the rings of 3 and 6 h from Vienna, Prague, Madrid, Oslo and Östersund, before and after: 100 km² left
+ * the farmland between the roads of Castile and Värmland in holes, 400 km² filled the Montes de Toledo and the
+ * mountains of Slovakia.
+ */
+const SMALL_PLOT_SQUARE_METERS = 200_000_000;
 /** Off-road travel to and from a road, in seconds of travel per metre: 30 km/h of driving (spec «Привязка»). */
 export const OFF_ROAD_SECONDS_PER_METER = (3.6 / 30) * TRAVEL_PER_DRIVING;
 /** A raster larger than this gets coarser cells: ~120 MB of time and distance. */
@@ -48,11 +59,16 @@ export function ringContour(input: ContourInput): MultiPolygon {
 	return { type: 'MultiPolygon', coordinates: polygons(rings, grid, (2 * SIMPLIFY_METERS) / grid.cellMeters) };
 }
 
-/** 1 for each cell of the ring: its time in (lowerSeconds, upperSeconds], and not in a closed zone. */
+/**
+ * 1 for each cell of the ring: reached or walled in within upperSeconds but not within lowerSeconds, and not in a
+ * closed zone. A plot walled in within lowerSeconds is walled in within upperSeconds too, so rings N − 1 and N
+ * meet without a gap or an overlap.
+ */
 function ringCells({ passage, locator, lowerSeconds, upperSeconds }: ContourInput, grid: Grid): Uint8Array {
-	const inRing = new Uint8Array(grid.time.length);
+	const inRing = reachedWithin(grid, upperSeconds);
+	const before = reachedWithin(grid, lowerSeconds);
 	for (let cell = 0; cell < inRing.length; cell++) {
-		inRing[cell] = grid.time[cell] > lowerSeconds && grid.time[cell] <= upperSeconds ? 1 : 0;
+		inRing[cell] &= before[cell] ^ 1;
 	}
 	if (passage.open.includes(0)) {
 		const zones = locator.zonesOfCells(grid);
@@ -63,6 +79,27 @@ function ringCells({ passage, locator, lowerSeconds, upperSeconds }: ContourInpu
 		}
 	}
 	return inRing;
+}
+
+/** 1 for each cell reached within `seconds`, and for each cell of a small plot the cells reached within it wall in. */
+function reachedWithin(grid: Grid, seconds: number): Uint8Array {
+	const reached = new Uint8Array(grid.time.length);
+	for (let cell = 0; cell < reached.length; cell++) {
+		reached[cell] = grid.time[cell] <= seconds ? 1 : 0;
+	}
+	const rowCellSquareMeters = eastMetersOfRows(grid).map((east) => east * grid.cellMeters);
+	fillSmallPlots(reached, { columns: grid.columns, rows: grid.rows, rowCellSquareMeters }, SMALL_PLOT_SQUARE_METERS);
+	return reached;
+}
+
+/** The metres east to west of a cell of each row: cells narrow away from the equator. */
+function eastMetersOfRows(grid: Grid): Float64Array {
+	const eastMeters = new Float64Array(grid.rows);
+	for (let row = 0; row < grid.rows; row++) {
+		const lat = (grid.minLat + (row + 0.5) * grid.cellLat) / E7;
+		eastMeters[row] = grid.cellLon * grid.projection.metersPerE7Lat * Math.cos((lat * Math.PI) / 180);
+	}
+	return eastMeters;
 }
 
 interface Grid extends CellGrid {
@@ -239,11 +276,7 @@ class NearestRoad {
 			}
 		}
 		this.#northMeters = grid.cellMeters;
-		this.#eastMeters = new Float64Array(rows);
-		for (let row = 0; row < rows; row++) {
-			const lat = (grid.minLat + (row + 0.5) * grid.cellLat) / E7;
-			this.#eastMeters[row] = grid.cellLon * grid.projection.metersPerE7Lat * Math.cos((lat * Math.PI) / 180);
-		}
+		this.#eastMeters = eastMetersOfRows(grid);
 	}
 
 	/** The cells of the row, west to east, from their neighbours west, south, south-west and south-east. */

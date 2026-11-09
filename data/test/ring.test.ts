@@ -37,6 +37,42 @@ describe('a ring', () => {
 	});
 });
 
+describe('a plot of land without roads, walled in by roads', () => {
+	const plots = fixtureGraph('plots.osm');
+	/** Whether the N h ring from the west end of plots.osm's equator holds the point, with the closed countries. */
+	const inRingOf = (hours: number, closedCountries: string[] = []) => {
+		const result = computeRing(plots, borderTable, { ...request(0, 0, hours), closedCountries });
+		return (lat: number, lon: number) => result.outcome === 'ring' && ringContains(result.ring, lat, lon);
+	};
+
+	it('is in the ring when it is small, though far from every road', () => {
+		expect(inRingOf(2)(0.025, 0.625)).toBe(true); // A's middle, 2.8 km from its roads
+		expect(inRingOf(2)(-0.065, 0.74)).toBe(true); // in D, 1.7 km from its south road and from BBB
+	});
+
+	it('is not in the ring when it is large', () => {
+		expect(inRingOf(4)(0.15, 1.15)).toBe(false); // B's middle, 16.7 km from its roads
+		expect(inRingOf(4)(0.295, 1.15)).toBe(true); // 0.6 km from B's north road, reached at 3.22 h
+	});
+
+	it('is in the ring whose roads first wall it in, and not in the ring before', () => {
+		expect(inRingOf(3)(-0.025, 1.325)).toBe(false); // C's middle: 3 h of roads leave C open to the east
+		expect(inRingOf(4)(-0.025, 1.325)).toBe(true);
+	});
+
+	it('is not in the rings after its own, with the land reached sooner', () => {
+		expect(inRingOf(3)(0.025, 0.625)).toBe(false); // A's middle
+		expect(inRingOf(3)(-0.065, 0.74)).toBe(false); // in D
+		expect(inRingOf(3)(0, 0.3)).toBe(false); // on the equator at 0.67 h
+	});
+
+	it('leaves out a closed country in it', () => {
+		expect(inRingOf(2)(-0.04, 0.74)).toBe(true); // BBB's middle, BBB open
+		expect(inRingOf(2, ['BBB'])(-0.04, 0.74)).toBe(false);
+		expect(inRingOf(2, ['BBB'])(-0.065, 0.74)).toBe(true); // in D, south of BBB
+	});
+});
+
 describe('an origin off the road', () => {
 	it('reaches the road in a straight line at 30 km/h of driving', () => {
 		// 15 km north of the road's west end: 0.5 h at the wheel, 0.6 h of travel, then 0.222 h per 0.1° of road.

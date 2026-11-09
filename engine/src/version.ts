@@ -5,7 +5,7 @@
  * The version of the engine's results. It is part of the data version in the ring cache key (spec «Кэш колец»),
  * so bump it by one in the change that makes the same input give another result.
  */
-export const ENGINE_VERSION = 5;
+export const ENGINE_VERSION = 6;
 
 /**
  * The sources a ring's answer depends on, from the repository's root: a change to one of them may give another
@@ -13,7 +13,7 @@ export const ENGINE_VERSION = 5;
  */
 export const ENGINE_SOURCES: readonly string[] = [
 	// The engine: the ×1.2 of travel time, the 30 km/h off-road and the snapping (the 50 km limit, the 50 nodes
-	// reachable from the road), the contour (cell size, near-road radius, simplification, marching squares), how it
+	// reachable from the road), the contour (cell size, near-road radius, the small plots it fills, simplification, marching squares), how it
 	// reads the border table, the graph's format (GRAPH_FORMAT_VERSION) and the result's.
 	'engine/src/borders.ts',
 	'engine/src/contour.ts',
@@ -22,6 +22,7 @@ export const ENGINE_SOURCES: readonly string[] = [
 	'engine/src/heap.ts',
 	'engine/src/index.ts',
 	'engine/src/json.ts',
+	'engine/src/plots.ts',
 	'engine/src/protocol.ts',
 	'engine/src/snap.ts',
 	'engine/src/start.ts',
@@ -51,4 +52,4 @@ export const ENGINE_SOURCES: readonly string[] = [
  * hex; data/test/engine-fingerprint.test.ts checks it. A new fingerprint with the same ENGINE_VERSION says the
  * change gives every ring as before.
  */
-export const ENGINE_FINGERPRINT = '43474ce5063e24dbd1322d9640041d681b04f51c058abf1e41624dca9253b1c0';
+export const ENGINE_FINGERPRINT = '351add4766d85eff6f3b86b1b20ddd6bfbe1874031228b2a599a0d3a7e3985c0';

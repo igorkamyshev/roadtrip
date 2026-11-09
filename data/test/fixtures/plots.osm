@@ -1,0 +1,168 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Plots of land without roads, each one walled in by roads (#43). One country, AAA, a square from 1°W to 3°E and
+  1°S to 1°N, with a hole that is the country BBB: a square from 0.73°E to 0.75°E and 0.05°S to 0.03°S, 2.2 km a
+  side, which no road reaches. Every road is secondary (60 km/h): one along the equator from 0° to 2°E, and four
+  loops off it, each road of a loop meeting the equator's at its own node. Each corner of a loop away from the
+  equator has a stub of road 1.1 km outwards, so the builder keeps the corner: it collapses a chain of nodes no other
+  road meets into one straight edge.
+
+  On the equator 0.1° is 11.12 km (the engine's sphere has a radius of 6371.0088 km): 0.222 h of travel from the
+  origin, the equator's west end. The land up to 1 km from a road is in the ring with it, so what of a plot is
+  further from its roads is the plot less 1 km on each side; the engine takes it in when it is under 200 km².
+
+    A  0.6°E – 0.65°E, 0° – 0.05°N: 5.6 km a side, 3.6 × 3.6 km = 13 km² away from the roads, a small plot. Its
+       roads are reached from 1.33 h (0.6°E on the equator) to 1.56 h (its north-east corner): in the 2 h ring.
+    D  0.7°E – 0.78°E, 0.08°S – 0°: 8.9 km a side, 6.9 × 6.9 km = 47 km² away from the roads, BBB in it, 3.3 km from
+       each road. A small plot, reached from 1.56 h (0.7°E) to 1.91 h (its south-east corner): in the 2 h ring.
+    B  1°E – 1.3°E, 0° – 0.3°N: 33.4 km a side, 31.4 × 31.4 km = 984 km² away from the roads, a large plot. Its
+       roads are reached from 2.22 h (1°E) to 3.56 h (its north-east corner, either way round): all in 4 h.
+    C  1.3°E – 1.35°E, 0.05°S – 0°: as small as A. Its roads are reached from 2.89 h (1.3°E) to 3.11 h (its south-east
+       corner); its west side is reached within 3 h but for its last 0.1 km, its south and east sides after 3 h
+       (1.35°E on the equator at 3.002 h): the roads of 3 h leave it open to the east, those of 4 h wall it in.
+
+      0.3°N                               +------------------+
+                                          |                  |
+                                          |        B         |
+     0.05°N              +--+             |                  |
+                         |A |             |                  |
+         0°  0 . . . . . +--+ +----+ . . .+------------------+-+ . . . . . 2°E
+                              | D  |                         |C|
+     0.05°S                   | [] |                         +-+
+     0.08°S                   +----+
+                        0.6°E 0.7°E   1°E                 1.3°E 1.35°E
+-->
+<osm version="0.6" generator="hand">
+	<node id="1" lat="0" lon="0"/>
+	<node id="2" lat="0" lon="0.1"/>
+	<node id="3" lat="0" lon="0.2"/>
+	<node id="4" lat="0" lon="0.3"/>
+	<node id="5" lat="0" lon="0.4"/>
+	<node id="6" lat="0" lon="0.5"/>
+	<node id="7" lat="0" lon="0.6"/>
+	<node id="8" lat="0" lon="0.65"/>
+	<node id="9" lat="0" lon="0.7"/>
+	<node id="10" lat="0" lon="0.78"/>
+	<node id="11" lat="0" lon="0.9"/>
+	<node id="12" lat="0" lon="1.0"/>
+	<node id="13" lat="0" lon="1.1"/>
+	<node id="14" lat="0" lon="1.2"/>
+	<node id="15" lat="0" lon="1.3"/>
+	<node id="16" lat="0" lon="1.35"/>
+	<node id="17" lat="0" lon="1.4"/>
+	<node id="18" lat="0" lon="1.6"/>
+	<node id="19" lat="0" lon="1.8"/>
+	<node id="20" lat="0" lon="2.0"/>
+	<node id="21" lat="0.05" lon="0.6"/>
+	<node id="22" lat="0.05" lon="0.65"/>
+	<node id="31" lat="-0.08" lon="0.7"/>
+	<node id="32" lat="-0.08" lon="0.78"/>
+	<node id="41" lat="0.3" lon="1.0"/>
+	<node id="42" lat="0.3" lon="1.3"/>
+	<node id="51" lat="-0.05" lon="1.3"/>
+	<node id="52" lat="-0.05" lon="1.35"/>
+	<node id="23" lat="0.06" lon="0.6"/>
+	<node id="24" lat="0.06" lon="0.65"/>
+	<node id="33" lat="-0.09" lon="0.7"/>
+	<node id="34" lat="-0.09" lon="0.78"/>
+	<node id="43" lat="0.31" lon="1.0"/>
+	<node id="44" lat="0.31" lon="1.3"/>
+	<node id="53" lat="-0.06" lon="1.3"/>
+	<node id="54" lat="-0.06" lon="1.35"/>
+	<node id="101" lat="-1" lon="-1"/>
+	<node id="102" lat="-1" lon="3"/>
+	<node id="103" lat="1" lon="3"/>
+	<node id="104" lat="1" lon="-1"/>
+	<node id="201" lat="-0.05" lon="0.73"/>
+	<node id="202" lat="-0.05" lon="0.75"/>
+	<node id="203" lat="-0.03" lon="0.75"/>
+	<node id="204" lat="-0.03" lon="0.73"/>
+
+	<way id="1">
+		<nd ref="1"/><nd ref="2"/><nd ref="3"/><nd ref="4"/><nd ref="5"/><nd ref="6"/><nd ref="7"/>
+		<nd ref="8"/><nd ref="9"/><nd ref="10"/><nd ref="11"/><nd ref="12"/><nd ref="13"/><nd ref="14"/>
+		<nd ref="15"/><nd ref="16"/><nd ref="17"/><nd ref="18"/><nd ref="19"/><nd ref="20"/>
+		<tag k="highway" v="secondary"/>
+	</way>
+
+	<way id="2">
+		<nd ref="7"/><nd ref="21"/><nd ref="22"/><nd ref="8"/>
+		<tag k="highway" v="secondary"/>
+	</way>
+
+	<way id="3">
+		<nd ref="9"/><nd ref="31"/><nd ref="32"/><nd ref="10"/>
+		<tag k="highway" v="secondary"/>
+	</way>
+
+	<way id="4">
+		<nd ref="12"/><nd ref="41"/><nd ref="42"/><nd ref="15"/>
+		<tag k="highway" v="secondary"/>
+	</way>
+
+	<way id="5">
+		<nd ref="15"/><nd ref="51"/><nd ref="52"/><nd ref="16"/>
+		<tag k="highway" v="secondary"/>
+	</way>
+
+	<way id="23">
+		<nd ref="21"/><nd ref="23"/>
+		<tag k="highway" v="secondary"/>
+	</way>
+	<way id="24">
+		<nd ref="22"/><nd ref="24"/>
+		<tag k="highway" v="secondary"/>
+	</way>
+	<way id="33">
+		<nd ref="31"/><nd ref="33"/>
+		<tag k="highway" v="secondary"/>
+	</way>
+	<way id="34">
+		<nd ref="32"/><nd ref="34"/>
+		<tag k="highway" v="secondary"/>
+	</way>
+	<way id="43">
+		<nd ref="41"/><nd ref="43"/>
+		<tag k="highway" v="secondary"/>
+	</way>
+	<way id="44">
+		<nd ref="42"/><nd ref="44"/>
+		<tag k="highway" v="secondary"/>
+	</way>
+	<way id="53">
+		<nd ref="51"/><nd ref="53"/>
+		<tag k="highway" v="secondary"/>
+	</way>
+	<way id="54">
+		<nd ref="52"/><nd ref="54"/>
+		<tag k="highway" v="secondary"/>
+	</way>
+
+	<way id="100">
+		<nd ref="101"/><nd ref="102"/><nd ref="103"/><nd ref="104"/><nd ref="101"/>
+		<tag k="boundary" v="administrative"/>
+		<tag k="admin_level" v="2"/>
+	</way>
+
+	<way id="200">
+		<nd ref="201"/><nd ref="202"/><nd ref="203"/><nd ref="204"/><nd ref="201"/>
+		<tag k="boundary" v="administrative"/>
+		<tag k="admin_level" v="2"/>
+	</way>
+
+	<relation id="1000">
+		<member type="way" ref="100" role="outer"/>
+		<member type="way" ref="200" role="inner"/>
+		<tag k="type" v="boundary"/>
+		<tag k="boundary" v="administrative"/>
+		<tag k="admin_level" v="2"/>
+		<tag k="ISO3166-1:alpha3" v="AAA"/>
+	</relation>
+	<relation id="2000">
+		<member type="way" ref="200" role="outer"/>
+		<tag k="type" v="boundary"/>
+		<tag k="boundary" v="administrative"/>
+		<tag k="admin_level" v="2"/>
+		<tag k="ISO3166-1:alpha3" v="BBB"/>
+	</relation>
+</osm>
