@@ -6,7 +6,7 @@
 // changes a count changes them too.
 import type { Locator, Page } from '@playwright/test';
 import { allowGeolocation, expect, squareRing, test } from './fixtures.ts';
-import { expectRingCard, firstCard, phrase } from './screen.ts';
+import { expectRingCard, firstCard, phrase, reopen } from './screen.ts';
 
 const BELGRADE = { lat: 44.8176, lon: 20.4573 };
 const LINK = '/#/?p=44.81760,20.45730&h=2';
@@ -24,12 +24,6 @@ const choiceIn = (within: Locator, name: string) =>
 	within.locator('.pick-item').filter({ has: within.page().locator('.pick-name', { hasText: new RegExp(`^${name}$`, 'u') }) });
 const choice = (page: Page, name: string) => choiceIn(sheet(page), name);
 const subOf = (page: Page, name: string) => choice(page, name).locator('.pick-sub');
-
-/** A new load of the page, as after closing the tab: the browser's storage stays. */
-async function reopen(page: Page, path: string): Promise<void> {
-	await page.goto('about:blank');
-	await page.goto(path);
-}
 
 test.describe('the held visas', () => {
 	test('are none by default: «мои визы: нет» in the phrase, none in the request and the link', async ({ page, ringApi }) => {
@@ -84,7 +78,7 @@ test.describe('the sheet «Мои визы»', () => {
 		);
 	});
 
-	test('counts only the rows acting today: none after its last day, and those for the citizenships chosen', async ({ page }) => {
+	test('counts only the rows acting today: none after its last day, and those for the citizenships chosen', async ({ page, ringApi }) => {
 		// MKD's rows for the USA, the UK and Canada end on 2026-12-31.
 		await page.clock.setSystemTime(new Date('2027-01-01T00:00:00Z'));
 		await page.goto(LINK);
@@ -97,7 +91,7 @@ test.describe('the sheet «Мои визы»', () => {
 			'Открывает ещё 6 стран',
 		]);
 
-		await reopen(page, `${LINK}&cit=IND`);
+		await reopen(page, ringApi, `${LINK}&cit=IND`);
 		await phrase(page).getByRole('button', { name: 'нет' }).click();
 		// For an Indian, the rows for some citizenships too: MDA, CYP, ARM, CRI, COL, PER, TWN, PHL.
 		await expect(subOf(page, 'Шенген')).toHaveText('Открывает весь Шенген и ещё 19 стран, например Черногорию и Сербию');
@@ -187,7 +181,7 @@ test.describe('the held visas of a link', () => {
 		await expect(page).toHaveURL(/&h=2&cit=RUS&visas=GEO,SCHENGEN$/u);
 		expect((await ringApi.waitForCalls(1))[0].visas).toBe('GEO,SCHENGEN');
 
-		await reopen(page, '/');
+		await reopen(page, ringApi, '/');
 		await expect(page).toHaveURL(/&h=2&cit=RUS&visas=GEO,SCHENGEN$/u);
 		await expect(phrase(page)).toContainText('мои визы: Шенген, Грузия');
 		await phrase(page).getByRole('button', { name: 'Шенген, Грузия' }).click();
@@ -197,10 +191,8 @@ test.describe('the held visas of a link', () => {
 	test('without visas has none, though some were saved: the link wins', async ({ page, ringApi }) => {
 		await page.goto(`${LINK}&visas=USA`);
 		await expect(phrase(page)).toContainText('мои визы: США');
-		// The phrase shows the visas before the ring's request goes: a reload before it would drop the request.
-		expect((await ringApi.waitForCalls(1))[0].visas).toBe('USA');
 
-		await reopen(page, LINK);
+		await reopen(page, ringApi, LINK);
 
 		await expect(phrase(page)).toContainText('мои визы: нет');
 		await expect(page).toHaveURL(/&h=2&cit=RUS$/u);
@@ -221,7 +213,7 @@ test.describe('the held visas of a link', () => {
 		await page.goto(`/#/?p=43.85630,18.41310&h=4`);
 		await expectRingCard(page, '3–4 ч');
 
-		await reopen(page, '/#/?visas=SCHENGEN');
+		await reopen(page, ringApi, '/#/?visas=SCHENGEN');
 
 		await expect(phrase(page)).toContainText('мои визы: Шенген');
 		await expect(page).toHaveURL(/#\/\?p=44\.81760,20\.45730&h=1&cit=RUS&visas=SCHENGEN$/u);

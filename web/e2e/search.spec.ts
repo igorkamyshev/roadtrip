@@ -6,7 +6,7 @@
 import type { Page } from '@playwright/test';
 import type { RingResponse } from 'worker/api';
 import { allowGeolocation, CITIES, expect, serveCities, squareRing, test, visaRules } from './fixtures.ts';
-import { expectRingCard, firstCard, phrase } from './screen.ts';
+import { expectRingCard, firstCard, phrase, reopen } from './screen.ts';
 
 const startSheet = (page: Page) => page.getByRole('dialog', { name: 'Откуда едем' });
 
@@ -18,12 +18,6 @@ async function search(page: Page, label: string, text: string): Promise<void> {
 
 /** The cities the search shows, as their rows read: name, local name, country and population. */
 const found = (page: Page) => startSheet(page).getByTestId('found-city');
-
-/** A new load of the page, as after closing the tab: the browser's storage stays. */
-async function reopen(page: Page, path: string): Promise<void> {
-	await page.goto('about:blank');
-	await page.goto(path);
-}
 
 test.beforeEach(({ ringApi }) => {
 	ringApi.respond((call) => squareRing(Number(call.lat), Number(call.lon), [0, 0.5]));
@@ -205,13 +199,17 @@ test.describe("the origin's label", () => {
 		await expect(phrase(page)).toContainText('Из точки Нови-Сад, до 1 часа в пути.');
 	});
 
-	test('is «на карте» by geolocation outside the limits of every city, and for the saved state then', async ({ page, context }) => {
+	test('is «на карте» by geolocation outside the limits of every city, and for the saved state then', async ({
+		page,
+		context,
+		ringApi,
+	}) => {
 		// 11.6 km from Belgrade, outside its limits of 10 km.
 		await allowGeolocation(context, { lat: 44.7, lon: 20.45 });
 		await page.goto('/');
 		await expect(phrase(page)).toContainText('Из точки на карте, до 1 часа в пути.');
 
-		await reopen(page, '/');
+		await reopen(page, ringApi, '/');
 
 		await expect(page).toHaveURL(/#\/\?p=44\.70000,20\.45000&h=1&cit=RUS$/u);
 		await expect(phrase(page)).toContainText('Из точки на карте, до 1 часа в пути.');
@@ -248,7 +246,7 @@ test.describe("the origin's label", () => {
 		await expect(phrase(page)).toContainText('Из точки Ниш, до 1 часа в пути.');
 	});
 
-	test("is the origin's city for the saved state, a city of the search included", async ({ page }) => {
+	test("is the origin's city for the saved state, a city of the search included", async ({ page, ringApi }) => {
 		await page.goto('/#/?p=43.30000,21.90000&h=1');
 		await expect(phrase(page)).toContainText('Из точки Ниш,');
 		await search(page, 'Ниш', 'Luka');
@@ -257,7 +255,7 @@ test.describe("the origin's label", () => {
 			.click();
 		await expect(phrase(page)).toContainText('Из точки Lukavac,');
 
-		await reopen(page, '/');
+		await reopen(page, ringApi, '/');
 
 		await expect(page).toHaveURL(/#\/\?p=44\.54200,18\.52600&h=1&cit=RUS$/u);
 		await expect(phrase(page)).toContainText('Из точки Lukavac, до 1 часа в пути.');

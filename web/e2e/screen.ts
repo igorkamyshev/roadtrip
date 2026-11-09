@@ -1,9 +1,11 @@
 // Reading the screen in its tests: the DOM by role and text, the map by its sources and layers (never pixels),
 // through the MapLibre map the client announces once it shows the screen's state, which the fixtures keep as
-// `window.mapForTests` (e2e/fixtures.ts). Each reading of the map waits for it.
+// `window.mapForTests` (e2e/fixtures.ts). Each reading of the map waits for it. And the screen opened anew, `reopen`,
+// once it has asked for its ring.
 import { expect, type Locator, type Page } from '@playwright/test';
 import type { Feature, GeoJSON, Geometry } from 'geojson';
 import type { StyleSpecification } from 'maplibre-gl';
+import type { RingApi } from './ring-api.ts';
 
 /** What the tests use of MapLibre's `Map`, without importing MapLibre into Node. */
 interface MapForTests {
@@ -45,6 +47,19 @@ function offTheMap<T>(value: T | undefined): T {
 		throw new Error('the map the client announced is gone');
 	}
 	return value;
+}
+
+/**
+ * A new load of the page, as after closing the tab: the browser's storage stays, the memory of rings does not. It
+ * leaves the page once the screen has asked for the ring its link names: the link follows the state at once and the
+ * request comes after it, so a load in between would drop the request.
+ */
+export async function reopen(page: Page, ringApi: RingApi, path: string): Promise<void> {
+	// The link is read at each poll: the page may not have written its whole state into it yet.
+	await expect.poll(() => ringApi.askedFor(page.url()), { message: 'a call to /api/ring for the ring the link names' }).toBe(true);
+	await page.goto('about:blank');
+	ringApi.newLoad();
+	await page.goto(path);
 }
 
 /** The phrase over the map: «Из точки [Белград], до 1 часа в пути. … ⓘ». */

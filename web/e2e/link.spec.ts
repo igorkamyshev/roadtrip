@@ -1,9 +1,8 @@
 // The state in the link and in the browser (spec #20 «Состояние, ссылка и память браузера»; stories 43–45): on load
 // the link wins, then the saved state, then the defaults; every change is in the link, without new history
 // entries, and saved; invalid parameters take their defaults.
-import type { Page } from '@playwright/test';
 import { allowGeolocation, expect, squareRing, test } from './fixtures.ts';
-import { dragSlider, expectRingCard, phrase, slider } from './screen.ts';
+import { dragSlider, expectRingCard, phrase, reopen, slider } from './screen.ts';
 
 const BELGRADE = { lat: 44.8176, lon: 20.4573 };
 const SARAJEVO = '43.85630,18.41310';
@@ -14,12 +13,6 @@ test.beforeEach(async ({ context, ringApi }) => {
 	await allowGeolocation(context, BELGRADE);
 	ringApi.respond((call) => squareRing(Number(call.lat), Number(call.lon), [0, call.hours / 10]));
 });
-
-/** A new load of the page, as after closing the tab: the browser's storage stays, the memory of rings does not. */
-async function reopen(page: Page, path: string): Promise<void> {
-	await page.goto('about:blank');
-	await page.goto(path);
-}
 
 test('a link opens its own state, not where the person is', async ({ page, ringApi }) => {
 	await page.goto(`/#/?p=${SARAJEVO}&h=2`);
@@ -36,7 +29,7 @@ test('without a link the saved state opens, and goes into the link', async ({ pa
 	await page.goto(`/#/?p=${SARAJEVO}&h=2`);
 	await expectRingCard(page, '1–2 ч');
 
-	await reopen(page, '/');
+	await reopen(page, ringApi, '/');
 
 	await expect(page).toHaveURL(new RegExp(`#/\\?p=${SARAJEVO}&h=2&cit=RUS$`, 'u'));
 	await expectRingCard(page, '1–2 ч');
@@ -50,16 +43,16 @@ test('an opened link overwrites the saved state', async ({ page, ringApi }) => {
 	await page.goto(`/#/?p=${SARAJEVO}&h=2`);
 	await expectRingCard(page, '1–2 ч');
 
-	await reopen(page, `/#/?p=${NIS}&h=6`);
+	await reopen(page, ringApi, `/#/?p=${NIS}&h=6`);
 	await expectRingCard(page, '5–6 ч');
-	await reopen(page, '/');
+	await reopen(page, ringApi, '/');
 
 	await expect(page).toHaveURL(new RegExp(`#/\\?p=${NIS}&h=6&cit=RUS$`, 'u'));
 	await expectRingCard(page, '5–6 ч');
 	expect(ringApi.calls.at(-1)).toMatchObject({ lat: '43.32470', lon: '21.90330', hours: 6 });
 });
 
-test('every change goes into the link without a new history entry, and is saved', async ({ page }) => {
+test('every change goes into the link without a new history entry, and is saved', async ({ page, ringApi }) => {
 	await page.goto('/');
 	await expectRingCard(page, 'до 1 ч');
 	const entries = await page.evaluate(() => history.length);
@@ -73,7 +66,7 @@ test('every change goes into the link without a new history entry, and is saved'
 
 	await expect(page).toHaveURL(/#\/\?p=44\.81760,20\.45730&h=3&cit=RUS$/u);
 	expect(await page.evaluate(() => history.length)).toBe(entries);
-	await reopen(page, '/');
+	await reopen(page, ringApi, '/');
 	await expect(page).toHaveURL(/#\/\?p=44\.81760,20\.45730&h=3&cit=RUS$/u);
 	await expectRingCard(page, '2–3 ч');
 });
