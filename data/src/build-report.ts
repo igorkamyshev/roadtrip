@@ -1,6 +1,7 @@
 // The build report as Markdown (spec «Набор данных», «Отчёт сборки»): what the monthly world build puts in its run's
 // summary, for the Owner to add the missing crossings to the border table. In Russian, like the issues.
 import type { BuildReport } from './build-graph.ts';
+import type { CitiesReport } from './cities.ts';
 
 const plural = new Intl.PluralRules('ru');
 
@@ -60,5 +61,29 @@ export function reportMarkdown(report: BuildReport): string {
 		crossingsNotFound.length === 0 ? 'Нет.' : crossingsNotFound.map((id) => `- ${id}`).join('\n'),
 		'',
 	);
+	return lines.join('\n');
+}
+
+/** The cities file's part of the report: the places left out as parts of a city (GLOSSARY «Часть города»). */
+export function cityPartsMarkdown({ cityParts, biggestCityParts }: CitiesReport): string {
+	const lines = [
+		'## Части города',
+		'',
+		`Мест, которые стали частями города и не вошли в файл городов: ${cityParts.toLocaleString('ru-RU')}.`,
+	];
+	if (biggestCityParts.length > 0) {
+		lines.push(
+			'',
+			biggestCityParts.length < cityParts ? `${biggestCityParts.length} самых больших:` : 'Все они:',
+			'',
+			'| Место | Жителей | Город | Расстояние, км |',
+			'| --- | --- | --- | --- |',
+			...biggestCityParts.map(
+				({ id, name, population, city, km }) =>
+					`| ${name} (${id}) | ${population.toLocaleString('ru-RU')} | ${city} | ${km.toLocaleString('ru-RU')} |`,
+			),
+		);
+	}
+	lines.push('');
 	return lines.join('\n');
 }

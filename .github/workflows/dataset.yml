@@ -226,7 +226,9 @@ jobs:
           .github/dataset/measure.sh "graph and zone outlines" node --max-old-space-size=12288 data/src/cli/build-graph.ts \
             "$WORK/world-roads.pbf" "$WORK/dataset/graph.graph" --outlines "$WORK/dataset/zones.json" --report "$WORK/dataset/report.md"
       - name: Build the cities file
-        run: .github/dataset/measure.sh "cities file" node data/src/cli/build-cities.ts "$WORK/dataset/graph.graph" "$WORK/dataset/cities.json"
+        run: |
+          .github/dataset/measure.sh "cities file" node data/src/cli/build-cities.ts "$WORK/dataset/graph.graph" "$WORK/dataset/cities.json" \
+            --report "$WORK/dataset/report.md"
       - name: The dataset
         working-directory: ${{ env.WORK }}/dataset
         run: |
