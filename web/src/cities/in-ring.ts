@@ -1,11 +1,14 @@
 // Which cities are in the ring (spec «Экран», «Города в кольце»): the phone picks them, not the server, since the
 // engine's answer is only the ring's outline (#19). A city is in the ring when its point is inside the ring's
 // MultiPolygon, its zone is open by `access`, and that zone is not a closed territory (`access` closes those, and a
-// zone `access` does not name is not open either). Biggest first.
+// zone `access` does not name is not open either). The origin's city is never one of them, at any N (#45): no card,
+// no label on the map, no row of the list of all, and the counts leave it out. Biggest first.
 import { biggestFirst } from 'data/cities-file';
 import type { Access } from 'worker/api';
 import type { RingGeometry } from '../map/overlay.ts';
+import type { LatLon } from '../state/point.ts';
 import type { City } from './cities.ts';
+import { originCity } from './nearest.ts';
 
 /** How many cities the ring holds and in how many countries: the first card's numbers, and `ring result`'s. */
 export interface CitiesCount {
@@ -17,12 +20,20 @@ export function countOf(cities: readonly City[]): CitiesCount {
 	return { count: cities.length, countries: new Set(cities.map((city) => city.zone)).size };
 }
 
-export function citiesInRing(cities: readonly City[], ring: RingGeometry, access: Access): City[] {
+/** What picks the cities: the ring, the entry modes of its answer, and the origin it was asked from. */
+export interface RingAround {
+	readonly ring: RingGeometry;
+	readonly access: Access;
+	readonly origin: LatLon;
+}
+
+export function citiesInRing(cities: readonly City[], { ring, access, origin }: RingAround): City[] {
 	const inside = ringContains(ring);
+	const left = originCity(cities, origin);
 	return cities
 		.filter((city) => {
 			// A zone `access` does not name is not open.
-			return city.zone in access && access[city.zone].mode !== 'closed' && inside(city.lat, city.lon);
+			return city !== left && city.zone in access && access[city.zone].mode !== 'closed' && inside(city.lat, city.lon);
 		})
 		.toSorted(biggestFirst);
 }

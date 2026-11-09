@@ -67,7 +67,7 @@ test.describe('the first card', () => {
 		await page.goto(LINK);
 
 		// From 1° to 3°, in Serbia, Bosnia and Herzegovina and Montenegro: Sarajevo 2.1°, Niš 1.5°, Podgorica 2.4°,
-		// Tuzla 1.8°, Mostar 2.6°, Subotica 1.3°, Ilidža 2.2°. Not Belgrade, 0.01°, in the ring's hole, nor
+		// Tuzla 1.8°, Mostar 2.6°, Subotica 1.3°, Lukavac 1.9°. Not Belgrade, 0.01°, in the ring's hole, nor
 		// Kragujevac, 0.8°, nor Budapest, 2.7°, in Hungary, closed, nor Pristina, 2.1°, in Kosovo, closed for everyone.
 		await expect.poll(() => read(firstCard(page))).toBe('В кольце 2–3 ч 7 городов в 3 странах Листайте → самые крупные');
 	});
@@ -174,7 +174,7 @@ test.describe('the list of all cities', () => {
 			'Сараево Sarajevo Босния и Герцеговина · 697 тыс.',
 			'Ниш Niš Сербия · 250 тыс. страна старта',
 		]);
-		expect(await read(rows(page).last())).toBe('Ilidža Босния и Герцеговина · 71 тыс.');
+		expect(await read(rows(page).last())).toBe('Lukavac Босния и Герцеговина · 45 тыс.');
 
 		await allCities(page).getByRole('button', { name: 'Закрыть' }).click();
 		await expect(allCities(page)).toHaveCount(0);
@@ -214,6 +214,110 @@ test.describe('the list of all cities', () => {
 
 		await expect(rows(page).last()).toContainText('Город 3000');
 		expect(await rows(page).count()).toBeLessThan(50);
+	});
+});
+
+/** The answer of a ring from 0° to `degrees` around the origin asked for, with these entry modes. */
+const aroundTheOrigin =
+	(degrees: number, access: Access = RUSSIAN) =>
+	(call: { readonly lat: string; readonly lon: string }) => ({
+		...squareRing(Number(call.lat), Number(call.lon), [0, degrees]),
+		...visaRules(access),
+	});
+
+test.describe("the origin's city", () => {
+	test('is no city of the ring at 1 hour: no card, no label on the map, no row of the list of all, not counted', async ({
+		page,
+		ringApi,
+	}) => {
+		// The origin is 1.6 km from Belgrade, within its limits of 10 km. From 0° to 3°, all of `CITIES` but Pristina,
+		// in Kosovo, closed for everyone, and Belgrade: 24 cities in 6 countries.
+		ringApi.respond(aroundTheOrigin(3, WITH_SCHENGEN_VISA));
+		await page.goto('/#/?p=44.81760,20.45730&h=1');
+		await expectRingCard(page, 'до 1 ч');
+
+		await expect(phrase(page)).toContainText('Из точки Белград, до 1 часа в пути.');
+		expect(await read(firstCard(page))).toBe('В кольце до 1 ч 24 города в 6 странах Листайте → самые крупные');
+		await expect(cityCards(page).locator('h3')).toHaveText([
+			'Будапешт',
+			'Сараево',
+			'Тимишоара',
+			'Ниш',
+			'Подгорица',
+			'Нови-Сад',
+			'Дебрецен',
+			'Арад',
+			'Сегед',
+			'Крагуевац',
+			'Печ',
+			'Тузла',
+		]);
+		await expect.poll(async () => (await citiesOnMap(page)).length).toBe(24);
+		expect((await citiesOnMap(page)).map((city) => city.name)).not.toContain('Белград');
+
+		await page.getByRole('button', { name: /и ещё/u }).click();
+
+		// Belgrade, the second biggest, would be the second row.
+		await expect(rows(page).first()).toBeVisible();
+		expect(await Promise.all((await rows(page).all()).slice(0, 2).map((row) => read(row)))).toEqual([
+			'Будапешт Budapest Венгрия · 1,7 млн по визе Шенгена',
+			'Сараево Sarajevo Босния и Герцеговина · 697 тыс.',
+		]);
+	});
+
+	test('is Belgrade in Zemun, a part of Belgrade the cities file has not', async ({ page, ringApi }) => {
+		// Zemun is 6.9 km from Belgrade. From 0° to 0.5°: Belgrade, 0.06°, and Pančevo, 0.24°.
+		ringApi.respond(aroundTheOrigin(0.5));
+		await page.goto('/#/?p=44.84580,20.40116&h=1');
+		await expectRingCard(page, 'до 1 ч');
+
+		await expect(phrase(page)).toContainText('Из точки Белград, до 1 часа в пути.');
+		await expect(cityCards(page).locator('h3')).toHaveText(['Панчево']);
+	});
+
+	test('is none near Belgrade outside the limits of every city: Belgrade is in the ring, and the phrase says «на карте»', async ({
+		page,
+		ringApi,
+	}) => {
+		// 11.6 km from Belgrade, outside its limits of 10 km. From 0° to 0.5°: Belgrade, 0.1°, Pančevo, 0.19°, and
+		// Smederevo, 0.48°.
+		ringApi.respond(aroundTheOrigin(0.5));
+		await page.goto('/#/?p=44.70000,20.45000&h=1');
+		await expectRingCard(page, 'до 1 ч');
+
+		await expect(phrase(page)).toContainText('Из точки на карте, до 1 часа в пути.');
+		await expect(cityCards(page).locator('h3')).toHaveText(['Белград', 'Панчево', 'Смедерево']);
+	});
+
+	test('is the nearest of two whose limits hold the origin: the other stays in the ring', async ({ page, ringApi }) => {
+		// Two cities of a million, 9 km of limits each, 7.9 km apart; the origin is 4.7 km from the first, 3.1 km from
+		// the second.
+		await serveCities(page, [
+			[1, 'Первый', 'Prvi', 45, 20, 1_000_000, 'SRB'],
+			[2, 'Второй', 'Drugi', 45, 20.1, 1_000_000, 'SRB'],
+		]);
+		ringApi.respond(aroundTheOrigin(0.5));
+		await page.goto('/#/?p=45.00000,20.06000&h=1');
+		await expectRingCard(page, 'до 1 ч');
+
+		await expect(phrase(page)).toContainText('Из точки Второй, до 1 часа в пути.');
+		await expect(cityCards(page).locator('h3')).toHaveText(['Первый']);
+	});
+
+	test('is the city of the search, which the ring leaves out', async ({ page, ringApi }) => {
+		// From Niš to Belgrade; from 0° to 0.5° of Belgrade: Pančevo, 0.18°, and Smederevo, 0.46°.
+		ringApi.respond(aroundTheOrigin(0.5));
+		await page.goto('/#/?p=43.32500,21.90300&h=1');
+		await expectRingCard(page, 'до 1 ч');
+		await phrase(page).getByRole('button', { name: 'Ниш' }).click();
+		await page.getByRole('dialog', { name: 'Откуда едем' }).getByRole('searchbox', { name: 'Найти город' }).fill('Белград');
+		await page
+			.getByRole('dialog', { name: 'Откуда едем' })
+			.getByRole('button', { name: /^Белград/u })
+			.click();
+
+		await expect(phrase(page)).toContainText('Из точки Белград, до 1 часа в пути.');
+		await expect(cityCards(page).locator('h3')).toHaveText(['Панчево', 'Смедерево']);
 	});
 });
 
@@ -263,7 +367,7 @@ test.describe('the carousel and the map', () => {
 				labels: ['Будапешт', 'Сараево', 'Ниш', 'Подгорица', 'Дебрецен', 'Арад', 'Сегед', 'Печ', 'Тузла', 'Кечкемет', 'Мостар', 'Суботица'],
 				chosen: [],
 			});
-		expect((await citiesOnMap(page)).map((city) => city.name).slice(12)).toEqual(['Решица', 'Дробета-Турну-Северин', 'Осиек', 'Ilidža']);
+		expect((await citiesOnMap(page)).map((city) => city.name).slice(12)).toEqual(['Решица', 'Дробета-Турну-Северин', 'Осиек', 'Lukavac']);
 	});
 
 	test('scrolling to a card chooses its city: the card and the label are marked, and the map goes to it', async ({ page }) => {
@@ -364,7 +468,7 @@ test.describe('a city card', () => {
 		ringApi.respond(() => ringAroundBelgrade(RUSSIAN));
 		await page.goto(LINK);
 
-		expect(await read(card(page, 'Ilidža'))).toBe('Ilidža Босния и Герцеговина · 71 тыс. Маршрут');
+		expect(await read(card(page, 'Lukavac'))).toBe('Lukavac Босния и Герцеговина · 45 тыс. Маршрут');
 	});
 
 	test('marks the entry mode: an e-visa, a visa on arrival, a held visa of a country', async ({ page, ringApi }) => {

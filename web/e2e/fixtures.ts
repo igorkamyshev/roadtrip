@@ -47,8 +47,8 @@ export const ZONE_OUTLINES = {
 
 /**
  * The cities of the file the Worker serves at `/data/cities.json` (data's `build-cities`, `encodeCities`): real
- * cities of GeoNames around Belgrade, biggest first, as [id, ru, local, lat, lon, population, zone]. Ilidža has no
- * Russian name here.
+ * cities of GeoNames around Belgrade, biggest first, as [id, ru, local, lat, lon, population, zone], none a part of
+ * another (GLOSSARY «Часть города»). Lukavac has no Russian name here.
  */
 export const CITIES: readonly CityRow[] = [
 	[3054643, 'Будапешт', 'Budapest', 47.498, 19.04, 1_741_041, 'HUN'],
@@ -73,10 +73,10 @@ export const CITIES: readonly CityRow[] = [
 	[783814, 'Зренянин', 'Zrenjanin', 45.384, 20.382, 79_773, 'SRB'],
 	[787237, 'Панчево', 'Pančevo', 44.872, 20.642, 76_654, 'SRB'],
 	[3193935, 'Осиек', 'Osijek', 45.551, 18.694, 75_535, 'HRV'],
-	[3199145, '', 'Ilidža', 43.831, 18.307, 71_277, 'BIH'],
 	[785756, 'Смедерево', 'Smederevo', 44.664, 20.928, 62_000, 'SRB'],
 	[3188402, 'Валево', 'Valjevo', 44.275, 19.898, 61_035, 'SRB'],
 	[3191376, 'Шабац', 'Šabac', 44.747, 19.69, 55_114, 'SRB'],
+	[3196079, '', 'Lukavac', 44.542, 18.526, 44_520, 'BIH'],
 ];
 
 /**

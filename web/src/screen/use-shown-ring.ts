@@ -31,7 +31,10 @@ export interface ShownRing {
 	readonly answer: Answer | undefined;
 	/** The zones the answer closes, hatched on the map. */
 	readonly closed: readonly string[];
-	/** The ring's cities, biggest first, once the ring is this request's (not an old one) and the cities came. */
+	/**
+	 * The ring's cities but the origin's, biggest first, once the ring is this request's (not an old one) and the
+	 * cities came.
+	 */
 	readonly shownCities: readonly City[] | undefined;
 	/** The hours whose rings are in memory for this origin and settings: the slider's dots. */
 	readonly cachedHours: ReadonlySet<number>;
@@ -58,8 +61,11 @@ export function useShownRing({ origin, start, hours, settings }: ScreenStateCont
 	const access = answer?.access;
 	const { cities } = citiesFile;
 	const ringCities = useMemo(
-		() => (cities === undefined || geometry === undefined || access === undefined ? undefined : citiesInRing(cities, geometry, access)),
-		[cities, geometry, access],
+		() =>
+			cities === undefined || geometry === undefined || access === undefined || origin === undefined
+				? undefined
+				: citiesInRing(cities, { ring: geometry, access, origin }),
+		[cities, geometry, access, origin],
 	);
 	const closed = useMemo(
 		() => (access === undefined ? [] : Object.keys(access).filter((code) => access[code].mode === 'closed')),

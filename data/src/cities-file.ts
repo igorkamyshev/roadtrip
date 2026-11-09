@@ -71,6 +71,52 @@ export function decodeCities(file: CitiesFile): CityRow[] {
 	return rows.toSorted((one, two) => biggestFirst(ranked(one), ranked(two)));
 }
 
+/** A point, degrees. */
+export interface Point {
+	readonly lat: number;
+	readonly lon: number;
+}
+
+/** A city's point and population: what its limits are made of. */
+export interface Placed extends Point {
+	readonly population: number;
+}
+
+/**
+ * The radius of a city's limits (GLOSSARY «Пределы города»), km: 9 km × √(its people in millions), so Sarajevo's is
+ * 7.5 km, Belgrade's 10, Moscow's 29. The builder leaves out the parts of a city by it, and the screen finds the
+ * origin's city.
+ */
+export function limitsKm(population: number): number {
+	return 9 * Math.sqrt(population / 1e6);
+}
+
+const EARTH_RADIUS_KM = 6371;
+const RADIANS = Math.PI / 180;
+
+/** The great-circle distance between two points, km. */
+export function distanceKm(one: Point, two: Point): number {
+	const sinLat = Math.sin(((two.lat - one.lat) * RADIANS) / 2);
+	const sinLon = Math.sin(((two.lon - one.lon) * RADIANS) / 2);
+	const haversine = sinLat * sinLat + Math.cos(one.lat * RADIANS) * Math.cos(two.lat * RADIANS) * sinLon * sinLon;
+	return 2 * EARTH_RADIUS_KM * Math.asin(Math.sqrt(Math.min(1, haversine)));
+}
+
+/**
+ * The city of `cities` whose limits hold the point, the nearest of several (GLOSSARY «Город точки старта»), with
+ * how far it is; undefined outside them all. Of two as close, the first in `cities`.
+ */
+export function cityAround<City extends Placed>(cities: Iterable<City>, at: Point): { city: City; km: number } | undefined {
+	let around: { city: City; km: number } | undefined;
+	for (const city of cities) {
+		const km = distanceKm(at, city);
+		if (km <= limitsKm(city.population) && (around === undefined || km < around.km)) {
+			around = { city, km };
+		}
+	}
+	return around;
+}
+
 /** The row with another first column. */
 function withId([, ru, local, lat, lon, population, zone]: CityRow, id: number): CityRow {
 	return [id, ru, local, lat, lon, population, zone];

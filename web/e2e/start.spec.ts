@@ -13,7 +13,7 @@ test('on the first visit the ring comes for where the person is, N = 1', async (
 
 	const [call] = await ringApi.waitForCalls(1);
 	expect(call).toMatchObject({ lat: '44.81760', lon: '20.45730', hours: 1, cit: 'RUS', visas: null });
-	// The origin's label is the nearest city of the cities file.
+	// The origin's label is the origin's city: the one of the cities file within whose limits it is.
 	await expect(phrase(page)).toContainText('Из точки Белград, до 1 часа в пути.');
 	await expectRingCard(page, 'до 1 ч');
 	await expect.poll(() => ringOnMap(page)).toEqual([squareRing(BELGRADE.lat, BELGRADE.lon, [0, 0.5]).ring]);

@@ -146,7 +146,11 @@ export class ScreenAnalytics {
 			held_visas: ask.settings.visas,
 			wait_ms: Math.round(waitMs),
 		};
-		this.#emit('ring result', (cities): RingResult => ({ ...outcomeOf(ending, cities), ...asked, ...placeOf(ask.start, cities) }), at);
+		this.#emit(
+			'ring result',
+			(cities): RingResult => ({ ...outcomeOf(ending, ask.start, cities), ...asked, ...placeOf(ask.start, cities) }),
+			at,
+		);
 	}
 
 	/** Sends the event now if the cities are known, else when they are. */
@@ -166,6 +170,7 @@ export class ScreenAnalytics {
 /** The outcome, the source and, for a ring once the cities are known, its cities and their countries. */
 function outcomeOf(
 	ending: Ending,
+	start: Start,
 	cities: readonly City[] | undefined,
 ): Pick<RingResult, 'outcome' | 'source' | 'cities_count' | 'countries_count'> {
 	if (ending === 'abandoned') {
@@ -183,7 +188,7 @@ function outcomeOf(
 		return { outcome: answer.outcome, source };
 	}
 	// As the first card counts them.
-	const { count, countries } = countOf(citiesInRing(cities, answer.ring, answer.access));
+	const { count, countries } = countOf(citiesInRing(cities, { ring: answer.ring, access: answer.access, origin: start.origin }));
 	return { outcome: answer.outcome, source, cities_count: count, countries_count: countries };
 }
 
