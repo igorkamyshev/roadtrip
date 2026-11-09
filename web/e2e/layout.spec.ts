@@ -1,12 +1,11 @@
 // The screen's layout (spec #20 «Экран»; #47, #85, #77): the panels over the map, the phrase, the slider, the
 // carousel's current card or the pin's bar and the data's sources of the first 5 s, never on one another nor off the
 // screen, each 12 px from its edges of the screen, on the phones the screen is made for, with the longest phrase and
-// the shortest. The one exception: the sources, as wide as the phrase, may cover the slider's top for their 5 s where
-// it reaches up to the phrase. The slider goes down to the bottom of the screen over the carousel, and the current card
+// the shortest. The sources are as wide as the phrase, and their place stays when they go. The slider goes down to the bottom of the screen over the carousel, and the current card
 // leaves room for the next one to peek out. Read by the elements' boxes, never by pixels.
 import type { Locator, Page } from '@playwright/test';
 import { expect, squareRing, test, visaRules } from './fixtures.ts';
-import { boxOf, expectRingCard, firstCard, phrase, slider, sliderHour, sliderPanel, sliderTab } from './screen.ts';
+import { boxOf, expectRingCard, firstCard, phrase, slider, sliderHour, sliderPanel, sliderTab, sources } from './screen.ts';
 
 /** Where the page's clock stands, held, while the screen opens: the sources stay under the phrase. */
 const START = Date.parse('2026-11-09T12:00:00Z');
@@ -23,14 +22,15 @@ const LONGEST_IN_DAYS = '/#/?p=44.81760,20.45730&d=5&cit=BIH,MNE,RUS,SRB&visas=C
 
 /**
  * The phones of the tickets: small, the most common, large; and what Safari leaves of the iPhone 15/16 and the
- * iPhone SE under its bars (#85), with the slider's hour no lower than this there.
+ * iPhone SE under its bars (#85), with the slider's hour no lower than this there. The SE's was 27 px until the place
+ * of the data's sources stayed under the phrase (#77): three lines of them there.
  */
 const PHONES = [
 	{ width: 360, height: 640 },
 	{ width: 390, height: 844 },
 	{ width: 430, height: 932 },
 	{ width: 393, height: 660, lowestHour: 31 },
-	{ width: 375, height: 550, lowestHour: 27 },
+	{ width: 375, height: 550, lowestHour: 22 },
 ];
 
 /** Every floating panel stands this far from the screen's edges (#85). */
@@ -38,7 +38,7 @@ const EDGE = 12;
 /** The gap between two cards of the carousel, as between panels (#85). */
 const BETWEEN = 8;
 /** What shows of the next card of the carousel, between the current one and the slider (#77). */
-const PEEK = 40;
+const PEEK = 64;
 /** The slider's panel is at most this high (#44). */
 const TALLEST_SLIDER = 450;
 /** The gap between the phrase and the slider under it (#47). */
@@ -47,9 +47,6 @@ const UNDER_THE_PHRASE = 8;
 const LOWEST_SLIDER = 120;
 
 type Box = Awaited<ReturnType<typeof boxOf>>;
-
-/** The data's sources under the phrase, shown for 5 s once the screen opens. */
-const sources = (page: Page): Locator => phrase(page).locator('p', { hasText: 'Источники данных' });
 
 /** The line under the phrase that dates old visa rules, «визовые правила от <дата>». */
 const rulesDate = (page: Page): Locator => phrase(page).locator('.c-rules-date');
@@ -97,9 +94,12 @@ for (const { lowestHour, ...viewport } of PHONES) {
 			await open(page, LONGEST);
 			await expect(rulesDate(page)).toBeVisible();
 
-			await expectApart(page, { phrase: phrase(page), slider: slider(page), 'current card': firstCard(page) });
-			// The sources may cover the slider's top for their 5 s, where it reaches up to the phrase.
-			await expectApart(page, { phrase: phrase(page), sources: sources(page), 'current card': firstCard(page) });
+			await expectApart(page, {
+				phrase: phrase(page),
+				sources: sources(page),
+				slider: slider(page),
+				'current card': firstCard(page),
+			});
 		});
 
 		test('the data’s sources are as wide as the phrase', async ({ page }) => {
@@ -158,13 +158,19 @@ for (const { lowestHour, ...viewport } of PHONES) {
 			['one citizenship', SHORTEST],
 			['four citizenships', LONGEST],
 		]) {
-			test(`with ${settings}, the slider ends 12 px over the bottom and starts 8 px under the phrase or 450 px up`, async ({ page }) => {
+			test(`with ${settings}, the slider ends 12 px over the bottom and starts 8 px under the sources or 450 px up`, async ({ page }) => {
 				await open(page, path);
 
-				const [phraseBox, sliderBox, cardBox] = await Promise.all([boxOf(phrase(page)), boxOf(slider(page)), boxOf(firstCard(page))]);
+				const [phraseBox, sourcesBox, sliderBox, cardBox] = await Promise.all([
+					boxOf(phrase(page)),
+					boxOf(sources(page)),
+					boxOf(slider(page)),
+					boxOf(firstCard(page)),
+				]);
 				const bottom = viewport.height - EDGE;
+				expect(sourcesBox.y).toBeCloseTo(phraseBox.y + phraseBox.height + UNDER_THE_PHRASE, 0);
 				expect(sliderBox.y + sliderBox.height).toBeCloseTo(bottom, 0);
-				expect(sliderBox.y).toBeCloseTo(Math.max(phraseBox.y + phraseBox.height + UNDER_THE_PHRASE, bottom - TALLEST_SLIDER), 0);
+				expect(sliderBox.y).toBeCloseTo(Math.max(sourcesBox.y + sourcesBox.height + UNDER_THE_PHRASE, bottom - TALLEST_SLIDER), 0);
 				expect(sliderBox.height).toBeGreaterThanOrEqual(LOWEST_SLIDER);
 				expect(overlap(sliderBox, phraseBox), 'the slider on the phrase').toBe(false);
 				expect(overlap(sliderBox, cardBox), 'the slider on the current card').toBe(false);
@@ -183,14 +189,14 @@ for (const { lowestHour, ...viewport } of PHONES) {
 			});
 		}
 
-		test('the slider stays where it is when the sources leave', async ({ page }) => {
+		test('the slider stays where it is when the sources leave, under their empty place', async ({ page }) => {
 			await open(page, LONGEST);
 			await expect(sources(page)).toBeVisible();
 			const before = await boxOf(slider(page));
 
 			await page.clock.runFor(5000);
 
-			await expect(sources(page)).toHaveCount(0);
+			await expect(sources(page)).toBeHidden();
 			expect(await boxOf(slider(page))).toEqual(before);
 		});
 	});

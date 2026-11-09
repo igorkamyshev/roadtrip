@@ -71,6 +71,12 @@ export const phrase = (page: Page): Locator => page.getByTestId('phrase');
  */
 export const firstCard = (page: Page): Locator => page.getByTestId('first-card');
 
+/**
+ * The data's sources under the phrase (src/screen/attribution.tsx): shown for 5 s once the screen opens, then hidden in
+ * their place.
+ */
+export const sources = (page: Page): Locator => page.locator('.c-top > p', { hasText: 'Источники данных' });
+
 export const slider = (page: Page): Locator => page.getByRole('slider', { name: 'Время в пути' });
 
 /** The carousel at the bottom of the screen: the first card, the city cards, «и ещё». */

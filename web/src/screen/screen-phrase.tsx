@@ -1,9 +1,7 @@
 // The screen's phrase (phrase.tsx): «Из точки [Белград], 2–3 часа в пути. Гражданство [РФ], мои визы: [нет] ⓘ», each
-// word in brackets opening its sheet, and under it the date of old visa rules and, for 5 s once the screen opens, the
-// data's sources (attribution.tsx).
+// word in brackets opening its sheet, and under it the date of old visa rules.
 import { useMemo, type ReactElement } from 'react';
 import { startLabel } from '../start/start.ts';
-import { SourcesOnOpen } from './attribution.tsx';
 import { citizenshipsLabel, visasLabel } from './countries.ts';
 import { Phrase, PhraseToken, VisaRulesDate } from './phrase.tsx';
 import type { ScreenModel } from './use-screen.ts';
@@ -44,12 +42,7 @@ export function ScreenPhrase({ screen }: { readonly screen: ScreenModel }): Reac
 					</PhraseToken>
 				</>
 			}
-			footer={
-				<>
-					<VisaRulesDate loadedAt={shown.answer?.visaRulesLoadedAt} />
-					<SourcesOnOpen />
-				</>
-			}
+			footer={<VisaRulesDate loadedAt={shown.answer?.visaRulesLoadedAt} />}
 		/>
 	);
 }

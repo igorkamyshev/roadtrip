@@ -676,9 +676,6 @@ a {
 
 .c-phrase {
 	position: relative;
-
-	/* Over the slider: the data's sources under it cover the slider's top, not the other way round. */
-	z-index: 1;
 	align-self: stretch;
 	flex: none;
 	background: var(--surface);
@@ -694,14 +691,12 @@ a {
 	text-wrap: balance;
 }
 
-/* The data's sources under the phrase for 5 s once the screen opens, over the map, as wide as the phrase. Out of
-   the column's layout, so the slider stays where it is when they go; where the slider reaches up to the phrase, on
-   a short screen or under a long phrase, they cover its top for those 5 s. */
-.c-phrase p.c-sources {
-	position: absolute;
-	top: calc(100% + var(--between));
-	left: 0;
-	right: 0;
+/* The data's sources under the phrase for 5 s once the screen opens, as wide as it, in the column: when they go,
+   their place stays, so the slider under them never moves and they never cover it (#77). */
+.c-sources {
+	align-self: stretch;
+	flex: none;
+	margin: 0;
 	box-sizing: border-box;
 	padding: 4px 10px;
 	border-radius: var(--radius);
@@ -710,6 +705,10 @@ a {
 	color: var(--muted);
 	font-size: 12px;
 	line-height: 1.35;
+}
+
+.c-sources.gone {
+	visibility: hidden;
 }
 
 /* «визовые правила от <дата>» under the phrase. */
@@ -777,11 +776,11 @@ a {
 }
 
 /* The carousel, the whole width of the screen under the slider (#85): the current card at the left edge, up to
-   300 px wide, and --peek of the next one out, between the current card and the slider's panel, so it shows that the
+   280 px wide, and --peek of the next one out, between the current card and the slider's panel, so it shows that the
    cards scroll; the next one fades out in the last 12 px before the panel, so none shows under it. */
 .c-car {
-	--peek: 40px;
-	--card: min(300px, 100% - var(--edge-left) - var(--beside-slider) - var(--peek));
+	--peek: 64px;
+	--card: min(280px, 100% - var(--edge-left) - var(--beside-slider) - var(--peek));
 	--fade: linear-gradient(
 		to right,
 		#000 calc(100% - var(--edge-right) - var(--slider-width) - 12px),
@@ -815,12 +814,12 @@ a {
 .c-car::after {
 	content: '';
 	flex: none;
-	width: max(0px, 100% - min(300px, 100% - var(--peek)) - var(--between));
+	width: max(0px, 100% - min(280px, 100% - var(--peek)) - var(--between));
 }
 
 .c-card {
 	flex: none;
-	width: min(300px, 100% - var(--peek));
+	width: min(280px, 100% - var(--peek));
 	scroll-snap-align: start;
 	background: var(--surface);
 	border-radius: var(--radius);
