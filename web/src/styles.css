@@ -780,7 +780,8 @@ a {
    cards scroll; the next one fades out in the last 12 px before the panel, so none shows under it. */
 .c-car {
 	--peek: 64px;
-	--card: min(280px, 100% - var(--edge-left) - var(--beside-slider) - var(--peek));
+	--card-max: 280px;
+	--card: min(var(--card-max), 100% - var(--edge-left) - var(--beside-slider) - var(--peek));
 	--fade: linear-gradient(
 		to right,
 		#000 calc(100% - var(--edge-right) - var(--slider-width) - 12px),
@@ -814,12 +815,12 @@ a {
 .c-car::after {
 	content: '';
 	flex: none;
-	width: max(0px, 100% - min(280px, 100% - var(--peek)) - var(--between));
+	width: max(0px, 100% - min(var(--card-max), 100% - var(--peek)) - var(--between));
 }
 
 .c-card {
 	flex: none;
-	width: min(280px, 100% - var(--peek));
+	width: min(var(--card-max), 100% - var(--peek));
 	scroll-snap-align: start;
 	background: var(--surface);
 	border-radius: var(--radius);

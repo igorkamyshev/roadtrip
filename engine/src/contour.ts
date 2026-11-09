@@ -36,7 +36,7 @@ function nearRoadMeters(cellMeters: number): number {
 }
 /**
  * A plot of land further than NEAR_ROAD_METERS from every road, which the roads reached within N h wall in on every
- * side, is in the ring when it is smaller than this: land between the roads, not a mountain range, a steppe inside
+ * side, is in a ring up to 12 h when it is smaller than this (past 12 h see SMALL_PLOT_GROWTH): land between the roads, not a mountain range, a steppe inside
  * a loop of roads or a large lake (#43). Without it the ring is lace, a hole between every two roads 2 km apart.
  * The area is the plot's own, beyond NEAR_ROAD_METERS: 200 km² is a loop of roads ~16 km across. Picked by looking
  * at the rings of 3 and 6 h from Vienna, Prague, Madrid, Oslo and Östersund drawn with each threshold: at 100 km²

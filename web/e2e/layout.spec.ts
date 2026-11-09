@@ -1,8 +1,9 @@
 // The screen's layout (spec #20 «Экран»; #47, #85, #77): the panels over the map, the phrase, the slider, the
 // carousel's current card or the pin's bar and the data's sources of the first 5 s, never on one another nor off the
 // screen, each 12 px from its edges of the screen, on the phones the screen is made for, with the longest phrase and
-// the shortest. The sources are as wide as the phrase, and their place stays when they go. The slider goes down to the bottom of the screen over the carousel, and the current card
-// leaves room for the next one to peek out. Read by the elements' boxes, never by pixels.
+// the shortest. The sources are as wide as the phrase, and their place stays when they go. The slider goes down to
+// the bottom of the screen over the carousel, and the current card leaves room for the next one to peek out. Read by
+// the elements' boxes, never by pixels.
 import type { Locator, Page } from '@playwright/test';
 import { expect, squareRing, test, visaRules } from './fixtures.ts';
 import { boxOf, expectRingCard, firstCard, phrase, slider, sliderHour, sliderPanel, sliderTab, sources } from './screen.ts';
@@ -110,7 +111,7 @@ for (const { lowestHour, ...viewport } of PHONES) {
 			expect(sourcesBox.width).toBeCloseTo(phraseBox.width, 0);
 		});
 
-		test('the current card leaves 40 px for the next one to peek out before the slider', async ({ page }) => {
+		test('the current card leaves 64 px for the next one to peek out before the slider', async ({ page }) => {
 			await open(page, SHORTEST);
 
 			const [cardBox, sliderBox] = await Promise.all([boxOf(firstCard(page)), boxOf(slider(page))]);
