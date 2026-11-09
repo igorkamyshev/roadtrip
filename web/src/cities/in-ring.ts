@@ -29,11 +29,11 @@ export interface RingAround {
 
 export function citiesInRing(cities: readonly City[], { ring, access, origin }: RingAround): City[] {
 	const inside = ringContains(ring);
-	const left = originCity(cities, origin);
+	const startCity = originCity(cities, origin);
 	return cities
 		.filter((city) => {
 			// A zone `access` does not name is not open.
-			return city !== left && city.zone in access && access[city.zone].mode !== 'closed' && inside(city.lat, city.lon);
+			return city !== startCity && city.zone in access && access[city.zone].mode !== 'closed' && inside(city.lat, city.lon);
 		})
 		.toSorted(biggestFirst);
 }

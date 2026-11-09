@@ -275,6 +275,15 @@ test.describe("the origin's city", () => {
 		await expect(cityCards(page).locator('h3')).toHaveText(['Панчево']);
 	});
 
+	test('is no city of the ring at 2 hours either, when the band holds it', async ({ page, ringApi }) => {
+		// From Zemun, a band from 0.05° to 0.5°: Belgrade, 0.06°, is in it, as is Pančevo, 0.24°.
+		ringApi.respond((call) => ({ ...squareRing(Number(call.lat), Number(call.lon), [0.05, 0.5]), ...visaRules(RUSSIAN) }));
+		await page.goto('/#/?p=44.84580,20.40116&h=2');
+		await expectRingCard(page, '1–2 ч');
+
+		await expect(cityCards(page).locator('h3')).toHaveText(['Панчево']);
+	});
+
 	test('is none near Belgrade outside the limits of every city: Belgrade is in the ring, and the phrase says «на карте»', async ({
 		page,
 		ringApi,

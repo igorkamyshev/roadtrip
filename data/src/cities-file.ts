@@ -2,6 +2,7 @@
 // Russian and local name, place, population and zone. `build-cities` writes it, the Worker serves it as a static
 // asset at `/data/cities.json`, and the screen picks the cities in the ring from it (web/src/cities/). Shared by the
 // builder and the client, so no Node APIs here.
+import { haversineMeters } from 'engine/geo';
 import { field, items } from 'engine/json';
 
 /** The layout of the file; a change to the columns is a new one, and the client reads only its own. */
@@ -91,23 +92,23 @@ export function limitsKm(population: number): number {
 	return 9 * Math.sqrt(population / 1e6);
 }
 
-const EARTH_RADIUS_KM = 6371;
-const RADIANS = Math.PI / 180;
-
 /** The great-circle distance between two points, km. */
 export function distanceKm(one: Point, two: Point): number {
-	const sinLat = Math.sin(((two.lat - one.lat) * RADIANS) / 2);
-	const sinLon = Math.sin(((two.lon - one.lon) * RADIANS) / 2);
-	const haversine = sinLat * sinLat + Math.cos(one.lat * RADIANS) * Math.cos(two.lat * RADIANS) * sinLon * sinLon;
-	return 2 * EARTH_RADIUS_KM * Math.asin(Math.sqrt(Math.min(1, haversine)));
+	return haversineMeters(one.lat, one.lon, two.lat, two.lon) / 1000;
+}
+
+/** A city and how far a point is from it, km. */
+export interface CityAt<City> {
+	readonly city: City;
+	readonly km: number;
 }
 
 /**
  * The city of `cities` whose limits hold the point, the nearest of several (GLOSSARY «Город точки старта»), with
  * how far it is; undefined outside them all. Of two as close, the first in `cities`.
  */
-export function cityAround<City extends Placed>(cities: Iterable<City>, at: Point): { city: City; km: number } | undefined {
-	let around: { city: City; km: number } | undefined;
+export function cityAround<City extends Placed>(cities: Iterable<City>, at: Point): CityAt<City> | undefined {
+	let around: CityAt<City> | undefined;
 	for (const city of cities) {
 		const km = distanceKm(at, city);
 		if (km <= limitsKm(city.population) && (around === undefined || km < around.km)) {

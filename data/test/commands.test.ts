@@ -156,7 +156,7 @@ describe('the build-cities command', () => {
 
 		expect(run.status).toBe(0);
 		// The fixtures' cities in the squares of zones.osm: Kyrenia and Famagusta in Northern Cyprus. Not Engomi, 1.1 km
-		// from Nicosia, within its limits of 4.0 km and a ninth of it: a part of the city.
+		// from Nicosia, within its limits of 4.0 km and an eleventh of it: a part of the city.
 		expect(writtenCities(out)).toEqual([
 			[146268, 'Никосия', 'Nicosia', 0.5, 3.5, 200_452, 'CYP'],
 			[786714, 'Приштина', 'Pristina', 0.5, 0.5, 161_751, 'RKS'],

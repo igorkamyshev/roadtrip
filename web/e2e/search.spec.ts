@@ -205,6 +205,18 @@ test.describe("the origin's label", () => {
 		await expect(phrase(page)).toContainText('Из точки Нови-Сад, до 1 часа в пути.');
 	});
 
+	test('is «на карте» by geolocation outside the limits of every city, and for the saved state then', async ({ page, context }) => {
+		// 11.6 km from Belgrade, outside its limits of 10 km.
+		await allowGeolocation(context, { lat: 44.7, lon: 20.45 });
+		await page.goto('/');
+		await expect(phrase(page)).toContainText('Из точки на карте, до 1 часа в пути.');
+
+		await reopen(page, '/');
+
+		await expect(page).toHaveURL(/#\/\?p=44\.70000,20\.45000&h=1&cit=RUS$/u);
+		await expect(phrase(page)).toContainText('Из точки на карте, до 1 часа в пути.');
+	});
+
 	test("is the origin's city in kilometres, not degrees: far north a degree of longitude is short", async ({ page }) => {
 		// At 69° N the city 0.3° east is 12 km away (111 km × cos 69° × 0.3), the one 0.15° north 17 km; both are
 		// within the 18 km of the limits of 4 million people.

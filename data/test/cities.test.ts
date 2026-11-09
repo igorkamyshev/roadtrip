@@ -270,6 +270,19 @@ describe('the parts of a city', () => {
 		expect(cities.map(([, , local]) => local)).toEqual(['Big', 'Near and big', 'Near, a third']);
 	});
 
+	it('keeps a place within the limits of a part only, outside those of its city: a part holds no parts', async () => {
+		// A city of a million, 9 km of limits; 8 km east of it a place of 100 000, 2.8 km of limits; 10 km east of the
+		// city, 2 km from that one, a place of 20 000. At 10° N a degree of longitude is 109.5 km.
+		const { cities, report } = await build([
+			{ id: 1, name: 'City', lat: 10, lon: 50, population: 1_000_000, country: 'RS' },
+			{ id: 2, name: 'Part', lat: 10, lon: 50.073, population: 100_000, country: 'RS' },
+			{ id: 3, name: 'Beyond', lat: 10, lon: 50.0913, population: 20_000, country: 'RS' },
+		]);
+
+		expect(cities.map(([, , local]) => local)).toEqual(['City', 'Beyond']);
+		expect(report.biggestCityParts).toEqual([{ id: 2, name: 'Part', population: 100_000, city: 'City', km: 8 }]);
+	});
+
 	it('reports how many places are parts of a city, and the biggest with their city and distance', async () => {
 		const { report } = await build(places);
 

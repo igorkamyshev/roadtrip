@@ -2,6 +2,7 @@
 // without sections of cities (PPLX), vanished places and the parts of a city (GLOSSARY «Часть города», #45), with the
 // Russian name of GeoNames or else Wikidata's (CC0), and the zone by the graph's polygons. The format is
 // `cities-file.ts`.
+import { METERS_PER_DEGREE } from 'engine/geo';
 import { type Graph, ZoneLocator } from 'engine/graph';
 import { COUNTRIES } from 'rules/countries';
 import { biggestFirst, cityAround, type CityRow, limitsKm } from './cities-file.ts';
@@ -78,9 +79,9 @@ interface Place {
 
 /** The cities of the file (`encodeCities` writes it), biggest first, and what the build did. */
 export async function buildCities(sources: CitiesSources): Promise<{ cities: CityRow[]; report: CitiesReport }> {
-	const read = await readPlaces(sources.cities);
-	const parts = cityParts(read.places);
-	const places = read.places.filter((place) => !parts.has(place.id));
+	const scanned = await readPlaces(sources.cities);
+	const parts = cityParts(scanned.places);
+	const places = scanned.places.filter((place) => !parts.has(place.id));
 	const locator = new ZoneLocator(sources.graph.zoneRings);
 	const zoned: (Place & { readonly zone: string })[] = [];
 	const withoutZone: string[] = [];
@@ -107,7 +108,7 @@ export async function buildCities(sources: CitiesSources): Promise<{ cities: Cit
 	return {
 		cities: rows,
 		report: {
-			read: read.read,
+			read: scanned.read,
 			cities: rows.length,
 			russianFromGeoNames: geonames.size,
 			russianFromWikidata: rows.length - geonames.size - withoutRussian,
@@ -122,14 +123,16 @@ export async function buildCities(sources: CitiesSources): Promise<{ cities: Cit
 }
 
 /**
- * The parts of a city among the places, by id (GLOSSARY «Часть города»): a place within the limits of another one
- * `PART_RATIO` times as big or more, with the nearest such as its city. A place in the limits of a part is a part too.
+ * The parts of a city among the places, by id (GLOSSARY «Часть города»): a place within the limits of a city
+ * `PART_RATIO` times as big or more, with the nearest such as its city. A part holds no parts: the places go biggest
+ * first, so a place's bigger neighbours are known to be cities or parts before it.
  */
 function cityParts(places: readonly Place[]): Map<number, CityPart> {
-	const near = limitsGrid(places.toSorted(biggestFirst));
+	const biggest = places.toSorted(biggestFirst);
+	const near = limitsGrid(biggest);
 	const parts = new Map<number, CityPart>();
-	for (const place of places) {
-		const bigger = near(place).filter((city) => city.population >= PART_RATIO * place.population);
+	for (const place of biggest) {
+		const bigger = near(place).filter((city) => city.population >= PART_RATIO * place.population && !parts.has(city.id));
 		const around = cityAround(bigger, place);
 		if (around !== undefined) {
 			const { id, name, population } = place;
@@ -143,8 +146,8 @@ function cityParts(places: readonly Place[]): Map<number, CityPart> {
 const CELL_DEGREES = 0.5;
 const LAT_CELLS = 180 / CELL_DEGREES;
 const LON_CELLS = 360 / CELL_DEGREES;
-/** A degree of latitude, km: the radius of `distanceKm`'s Earth. */
-const KM_PER_DEGREE = (Math.PI * 6371) / 180;
+/** A degree of latitude, km, on the sphere of `distanceKm`. */
+const KM_PER_DEGREE = METERS_PER_DEGREE / 1000;
 
 const latCell = (lat: number) => Math.min(LAT_CELLS - 1, Math.max(0, Math.floor((lat + 90) / CELL_DEGREES)));
 const lonCell = (lon: number) => Math.floor((lon + 180) / CELL_DEGREES);
