@@ -43,7 +43,7 @@ jobs:
           git ls-files -z -- '*.sh' '.githooks/*' | xargs -0 shellcheck
       - run: pnpm install --frozen-lockfile
       - run: pnpm format:check
-      # Oxlint, then fallow (dead code, architecture, duplication, cognitive complexity) and our own checks: the
+      # Oxlint, Stylelint on the CSS, then fallow (dead code, architecture, duplication, cognitive complexity) and our own checks: the
       # overrides' files, the root AGENTS.md naming every nested AGENTS.md (ADR 0002).
       - run: pnpm lint
       # Each package's Worker types (`cf-typegen`) match its wrangler config: a config changed without them fails.

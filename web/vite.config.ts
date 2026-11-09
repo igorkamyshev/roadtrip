@@ -5,6 +5,7 @@ import react from '@vitejs/plugin-react';
 import { defineConfig, type PluginOption } from 'vite';
 import { bundleBudget } from './bundle-budget.ts';
 import { olderBrowsers } from './older-browsers.ts';
+import packageJson from './package.json' with { type: 'json' };
 
 /**
  * What the first paint may load, the entry chunk and the chunks it imports statically, in KB gzipped: 136 KB on
@@ -16,8 +17,9 @@ const FIRST_PAINT_BUDGET_KB = 165;
 /**
  * The oldest browsers the screen supports, those MapLibre 6 runs in: its worker calls `.at()` and `Object.hasOwn`
  * (Safari 15.4). The build lowers the syntax to them, and they get the polyfills of what the client uses and they lack.
+ * `browserslist` in package.json, which Stylelint checks the CSS against too.
  */
-const BROWSERS = ['chrome >= 93', 'edge >= 93', 'firefox >= 92', 'safari >= 15.4', 'ios_saf >= 15.4'];
+const BROWSERS = packageJson.browserslist;
 
 /**
  * PostHog's source maps (spec #20 «Аналитика и ошибки», «Браузер»), so that the stack of an error in the browser reads

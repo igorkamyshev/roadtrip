@@ -1,6 +1,6 @@
-// The chosen city (spec #20 «Экран», «Карусель»): the card in the carousel's middle, a card tapped, a city tapped on
-// the map or picked in the list of all. The map goes to it and names it larger. A new ring chooses none and shows the
-// carousel from its start.
+// The chosen city (GLOSSARY «Выбранный город», spec #20 «Экран», «Карусель»): the city of the card the carousel stops
+// at, of a card tapped, a city tapped on the map or picked in the list of all. The map goes to it and names it larger.
+// A new ring chooses none and shows the carousel from its start.
 import { useEffect, useRef, useState, type RefObject } from 'react';
 import { inTheMiddle, scrollToCard, useCarouselStops } from '../cities/carousel.ts';
 import type { City } from '../cities/cities.ts';
