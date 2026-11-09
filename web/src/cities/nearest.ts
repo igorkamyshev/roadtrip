@@ -1,5 +1,5 @@
 // The cities around the origin: the nearest one, the only place the events to PostHog name instead of the origin
-// (spec «Аналитика и ошибки»: `start_city`, `start_city_id` and `start_country` are its `name`, `id` and `zone`), and
+// (spec #20 «Аналитика и ошибки»: `start_city`, `start_city_id` and `start_country` are its `name`, `id` and `zone`), and
 // the origin's city (GLOSSARY «Город точки старта»), which the ring leaves out and the phrase names for geolocation,
 // a link or the saved state (#45).
 import { cityAround, distanceKm } from 'data/cities-file';

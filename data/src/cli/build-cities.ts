@@ -1,4 +1,4 @@
-// Builds the cities file (spec «Набор данных», «Файл городов»): GeoNames' cities from 15 000 people but the parts of a
+// Builds the cities file (spec #20 «Набор данных», «Файл городов»): GeoNames' cities from 15 000 people but the parts of a
 // city, with their Russian names (GeoNames, else Wikidata) and their zones by the polygons of a graph, as JSON (a
 // static asset of the Worker, `/data/cities.json`). It prints what it did to stderr, and with --report adds the parts
 // of a city to the build report (Markdown).
