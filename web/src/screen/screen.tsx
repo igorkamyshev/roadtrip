@@ -1,5 +1,5 @@
 // The one screen (spec «Экран», variant C of the prototype): the map under everything, the phrase over it, the
-// slider at its right edge, the carousel at the bottom (the pin's bar in the pin mode), and the sheets. Its state and
+// slider at its right edge under the phrase (one column, .c-top), the carousel at the bottom (the pin's bar in the pin mode), and the sheets. Its state and
 // what changes it are use-screen.ts's.
 import type { ReactElement } from 'react';
 import { Carousel } from './carousel.tsx';
@@ -16,12 +16,14 @@ export function Screen(): ReactElement {
 	return (
 		<div className="screen">
 			<ScreenMap screen={screen} />
-			<ScreenPhrase screen={screen} />
-			{state.origin !== undefined && !starts.pinning ? (
-				<div className="c-vs">
-					<Slider value={state.hours} onCommit={state.setHours} cached={shown.cachedHours} />
-				</div>
-			) : null}
+			<div className="c-top">
+				<ScreenPhrase screen={screen} />
+				{state.origin !== undefined && !starts.pinning ? (
+					<div className="c-vs">
+						<Slider value={state.hours} onCommit={state.setHours} cached={shown.cachedHours} />
+					</div>
+				) : null}
+			</div>
 			{starts.pinning ? <PinBar onCancel={starts.cancelPinning} onStart={starts.startHere} /> : <Carousel screen={screen} />}
 			<ScreenSheets screen={screen} />
 		</div>
