@@ -1,4 +1,4 @@
-// The Worker's events in PostHog (spec «Аналитика и ошибки», «Worker»; decision #18): what the system did, beside
+// The Worker's events in PostHog (spec #20 «Аналитика и ошибки», «Worker»; decision #18): what the system did, beside
 // what the browser saw. `ring served` for each ring request that reached the Worker, `sherpa fetched` for each
 // request to Sherpa. The Worker never sends the origin, not even rounded: its events are tied to the browser's session.
 import type { RingOutcome } from 'engine/protocol';
@@ -72,7 +72,7 @@ export interface RequestAnalyticsOptions {
 }
 
 /**
- * The analytics of one request (spec «Worker»): a client of its own that sends each event at once (`flushAt: 1`,
+ * The analytics of one request (spec #20 «Worker»): a client of its own that sends each event at once (`flushAt: 1`,
  * `flushInterval: 0`, `captureImmediate` in `waitUntil`), as the browser's `X-POSTHOG-DISTINCT-ID` (else `server`)
  * with its `X-POSTHOG-SESSION-ID`, and creates no person. Disabled off the production host. `shutdown` ends the
  * client once the answer is out; a background send after it, as a refresh from Sherpa's, still goes.

@@ -1,4 +1,4 @@
-// The builder: an OSM extract in, the road graph out (spec «Набор данных»). The extract is filtered or not:
+// The builder: an OSM extract in, the road graph out (spec #20 «Набор данных»). The extract is filtered or not:
 // roads are picked here by their tags, and the coordinates come from the ways when the file carries them
 // (`osmium add-locations-to-ways`) or else from its nodes.
 //

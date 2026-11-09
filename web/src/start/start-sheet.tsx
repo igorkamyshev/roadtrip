@@ -1,4 +1,4 @@
-// The sheet «Откуда едем» (spec «Экран»): the city search, «Указать на карте» and «Где я» with a note under them
+// The sheet «Откуда едем» (spec #20 «Экран»): the city search, «Указать на карте» and «Где я» with a note under them
 // when the browser gave no position.
 import { useMemo, useRef, useState, type ReactElement } from 'react';
 import type { City } from '../cities/cities.ts';

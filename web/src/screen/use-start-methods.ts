@@ -1,4 +1,4 @@
-// How the person sets the origin from the screen (spec «Экран»; `method` of `start set`): geolocation, at «Где я»
+// How the person sets the origin from the screen (spec #20 «Экран»; `method` of `start set`): geolocation, at «Где я»
 // and on a load with no origin; a city found in the search; the pin in the middle of the map. Each closes the sheet
 // it was set from.
 import { useCallback, useEffect, useEffectEvent, useRef, useState, type RefObject } from 'react';

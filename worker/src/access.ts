@@ -1,4 +1,4 @@
-// The reduction of the visa rules (spec «Визовые правила и сведение», «Сведение»; #11): one pure function from the
+// The reduction of the visa rules (spec #20 «Визовые правила и сведение», «Сведение»; #11): one pure function from the
 // citizenships' Sherpa classes, the held visas and the visa exemptions' rows acting today to the entry mode of every
 // country and where it came from: a citizenship, or a held visa (`visa`, which the cities' labels name). The
 // client gets its result as `access`; the calculation avoids its closed countries, and the ring cache's key holds
@@ -23,7 +23,7 @@ export interface VisaRulesInput {
 export interface Reduction {
 	readonly access: Access;
 	/**
-	 * The closed countries (spec «Набор закрытых стран»): alpha-3 (and `NX`) closed by the reduction, those closed
+	 * The closed countries (spec #20 «Набор закрытых стран»): alpha-3 (and `NX`) closed by the reduction, those closed
 	 * for everyone included, sorted, without the start country's correction. What the engine avoids and the ring
 	 * cache's key hashes.
 	 */
@@ -133,7 +133,7 @@ function reduction(best: ReadonlyMap<string, CountryAccess>, citizenships: reado
 }
 
 /**
- * `access` with the start country open (spec «Страна точки старта»): the engine knows it, the reduction does not.
+ * `access` with the start country open (spec #20 «Страна точки старта»): the engine knows it, the reduction does not.
  * A country the visa rules close becomes `start`; one closed for everyone stays closed (the engine gave `no_ring`).
  */
 export function withStartCountry(access: Access, startCountry: string | null): Access {

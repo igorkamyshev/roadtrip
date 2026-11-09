@@ -1,4 +1,4 @@
-// The ring the screen shows (spec «Экран», «Состояние, ссылка и память браузера»): the request for the state's
+// The ring the screen shows (spec #20 «Экран», «Состояние, ссылка и память браузера»): the request for the state's
 // origin, N and settings, the answer shown with its visa rules, the ring's cities, the hours in memory, and the
 // events that follow them (src/analytics/).
 import { useMemo, useState } from 'react';

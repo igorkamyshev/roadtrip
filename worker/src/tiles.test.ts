@@ -1,4 +1,4 @@
-// The tiles of the basemap (spec «Экран», «Карта»): the Worker's handler of GET /tiles/{z}/{x}/{y} with its
+// The tiles of the basemap (spec #20 «Экран», «Карта»): the Worker's handler of GET /tiles/{z}/{x}/{y} with its
 // dependencies through `deps`. R2 is a double in memory holding a small PMTiles archive the test writes
 // (test/pmtiles-archive.ts), whose tiles are strings named after their place; the Cache API is a double too.
 import { describe, expect, it } from 'vitest';

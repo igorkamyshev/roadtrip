@@ -1,4 +1,4 @@
-// What the Worker and the engine server in the Container say to each other (spec «Container и очередь», «Кэш
+// What the Worker and the engine server in the Container say to each other (spec #20 «Container и очередь», «Кэш
 // колец»). The Worker posts the fields of the ring's cache key but the data version; the server answers with the
 // engine's result, the data version it calculated with, and the timings. The server is in server/, the Worker in
 // the worker package.

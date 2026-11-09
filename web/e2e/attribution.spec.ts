@@ -1,4 +1,4 @@
-// The map's attribution (spec «Экран», «Карта»): the data's sources live behind ⓘ «Что важно знать», and show under
+// The map's attribution (spec #20 «Экран», «Карта»): the data's sources live behind ⓘ «Что важно знать», and show under
 // the phrase for 5 s once the screen opens, as OpenStreetMap's attribution guidelines want them seen.
 import { expect, test } from './fixtures.ts';
 import { phrase } from './screen.ts';

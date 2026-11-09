@@ -1,4 +1,4 @@
-// The pin mode's bar (spec «Экран»), in place of the carousel while the person moves the map under the pin.
+// The pin mode's bar (spec #20 «Экран»), in place of the carousel while the person moves the map under the pin.
 import type { ReactElement } from 'react';
 
 export function PinBar({ onCancel, onStart }: { readonly onCancel: () => void; readonly onStart: () => void }): ReactElement {

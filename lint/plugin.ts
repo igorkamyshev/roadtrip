@@ -6,6 +6,7 @@ import { noCaptureException } from './rules/no-capture-exception.ts';
 import { noMockOwnModules } from './rules/no-mock-own-modules.ts';
 import { noWindowAssignment } from './rules/no-window-assignment.ts';
 import { screenTestsInPlaywright } from './rules/screen-tests-in-playwright.ts';
+import { specNamesItsIssue } from './rules/spec-names-its-issue.ts';
 import { timeThroughDeps } from './rules/time-through-deps.ts';
 
 export default {
@@ -17,6 +18,7 @@ export default {
 		'no-mock-own-modules': noMockOwnModules,
 		'no-window-assignment': noWindowAssignment,
 		'screen-tests-in-playwright': screenTestsInPlaywright,
+		'spec-names-its-issue': specNamesItsIssue,
 		'time-through-deps': timeThroughDeps,
 	},
 };

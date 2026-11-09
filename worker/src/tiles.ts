@@ -1,4 +1,4 @@
-// GET /tiles/{z}/{x}/{y} (spec «Экран», «Карта»): the basemap's vector tiles from the world's PMTiles archive in
+// GET /tiles/{z}/{x}/{y} (spec #20 «Экран», «Карта»): the basemap's vector tiles from the world's PMTiles archive in
 // R2, after Protomaps' PMTiles Worker for Cloudflare (PMTiles, serverless/cloudflare). Side effects come through
 // `deps`, built at the entry (index.ts).
 import type { Logger } from 'error-tracking/logger';

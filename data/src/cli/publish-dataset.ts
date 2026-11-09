@@ -1,4 +1,4 @@
-// Publishes the dataset the world build wrote into a directory (spec «Набор данных», «Выкладка»): its files under
+// Publishes the dataset the world build wrote into a directory (spec #20 «Набор данных», «Выкладка»): its files under
 // `<version>/` in R2, then the pointer `current.json` (src/publish.ts). R2 by its S3 API, through the aws CLI, which
 // uploads a file of any size in parts; `wrangler r2 object put` takes 300 MiB at most, about the world's graph.
 //

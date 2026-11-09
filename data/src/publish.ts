@@ -1,4 +1,4 @@
-// The dataset in R2 (spec «Набор данных», «Выкладка»): each version's files under `<version>/`, and `current.json`,
+// The dataset in R2 (spec #20 «Набор данных», «Выкладка»): each version's files under `<version>/`, and `current.json`,
 // the pointer to the current version, which the deploy reads (src/fetch-dataset.ts). The pointer moves only once every file of the
 // version is uploaded and its size checked, so a failed run leaves the version before it current. A version whose
 // manifest is in the bucket keeps its files: the same files again are a rerun, other files take a new version. A

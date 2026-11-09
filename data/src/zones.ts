@@ -1,4 +1,4 @@
-// The zones of the graph (spec «Набор данных», «Зоны»): countries by their admin_level=2 polygons, and the special
+// The zones of the graph (spec #20 «Набор данных», «Зоны»): countries by their admin_level=2 polygons, and the special
 // cases of #13 by relation id.
 import { MAX_ZONES, type ZoneRings } from 'engine/graph';
 import type { Locate } from './osm-nodes.ts';

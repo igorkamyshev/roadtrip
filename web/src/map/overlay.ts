@@ -1,4 +1,4 @@
-// What the screen draws over the basemap (spec «Экран», «Карта»), bottom to top:
+// What the screen draws over the basemap (spec #20 «Экран», «Карта»), bottom to top:
 //
 // 1. the hatching of closed countries and closed territories, `closed-hatch`: the zone outlines of the dataset
 //    (source `zones`, `/data/zones.json`), filtered to the zones `access` closes;

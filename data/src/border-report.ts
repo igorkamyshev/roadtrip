@@ -1,4 +1,4 @@
-// The build report on borders (spec «Набор данных», «Отчёт сборки»): what to add to the border table by hand.
+// The build report on borders (spec #20 «Набор данных», «Отчёт сборки»): what to add to the border table by hand.
 import { borderEdges, closedForEveryone } from 'engine/borders';
 import type { Graph } from 'engine/graph';
 import type { BorderTable } from 'rules';

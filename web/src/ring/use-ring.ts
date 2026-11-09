@@ -1,4 +1,4 @@
-// The rings of the session in TanStack Query (spec «Состояние, ссылка и память браузера»): one query per origin, N,
+// The rings of the session in TanStack Query (spec #20 «Состояние, ссылка и память браузера»): one query per origin, N,
 // citizenships and held visas. An answer stays in memory to the end of the session and is shown again without a
 // request, but for `visa_rules_missing`, forgotten once the screen asks for something else; nothing repeats a request
 // by itself, only «Повторить». While a ring comes, the previous ring of the same

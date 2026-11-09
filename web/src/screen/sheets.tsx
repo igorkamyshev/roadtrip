@@ -1,4 +1,4 @@
-// The sheets the phrase opens (spec «Экран»): «Гражданство», «Мои визы» and «Что важно знать». «Откуда едем»
+// The sheets the phrase opens (spec #20 «Экран»): «Гражданство», «Мои визы» and «Что важно знать». «Откуда едем»
 // (src/start/start-sheet.tsx) and the list of all cities (src/cities/cities-sheet.tsx) are `Sheet`s too.
 import { EXEMPTION_VISAS, utcDate } from 'rules/held-visas';
 import { useId, useLayoutEffect, useRef, useState, type ReactElement, type ReactNode, type Ref, type RefObject } from 'react';

@@ -1,4 +1,4 @@
-// The screen tests (spec «Решения по тестам», seam 3): the built client in Chromium, `/api/ring` and the tiles
+// The screen tests (spec #20 «Решения по тестам», seam 3): the built client in Chromium, `/api/ring` and the tiles
 // answered by request interception (e2e/fixtures.ts), geolocation through the context's permissions, time
 // through `page.clock`.
 import { createHash } from 'node:crypto';
@@ -42,7 +42,7 @@ export default defineConfig({
 	use: {
 		baseURL: `http://localhost:${PORT}`,
 		browserName: 'chromium',
-		// A phone: the screen is made for one (spec «Экран»).
+		// A phone: the screen is made for one (spec #20 «Экран»).
 		viewport: { width: 390, height: 844 },
 		locale: 'ru-RU',
 		trace: 'off',

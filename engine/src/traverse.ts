@@ -3,7 +3,7 @@ import type { Graph } from './graph.ts';
 import { NodeHeap } from './heap.ts';
 import { edgeSecondsBetween, type OriginRoad } from './snap.ts';
 
-/** Travel time is driving time × 1.2: the allowance for stops (spec «Решение»). */
+/** Travel time is driving time × 1.2: the allowance for stops (spec #20 «Решение»). */
 export const TRAVEL_PER_DRIVING = 1.2;
 
 export interface Seed {

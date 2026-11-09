@@ -1,4 +1,4 @@
-// The screen's own events in PostHog (spec «Аналитика и ошибки», «Свои события браузера»; decision #18): what the
+// The screen's own events in PostHog (spec #20 «Аналитика и ошибки», «Свои события браузера»; decision #18): what the
 // person saw. Never the origin: a place is only the nearest city of the cities file and its country.
 import type { RingResponse, RingSource } from 'worker/api';
 import type { GeolocationFailure } from '../start/geolocation.ts';

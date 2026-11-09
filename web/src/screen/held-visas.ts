@@ -1,4 +1,4 @@
-// What each of the four visas of the exemptions' table opens, for the sheet «Мои визы» (spec «Экран»): «Открывает
+// What each of the four visas of the exemptions' table opens, for the sheet «Мои визы» (spec #20 «Экран»): «Открывает
 // весь Шенген и ещё 12 стран, например Черногорию и Сербию». Counted on the table the client bundles (rules'
 // VISA_EXEMPTIONS, the same the Worker deploys with): its rows acting today for the citizenships chosen.
 import { actingExemptions, SCHENGEN, VISA_EXEMPTIONS } from 'rules/held-visas';

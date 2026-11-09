@@ -1,5 +1,5 @@
-// The build report as Markdown (spec «Набор данных», «Отчёт сборки»): what the monthly world build puts in its run's
-// summary, for the Owner to add the missing crossings to the border table. In Russian, like the issues.
+// The build report as Markdown (spec #20 «Набор данных», «Отчёт сборки»): what the monthly world build puts in its
+// run's summary, for the Owner to add the missing crossings to the border table. In Russian, like the issues.
 import type { BuildReport } from './build-graph.ts';
 import type { CitiesReport } from './cities.ts';
 

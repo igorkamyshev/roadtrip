@@ -1,4 +1,4 @@
-// The cities file (data's `build-cities`, spec «Файл городов»): GeoNames' cities from 15 000 people, a static asset
+// The cities file (data's `build-cities`, spec #20 «Файл городов»): GeoNames' cities from 15 000 people, a static asset
 // of the Worker. Fetched once, when the screen first needs it, and kept for the session in TanStack Query.
 import { queryOptions, useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';

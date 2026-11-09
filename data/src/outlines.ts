@@ -1,4 +1,4 @@
-// The zone outlines (spec «Набор данных», «Контуры зон для штриховки»): the graph's zone polygons, simplified to
+// The zone outlines (spec #20 «Набор данных», «Контуры зон для штриховки»): the graph's zone polygons, simplified to
 // ~2 km and rounded to 0.001°, as GeoJSON for the screen, which hatches the closed countries and territories by
 // `access` (#30). The Worker serves the file as a static asset.
 //

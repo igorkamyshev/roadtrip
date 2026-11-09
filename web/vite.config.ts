@@ -20,8 +20,8 @@ const FIRST_PAINT_BUDGET_KB = 165;
 const BROWSERS = ['chrome >= 93', 'edge >= 93', 'firefox >= 92', 'safari >= 15.4', 'ios_saf >= 15.4'];
 
 /**
- * PostHog's source maps (spec «Аналитика и ошибки», «Браузер»), so that the stack of an error in the browser reads as
- * the source. Workers Builds gives the build two variables: `POSTHOG_PERSONAL_API_KEY`, a secret (the Owner's
+ * PostHog's source maps (spec #20 «Аналитика и ошибки», «Браузер»), so that the stack of an error in the browser reads
+ * as the source. Workers Builds gives the build two variables: `POSTHOG_PERSONAL_API_KEY`, a secret (the Owner's
  * personal key, `phx_…`, with «error tracking: write»), and `POSTHOG_PROJECT_ID` (718601). With both, the plugin
  * writes a chunk id into each JS file, uploads its source map under the release of this commit's git SHA and removes
  * the map from `dist/`: deploy exactly that `dist/`. Without them (a local build, CI, the screen tests) the plugin is
