@@ -10,6 +10,7 @@ Rules a reviewer checks by judgement: when a ticket's work is merged, and when a
 - An e2e test drives the page's time with `page.clock`, paused, and waits on what the page shows.
 - An e2e test waits for a state (the ring card's `data-state`), not for copy; only a test about the copy checks the copy.
 - A failing test is fixed, not deleted or skipped.
+- A new test of a seam fails on the code before the change, or on a wrong way of doing it that the PR names: one that passes on both checks nothing.
 
 ## Product
 

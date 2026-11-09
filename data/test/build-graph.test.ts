@@ -47,7 +47,7 @@ describe('a PBF extract', () => {
 		const pbf = join(directory, `${name}.pbf`);
 		writePbf(openOsm(fixturePath(name)), pbf, { locationsOnWays: false });
 
-		expect(buildGraph(openOsm(pbf)).graph).toEqual(fixtureGraph(name));
+		expect(buildGraph(openOsm(pbf)).graph).toEqual(buildGraph(openOsm(fixturePath(name))).graph);
 	});
 
 	it.each(['straight-road.osm', 'two-countries.osm', 'borders.osm', 'edge-of-extract.osm', 'partial-zone.osm'])(
@@ -56,7 +56,7 @@ describe('a PBF extract', () => {
 			const pbf = join(directory, `${name}.locations.pbf`);
 			writePbf(openOsm(fixturePath(name)), pbf, { locationsOnWays: true });
 
-			expect(buildGraph(openOsm(pbf)).graph).toEqual(fixtureGraph(name));
+			expect(buildGraph(openOsm(pbf)).graph).toEqual(buildGraph(openOsm(fixturePath(name))).graph);
 		},
 	);
 });

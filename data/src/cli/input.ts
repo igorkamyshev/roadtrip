@@ -14,6 +14,23 @@ export function userPath(path: string): string {
 	return resolve(process.env.INIT_CWD ?? process.cwd(), path);
 }
 
+/**
+ * The command's arguments with a negative number after one of `options` joined to it, `--lon -3.7` as `--lon=-3.7`:
+ * parseArgs takes a value that starts with a dash only after `=`.
+ */
+export function withNegativeValues(args: readonly string[], options: readonly string[]): string[] {
+	const joined: string[] = [];
+	for (const arg of args) {
+		const previous = joined.at(-1);
+		if (previous !== undefined && options.includes(previous) && /^-\d/u.test(arg)) {
+			joined[joined.length - 1] = `${previous}=${arg}`;
+		} else {
+			joined.push(arg);
+		}
+	}
+	return joined;
+}
+
 /** Runs `use` on a local copy of the file at `pathOrUrl`: the path itself, or a download deleted afterwards. */
 export async function withLocalFile<T>(pathOrUrl: string, use: (path: string) => T): Promise<Awaited<T>> {
 	const copy = await localCopy(pathOrUrl);

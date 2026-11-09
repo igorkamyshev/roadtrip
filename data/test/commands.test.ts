@@ -41,6 +41,13 @@ describe('the ring command', () => {
 		});
 	});
 
+	it('takes a negative coordinate after a space, as after =', () => {
+		// 11.1 km west of the road's west end.
+		const geojson: unknown = JSON.parse(command('ring', fixturePath('straight-road.osm'), '--lat', '0', '--lon', '-0.1', '--hours', '2'));
+
+		expect(geojson).toMatchObject({ features: [{ properties: { outcome: 'ring', origin: { lat: 0, lon: -0.1 } } }] });
+	});
+
 	it('reads a graph file the build-graph command wrote, for the same ring', () => {
 		const graph = join(directory, 'straight-road.graph');
 		command('build-graph', fixturePath('straight-road.osm'), graph);
