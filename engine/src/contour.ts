@@ -44,6 +44,13 @@ function nearRoadMeters(cellMeters: number): number {
  * mountains of Slovakia went in the ring.
  */
 const SMALL_PLOT_SQUARE_METERS = 200_000_000;
+/**
+ * Past 12 h a ring is seen whole on a smaller scale, and in a sparse network of roads (Russia, Scandinavia) they are
+ * 30–80 km apart: with plots of 200 km² a ring of days is lace (#77). So past 12 h the small plot grows with the
+ * square of the ring's upper bound, SMALL_PLOT_GROWTH × (upper / 12 h)² times SMALL_PLOT_SQUARE_METERS.
+ */
+const SMALL_PLOT_FROM_SECONDS = 12 * 3600;
+const SMALL_PLOT_GROWTH = 1;
 /** Off-road travel to and from a road, in seconds of travel per metre: 30 km/h of driving (spec #20 «Привязка»). */
 export const OFF_ROAD_SECONDS_PER_METER = (3.6 / 30) * TRAVEL_PER_DRIVING;
 /** A raster larger than this gets coarser cells: ~120 MB of time and distance. */
@@ -88,8 +95,9 @@ function ringCells({ passage, locator, lowerSeconds, upperSeconds }: ContourInpu
 		rows: grid.rows,
 		rowCellSquareMeters: eastMetersOfRows(grid).map((east) => east * grid.cellMeters),
 	};
-	const inRing = reachedWithin(grid, raster, upperSeconds);
-	const reachedSooner = reachedWithin(grid, raster, lowerSeconds);
+	const plot = smallPlotSquareMeters(upperSeconds);
+	const inRing = reachedWithin(grid, { raster, plot }, upperSeconds);
+	const reachedSooner = reachedWithin(grid, { raster, plot }, lowerSeconds);
 	for (let cell = 0; cell < inRing.length; cell++) {
 		inRing[cell] &= reachedSooner[cell] ^ 1;
 	}
@@ -104,13 +112,26 @@ function ringCells({ passage, locator, lowerSeconds, upperSeconds }: ContourInpu
 	return inRing;
 }
 
-/** 1 for each cell reached within `seconds`, and for each cell of a small plot the cells reached within it wall in. */
-function reachedWithin(grid: Grid, raster: PlotRaster, seconds: number): Uint8Array {
+/**
+ * The small plot of a ring up to `upperSeconds`, in m². One for both of its bounds, so that a plot walled in within
+ * the lower bound is walled in within the upper one too, and the ring holds no part of it.
+ */
+function smallPlotSquareMeters(upperSeconds: number): number {
+	return upperSeconds <= SMALL_PLOT_FROM_SECONDS
+		? SMALL_PLOT_SQUARE_METERS
+		: SMALL_PLOT_SQUARE_METERS * SMALL_PLOT_GROWTH * (upperSeconds / SMALL_PLOT_FROM_SECONDS) ** 2;
+}
+
+/**
+ * 1 for each cell reached within `seconds`, and for each cell of a plot smaller than `plot` m² that the cells
+ * reached within it wall in.
+ */
+function reachedWithin(grid: Grid, { raster, plot }: { readonly raster: PlotRaster; readonly plot: number }, seconds: number): Uint8Array {
 	const reached = new Uint8Array(grid.time.length);
 	for (let cell = 0; cell < reached.length; cell++) {
 		reached[cell] = grid.time[cell] <= seconds ? 1 : 0;
 	}
-	fillSmallPlots(reached, raster, SMALL_PLOT_SQUARE_METERS);
+	fillSmallPlots(reached, raster, plot);
 	return reached;
 }
 
