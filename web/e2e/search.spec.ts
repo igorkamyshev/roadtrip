@@ -6,7 +6,7 @@
 import type { Page } from '@playwright/test';
 import type { RingResponse } from 'worker/api';
 import { allowGeolocation, CITIES, expect, serveCities, squareRing, test, visaRules } from './fixtures.ts';
-import { expectRingCard, firstCard, phrase } from './screen.ts';
+import { expectRingCard, firstCard, phrase, reopen } from './screen.ts';
 
 const startSheet = (page: Page) => page.getByRole('dialog', { name: 'Откуда едем' });
 
@@ -18,12 +18,6 @@ async function search(page: Page, label: string, text: string): Promise<void> {
 
 /** The cities the search shows, as their rows read: name, local name, country and population. */
 const found = (page: Page) => startSheet(page).getByTestId('found-city');
-
-/** A new load of the page, as after closing the tab: the browser's storage stays. */
-async function reopen(page: Page, path: string): Promise<void> {
-	await page.goto('about:blank');
-	await page.goto(path);
-}
 
 test.beforeEach(({ ringApi }) => {
 	ringApi.respond((call) => squareRing(Number(call.lat), Number(call.lon), [0, 0.5]));
@@ -234,7 +228,7 @@ test.describe("the origin's label", () => {
 		await expect(phrase(page)).toContainText('Из точки Ниш, до 1 часа в пути.');
 	});
 
-	test('is the nearest city for the saved state, a city of the search included', async ({ page }) => {
+	test('is the nearest city for the saved state, a city of the search included', async ({ page, ringApi }) => {
 		await page.goto('/#/?p=43.30000,21.90000&h=1');
 		await expect(phrase(page)).toContainText('Из точки Ниш,');
 		await search(page, 'Ниш', 'Ilid');
@@ -243,7 +237,7 @@ test.describe("the origin's label", () => {
 			.click();
 		await expect(phrase(page)).toContainText('Из точки Ilidža,');
 
-		await reopen(page, '/');
+		await reopen(page, ringApi, '/');
 
 		await expect(page).toHaveURL(/#\/\?p=43\.83100,18\.30700&h=1&cit=RUS$/u);
 		await expect(phrase(page)).toContainText('Из точки Ilidža, до 1 часа в пути.');

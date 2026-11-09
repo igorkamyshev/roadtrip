@@ -4,6 +4,7 @@
 import { expect, type Locator, type Page } from '@playwright/test';
 import type { Feature, GeoJSON, Geometry } from 'geojson';
 import type { StyleSpecification } from 'maplibre-gl';
+import type { RingApi } from './ring-api.ts';
 
 /** What the tests use of MapLibre's `Map`, without importing MapLibre into Node. */
 interface MapForTests {
@@ -45,6 +46,17 @@ function offTheMap<T>(value: T | undefined): T {
 		throw new Error('the map the client announced is gone');
 	}
 	return value;
+}
+
+/**
+ * A new load of the page, as after closing the tab: the browser's storage stays, the memory of rings does not. It
+ * leaves the page once the screen has asked for the ring its link names: the link follows the state at once and the
+ * request comes after it, so a load in between would drop the request.
+ */
+export async function reopen(page: Page, ringApi: RingApi, path: string): Promise<void> {
+	await ringApi.waitForRingOf(page.url());
+	await page.goto('about:blank');
+	await page.goto(path);
 }
 
 /** The phrase over the map: «Из точки [Белград], до 1 часа в пути. … ⓘ». */

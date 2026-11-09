@@ -52,6 +52,19 @@ export class RingApi {
 		return this.calls;
 	}
 
+	/** Resolves once the screen has asked for the ring its link names: `…#/?p=lat,lon&h=…&cit=…&visas=…`. */
+	async waitForRingOf(link: string): Promise<void> {
+		const state = new URLSearchParams(new URL(link).hash.replace(/^#\/\?/u, ''));
+		const [lat, lon] = (state.get('p') ?? '').split(',');
+		const isAsked = (call: RingCall): boolean =>
+			call.lat === lat &&
+			call.lon === lon &&
+			call.hours === Number(state.get('h')) &&
+			call.cit === state.get('cit') &&
+			call.visas === state.get('visas');
+		await expect.poll(() => this.calls.some(isAsked), { message: `a call to /api/ring for ${link}` }).toBe(true);
+	}
+
 	async handle(route: Route): Promise<void> {
 		const url = new URL(route.request().url());
 		const call: RingCall = {
