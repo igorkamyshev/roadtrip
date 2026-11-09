@@ -34,7 +34,7 @@ A merge to `main` deploys both Workers through Cloudflare Workers Builds, and th
 
 ## Review
 
-Reviewing a branch or merging a ticket's work, the review step of `implement` included: `mattpocock-skills:code-review`, which checks the whole diff, tests too, against `CODING_STANDARDS.md` and the ticket.
+Reviewing a branch or merging a ticket's work, the review step of `mattpocock-skills:implement` included: `mattpocock-skills:code-review`, which checks the whole diff, tests too, against `CODING_STANDARDS.md` and the ticket.
 
 ## Subagents
 

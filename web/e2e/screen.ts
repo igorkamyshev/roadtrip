@@ -1,6 +1,7 @@
 // Reading the screen in its tests: the DOM by role and text, the map by its sources and layers (never pixels),
 // through the MapLibre map the client announces once it shows the screen's state, which the fixtures keep as
-// `window.mapForTests` (e2e/fixtures.ts). Each reading of the map waits for it.
+// `window.mapForTests` (e2e/fixtures.ts). Each reading of the map waits for it. And the screen opened anew, `reopen`,
+// once it has asked for its ring.
 import { expect, type Locator, type Page } from '@playwright/test';
 import type { Feature, GeoJSON, Geometry } from 'geojson';
 import type { StyleSpecification } from 'maplibre-gl';
@@ -54,8 +55,10 @@ function offTheMap<T>(value: T | undefined): T {
  * request comes after it, so a load in between would drop the request.
  */
 export async function reopen(page: Page, ringApi: RingApi, path: string): Promise<void> {
-	await ringApi.waitForRingOf(page.url());
+	// The link is read at each poll: the page may not have written its whole state into it yet.
+	await expect.poll(() => ringApi.askedFor(page.url()), { message: 'a call to /api/ring for the ring the link names' }).toBe(true);
 	await page.goto('about:blank');
+	ringApi.newLoad();
 	await page.goto(path);
 }
 
