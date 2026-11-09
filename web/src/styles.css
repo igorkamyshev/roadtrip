@@ -916,3 +916,73 @@ a {
 	padding: 0 8px;
 	font-size: 16px;
 }
+
+/* Round 4: one unit at a time, the other folded into a strip. */
+.pv-z .pv-cells {
+	flex: 1 1 0;
+	min-height: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 3px;
+}
+.pv-z .pv-cell[data-day] {
+	font-size: 17px;
+	background: color-mix(in srgb, var(--ring) 7%, transparent);
+}
+.pv-z .pv-cell[data-day][data-cached] {
+	background: color-mix(in srgb, var(--ok) 14%, transparent);
+}
+.pv-z .pv-cell.on[data-day] {
+	background: var(--ring);
+}
+.pv-z .pv-cell.on b {
+	display: grid;
+	justify-items: center;
+	line-height: 1.1;
+}
+.pv-z .pv-cell.on[data-day] b {
+	font-size: 14px;
+}
+.pv-z .pv-cell.on b small {
+	font-size: 10px;
+	font-weight: 600;
+}
+.pv-strip {
+	flex: none;
+	display: grid;
+	place-items: center;
+	height: 22px;
+	border-radius: 9px;
+	font-size: 10px;
+	font-weight: 600;
+	letter-spacing: 0.02em;
+	color: var(--ring);
+	background: color-mix(in srgb, var(--ring) 10%, transparent);
+}
+.pv-strip.on {
+	background: var(--ring);
+	color: #fff;
+}
+/* Z2: the panel's own background goes to the cells; the strip is a tab outside it. */
+.c-vs.pv-z2 {
+	background: none;
+	box-shadow: none;
+}
+.pv-z2 {
+	padding: 0;
+	gap: 6px;
+}
+.pv-z2 .pv-cells {
+	padding: 6px;
+	border-radius: 18px;
+	background: color-mix(in srgb, var(--surface) 88%, transparent);
+	box-shadow: var(--shadow);
+}
+.pv-tab {
+	align-self: center;
+	width: 44px;
+	height: 26px;
+	border-radius: 13px;
+	background: color-mix(in srgb, var(--surface) 92%, transparent);
+	box-shadow: var(--shadow);
+}

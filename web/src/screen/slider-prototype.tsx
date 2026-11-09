@@ -1,31 +1,26 @@
 // PROTOTYPE (#77), throwaway branch only: the slider's scale of 1–12 h and then days 2–5 (a day is 12 h of travel),
 // on the real screen, switched by `?variant=` before the `#` (the hash router keeps it) or the bar at the bottom.
-// Round 1 picked B (one column, the day cells taller and tinted) over A (16 equal cells) and C (two panels). Round 2
-// (units on the hours: on each cell, as group captions, on the first cell) was too noisy. Round 3, on B:
-// R: a ruler, the hours as ticks with numbers at 1, 6 and 12, the days numbered blocks.
-// H: everything in hours, the days labelled 24, 36, 48, 60; the phrase says days.
-// S: numbers only, «часы» and «дни» written sideways along each group.
-// M: only the chosen cell is labelled; the hours are dots, the days blank blocks.
+// Rounds 1–3 showed hours and days in one column at once (A, B, C; units on the hours; a ruler, hours only, side
+// captions, the chosen cell only): two units side by side are noise whatever the labels. Round 4: the column is in
+// one unit at a time, as today. In hours, the 12 cells of today and the days folded into a strip «дни» on top; a step
+// up from 12 h (a key, a tap or a drag onto the strip) turns the column over: days 2–5 at full height, the hours
+// folded into a strip «часы» at the bottom. The column turns over when N is committed, not under the finger.
+// Z1: the strip inside the panel. Z2: the strip a tab outside it, above or below.
 // The step of the scale is the screen's N: 1–12 are hours, 13–16 days 2–5.
 import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent, type ReactElement, type RefObject } from 'react';
 import { MAX_HOURS, MIN_HOURS } from '../state/search.ts';
-import { dayOfStep, hoursShort, hoursSpan } from './copy.ts';
+import { dayOfStep, hoursShort, hoursSpan, plural } from './copy.ts';
 
-const VARIANTS = ['r', 'h', 's', 'm'] as const;
+const VARIANTS = ['z1', 'z2'] as const;
 type Variant = (typeof VARIANTS)[number];
-const NAMES: Readonly<Record<Variant, string>> = {
-	r: 'R · линейка',
-	h: 'H · всё в часах',
-	s: 'S · подписи сбоку',
-	m: 'M · только выбранная',
-};
+const NAMES: Readonly<Record<Variant, string>> = { z1: 'Z1 · полоска в панели', z2: 'Z2 · язычок снаружи' };
 
 const HOUR_STEPS = Array.from({ length: 12 }, (_, index) => 12 - index);
 const DAY_STEPS = Array.from({ length: MAX_HOURS - 12 }, (_, index) => MAX_HOURS - index);
 
 function variantOfLocation(): Variant {
 	const value = new URLSearchParams(window.location.search).get('variant');
-	return VARIANTS.find((variant) => variant === value) ?? 'r';
+	return VARIANTS.find((variant) => variant === value) ?? 'z1';
 }
 
 /** The variant of `?variant=`, and its setter, which writes it back before the hash. */
@@ -68,7 +63,7 @@ export function PrototypeSlider({ variant, value, onCommit, cached }: PrototypeS
 	};
 	return (
 		<div
-			className={`pv pv-b pv-${variant}`}
+			className={`pv pv-z pv-${variant}`}
 			// oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- prototype of the slider's scale, as slider.tsx
 			role="slider"
 			tabIndex={0}
@@ -82,53 +77,35 @@ export function PrototypeSlider({ variant, value, onCommit, cached }: PrototypeS
 			ref={column}
 			{...handlers}
 		>
-			<Cells variant={variant} shown={shown} cached={cached} />
+			<Cells variant={variant} value={value} shown={shown} cached={cached} />
 		</div>
 	);
 }
 
-/** The chosen cell's label: «11–12ч», «1–2д»; in H, hours throughout, «12–24». */
-function chosenLabel(variant: Variant, step: number): string {
+/** The chosen cell's label: hours as today («до 1», «6–7»); a day on two lines, «2–3» over «дня». */
+function chosenLabel(step: number): ReactElement | string {
 	const day = dayOfStep(step);
 	if (day === undefined) {
-		return variant === 'h' ? hoursSpan(step) : `${hoursSpan(step)}ч`;
+		return hoursSpan(step);
 	}
-	return variant === 'h' ? `${12 * (day - 1)}–${12 * day}` : `${day - 1}–${day}д`;
+	return (
+		<>
+			{day - 1}–{day}
+			<small>{plural(day, ['дня', 'дня', 'дней'])}</small>
+		</>
+	);
 }
 
-const RULER_NUMBERS: ReadonlySet<number> = new Set([1, 6, 12]);
-
-/** What an unchosen cell shows. */
-function idleLabel(variant: Variant, step: number): ReactElement | string {
-	const day = dayOfStep(step);
-	if (variant === 'm') {
-		return day === undefined ? <i className="pv-dot" /> : '';
-	}
-	if (day !== undefined) {
-		return variant === 'h' ? String(12 * day) : String(day);
-	}
-	if (variant === 'r') {
-		return RULER_NUMBERS.has(step) ? (
-			<>
-				<i className="pv-tick long" />
-				{step}
-			</>
-		) : (
-			<i className="pv-tick" />
-		);
-	}
-	return String(step);
-}
-
-function Cells({
-	variant,
-	shown,
-	cached,
-}: {
+interface CellsProps {
 	readonly variant: Variant;
+	/** The committed N: the column's unit follows it, not the finger. */
+	readonly value: number;
 	readonly shown: number;
 	readonly cached: ReadonlySet<number>;
-}): ReactElement {
+}
+
+function Cells({ variant, value, shown, cached }: CellsProps): ReactElement {
+	const inDays = dayOfStep(value) !== undefined;
 	const cell = (step: number): ReactElement => (
 		<span
 			key={step}
@@ -137,25 +114,28 @@ function Cells({
 			data-day={dayOfStep(step) === undefined ? undefined : true}
 			data-cached={cached.has(step) || undefined}
 		>
-			<b>{step === shown ? chosenLabel(variant, step) : idleLabel(variant, step)}</b>
+			<b>{step === shown ? chosenLabel(step) : String(dayOfStep(step) ?? step)}</b>
 		</span>
 	);
-	if (variant === 's') {
-		return (
-			<>
-				<div className="pv-group pv-group-days" data-caption="дни">
-					{DAY_STEPS.map((step) => cell(step))}
-				</div>
-				<div className="pv-group pv-group-hours" data-caption="часы">
-					{HOUR_STEPS.map((step) => cell(step))}
-				</div>
-			</>
-		);
-	}
-	return (
+	// The strip of the other unit: a step into it, 2 days from the hours, 12 h from the days.
+	const strip = (
+		<span
+			className={`pv-strip ${variant === 'z2' ? 'pv-tab' : ''} ${shown === (inDays ? 12 : 13) ? 'on' : ''}`}
+			data-step={inDays ? 12 : 13}
+		>
+			{inDays ? 'часы ↓' : 'дни ↑'}
+		</span>
+	);
+	const cells = <div className="pv-cells">{(inDays ? DAY_STEPS : HOUR_STEPS).map((step) => cell(step))}</div>;
+	return inDays ? (
 		<>
-			{DAY_STEPS.map((step) => cell(step))}
-			{HOUR_STEPS.map((step) => cell(step))}
+			{cells}
+			{strip}
+		</>
+	) : (
+		<>
+			{strip}
+			{cells}
 		</>
 	);
 }
