@@ -1,6 +1,6 @@
 // The Container's process (Dockerfile): loads the dataset's graph and the border table, then listens on PORT
 // (8080). The port takes connections only once both are loaded, so the Container counts it ready then: its
-// `portReadyTimeoutMS` covers the load (spec «Container и очередь»).
+// `portReadyTimeoutMS` covers the load (spec #20 «Container и очередь»).
 //
 //   DATASET_DIR=<directory with graph.graph and dataset.json> PORT=8080 node server/main.ts
 //

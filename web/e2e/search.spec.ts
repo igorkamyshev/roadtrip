@@ -1,4 +1,4 @@
-// The sheet «Откуда едем» and the origin's label (spec «Экран»: the phrase, the sheet, the first card's table;
+// The sheet «Откуда едем» and the origin's label (spec #20 «Экран»: the phrase, the sheet, the first card's table;
 // stories 2, 4, 5): the city search by the start of the Russian or local name (src/cities/search.ts), the origin's
 // city (src/cities/nearest.ts, GLOSSARY «Город точки старта»), «Указать на карте» and «Где я», «Город»
 // on the first card, and the label of each way to set the origin. The cities are `CITIES` of the fixtures, real ones

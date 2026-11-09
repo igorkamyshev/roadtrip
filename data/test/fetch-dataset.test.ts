@@ -1,4 +1,4 @@
-// Taking the current dataset out of R2 for the deploy (spec «Набор данных», «Деплой»; #36): the version the pointer
+// Taking the current dataset out of R2 for the deploy (spec #20 «Набор данных», «Деплой»; #36): the version the pointer
 // `current.json` names, each file checked against the pointer's SHA-256 before it takes its place. R2 is a double
 // here; the deploy reads R2 itself (cli/fetch-dataset.ts).
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';

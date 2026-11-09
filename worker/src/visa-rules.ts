@@ -1,4 +1,4 @@
-// The citizenships' visa rules from Sherpa, through their copies in Workers KV (spec «Визовые правила и сведение»,
+// The citizenships' visa rules from Sherpa, through their copies in Workers KV (spec #20 «Визовые правила и сведение»,
 // #11). A copy per citizenship holds only Sherpa's table «country → class» and when it came:
 //
 // - a copy is fresh for a day;

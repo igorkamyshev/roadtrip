@@ -1,6 +1,6 @@
-// The screen's state and what changes it (spec «Экран»): the link's state, the ring shown with its cities, the first
-// card's state, how the origin is set, the chosen city, the sheet open, and the map's handle they move. The screen
-// (screen.tsx) lays them out.
+// The screen's state and what changes it (spec #20 «Экран»): the link's state, the ring shown with its cities, the
+// first card's state, how the origin is set, the chosen city, the sheet open, and the map's handle they move. The
+// screen (screen.tsx) lays them out.
 import { useCallback, useRef, useState, type RefObject } from 'react';
 import type { MapHandle } from '../map/camera.ts';
 import { useScreenState, type ScreenStateControls } from '../state/use-screen-state.ts';

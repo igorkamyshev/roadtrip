@@ -1,4 +1,4 @@
-// What a city card says besides the names (spec «Экран», «Карточка города»): the population, the entry mode's mark,
+// What a city card says besides the names (spec #20 «Экран», «Карточка города»): the population, the entry mode's mark,
 // the line on Russian plates, and the route in Google Maps.
 import { EU } from 'rules/eu';
 import { SCHENGEN } from 'rules/held-visas';

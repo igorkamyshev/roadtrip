@@ -1,4 +1,4 @@
-// The Schengen area as the site sees it (spec «Таблица границ», «Визовые правила и сведение»; #9, #13): no border
+// The Schengen area as the site sees it (spec #20 «Таблица границ», «Визовые правила и сведение»; #9, #13): no border
 // delay between two of these on any road, and a held Schengen visa (`SCHENGEN`) opens all of them. The border
 // table holds it as `schengen`, so it is part of the table's hash; the held visas (held-visas.ts) read it here, so
 // the client gets it without the border table.

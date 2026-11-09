@@ -1,4 +1,4 @@
-// The carousel at the bottom of the screen (spec «Экран», «Карусель»): the first card, the cards of the ring's
+// The carousel at the bottom of the screen (spec #20 «Экран», «Карусель»): the first card, the cards of the ring's
 // biggest cities, and «и ещё K / Все города →» when the ring holds more. Its link with the map is
 // src/cities/carousel.ts's.
 import type { ReactElement } from 'react';

@@ -1,4 +1,4 @@
-// The comparison of our engine with Valhalla on the full graph (#24; spec «Решения по тестам», «Сверка с
+// The comparison of our engine with Valhalla on the full graph (#24; spec #20 «Решения по тестам», «Сверка с
 // Valhalla»). A one-off check, not a CI test:
 //
 //   pnpm --filter data valhalla <work dir> [--report <file.md>] [--regions <id,…>] [--mirror <url>]

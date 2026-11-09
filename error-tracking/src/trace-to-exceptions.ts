@@ -18,7 +18,7 @@ import { scrubContextValue, scrubString } from './scrub';
 // copies from the browser's X-POSTHOG-* headers, become the event's distinct_id
 // and $session_id. Without a distinct_id the event gets a one-off one. No event
 // creates a person: the browser's person is anonymous, and every Worker event is
-// personless (spec «Аналитика и ошибки»).
+// personless (spec #20 «Аналитика и ошибки»).
 
 export type ExceptionEvent = Readonly<{
 	event: '$exception';

@@ -1,4 +1,4 @@
-// The cities in the ring (spec «Экран»: «Города в кольце», «Карусель», «Карточка города», the first card «нет
+// The cities in the ring (spec #20 «Экран»: «Города в кольце», «Карусель», «Карточка города», the first card «нет
 // городов»; stories 35–42): which cities the screen picks of the cities file, the carousel, the list of all cities,
 // the cards, and how the carousel and the map follow each other. The cities are `CITIES` of the fixtures, real ones
 // around Belgrade, or a test's own; their distance from Belgrade below is the larger of |Δlat| and |Δlon|, which is

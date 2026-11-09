@@ -1,4 +1,4 @@
-// GET /api/ring (spec «API кольца», «Кэш колец»): the ring from the ring cache in KV, or calculated by the engine
+// GET /api/ring (spec #20 «API кольца», «Кэш колец»): the ring from the ring cache in KV, or calculated by the engine
 // in the Container. Side effects come through `deps`, built at the entry (index.ts).
 import type { Logger } from 'error-tracking/logger';
 import { utcDate, type VisaExemption } from 'rules';
@@ -37,7 +37,7 @@ export interface RingDeps {
 	readonly analytics: Analytics;
 }
 
-/** The steps of «Порядок работы Worker'а» (spec «API кольца»), and `ring served` for each request. */
+/** The steps of «Порядок работы Worker'а» (spec #20 «API кольца»), and `ring served` for each request. */
 export async function handleRing(request: Request, deps: RingDeps): Promise<Response> {
 	const started = deps.now();
 	// A request that is no ring request is an error with neither a source nor N.

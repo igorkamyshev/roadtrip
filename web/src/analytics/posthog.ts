@@ -1,8 +1,9 @@
-// PostHog in the browser (spec «Аналитика и ошибки», «Браузер»; research/posthog-cloudflare): only on the production
-// host. Off it (`vite dev`, `vite preview`, a copy of the site) nothing is loaded and nothing leaves the page. On it,
-// posthog-js comes as a chunk of its own (posthog-client.ts) that the page imports as it starts, so the first paint
-// does not wait for it; until it is up, this keeps the screen's events with their time and the errors the page throws,
-// and the ring requests wait for it (`analyticsStarted`), so that even the first one carries its tracing headers.
+// PostHog in the browser (spec #20 «Аналитика и ошибки», «Браузер»; research/posthog-cloudflare): only on the
+// production host. Off it (`vite dev`, `vite preview`, a copy of the site) nothing is loaded and nothing leaves the
+// page. On it, posthog-js comes as a chunk of its own (posthog-client.ts) that the page imports as it starts, so the
+// first paint does not wait for it; until it is up, this keeps the screen's events with their time and the errors the
+// page throws, and the ring requests wait for it (`analyticsStarted`), so that even the first one carries its tracing
+// headers.
 import { PRODUCTION_HOST } from 'worker/api';
 import type { BrowserEvent, BrowserEvents } from './events.ts';
 

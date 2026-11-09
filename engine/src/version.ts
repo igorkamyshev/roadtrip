@@ -2,7 +2,7 @@
 // «Engine version»).
 
 /**
- * The version of the engine's results. It is part of the data version in the ring cache key (spec «Кэш колец»),
+ * The version of the engine's results. It is part of the data version in the ring cache key (spec #20 «Кэш колец»),
  * so bump it by one in the change that makes the same input give another result.
  */
 export const ENGINE_VERSION = 6;
@@ -52,4 +52,4 @@ export const ENGINE_SOURCES: readonly string[] = [
  * hex; data/test/engine-fingerprint.test.ts checks it. A new fingerprint with the same ENGINE_VERSION says the
  * change gives every ring as before.
  */
-export const ENGINE_FINGERPRINT = '8d979eee27ac2257695d2f78552d718043e22c37cbf3bdaa056e3285005e204f';
+export const ENGINE_FINGERPRINT = 'e113d0fe4913543108689e791a33a5a357123b4249bcfe015c5cec9ce4515eb4';

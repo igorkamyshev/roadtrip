@@ -1,4 +1,4 @@
-// The list of all the ring's cities (spec «Экран», «Карусель»): a sheet, opened by «и ещё K / Все города →» or by a
+// The list of all the ring's cities (spec #20 «Экран», «Карусель»): a sheet, opened by «и ещё K / Все города →» or by a
 // city on the map that has no card in the carousel. A 12-hour ring can hold thousands of cities, so the list is
 // virtual (TanStack Virtual): only the rows in view are on the page.
 import { useVirtualizer } from '@tanstack/react-virtual';

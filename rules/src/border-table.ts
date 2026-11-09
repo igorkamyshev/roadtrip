@@ -1,4 +1,4 @@
-// The border table, edited by hand (spec «Таблица границ»). Its schema is in index.ts; buildGraph and `pnpm test`
+// The border table, edited by hand (spec #20 «Таблица границ»). Its schema is in index.ts; buildGraph and `pnpm test`
 // check it with borderTableProblems.
 //
 // The rows come from research/closed-borders (#5) as #13 amends it, all checked 2026-11-07:

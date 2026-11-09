@@ -1,6 +1,6 @@
 // OSM PBF (https://wiki.openstreetmap.org/wiki/PBF_Format), read block by block from disk, so a file larger than
 // memory streams through. Reads ways with their own locations (the `LocationsOnWays` feature of
-// `osmium add-locations-to-ways`), which the world build uses (spec «Набор данных»).
+// `osmium add-locations-to-ways`), which the world build uses (spec #20 «Набор данных»).
 import { closeSync, fstatSync, openSync, readSync } from 'node:fs';
 import { inflateSync } from 'node:zlib';
 import { PbfReader } from 'pbf';

@@ -1,4 +1,4 @@
-// The first card by state (spec «Экран», «Первая карточка, по состояниям»; stories 7, 9, 21, 47, 48): the
+// The first card by state (spec #20 «Экран», «Первая карточка, по состояниям»; stories 7, 9, 21, 47, 48): the
 // engine's outcomes without a ring, the WAF's block and failures, with the spec's texts and buttons.
 import type { RingResponse } from 'worker/api';
 import { allowGeolocation, expect, squareRing, test, visaRules } from './fixtures.ts';

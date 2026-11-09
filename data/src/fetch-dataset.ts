@@ -1,5 +1,5 @@
-// The deploy's side of the dataset in R2 (spec «Набор данных», «Деплой»; #36): the version the pointer `current.json`
-// names, which the world build moves last (src/publish.ts).
+// The deploy's side of the dataset in R2 (spec #20 «Набор данных», «Деплой»; #36): the version the pointer
+// `current.json` names, which the world build moves last (src/publish.ts).
 import { createHash } from 'node:crypto';
 import { createWriteStream, mkdirSync, renameSync, rmSync } from 'node:fs';
 import { dirname } from 'node:path';

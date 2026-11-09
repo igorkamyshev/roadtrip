@@ -1,4 +1,4 @@
-// The ring API (spec «Решения по тестам», seam 2): the handler of GET /api/ring with its dependencies through
+// The ring API (spec #20 «Решения по тестам», seam 2): the handler of GET /api/ring with its dependencies through
 // `deps` (test/api.ts). Sherpa answers every country visa-free here unless a test says otherwise; the visa rules
 // themselves are in visa-rules.test.ts. The border rules are the engine's seam, not repeated here.
 import { fixtureGraph } from 'data/fixture-graph';

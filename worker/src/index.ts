@@ -1,4 +1,4 @@
-// The Worker roadtrip (spec «Устройство»): routes a request by its path and builds the route's deps from env and
+// The Worker roadtrip (spec #20 «Устройство»): routes a request by its path and builds the route's deps from env and
 // ctx. Static assets (#28) are served before the Worker runs, so only paths without a file reach it: GET /api/ring
 // and the basemap's tiles, GET /tiles/{z}/{x}/{y}. The class of the Container with the engine lives here too, because the runtime takes
 // it from the Worker's entry.

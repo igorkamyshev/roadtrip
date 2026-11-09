@@ -19,7 +19,7 @@ export class RingRequestError extends Error {
 }
 
 /**
- * The ring for `query`. Takes no abort signal (spec «Состояние, ссылка и память браузера»): an answer that comes
+ * The ring for `query`. Takes no abort signal (spec #20 «Состояние, ссылка и память браузера»): an answer that comes
  * after the person moved on still goes to the memory of rings, it is only not shown.
  */
 export async function fetchRing(query: RingQuery): Promise<RingResponse> {

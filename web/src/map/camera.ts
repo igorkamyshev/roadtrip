@@ -1,4 +1,4 @@
-// Where the map looks (spec «Экран», «Карта»): over Europe before there is an origin, at the origin once there is,
+// Where the map looks (spec #20 «Экран», «Карта»): over Europe before there is an origin, at the origin once there is,
 // the whole ring when a new one comes, with room for the phrase, the slider and the carousel; and the handle the
 // screen moves it with.
 import type { Map as MapLibre } from 'maplibre-gl';

@@ -1,5 +1,5 @@
-// Where a traversal starts (spec «Движок», «Привязка»): the origin snapped to a road, the drive to it at 30 km/h, and
-// the ends of the road it drives to. computeRing and the comparison with Valhalla (data/src/valhalla/ours.ts) both
+// Where a traversal starts (spec #20 «Движок», «Привязка»): the origin snapped to a road, the drive to it at 30 km/h,
+// and the ends of the road it drives to. computeRing and the comparison with Valhalla (data/src/valhalla/ours.ts) both
 // start here.
 import { OFF_ROAD_SECONDS_PER_METER } from './contour.ts';
 import type { Graph } from './graph.ts';

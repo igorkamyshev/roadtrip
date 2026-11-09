@@ -1,4 +1,4 @@
-// The passports Sherpa's `POST /v3/maps` takes (spec «Визовые правила и сведение», #11): the 199 alpha-3 codes its
+// The passports Sherpa's `POST /v3/maps` takes (spec #20 «Визовые правила и сведение», #11): the 199 alpha-3 codes its
 // answer 400 listed on 2026-11-07 (research/sherpa-api, §3.2), Kosovo as RKS. A citizenship is one of these, and
 // the ring API takes no other. Not on the list: North Korea (PRK) and most dependent territories.
 

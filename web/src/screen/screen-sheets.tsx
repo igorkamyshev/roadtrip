@@ -1,5 +1,5 @@
-// The sheet open on the screen, if any (spec «Экран»): «Гражданство», «Мои визы», «Откуда едем», «Что важно знать» and
-// the list of all the ring's cities. Each is a `Sheet` (sheets.tsx).
+// The sheet open on the screen, if any (spec #20 «Экран»): «Гражданство», «Мои визы», «Откуда едем», «Что важно знать»
+// and the list of all the ring's cities. Each is a `Sheet` (sheets.tsx).
 import type { ReactElement } from 'react';
 import { CitiesSheet } from '../cities/cities-sheet.tsx';
 import { StartSheet } from '../start/start-sheet.tsx';

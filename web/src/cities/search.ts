@@ -1,5 +1,5 @@
-// The city search of the sheet «Откуда едем» (spec «Экран», #33): the cities of the cities file by the start of their
-// Russian or local name, case and ё aside, a hyphen as a space; up to 8, bigger cities higher.
+// The city search of the sheet «Откуда едем» (spec #20 «Экран», #33): the cities of the cities file by the start of
+// their Russian or local name, case and ё aside, a hyphen as a space; up to 8, bigger cities higher.
 import { biggestFirst } from 'data/cities-file';
 import type { City } from './cities.ts';
 

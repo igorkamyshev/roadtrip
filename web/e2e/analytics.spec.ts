@@ -1,4 +1,4 @@
-// PostHog in the browser (spec «Аналитика и ошибки», «Решения по тестам», seam 3): the screen opened on the
+// PostHog in the browser (spec #20 «Аналитика и ошибки», «Решения по тестам», seam 3): the screen opened on the
 // production host, where PostHog runs, with PostHog's proxy doubled (`PostHogDouble`): the page views, the screen's
 // own events and their properties. Never the origin.
 import type { Page } from '@playwright/test';

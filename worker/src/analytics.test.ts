@@ -1,6 +1,6 @@
-// The Worker's PostHog client (spec «Аналитика и ошибки», «Worker»): posthog-node with the network under it doubled,
-// so a test sees the very batch PostHog would get. Which events and properties the routes send is in the routes' own
-// tests, against a recording double (test/analytics-double.ts).
+// The Worker's PostHog client (spec #20 «Аналитика и ошибки», «Worker»): posthog-node with the network under it
+// doubled, so a test sees the very batch PostHog would get. Which events and properties the routes send is in the
+// routes' own tests, against a recording double (test/analytics-double.ts).
 import { gunzipSync } from 'node:zlib';
 import { describe, expect, it } from 'vitest';
 import { objectContaining } from '../test/matchers.ts';

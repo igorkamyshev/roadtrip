@@ -1,4 +1,4 @@
-// Putting the dataset in R2 (spec «Набор данных», «Выкладка»): every file under its version, and the pointer to the
+// Putting the dataset in R2 (spec #20 «Набор данных», «Выкладка»): every file under its version, and the pointer to the
 // current version moved only once they are all there. R2 is a double here; the world build talks to R2 itself.
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';

@@ -1,4 +1,4 @@
-// How the border table applies to a graph (spec «Движок», «Обход»): which edges across a border a car may take,
+// How the border table applies to a graph (spec #20 «Движок», «Обход»): which edges across a border a car may take,
 // and the border delay on each. Worked out once per graph and table, which the engine reads on every calculation.
 import type { BorderCrossing, BorderPair, BorderTable } from 'rules';
 import { E7, segmentMeters } from './geo.ts';
@@ -41,7 +41,7 @@ interface VisaClosures {
 
 /**
  * Where a traversal of `graph` may go under the border table, with `closedCountries` closed but for the start
- * zone, which is always open (spec «Движок»).
+ * zone, which is always open (spec #20 «Движок»).
  */
 export function passage(graph: Graph, table: BorderTable, { closedCountries, startZone }: VisaClosures): Passage {
 	let byTable = borderSecondsCache.get(graph);

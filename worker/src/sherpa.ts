@@ -1,4 +1,4 @@
-// Sherpa's visa rules for one passport (spec «Визовые правила и сведение», #11, research/sherpa-api): the
+// Sherpa's visa rules for one passport (spec #20 «Визовые правила и сведение», #11, research/sherpa-api): the
 // undocumented `POST /v3/maps`, which sorts ~230 countries into 7 groups. One request per citizenship; there is no
 // fallback to `/v3/trips`. An answer counts only when it passes the schema below and lists at least 200 countries:
 // anything else is a failure, and the copy in KV stays (visa-rules.ts).

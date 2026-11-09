@@ -1,4 +1,4 @@
-// The visa exemptions' table, edited by hand (spec «Визовые правила и сведение»; #9, #11): which countries let in a
+// The visa exemptions' table, edited by hand (spec #20 «Визовые правила и сведение»; #9, #11): which countries let in a
 // holder of a visa or residence permit of Schengen, the USA, the UK or Canada whose citizenship needs a visa of its
 // own. Its schema is `VisaExemption` in index.ts; `pnpm test` checks it with visaExemptionsProblems. It deploys
 // with the Worker, and the client bundles it for the sheet «Мои визы». The monthly review of the table:

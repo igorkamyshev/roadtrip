@@ -73,6 +73,8 @@
 
 		// roadtrip's own rules (lint/plugin.ts).
 		"roadtrip/disable-needs-reason": "error",
+		// A mention of the spec in a comment names its issue: spec #20 «Экран» (CODING_STANDARDS.md, Decisions and docs).
+		"roadtrip/spec-names-its-issue": "error",
 		"roadtrip/no-mock-own-modules": ["error", { "packages": ["engine", "data", "rules", "error-tracking", "worker", "web", "lint"] }],
 
 		// Off, each for its reason (ADR 0002):

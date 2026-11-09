@@ -1,5 +1,5 @@
-// Where the person is, from the browser (spec «Экран»: geolocation on the first visit and «Где я»). The screen sends
-// `geolocation failed` with the reason.
+// Where the person is, from the browser (spec #20 «Экран»: geolocation on the first visit and «Где я»). The screen
+// sends `geolocation failed` with the reason.
 import { point, type LatLon } from '../state/point.ts';
 
 /** Why the browser gave no position: the reasons of `geolocation failed`. */

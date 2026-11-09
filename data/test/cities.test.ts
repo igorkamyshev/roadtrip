@@ -1,4 +1,4 @@
-// The cities file (spec «Набор данных», «Файл городов»): GeoNames' cities from 15 000 people without sections of
+// The cities file (spec #20 «Набор данных», «Файл городов»): GeoNames' cities from 15 000 people without sections of
 // cities and vanished places, their Russian names from GeoNames or else Wikidata, and their zones by the graph's
 // polygons. The inputs are lines in GeoNames' own formats (cities1000.txt, alternateNamesV2.txt) and a double of
 // Wikidata; the zones are those of zones.osm (its header has the squares).

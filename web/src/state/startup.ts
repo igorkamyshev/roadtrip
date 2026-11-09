@@ -1,4 +1,4 @@
-// Which state the screen opens with (spec «Состояние, ссылка и память браузера», «При загрузке»): the link's if
+// Which state the screen opens with (spec #20 «Состояние, ссылка и память браузера», «При загрузке»): the link's if
 // its `#…` carries one, else the one saved in the browser, else the defaults. Decided once, before the router
 // renders; from then on the link and the saved snapshot change together (useScreenState).
 import { parseSearch, STATE_PARAMS, stringifySearch, validateScreenSearch, type ScreenSearch } from './search.ts';

@@ -1,4 +1,4 @@
-// The Container with the engine server, as GET /api/ring asks it (spec «Container и очередь», engine/protocol): the
+// The Container with the engine server, as GET /api/ring asks it (spec #20 «Container и очередь», engine/protocol): the
 // calculation it posts, and the answer checked before the Worker serves or caches it.
 import { type Calculation, CALCULATION_PATH, type CalculationRequest, type CalculationTimings, type RingOutcome } from 'engine/protocol';
 import { isRecord } from 'engine/json';

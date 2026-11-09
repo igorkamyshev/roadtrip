@@ -1,4 +1,4 @@
-// The engine server of the Container (spec «Container и очередь»): `POST /ring` with a calculation, answered with
+// The engine server of the Container (spec #20 «Container и очередь»): `POST /ring` with a calculation, answered with
 // the engine's result, the data version and the timings, or 500 with the error. Web-standard Request and Response
 // only: http.ts serves it under Node in the Container, and the Worker's tests call it in their own process.
 import type { RingResult } from '../src/index.ts';
