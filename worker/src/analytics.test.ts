@@ -64,10 +64,13 @@ function analyticsOf(url: string, headers: Record<string, string> = {}) {
 
 describe("the Worker's analytics", () => {
 	it("send each event at once to PostHog's US cloud with the project token, in the request's waitUntil", async () => {
-		const { analytics, background, settle, requests } = analyticsOf('https://roadtrip.kamyshev.me/api/ring?lat=1&lon=2&hours=3&cit=RUS', {
-			'X-POSTHOG-DISTINCT-ID': BROWSER,
-			'X-POSTHOG-SESSION-ID': SESSION,
-		});
+		const { analytics, background, settle, requests } = analyticsOf(
+			'https://roadtrip.kamyshev.me/api/ring?lat=1&lon=2&from=2&to=3&cit=RUS',
+			{
+				'X-POSTHOG-DISTINCT-ID': BROWSER,
+				'X-POSTHOG-SESSION-ID': SESSION,
+			},
+		);
 
 		analytics.capture('ring served', served);
 		analytics.shutdown();
@@ -80,7 +83,7 @@ describe("the Worker's analytics", () => {
 	});
 
 	it("tie each event to the browser's distinct_id and session, and create no person", async () => {
-		const { analytics, settle, requests } = analyticsOf('https://roadtrip.kamyshev.me/api/ring?lat=1&lon=2&hours=3&cit=RUS', {
+		const { analytics, settle, requests } = analyticsOf('https://roadtrip.kamyshev.me/api/ring?lat=1&lon=2&from=2&to=3&cit=RUS', {
 			'X-POSTHOG-DISTINCT-ID': BROWSER,
 			'X-POSTHOG-SESSION-ID': SESSION,
 		});
@@ -108,7 +111,7 @@ describe("the Worker's analytics", () => {
 	});
 
 	it('without the browser’s ids, send as the one distinct_id `server`, with no session', async () => {
-		const { analytics, settle, requests } = analyticsOf('https://roadtrip.kamyshev.me/api/ring?lat=1&lon=2&hours=3&cit=RUS');
+		const { analytics, settle, requests } = analyticsOf('https://roadtrip.kamyshev.me/api/ring?lat=1&lon=2&from=2&to=3&cit=RUS');
 
 		analytics.capture('ring served', served);
 		await settle();

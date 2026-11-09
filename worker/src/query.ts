@@ -1,9 +1,9 @@
 // The query of GET /api/ring (api.ts, `RingQuery`) and why a query is not one: the answer 400.
 import { HELD_VISAS, SHERPA_PASSPORTS } from 'rules';
-import type { RingQuery } from './api.ts';
+import { HOURS_PER_DAY, isScaleRing, MAX_DAYS, type RingBounds, type RingQuery } from './api.ts';
 
 const DEGREES = /^-?\d{1,3}(\.\d+)?$/u;
-const HOURS = /^\d{1,2}$/u;
+const HOURS = /^\d{1,3}$/u;
 const PASSPORTS: ReadonlySet<string> = new Set(SHERPA_PASSPORTS);
 const VISAS: ReadonlySet<string> = new Set(HELD_VISAS);
 
@@ -21,9 +21,11 @@ export function parseRingQuery(params: URLSearchParams): RingQuery | { readonly 
 	if (lat === undefined || lon === undefined) {
 		return { problem: 'lat and lon are the origin in degrees, as -12.345' };
 	}
-	const hours = wholeHours(single('hours'));
-	if (hours === undefined) {
-		return { problem: 'hours is N, a whole number from 1 to 12' };
+	const bounds = scaleRing(single('from'), single('to'));
+	if (bounds === undefined) {
+		return {
+			problem: `from and to are the ring's bounds in whole hours: N − 1 and N for N from 1 to ${HOURS_PER_DAY * MAX_DAYS}, or 12·(D − 1) and 12·D for a day D from 2 to ${MAX_DAYS}`,
+		};
 	}
 	const citizenships = codes(single('cit'), (code) => PASSPORTS.has(code));
 	if (citizenships === undefined || citizenships.length === 0) {
@@ -33,7 +35,7 @@ export function parseRingQuery(params: URLSearchParams): RingQuery | { readonly 
 	if (visas === undefined) {
 		return { problem: 'visas is the held visas: SCHENGEN and alpha-3 of countries outside Schengen, sorted, comma-separated' };
 	}
-	return { origin: { lat, lon }, hours, citizenships, visas };
+	return { origin: { lat, lon }, ...bounds, citizenships, visas };
 }
 
 function degrees(text: string | undefined, limit: number): number | undefined {
@@ -44,13 +46,13 @@ function degrees(text: string | undefined, limit: number): number | undefined {
 	return Math.abs(value) <= limit ? value : undefined;
 }
 
-/** N: a whole number from 1 to 12. */
-function wholeHours(text: string | undefined): number | undefined {
-	if (text === undefined || !HOURS.test(text)) {
+/** The ring's bounds, when both are whole hours and together a ring the API takes. */
+function scaleRing(from: string | undefined, to: string | undefined): RingBounds | undefined {
+	if (from === undefined || to === undefined || !HOURS.test(from) || !HOURS.test(to)) {
 		return undefined;
 	}
-	const hours = Number(text);
-	return hours >= 1 && hours <= 12 ? hours : undefined;
+	const bounds = { lowerHours: Number(from), upperHours: Number(to) };
+	return isScaleRing(bounds) ? bounds : undefined;
 }
 
 /** A comma-separated list of codes in strictly ascending order; [] for an empty text. */

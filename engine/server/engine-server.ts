@@ -56,7 +56,7 @@ export function createEngineServer({ calculate, dataVersion, now = () => perform
 			}
 			const calculation = parseCalculation(await request.text());
 			if (calculation === undefined) {
-				return json(400, { error: 'a calculation is { origin: { lat, lon }, hours, closedCountries } in JSON' });
+				return json(400, { error: 'a calculation is { origin: { lat, lon }, lowerHours, upperHours, closedCountries } in JSON' });
 			}
 			const key = calculationKey(calculation);
 			let calculated = pending.get(key);
@@ -100,29 +100,42 @@ function parseCalculation(body: string): CalculationRequest | undefined {
 		return undefined;
 	}
 	const { lat, lon } = value.origin;
-	const { hours, closedCountries } = value;
-	if (!isCoordinate(lat) || !isCoordinate(lon) || !isHours(hours) || !isCodes(closedCountries)) {
+	const { closedCountries } = value;
+	const bounds = ringBounds(value);
+	if (!isCoordinate(lat) || !isCoordinate(lon) || bounds === undefined || !isCodes(closedCountries)) {
 		return undefined;
 	}
-	return { origin: { lat, lon }, hours, closedCountries };
+	return { origin: { lat, lon }, ...bounds, closedCountries };
+}
+
+/**
+ * The ring's bounds, whole hours from 0 and the lower below the upper. A Worker from before the two bounds (#82)
+ * sends only N, `hours`, during a rollout: that is the ring (N − 1, N].
+ */
+function ringBounds(value: Record<string, unknown>): Pick<CalculationRequest, 'lowerHours' | 'upperHours'> | undefined {
+	const { lowerHours, upperHours, hours } = value;
+	if (lowerHours === undefined && upperHours === undefined && isWholeHours(hours) && hours > 0) {
+		return { lowerHours: hours - 1, upperHours: hours };
+	}
+	return isWholeHours(lowerHours) && isWholeHours(upperHours) && lowerHours < upperHours ? { lowerHours, upperHours } : undefined;
 }
 
 function isCoordinate(value: unknown): value is number {
 	return typeof value === 'number' && Number.isFinite(value);
 }
 
-/** N, a whole number of hours. */
-function isHours(value: unknown): value is number {
-	return typeof value === 'number' && Number.isInteger(value) && value > 0;
+/** A whole number of hours, 0 or more. */
+function isWholeHours(value: unknown): value is number {
+	return typeof value === 'number' && Number.isInteger(value) && value >= 0;
 }
 
 function isCodes(value: unknown): value is string[] {
 	return Array.isArray(value) && value.every((code) => typeof code === 'string');
 }
 
-/** The same origin, N and set of closed countries give the same ring. */
-function calculationKey({ origin, hours, closedCountries }: CalculationRequest): string {
-	return JSON.stringify([origin.lat, origin.lon, hours, closedCountries.toSorted()]);
+/** The same origin, bounds and set of closed countries give the same ring. */
+function calculationKey({ origin, lowerHours, upperHours, closedCountries }: CalculationRequest): string {
+	return JSON.stringify([origin.lat, origin.lon, lowerHours, upperHours, closedCountries.toSorted()]);
 }
 
 function json(status: number, body: Calculation | CalculationFailure | { error: string }): Response {

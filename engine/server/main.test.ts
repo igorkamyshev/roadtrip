@@ -97,7 +97,7 @@ describe('the engine server in the Container', () => {
 
 		const response = await fetch(`${url}/ring`, {
 			method: 'POST',
-			body: JSON.stringify({ origin: { lat: 0, lon: 0.05 }, hours: 1, closedCountries: ['AFG'] }),
+			body: JSON.stringify({ origin: { lat: 0, lon: 0.05 }, lowerHours: 0, upperHours: 1, closedCountries: ['AFG'] }),
 		});
 
 		expect(response.status).toBe(200);

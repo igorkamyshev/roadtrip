@@ -1,5 +1,5 @@
-// The ring engine (spec #20 «Движок», ADR 0001): a graph, the border table, an origin, N and the closed countries
-// in; the outcome, the ring, maxHours, the start country and the timings out. Portable: no Node APIs, so it
+// The ring engine (spec #20 «Движок», ADR 0001): a graph, the border table, an origin, the ring's bounds and the
+// closed countries in; the outcome, the ring, maxHours, the start country and the timings out. Portable: no Node APIs, so it
 // can move to a Worker or a browser.
 import type { BorderTable } from 'rules';
 import { borderZones, closedForEveryone, passage } from './borders.ts';
@@ -42,8 +42,13 @@ export interface LatLon {
 export interface RingRequest {
 	/** The origin in degrees, already rounded by the caller. */
 	readonly origin: LatLon;
-	/** N: the ring holds the places reached in (N − 1, N] hours of travel. */
-	readonly hours: number;
+	/**
+	 * The ring's bounds in hours of travel: it holds the places reached in (lowerHours, upperHours]. The ring of N
+	 * hours is (N − 1, N], the ring of day D is (12·(D − 1), 12·D] (spec #20 «Движок», #82); the engine takes any
+	 * band, the Worker checks it is one of the slider's.
+	 */
+	readonly lowerHours: number;
+	readonly upperHours: number;
 	/**
 	 * The closed countries by the visa rules, alpha-3 (spec #20 «Набор закрытых стран»): never entered, transit
 	 * included, but for the start country. Countries and territories closed for everyone are closed by the border
@@ -76,7 +81,7 @@ interface Outcome {
 
 export type RingResult =
 	| (Outcome & { readonly outcome: 'ring'; readonly ring: MultiPolygon })
-	/** Nothing is reached after N − 1 hours; `maxHours` is the longest travel time to any road, rounded up. */
+	/** Nothing is reached after the lower bound; `maxHours` is the longest travel time to any road, rounded up. */
 	| (Outcome & { readonly outcome: 'empty'; readonly maxHours: number })
 	/** No road within 50 km of the origin, in the start country. */
 	| (Outcome & { readonly outcome: 'no_roads' })
@@ -115,13 +120,13 @@ export function computeRing(graph: Graph, borderTable: BorderTable, request: Rin
 	}
 
 	const allowed = passage(graph, borderTable, { closedCountries: request.closedCountries, startZone });
-	const traversal = traverse(graph, allowed, { seeds: start.seeds, limitSeconds: request.hours * 3600 });
+	const traversal = traverse(graph, allowed, { seeds: start.seeds, limitSeconds: request.upperHours * 3600 });
 	const traversed = performance.now();
 	const startCountry = zoneCode(graph, startZone);
 
 	if (traversal.exhausted) {
 		const latestHours = latestArrival(graph, traversal, start) / 3600;
-		if (latestHours <= request.hours - 1) {
+		if (latestHours <= request.lowerHours) {
 			return { outcome: 'empty', maxHours: Math.ceil(latestHours - 1e-9), startCountry, timings: since(started, traversed) };
 		}
 	}
@@ -130,8 +135,8 @@ export function computeRing(graph: Graph, borderTable: BorderTable, request: Rin
 		passage: allowed,
 		locator: zoneLocator(graph),
 		reached: { ...start, seconds: traversal.seconds },
-		lowerSeconds: (request.hours - 1) * 3600,
-		upperSeconds: request.hours * 3600,
+		lowerSeconds: request.lowerHours * 3600,
+		upperSeconds: request.upperHours * 3600,
 	});
 	return { outcome: 'ring', ring, startCountry, timings: since(started, traversed) };
 }

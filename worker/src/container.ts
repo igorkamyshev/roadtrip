@@ -1,6 +1,13 @@
 // The Container with the engine server, as GET /api/ring asks it (spec #20 «Container и очередь», engine/protocol): the
 // calculation it posts, and the answer checked before the Worker serves or caches it.
-import { type Calculation, CALCULATION_PATH, type CalculationRequest, type CalculationTimings, type RingOutcome } from 'engine/protocol';
+import {
+	type Calculation,
+	CALCULATION_PATH,
+	type CalculationRequest,
+	type CalculationTimings,
+	legacyHours,
+	type RingOutcome,
+} from 'engine/protocol';
 import { isRecord } from 'engine/json';
 
 /** The Container with the engine server (engine/server): its answer to the request as it gave it. */
@@ -19,7 +26,7 @@ export async function calculate(calculation: CalculationRequest, container: Cont
 		new Request(`http://engine${CALCULATION_PATH}`, {
 			method: 'POST',
 			headers: { 'content-type': 'application/json' },
-			body: JSON.stringify(calculation),
+			body: JSON.stringify({ ...calculation, ...legacyHours(calculation) }),
 		}),
 	);
 	const text = await response.text();

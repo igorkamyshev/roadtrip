@@ -36,7 +36,7 @@ The dataset build ([spec #20](../docs/specs/20.md) «Набор данных»):
 
 ## Commands
 
-`pnpm --filter data ring <extract | graph file | URL> --lat <degrees> --lon <degrees> --hours <N> [--closed <alpha-3,…>] [--out <file.geojson>]` is the one-command check of the ticket: it builds the graph of an extract (for example `https://download.geofabrik.de/europe/andorra-latest.osm.pbf`), computes the ring and writes GeoJSON. `build-graph <extract> <out.graph> [--outlines <zones.json>]` writes the graph file, which `ring` also reads, and with `--outlines` the zone outlines, printing their size raw and in brotli. Both print the build report to stderr when they build. pnpm runs both in `data/`; they take a relative path from where pnpm started.
+`pnpm --filter data ring <extract | graph file | URL> --lat <degrees> --lon <degrees> --hours <N> [--from <hours>] [--closed <alpha-3,…>] [--out <file.geojson>]` is the one-command check of the ticket: it builds the graph of an extract (for example `https://download.geofabrik.de/europe/andorra-latest.osm.pbf`), computes the ring (N − 1, N], or (`--from`, N] for a ring of days, and writes GeoJSON. `build-graph <extract> <out.graph> [--outlines <zones.json>]` writes the graph file, which `ring` also reads, and with `--outlines` the zone outlines, printing their size raw and in brotli. Both print the build report to stderr when they build. pnpm runs both in `data/`; they take a relative path from where pnpm started.
 
 `build-graph … --report <report.md>` also writes the build report as Markdown.
 

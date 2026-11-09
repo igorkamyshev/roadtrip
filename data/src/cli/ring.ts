@@ -2,10 +2,11 @@
 // a FeatureCollection of one Feature, the ring (or no geometry), with the engine's result in its properties.
 //
 //   pnpm --filter data ring <extract.osm.pbf | graph file | URL> --lat <degrees> --lon <degrees> --hours <N>
-//       [--closed <alpha-3,alpha-3,…>] [--out <file.geojson>]
+//       [--from <hours>] [--closed <alpha-3,alpha-3,…>] [--out <file.geojson>]
 //
 // For example, with https://download.geofabrik.de/europe/andorra-latest.osm.pbf, --lat 42.5063 --lon 1.5218 --hours 2.
-// `--closed` lists the closed countries; those the border table closes for everyone are closed anyway.
+// The ring is (N − 1, N] hours, or (--from, N]: `--from 12 --hours 24` is the ring of day 2 (#82). `--closed` lists
+// the closed countries; those the border table closes for everyone are closed anyway.
 import { writeFileSync } from 'node:fs';
 import { parseArgs } from 'node:util';
 import { computeRing, ENGINE_VERSION } from 'engine';
@@ -20,23 +21,25 @@ const { values, positionals } = parseArgs({
 		lat: { type: 'string' },
 		lon: { type: 'string' },
 		hours: { type: 'string' },
+		from: { type: 'string' },
 		closed: { type: 'string' },
 		out: { type: 'string' },
 	},
 });
 const input = positionals.at(0);
 const [lat, lon, hours] = [values.lat, values.lon, values.hours].map(Number);
-if (input === undefined || ![lat, lon, hours].every((value) => Number.isFinite(value))) {
+const lowerHours = values.from === undefined ? hours - 1 : Number(values.from);
+if (input === undefined || ![lat, lon, hours, lowerHours].every((value) => Number.isFinite(value))) {
 	log(
 		'usage: pnpm --filter data ring <extract.osm.pbf | graph file | URL> --lat <degrees> --lon <degrees> --hours <N> ' +
-			'[--closed <alpha-3,alpha-3,…>] [--out <file.geojson>]',
+			'[--from <hours>] [--closed <alpha-3,alpha-3,…>] [--out <file.geojson>]',
 	);
 	process.exit(2);
 }
 
 const { graph } = await withLocalFile(input, loadGraph);
 const closedCountries = values.closed?.split(',').filter((code) => code !== '') ?? [];
-const result = computeRing(graph, borderTable, { origin: { lat, lon }, hours, closedCountries });
+const result = computeRing(graph, borderTable, { origin: { lat, lon }, lowerHours, upperHours: hours, closedCountries });
 const { outcome, startCountry, timings } = result;
 log(
 	`${outcome}, start country ${startCountry ?? 'none'}` +
@@ -55,6 +58,7 @@ const geojson = JSON.stringify({
 				startCountry,
 				maxHours: result.outcome === 'empty' ? result.maxHours : undefined,
 				origin: { lat, lon },
+				lowerHours,
 				hours,
 				closedCountries,
 				engineVersion: ENGINE_VERSION,

@@ -65,12 +65,13 @@ function isRingResponse(answer: unknown): answer is RingResponse {
 	);
 }
 
-/** `/api/ring?lat=44.81760&lon=20.45730&hours=3&cit=RUS,SRB&visas=SCHENGEN`, `visas` left out when there are none. */
-function ringUrl({ origin, hours, citizenships, visas }: RingQuery): string {
+/** `/api/ring?lat=44.81760&lon=20.45730&from=2&to=3&cit=RUS,SRB&visas=SCHENGEN`, `visas` left out when there are none. */
+function ringUrl({ origin, lowerHours, upperHours, citizenships, visas }: RingQuery): string {
 	const params = new URLSearchParams({
 		lat: origin.lat.toFixed(5),
 		lon: origin.lon.toFixed(5),
-		hours: String(hours),
+		from: String(lowerHours),
+		to: String(upperHours),
 		cit: citizenships.join(','),
 	});
 	if (visas.length > 0) {

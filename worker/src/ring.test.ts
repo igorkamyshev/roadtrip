@@ -9,7 +9,11 @@ import { answering, api, counted, DATASET, DAY, engineContainer, MINUTE, recorde
 import { anyObject, anyString, objectContaining } from '../test/matchers.ts';
 import { MemoryKv } from '../test/memory-kv.ts';
 import { SherpaDouble, sherpaMap } from '../test/sherpa-double.ts';
+import { HOURS_PER_DAY, MAX_DAYS } from './api.ts';
 import { handleRing } from './ring.ts';
+
+/** The end of the last day of the slider, in hours. */
+const LAST_HOUR = HOURS_PER_DAY * MAX_DAYS;
 
 const straightRoad = fixtureGraph('straight-road.osm');
 
@@ -39,7 +43,7 @@ describe('GET /api/ring', () => {
 		};
 		const { get } = api({ container: await answering(200, { outcome: 'ring', ring, startCountry: 'AAA' }) });
 
-		const { status, body } = await get('lat=0&lon=0&hours=2&cit=RUS');
+		const { status, body } = await get('lat=0&lon=0&from=1&to=2&cit=RUS');
 
 		expect(status).toBe(200);
 		expect(body).toEqual({
@@ -53,13 +57,13 @@ describe('GET /api/ring', () => {
 	});
 
 	it.for([
-		['ring', 'straight-road.osm', 'lat=0&lon=0&hours=2', { outcome: 'ring', startCountry: 'AAA' }],
+		['ring', 'straight-road.osm', 'lat=0&lon=0&from=1&to=2', { outcome: 'ring', startCountry: 'AAA' }],
 		// The whole road takes 4.45 h of travel.
-		['empty', 'straight-road.osm', 'lat=0&lon=0&hours=6', { outcome: 'empty', maxHours: 5, startCountry: 'AAA' }],
+		['empty', 'straight-road.osm', 'lat=0&lon=0&from=5&to=6', { outcome: 'empty', maxHours: 5, startCountry: 'AAA' }],
 		// 51.1 km from the road.
-		['no_roads', 'straight-road.osm', 'lat=0.46&lon=1&hours=3', { outcome: 'no_roads', startCountry: 'AAA' }],
+		['no_roads', 'straight-road.osm', 'lat=0.46&lon=1&from=2&to=3', { outcome: 'no_roads', startCountry: 'AAA' }],
 		// In Abkhazia, closed for everyone.
-		['no_ring', 'closed-territory.osm', 'lat=0.5&lon=1.2&hours=2', { outcome: 'no_ring', startCountry: 'ABKHAZIA' }],
+		['no_ring', 'closed-territory.osm', 'lat=0.5&lon=1.2&from=1&to=2', { outcome: 'no_ring', startCountry: 'ABKHAZIA' }],
 	] as const)(
 		'caches the outcome %s: the same request again comes from the ring cache, without the Container',
 		async ([, fixture, query, outcome]) => {
@@ -82,11 +86,11 @@ describe('the ring cache', () => {
 		const { get, clock } = api({ container });
 		const start = clock.now;
 
-		await get('lat=0&lon=0&hours=2&cit=RUS');
+		await get('lat=0&lon=0&from=1&to=2&cit=RUS');
 		clock.now = start + 40 * DAY - 1;
-		expect((await get('lat=0&lon=0&hours=2&cit=RUS')).body.source).toBe('cache');
+		expect((await get('lat=0&lon=0&from=1&to=2&cit=RUS')).body.source).toBe('cache');
 		clock.now = start + 40 * DAY;
-		expect((await get('lat=0&lon=0&hours=2&cit=RUS')).body.source).toBe('calculation');
+		expect((await get('lat=0&lon=0&from=1&to=2&cit=RUS')).body.source).toBe('calculation');
 		expect(container.calls).toBe(2);
 	});
 
@@ -100,15 +104,28 @@ describe('the ring cache', () => {
 		}));
 		const { get } = api({ container, sherpa });
 
-		const serbian = await get('lat=0&lon=0&hours=2&cit=SRB');
-		const montenegrin = await get('lat=0&lon=0&hours=2&cit=MNE');
-		const both = await get('lat=0&lon=0&hours=2&cit=MNE,SRB');
-		const turkish = await get('lat=0&lon=0&hours=2&cit=TUR');
+		const serbian = await get('lat=0&lon=0&from=1&to=2&cit=SRB');
+		const montenegrin = await get('lat=0&lon=0&from=1&to=2&cit=MNE');
+		const both = await get('lat=0&lon=0&from=1&to=2&cit=MNE,SRB');
+		const turkish = await get('lat=0&lon=0&from=1&to=2&cit=TUR');
 
 		expect(ringOf(serbian)).toMatchObject({ outcome: 'ring', source: 'calculation' });
 		expect(ringOf(montenegrin)).toEqual({ ...ringOf(serbian), source: 'cache' });
 		expect(ringOf(both)).toEqual({ ...ringOf(serbian), source: 'cache' });
 		expect(turkish.body.source).toBe('calculation');
+		expect(container.calls).toBe(2);
+	});
+
+	it('keeps rings with the same upper bound and other lower ones apart, and gives each again', async () => {
+		const container = counted(await engineContainer(straightRoad));
+		const { get } = api({ container });
+
+		const day = await get('lat=0&lon=0&from=12&to=24&cit=RUS');
+		const hour = await get('lat=0&lon=0&from=23&to=24&cit=RUS');
+
+		expect([day.body.source, hour.body.source]).toEqual(['calculation', 'calculation']);
+		expect((await get('lat=0&lon=0&from=12&to=24&cit=RUS')).body.source).toBe('cache');
+		expect((await get('lat=0&lon=0&from=23&to=24&cit=RUS')).body.source).toBe('cache');
 		expect(container.calls).toBe(2);
 	});
 
@@ -122,11 +139,11 @@ describe('the ring cache', () => {
 			visaRules: november.visaRules,
 		});
 
-		await november.get('lat=0&lon=0&hours=2&cit=RUS');
+		await november.get('lat=0&lon=0&from=1&to=2&cit=RUS');
 
-		expect((await december.get('lat=0&lon=0&hours=2&cit=RUS')).body.source).toBe('calculation');
-		expect((await december.get('lat=0&lon=0&hours=2&cit=RUS')).body.source).toBe('cache');
-		expect((await november.get('lat=0&lon=0&hours=2&cit=RUS')).body.source).toBe('cache');
+		expect((await december.get('lat=0&lon=0&from=1&to=2&cit=RUS')).body.source).toBe('calculation');
+		expect((await december.get('lat=0&lon=0&from=1&to=2&cit=RUS')).body.source).toBe('cache');
+		expect((await november.get('lat=0&lon=0&from=1&to=2&cit=RUS')).body.source).toBe('cache');
 	});
 
 	it('that fails to take a ring logs it, and the ring is served', async () => {
@@ -135,7 +152,7 @@ describe('the ring cache', () => {
 		rings.put = () => Promise.reject(refused);
 		const { get, errors } = api({ container: await engineContainer(straightRoad), rings });
 
-		expect(await get('lat=0&lon=0&hours=2&cit=RUS')).toMatchObject({ status: 200, body: { outcome: 'ring', source: 'calculation' } });
+		expect(await get('lat=0&lon=0&from=1&to=2&cit=RUS')).toMatchObject({ status: 200, body: { outcome: 'ring', source: 'calculation' } });
 		expect(errors).toEqual([['[ring] the ring cache did not take the ring', refused, { hours: 2 }]]);
 	});
 
@@ -143,8 +160,8 @@ describe('the ring cache', () => {
 		const container = counted(await engineContainer(straightRoad, '2026-12-01'));
 		const { get } = api({ container, datasetVersion: '2026-11-01' });
 
-		const first = await get('lat=0&lon=0&hours=2&cit=RUS');
-		const again = await get('lat=0&lon=0&hours=2&cit=RUS');
+		const first = await get('lat=0&lon=0&from=1&to=2&cit=RUS');
+		const again = await get('lat=0&lon=0&from=1&to=2&cit=RUS');
 
 		expect(first).toMatchObject({ status: 200, body: { outcome: 'ring', source: 'calculation' } });
 		expect(again).toEqual(first);
@@ -171,8 +188,8 @@ describe('the ring cache', () => {
 		const container = counted({ fetch: () => Promise.resolve(new Response(answer)) });
 		const { get } = api({ container });
 
-		const first = await get('lat=45.679&lon=12.346&hours=12&cit=RUS');
-		const again = await get('lat=45.679&lon=12.346&hours=12&cit=RUS');
+		const first = await get('lat=45.679&lon=12.346&from=11&to=12&cit=RUS');
+		const again = await get('lat=45.679&lon=12.346&from=11&to=12&cit=RUS');
 
 		expect(first).toMatchObject({ status: 200, body: { outcome: 'ring', startCountry: 'AAA', source: 'calculation' } });
 		// The ring passes whole; a deep comparison of its points would take seconds.
@@ -188,7 +205,7 @@ describe('the Container', () => {
 		const container = counted(await answering(200, { outcome: 'empty', maxHours: 5, startCountry: 'AAA', joined: true }));
 		const { get } = api({ container });
 
-		expect(await get('lat=0&lon=0&hours=6&cit=RUS')).toEqual({
+		expect(await get('lat=0&lon=0&from=5&to=6&cit=RUS')).toEqual({
 			status: 200,
 			body: {
 				outcome: 'empty',
@@ -199,7 +216,7 @@ describe('the Container', () => {
 				source: 'joined',
 			},
 		});
-		expect((await get('lat=0&lon=0&hours=6&cit=RUS')).body.source).toBe('joined');
+		expect((await get('lat=0&lon=0&from=5&to=6&cit=RUS')).body.source).toBe('joined');
 		expect(container.calls).toBe(2);
 	});
 
@@ -215,7 +232,7 @@ describe('the Container', () => {
 			},
 		});
 
-		const answer = get('lat=0&lon=0&hours=2&cit=RUS');
+		const answer = get('lat=0&lon=0&from=1&to=2&cit=RUS');
 		await timers.advance(30 * MINUTE);
 		queued.resolve();
 
@@ -233,7 +250,7 @@ describe('the Container', () => {
 		const container = counted(await answering(500, failure));
 		const { get, errors } = api({ container });
 
-		expect(await get('lat=0&lon=0&hours=2&cit=RUS', browser)).toEqual({ status: 502, body: { error: 'The engine failed' } });
+		expect(await get('lat=0&lon=0&from=1&to=2&cit=RUS', browser)).toEqual({ status: 502, body: { error: 'The engine failed' } });
 		expect(errors).toHaveLength(1);
 		const [message, error, context] = errors[0];
 		expect(message).toBe('[ring] the Container failed');
@@ -241,7 +258,7 @@ describe('the Container', () => {
 		expect(error).toMatchObject(failure);
 		// The browser's PostHog ids, and never the origin.
 		expect(context).toEqual({ distinct_id: '019a5f2c-browser', session_id: '019a5f2c-session', hours: 2 });
-		await get('lat=0&lon=0&hours=2&cit=RUS');
+		await get('lat=0&lon=0&from=1&to=2&cit=RUS');
 		expect(container.calls).toBe(2);
 	});
 
@@ -249,7 +266,7 @@ describe('the Container', () => {
 		const unreachable = new Error('Container failed to start: the port 8080 is not ready after 120000 ms');
 		const { get, errors } = api({ container: { fetch: () => Promise.reject(unreachable) } });
 
-		expect((await get('lat=0&lon=0&hours=2&cit=RUS')).status).toBe(502);
+		expect((await get('lat=0&lon=0&from=1&to=2&cit=RUS')).status).toBe(502);
 		expect(errors).toEqual([['[ring] the Container failed', unreachable, { hours: 2 }]]);
 	});
 
@@ -259,7 +276,7 @@ describe('the Container', () => {
 		};
 		const { get, errors } = api({ container });
 
-		expect((await get('lat=0&lon=0&hours=2&cit=RUS')).status).toBe(502);
+		expect((await get('lat=0&lon=0&from=1&to=2&cit=RUS')).status).toBe(502);
 		expect(errors).toHaveLength(1);
 		expect(errors[0][1]).toMatchObject({
 			name: 'ContainerError',
@@ -270,28 +287,35 @@ describe('the Container', () => {
 
 describe('a request', () => {
 	it.each([
-		['no origin', 'hours=2&cit=RUS'],
-		['no longitude', 'lat=0&hours=2&cit=RUS'],
-		['a latitude that is not a number', 'lat=north&lon=0&hours=2&cit=RUS'],
-		['an empty latitude', 'lat=&lon=0&hours=2&cit=RUS'],
-		['a latitude in another notation', 'lat=1e-3&lon=0&hours=2&cit=RUS'],
-		['a latitude beyond 90°', 'lat=90.5&lon=0&hours=2&cit=RUS'],
-		['a longitude beyond 180°', 'lat=0&lon=-180.01&hours=2&cit=RUS'],
-		['two latitudes', 'lat=0&lat=1&lon=0&hours=2&cit=RUS'],
-		['no N', 'lat=0&lon=0&cit=RUS'],
-		['N of 0', 'lat=0&lon=0&hours=0&cit=RUS'],
-		['N over 12', 'lat=0&lon=0&hours=13&cit=RUS'],
-		['N that is not a whole number', 'lat=0&lon=0&hours=2.5&cit=RUS'],
-		['no citizenship', 'lat=0&lon=0&hours=2'],
-		['an empty list of citizenships', 'lat=0&lon=0&hours=2&cit='],
-		['a citizenship that is not alpha-3', 'lat=0&lon=0&hours=2&cit=RU'],
-		['a citizenship in lowercase', 'lat=0&lon=0&hours=2&cit=rus'],
-		['citizenships out of order', 'lat=0&lon=0&hours=2&cit=TUR,RUS'],
-		['a citizenship twice', 'lat=0&lon=0&hours=2&cit=RUS,RUS'],
-		['an empty citizenship in the list', 'lat=0&lon=0&hours=2&cit=RUS,,TUR'],
-		['a visa that is not a code', 'lat=0&lon=0&hours=2&cit=RUS&visas=SHENGEN'],
-		['visas out of order', 'lat=0&lon=0&hours=2&cit=RUS&visas=USA,SCHENGEN'],
-		['a visa twice', 'lat=0&lon=0&hours=2&cit=RUS&visas=GBR,GBR'],
+		['no origin', 'from=1&to=2&cit=RUS'],
+		['no longitude', 'lat=0&from=1&to=2&cit=RUS'],
+		['a latitude that is not a number', 'lat=north&lon=0&from=1&to=2&cit=RUS'],
+		['an empty latitude', 'lat=&lon=0&from=1&to=2&cit=RUS'],
+		['a latitude in another notation', 'lat=1e-3&lon=0&from=1&to=2&cit=RUS'],
+		['a latitude beyond 90°', 'lat=90.5&lon=0&from=1&to=2&cit=RUS'],
+		['a longitude beyond 180°', 'lat=0&lon=-180.01&from=1&to=2&cit=RUS'],
+		['two latitudes', 'lat=0&lat=1&lon=0&from=1&to=2&cit=RUS'],
+		['no bounds', 'lat=0&lon=0&cit=RUS'],
+		['only the upper bound', 'lat=0&lon=0&to=2&cit=RUS'],
+		['the hour 0', 'lat=0&lon=0&from=-1&to=0&cit=RUS'],
+		['a bound that is not a whole number', 'lat=0&lon=0&from=1&to=2.5&cit=RUS'],
+		['bounds of two hours', 'lat=0&lon=0&from=1&to=3&cit=RUS'],
+		['bounds 12–25 h, no day', 'lat=0&lon=0&from=12&to=25&cit=RUS'],
+		['bounds 11–24 h, no day', 'lat=0&lon=0&from=11&to=24&cit=RUS'],
+		['day 1, which the hours are', 'lat=0&lon=0&from=0&to=12&cit=RUS'],
+		['the day after the last', `lat=0&lon=0&from=${LAST_HOUR}&to=${LAST_HOUR + HOURS_PER_DAY}&cit=RUS`],
+		['the hour after the last day', `lat=0&lon=0&from=${LAST_HOUR}&to=${LAST_HOUR + 1}&cit=RUS`],
+		['two upper bounds', 'lat=0&lon=0&from=1&to=2&to=3&cit=RUS'],
+		['no citizenship', 'lat=0&lon=0&from=1&to=2'],
+		['an empty list of citizenships', 'lat=0&lon=0&from=1&to=2&cit='],
+		['a citizenship that is not alpha-3', 'lat=0&lon=0&from=1&to=2&cit=RU'],
+		['a citizenship in lowercase', 'lat=0&lon=0&from=1&to=2&cit=rus'],
+		['citizenships out of order', 'lat=0&lon=0&from=1&to=2&cit=TUR,RUS'],
+		['a citizenship twice', 'lat=0&lon=0&from=1&to=2&cit=RUS,RUS'],
+		['an empty citizenship in the list', 'lat=0&lon=0&from=1&to=2&cit=RUS,,TUR'],
+		['a visa that is not a code', 'lat=0&lon=0&from=1&to=2&cit=RUS&visas=SHENGEN'],
+		['visas out of order', 'lat=0&lon=0&from=1&to=2&cit=RUS&visas=USA,SCHENGEN'],
+		['a visa twice', 'lat=0&lon=0&from=1&to=2&cit=RUS&visas=GBR,GBR'],
 	])('with %s is 400, and goes nowhere', async (_, query) => {
 		const container = counted(await engineContainer(straightRoad));
 		const { get } = api({ container });
@@ -304,10 +328,13 @@ describe('a request', () => {
 	});
 
 	it.each([
-		['the smallest', 'lat=-90&lon=-180&hours=1&cit=AFG'],
-		['the largest', 'lat=90&lon=180&hours=12&cit=ZWE'],
-		['many citizenships and visas', 'lat=44.8125&lon=20.4612&hours=3&cit=DEU,RUS,SRB&visas=ARE,GBR,SCHENGEN,USA'],
-		['no visas', 'lat=0&lon=0&hours=2&cit=RUS&visas='],
+		['the smallest', 'lat=-90&lon=-180&from=0&to=1&cit=AFG'],
+		['the largest', 'lat=90&lon=180&from=11&to=12&cit=ZWE'],
+		['many citizenships and visas', 'lat=44.8125&lon=20.4612&from=2&to=3&cit=DEU,RUS,SRB&visas=ARE,GBR,SCHENGEN,USA'],
+		['no visas', 'lat=0&lon=0&from=1&to=2&cit=RUS&visas='],
+		['day 2', 'lat=0&lon=0&from=12&to=24&cit=RUS'],
+		['the last hour of day 2', 'lat=0&lon=0&from=23&to=24&cit=RUS'],
+		['the last day', `lat=0&lon=0&from=${LAST_HOUR - HOURS_PER_DAY}&to=${LAST_HOUR}&cit=RUS`],
 	])('with %s values is answered', async (_, query) => {
 		const { get } = api({ container: await engineContainer(straightRoad) });
 
@@ -317,7 +344,7 @@ describe('a request', () => {
 	it('other than GET is 405', async () => {
 		const container = counted(await engineContainer(straightRoad));
 		const response = await handleRing(
-			new Request('https://roadtrip.kamyshev.me/api/ring?lat=0&lon=0&hours=2&cit=RUS', { method: 'POST' }),
+			new Request('https://roadtrip.kamyshev.me/api/ring?lat=0&lon=0&from=1&to=2&cit=RUS', { method: 'POST' }),
 			{
 				...api({ container }).deps,
 			},
@@ -330,24 +357,37 @@ describe('a request', () => {
 });
 
 describe('the origin', () => {
-	it('goes to the calculation rounded to 0.001°, with N and the closed countries only', async () => {
+	it('goes to the calculation rounded to 0.001°, with the bounds and the closed countries only', async () => {
 		const container = recorded(await engineContainer(straightRoad));
 		const { get } = api({ container });
 
-		await get('lat=0.00049&lon=0.10051&hours=2&cit=RUS,TUR&visas=SCHENGEN');
+		await get('lat=0.00049&lon=0.10051&from=12&to=24&cit=RUS,TUR&visas=SCHENGEN');
 
-		expect(container.bodies).toEqual([{ origin: { lat: 0, lon: 0.101 }, hours: 2, closedCountries: CLOSED_FOR_EVERYONE }]);
+		expect(container.bodies).toEqual([
+			{ origin: { lat: 0, lon: 0.101 }, lowerHours: 12, upperHours: 24, closedCountries: CLOSED_FOR_EVERYONE },
+		]);
+	});
+
+	it('goes to the calculation with N as well for a ring of one hour, which a Container from before the bounds takes', async () => {
+		const container = recorded(await engineContainer(straightRoad));
+		const { get } = api({ container });
+
+		await get('lat=0&lon=0.1&from=1&to=2&cit=RUS');
+
+		expect(container.bodies).toEqual([
+			{ origin: { lat: 0, lon: 0.1 }, lowerHours: 1, upperHours: 2, hours: 2, closedCountries: CLOSED_FOR_EVERYONE },
+		]);
 	});
 
 	it('shares the ring cache with every origin in its cell of 0.001°, and with no other', async () => {
 		const container = counted(await engineContainer(straightRoad));
 		const { get } = api({ container });
 
-		expect((await get('lat=0.0004&lon=0.1004&hours=2&cit=RUS')).body.source).toBe('calculation');
-		expect((await get('lat=-0.0004&lon=0.0996&hours=2&cit=RUS')).body.source).toBe('cache');
-		expect((await get('lat=0&lon=0.1&hours=2&cit=RUS')).body.source).toBe('cache');
-		expect((await get('lat=0.0006&lon=0.1&hours=2&cit=RUS')).body.source).toBe('calculation');
-		expect((await get('lat=0&lon=0.1006&hours=2&cit=RUS')).body.source).toBe('calculation');
+		expect((await get('lat=0.0004&lon=0.1004&from=1&to=2&cit=RUS')).body.source).toBe('calculation');
+		expect((await get('lat=-0.0004&lon=0.0996&from=1&to=2&cit=RUS')).body.source).toBe('cache');
+		expect((await get('lat=0&lon=0.1&from=1&to=2&cit=RUS')).body.source).toBe('cache');
+		expect((await get('lat=0.0006&lon=0.1&from=1&to=2&cit=RUS')).body.source).toBe('calculation');
+		expect((await get('lat=0&lon=0.1006&from=1&to=2&cit=RUS')).body.source).toBe('calculation');
 		expect(container.calls).toBe(3);
 	});
 });
@@ -355,12 +395,12 @@ describe('the origin', () => {
 describe('ring served', () => {
 	const timings = { queueMs: 400, traversalMs: 1200, contourMs: 300 };
 
-	it("tells a calculation: the outcome, N, how long the request took and the Container's timings", async () => {
+	it("tells a calculation: the outcome, the upper bound, how long the request took and the Container's timings", async () => {
 		const clock = { now: START };
 		const container = taking(2500, clock, await answering(200, { outcome: 'empty', maxHours: 5, startCountry: 'AAA', timings }));
 		const { get, analytics } = api({ container, clock });
 
-		await get('lat=0&lon=0&hours=6&cit=RUS');
+		await get('lat=0&lon=0&from=5&to=6&cit=RUS');
 
 		expect(analytics.named('ring served')).toEqual([
 			{ source: 'calculation', outcome: 'empty', hours: 6, duration_ms: 2500, queue_ms: 400, traversal_ms: 1200, contour_ms: 300 },
@@ -371,7 +411,7 @@ describe('ring served', () => {
 		const container = await answering(200, { outcome: 'no_roads', startCountry: 'AAA', timings: { ...timings, coldStartMs: 14250 } });
 		const { get, analytics } = api({ container });
 
-		await get('lat=0&lon=0&hours=2&cit=RUS');
+		await get('lat=0&lon=0&from=1&to=2&cit=RUS');
 
 		expect(analytics.named('ring served')).toEqual([
 			{
@@ -402,7 +442,7 @@ describe('ring served', () => {
 		);
 		const { get, analytics } = api({ container, clock });
 
-		await get('lat=0&lon=0&hours=3&cit=RUS');
+		await get('lat=0&lon=0&from=2&to=3&cit=RUS');
 
 		expect(analytics.named('ring served')).toEqual([
 			{ source: 'joined', outcome: 'ring', hours: 3, duration_ms: 800, queue_ms: 400, traversal_ms: 1200, contour_ms: 300 },
@@ -412,8 +452,8 @@ describe('ring served', () => {
 	it('tells a ring from the cache without timings', async () => {
 		const { get, analytics } = api({ container: await engineContainer(straightRoad) });
 
-		await get('lat=0&lon=0&hours=2&cit=RUS');
-		await get('lat=0&lon=0&hours=2&cit=SRB');
+		await get('lat=0&lon=0&from=1&to=2&cit=RUS');
+		await get('lat=0&lon=0&from=1&to=2&cit=SRB');
 
 		expect(analytics.named('ring served')).toEqual([
 			expect.objectContaining({ source: 'calculation', outcome: 'ring', hours: 2 }),
@@ -421,12 +461,20 @@ describe('ring served', () => {
 		]);
 	});
 
+	it('tells a ring of a day by its upper bound in hours', async () => {
+		const { get, analytics } = api({ container: await engineContainer(straightRoad) });
+
+		await get('lat=0&lon=0&from=12&to=24&cit=RUS');
+
+		expect(analytics.named('ring served')).toEqual([expect.objectContaining({ source: 'calculation', hours: 24 })]);
+	});
+
 	it('tells visa_rules_missing without a source: neither the cache nor the Container was asked', async () => {
 		const sherpa = new SherpaDouble();
 		sherpa.answer(() => ({ status: 503 }));
 		const { get, analytics } = api({ container: await engineContainer(straightRoad), sherpa });
 
-		await get('lat=0&lon=0&hours=4&cit=RUS');
+		await get('lat=0&lon=0&from=3&to=4&cit=RUS');
 
 		expect(analytics.named('ring served')).toEqual([{ outcome: 'visa_rules_missing', hours: 4, duration_ms: 0 }]);
 	});
@@ -436,7 +484,7 @@ describe('ring served', () => {
 		const container = taking(60_000, clock, { fetch: () => Promise.reject(new Error('Container failed to start')) });
 		const { get, analytics } = api({ container, clock });
 
-		await get('lat=0&lon=0&hours=2&cit=RUS');
+		await get('lat=0&lon=0&from=1&to=2&cit=RUS');
 
 		expect(analytics.named('ring served')).toEqual([{ source: 'calculation', outcome: 'error', hours: 2, duration_ms: 60_000 }]);
 	});
@@ -444,8 +492,8 @@ describe('ring served', () => {
 	it('tells a query that is no ring query (400) and a method other than GET (405) as an error without a source or N', async () => {
 		const { get, analytics, deps } = api({ container: await engineContainer(straightRoad) });
 
-		await get('lat=0&lon=0&hours=13&cit=RUS');
-		await handleRing(new Request('https://roadtrip.kamyshev.me/api/ring?lat=0&lon=0&hours=2&cit=RUS', { method: 'POST' }), deps);
+		await get('lat=0&lon=0&from=12&to=25&cit=RUS');
+		await handleRing(new Request('https://roadtrip.kamyshev.me/api/ring?lat=0&lon=0&from=1&to=2&cit=RUS', { method: 'POST' }), deps);
 
 		expect(analytics.named('ring served')).toEqual([
 			{ outcome: 'error', duration_ms: 0 },
@@ -461,7 +509,7 @@ describe('ring served', () => {
 		});
 		const { get, analytics } = api({ container });
 
-		await get('lat=0&lon=0&hours=2&cit=RUS');
+		await get('lat=0&lon=0&from=1&to=2&cit=RUS');
 
 		expect(analytics.named('ring served')).toEqual([
 			expect.objectContaining({ queue_ms: 0, traversal_ms: 1201, contour_ms: 300, cold_start_ms: 14250 }),
@@ -471,7 +519,7 @@ describe('ring served', () => {
 	it('never carries the origin, not even rounded', async () => {
 		const { get, analytics } = api({ container: await engineContainer(straightRoad) });
 
-		await get('lat=0.0123&lon=0.0456&hours=2&cit=RUS');
+		await get('lat=0.0123&lon=0.0456&from=1&to=2&cit=RUS');
 
 		expect(analytics.named('ring served')).toEqual([expect.objectContaining({ outcome: 'ring' })]);
 		expect(JSON.stringify(analytics.events)).not.toMatch(/0\.01|0\.04/u);
