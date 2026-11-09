@@ -7,22 +7,23 @@
 // folded into a strip «часы» at the bottom. The column turns over when N is committed, not under the finger.
 // Z1: the strip inside the panel. Z2: the strip a tab outside it, above or below. Z2 won, but its tab takes ~32 px of
 // height from the hours, which a phone in Safari lacks; Z3: the tab beside the panel, on its left, at the top cell in
-// hours and the bottom cell in days, so the hours keep all of today's height.
+// hours and the bottom cell in days, so the hours keep all of today's height. Z3F: Z3 down to the bottom of the screen
+// over the carousel, which no longer bounds it; the cards pass under it and fade out before they reach it.
 // The step of the scale is the screen's N: 1–12 are hours, 13–16 days 2–5.
 import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent, type ReactElement, type RefObject } from 'react';
 import { MAX_HOURS, MIN_HOURS } from '../state/search.ts';
 import { dayOfStep, hoursShort, hoursSpan, plural } from './copy.ts';
 
-const VARIANTS = ['z2', 'z3'] as const;
+const VARIANTS = ['z3', 'z3f'] as const;
 type Variant = (typeof VARIANTS)[number];
-const NAMES: Readonly<Record<Variant, string>> = { z2: 'Z2 · язычок сверху', z3: 'Z3 · язычок слева' };
+const NAMES: Readonly<Record<Variant, string>> = { z3: 'Z3 · до карусели', z3f: 'Z3F · над каруселью' };
 
 const HOUR_STEPS = Array.from({ length: 12 }, (_, index) => 12 - index);
 const DAY_STEPS = Array.from({ length: MAX_HOURS - 12 }, (_, index) => MAX_HOURS - index);
 
 function variantOfLocation(): Variant {
 	const value = new URLSearchParams(window.location.search).get('variant');
-	return VARIANTS.find((variant) => variant === value) ?? 'z3';
+	return VARIANTS.find((variant) => variant === value) ?? 'z3f';
 }
 
 /** The variant of `?variant=`, and its setter, which writes it back before the hash. */

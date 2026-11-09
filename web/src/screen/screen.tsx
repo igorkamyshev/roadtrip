@@ -15,7 +15,7 @@ export function Screen(): ReactElement {
 	const { state, shown, starts } = screen;
 	const [variant, setVariant] = usePrototypeVariant();
 	return (
-		<div className="screen">
+		<div className={`screen pv-screen-${variant}`}>
 			<ScreenMap screen={screen} />
 			<div className="c-top">
 				<ScreenPhrase screen={screen} />
