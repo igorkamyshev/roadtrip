@@ -7,7 +7,7 @@ const T0 = Date.parse('2026-11-04T10:00:00.000Z');
 // posthog-js ids, as the browser sends them in X-POSTHOG-DISTINCT-ID and X-POSTHOG-SESSION-ID (UUIDv7)
 const BROWSER_ID = '019a5d2c-7f3e-7b1a-9c4d-2e6f8a0b1c3d';
 const SESSION_ID = '019a5d2c-8a41-7e02-b5c6-d7e8f9a0b1c2';
-const RING_URL = 'https://roadtrip.kamyshev.me/api/ring?lat=44.8125&lon=20.4612&hours=6&citizenships=RUS';
+const RING_URL = 'https://roadtrip.kamyshev.me/api/ring?lat=44.8125&lon=20.4612&from=5&to=6&citizenships=RUS';
 
 // workerd cuts the "Name: message" header off stacks in a TraceItem: only frame lines are left
 const WORKER_STACK = [

@@ -520,13 +520,15 @@ a {
 
 /* ---------- slider ---------- */
 
-/* A column of twelve cells, 1 h at the bottom, over the panel .c-vs. The chosen cell is the blue block under it,
-   which moves from cell to cell; a cell whose ring is in memory is light green. Not the prototype's track and thumb. */
+/* The slider in .c-vs: the panel of one unit's cells, the hours' twelve or a cell a day, the first at the bottom, and
+   the tab of the other unit, «дни ↑» over the hours' panel or «часы ↓» under the days' (#83). The chosen cell is the
+   blue block under it, which moves from cell to cell; a cell whose ring is in memory is light green. Not the
+   prototype's track and thumb. */
 .sl {
 	height: 100%;
-	box-sizing: border-box;
-	padding: 6px;
-	border-radius: inherit;
+	display: flex;
+	flex-direction: column;
+	gap: var(--between);
 	touch-action: none;
 	user-select: none;
 	/* stylelint-disable-next-line property-no-vendor-prefix -- Safari reads only the prefixed one (caniuse «user-select-none»). */
@@ -534,6 +536,17 @@ a {
 	cursor: pointer;
 }
 
+.sl-panel {
+	flex: 1 1 0;
+	min-height: 0;
+	box-sizing: border-box;
+	padding: 6px;
+	background: color-mix(in srgb, var(--surface) 88%, transparent);
+	border-radius: var(--radius);
+	box-shadow: var(--shadow);
+}
+
+/* Its rows, one a cell, are set by the slider: twelve hours or the days. */
 .sl-cells {
 	--gap: 3px;
 
@@ -541,8 +554,29 @@ a {
 	isolation: isolate;
 	height: 100%;
 	display: grid;
-	grid-template-rows: repeat(12, 1fr);
 	gap: var(--gap);
+}
+
+/* The other unit's tab: a pill of its own over or under the panel, centred on it. */
+.sl-tab {
+	flex: none;
+	align-self: center;
+	display: grid;
+	place-items: center;
+	width: 44px;
+	height: 24px;
+	border-radius: var(--radius);
+	background: color-mix(in srgb, var(--surface) 92%, transparent);
+	box-shadow: var(--shadow);
+	color: var(--ring);
+	font-size: 11px;
+	font-weight: 600;
+	white-space: nowrap;
+}
+
+.sl-tab.on {
+	background: var(--ring);
+	color: #fff;
 }
 
 .sl-cell {
@@ -553,6 +587,12 @@ a {
 	font-size: 13px;
 	color: var(--muted);
 	font-variant-numeric: tabular-nums;
+}
+
+/* A day's cell is large, its number larger and its ground lightly tinted. */
+.sl-cell[data-day] {
+	font-size: 17px;
+	background: color-mix(in srgb, var(--ring) 7%, transparent);
 }
 
 .sl-cell[data-cached] {
@@ -574,9 +614,23 @@ a {
 	letter-spacing: -0.02em;
 }
 
+/* The chosen day in two lines: «2–3» over a smaller «дня». */
+.sl-cell.on[data-day] b {
+	display: grid;
+	justify-items: center;
+	font-size: 14px;
+	line-height: 1.1;
+}
+
+.sl-cell.on b small {
+	font-size: 10px;
+	font-weight: 600;
+}
+
 /* On the dark theme's lighter blue, the dark text of .btn.primary. */
 @media (prefers-color-scheme: dark) {
-	:root:not([data-theme='light']) .sl-cell.on b {
+	:root:not([data-theme='light']) .sl-cell.on b,
+	:root:not([data-theme='light']) .sl-tab.on {
 		color: #0b1630;
 	}
 }
@@ -586,7 +640,6 @@ a {
 	left: 0;
 	right: 0;
 	bottom: 0;
-	height: calc((100% - 11 * var(--gap)) / 12);
 	border-radius: var(--radius-inner);
 	background: var(--ring);
 	box-shadow: 0 1px 4px color-mix(in srgb, var(--ring) 40%, transparent);
@@ -700,18 +753,15 @@ a {
 	height: 20px;
 }
 
-/* The slider's panel, in .c-top: down to the bottom of the screen over the carousel, up to 450 px, about 36 px an
-   hour; on a low screen or under a long phrase, up to 8 px under the phrase, and never lower than 120 px, to be
-   taken by a finger. */
+/* The slider, its panel and tab, in .c-top: down to the bottom of the screen over the carousel, up to 450 px, about
+   33 px an hour; on a low screen or under a long phrase, up to 8 px under the phrase, and never lower than 120 px, to
+   be taken by a finger. */
 .c-vs {
 	flex: 1 1 0;
 	margin-top: auto;
 	min-height: 120px;
 	max-height: 450px;
 	width: var(--slider-width);
-	background: color-mix(in srgb, var(--surface) 88%, transparent);
-	border-radius: var(--radius);
-	box-shadow: var(--shadow);
 }
 
 /* The carousel, the whole width of the screen under the slider (#85): the current card at the left edge, ending
@@ -731,7 +781,7 @@ a {
 	bottom: 0;
 	z-index: 10;
 	display: flex;
-	gap: 10px;
+	gap: var(--between);
 	overflow-x: auto;
 	scroll-snap-type: x mandatory;
 	scroll-padding-left: var(--edge-left);
@@ -752,7 +802,7 @@ a {
 .c-car::after {
 	content: '';
 	flex: none;
-	width: max(0px, 100% - min(300px, 100%) - 10px);
+	width: max(0px, 100% - min(300px, 100%) - var(--between));
 }
 
 .c-card {

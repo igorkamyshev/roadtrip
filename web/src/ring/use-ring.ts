@@ -11,7 +11,7 @@ import { pointText, type LatLon } from '../state/point.ts';
 import type { Settings } from '../state/settings.ts';
 import { fetchRing, type RingRequestError } from './fetch-ring.ts';
 
-/** The query key of a ring: ['ring', origin, N, citizenships, visas]. */
+/** The query key of a ring: ['ring', origin, the slider's cell (its upper bound in hours), citizenships, visas]. */
 export function ringKey(origin: LatLon, hours: number, settings: Settings): readonly ['ring', string, number, string, string] {
 	return ['ring', pointText(origin), hours, settings.citizenships.join(','), settings.visas.join(',')];
 }
@@ -63,7 +63,7 @@ function isMissing(answer: RingResponse | undefined): boolean {
 	return answer?.outcome === 'visa_rules_missing';
 }
 
-/** The hours whose rings are in memory for this origin and settings: the slider's marked cells. */
+/** The cells, hours and days, whose rings are in memory for this origin and settings: the slider's marked ones. */
 export function useCachedHours(origin: LatLon | undefined, settings: Settings): ReadonlySet<number> {
 	const client = useQueryClient();
 	const subscribe = useCallback((onChange: () => void) => client.getQueryCache().subscribe(onChange), [client]);

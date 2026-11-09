@@ -9,11 +9,10 @@ import { answering, api, counted, DATASET, DAY, engineContainer, MINUTE, recorde
 import { anyObject, anyString, objectContaining } from '../test/matchers.ts';
 import { MemoryKv } from '../test/memory-kv.ts';
 import { SherpaDouble, sherpaMap } from '../test/sherpa-double.ts';
-import { HOURS_PER_DAY, MAX_DAYS } from './api.ts';
 import { handleRing } from './ring.ts';
 
-/** The end of the last day of the slider, in hours. */
-const LAST_HOUR = HOURS_PER_DAY * MAX_DAYS;
+/** The end of the slider's last day, day 5 (MAX_DAYS, docs/container-bench.md): 60 h. */
+const LAST_HOUR = 60;
 
 const straightRoad = fixtureGraph('straight-road.osm');
 
@@ -303,7 +302,7 @@ describe('a request', () => {
 		['bounds 12–25 h, no day', 'lat=0&lon=0&from=12&to=25&cit=RUS'],
 		['bounds 11–24 h, no day', 'lat=0&lon=0&from=11&to=24&cit=RUS'],
 		['day 1, which the hours are', 'lat=0&lon=0&from=0&to=12&cit=RUS'],
-		['the day after the last', `lat=0&lon=0&from=${LAST_HOUR}&to=${LAST_HOUR + HOURS_PER_DAY}&cit=RUS`],
+		['the day after the last', `lat=0&lon=0&from=${LAST_HOUR}&to=${LAST_HOUR + 12}&cit=RUS`],
 		['the hour after the last day', `lat=0&lon=0&from=${LAST_HOUR}&to=${LAST_HOUR + 1}&cit=RUS`],
 		['two upper bounds', 'lat=0&lon=0&from=1&to=2&to=3&cit=RUS'],
 		['no citizenship', 'lat=0&lon=0&from=1&to=2'],
@@ -334,7 +333,7 @@ describe('a request', () => {
 		['no visas', 'lat=0&lon=0&from=1&to=2&cit=RUS&visas='],
 		['day 2', 'lat=0&lon=0&from=12&to=24&cit=RUS'],
 		['the last hour of day 2', 'lat=0&lon=0&from=23&to=24&cit=RUS'],
-		['the last day', `lat=0&lon=0&from=${LAST_HOUR - HOURS_PER_DAY}&to=${LAST_HOUR}&cit=RUS`],
+		['the last day', `lat=0&lon=0&from=${LAST_HOUR - 12}&to=${LAST_HOUR}&cit=RUS`],
 	])('with %s values is answered', async (_, query) => {
 		const { get } = api({ container: await engineContainer(straightRoad) });
 

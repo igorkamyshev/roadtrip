@@ -71,8 +71,9 @@ describe('a ring of a day', () => {
 
 		expect(result.outcome).toBe('ring');
 		const points = result.outcome === 'ring' ? result.ring.coordinates.flat(2).length : 0;
-		expect(points).toBeGreaterThan(0);
-		expect(points).toBeLessThan(40);
+		expect(result.outcome === 'ring' && result.ring.coordinates).toHaveLength(1);
+		expect(points).toBeGreaterThanOrEqual(5); // four corners and the closing point
+		expect(points).toBeLessThanOrEqual(13); // a dozen, and the closing point
 		expect(result.outcome === 'ring' && ringContains(result.ring, 0, 0)).toBe(true); // the road's middle, ~62 h
 	});
 

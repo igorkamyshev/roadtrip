@@ -27,14 +27,14 @@ export interface ScreenStateControls extends ScreenState {
 }
 
 export function useScreenState(): ScreenStateControls {
-	const { p, h, cit, visas } = useSearch({ from: '/' });
+	const { p, h, d, cit, visas } = useSearch({ from: '/' });
 	const opening = useRouteContext({ from: '/', select: (context) => context.opening });
 	const navigate = useNavigate();
 	// The link gives new values on every render; their text says when they change. So the origin is the same object
 	// while the point stays, and the settings while the lists do: the rings' memory and the map's camera follow them.
 	const origin = useMemo(() => originFromSearch(p), [p]);
 	const settings = useMemo(() => settingsFromSearch(cit, visas), [cit, visas]);
-	const hours = hoursFromSearch(h);
+	const hours = hoursFromSearch({ h, d });
 	const state = useMemo((): ScreenState => ({ origin, hours, ...settings }), [origin, hours, settings]);
 	// The latest state, for a change that lands after a render, such as the position from geolocation.
 	const latest = useRef(state);

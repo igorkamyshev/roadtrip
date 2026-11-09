@@ -1,7 +1,8 @@
 // The screen's state in the link (spec #20 «Состояние, ссылка и память браузера»):
-// `/#/?p=44.81760,20.45730&h=3&cit=RUS,SRB&visas=SCHENGEN`. The router keeps it after `#` (hash history), parses it
+// `/#/?p=44.81760,20.45730&h=3&cit=RUS,SRB&visas=SCHENGEN`, or `d=2` in place of `h` for a ring of days (#83). The router keeps it after `#` (hash history), parses it
 // with `parseSearch` and checks it with `validateSearch`; every change is a `navigate` with `replace: true`.
 import { HELD_VISAS } from 'rules/held-visas';
+import { HOURS_PER_DAY, MAX_DAYS, MAX_HOURS } from 'worker/api';
 import { SHERPA_PASSPORTS } from 'rules/passports';
 import { pointFromText, pointText, type LatLon } from './point.ts';
 import type { Settings } from './settings.ts';
@@ -10,8 +11,10 @@ import type { Settings } from './settings.ts';
 export interface ScreenSearch {
 	/** The origin, `lat,lon` to 5 decimals. */
 	readonly p?: string;
-	/** N, the hours of the ring: 1–12. */
+	/** N, the hours of the ring: 1–12. Never with `d`. */
 	readonly h?: number;
+	/** D, the days of the ring: 2–MAX_DAYS (#83). Never with `h`. */
+	readonly d?: number;
 	/** The citizenships: Sherpa's passports, alpha-3, sorted, comma-separated. */
 	readonly cit?: string;
 	/** The held visas: `SCHENGEN` and the countries outside Schengen (rules' `HELD_VISAS`), sorted, comma-separated. */
@@ -24,6 +27,10 @@ export interface ScreenSearch {
  */
 export interface ScreenState {
 	readonly origin: LatLon | undefined;
+	/**
+	 * The slider's cell by its ring's upper bound in hours (worker/api's `SLIDER_CELLS`): N for the ring of N hours,
+	 * 12·D for day D (#83).
+	 */
 	readonly hours: number;
 	/** Alpha-3, sorted, at least one. */
 	readonly citizenships: readonly string[];
@@ -32,36 +39,43 @@ export interface ScreenState {
 }
 
 const DEFAULT_HOURS = 1;
-export const MIN_HOURS = 1;
-export const MAX_HOURS = 12;
 const DEFAULT_CITIZENSHIPS: readonly string[] = ['RUS'];
 const NO_VISAS: readonly string[] = [];
 
 /** The parameters that make up the state: a link with any of them carries a state. */
-export const STATE_PARAMS: readonly string[] = ['p', 'h', 'cit', 'visas'];
+export const STATE_PARAMS: readonly string[] = ['p', 'h', 'd', 'cit', 'visas'];
 
-const HOURS_TEXT = /^\d{1,2}$/u;
+const WHOLE_TEXT = /^\d{1,2}$/u;
 const PASSPORTS: ReadonlySet<string> = new Set(SHERPA_PASSPORTS);
 const VISAS: ReadonlySet<string> = new Set(HELD_VISAS);
 
 /** `validateSearch` of the screen's route: keeps the valid parameters, drops the rest. */
 export function validateScreenSearch(raw: Record<string, unknown>): ScreenSearch {
 	const origin = typeof raw.p === 'string' ? pointFromText(raw.p) : undefined;
-	const hours = hoursFromRaw(raw.h);
 	const citizenships = typeof raw.cit === 'string' ? codesFromText(raw.cit, PASSPORTS) : undefined;
 	const visas = typeof raw.visas === 'string' && raw.visas !== '' ? codesFromText(raw.visas, VISAS) : undefined;
 	return {
 		...(origin === undefined ? {} : { p: pointText(origin) }),
-		...(hours === undefined ? {} : { h: hours }),
+		...ringFromRaw(raw),
 		...(citizenships === undefined ? {} : { cit: citizenships.join(',') }),
 		...(visas === undefined ? {} : { visas: visas.join(',') }),
 	};
 }
 
-/** N of the link's `h`, the text of a whole number or the number itself; undefined unless it is 1–12. */
-function hoursFromRaw(raw: unknown): number | undefined {
-	const hours = typeof raw === 'string' && HOURS_TEXT.test(raw) ? Number(raw) : raw;
-	return typeof hours === 'number' && Number.isInteger(hours) && hours >= MIN_HOURS && hours <= MAX_HOURS ? hours : undefined;
+/** The link's `h` or `d`; neither when it has both, or one off the scale: the ring takes its default. */
+function ringFromRaw(raw: Record<string, unknown>): Pick<ScreenSearch, 'h' | 'd'> {
+	if (raw.h !== undefined && raw.d !== undefined) {
+		return {};
+	}
+	const hours = wholeFromRaw(raw.h, 1, MAX_HOURS);
+	const days = wholeFromRaw(raw.d, 2, MAX_DAYS);
+	return hours === undefined ? (days === undefined ? {} : { d: days }) : { h: hours };
+}
+
+/** N of the link's `h` or D of its `d`, the text of a whole number or the number itself; undefined off `min`–`max`. */
+function wholeFromRaw(raw: unknown, min: number, max: number): number | undefined {
+	const value = typeof raw === 'string' && WHOLE_TEXT.test(raw) ? Number(raw) : raw;
+	return typeof value === 'number' && Number.isInteger(value) && value >= min && value <= max ? value : undefined;
 }
 
 /**
@@ -74,7 +88,7 @@ function codesFromText(text: string, valid: ReadonlySet<string>): string[] | und
 }
 
 export function stateFromSearch(search: ScreenSearch): ScreenState {
-	return { origin: originFromSearch(search.p), hours: hoursFromSearch(search.h), ...settingsFromSearch(search.cit, search.visas) };
+	return { origin: originFromSearch(search.p), hours: hoursFromSearch(search), ...settingsFromSearch(search.cit, search.visas) };
 }
 
 /** The origin of the link's `p`; undefined without one. */
@@ -82,9 +96,9 @@ export function originFromSearch(p: string | undefined): LatLon | undefined {
 	return p === undefined ? undefined : pointFromText(p);
 }
 
-/** N of the link's `h`, 1 by default. */
-export function hoursFromSearch(h: number | undefined): number {
-	return h ?? DEFAULT_HOURS;
+/** The slider's cell of the link's `h` or `d`: N, or 12·D for day D; 1 h by default. */
+export function hoursFromSearch({ h, d }: Pick<ScreenSearch, 'h' | 'd'>): number {
+	return d === undefined ? (h ?? DEFAULT_HOURS) : HOURS_PER_DAY * d;
 }
 
 /** The citizenships of the link's `cit`, Russian by default, and the held visas of its `visas`, none by default. */
@@ -102,7 +116,7 @@ export function settingsFromSearch(cit: string | undefined, visas: string | unde
 export function searchFromState(state: ScreenState): ScreenSearch {
 	return {
 		...(state.origin === undefined ? {} : { p: pointText(state.origin) }),
-		h: state.hours,
+		...(state.hours > MAX_HOURS ? { d: state.hours / HOURS_PER_DAY } : { h: state.hours }),
 		cit: state.citizenships.join(','),
 		...(state.visas.length === 0 ? {} : { visas: state.visas.join(',') }),
 	};

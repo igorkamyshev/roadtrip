@@ -4,7 +4,7 @@
 // The slider goes down to the bottom of the screen over the carousel. Read by the elements' boxes, never by pixels.
 import type { Locator, Page } from '@playwright/test';
 import { expect, squareRing, test, visaRules } from './fixtures.ts';
-import { boxOf, expectRingCard, firstCard, phrase, slider, sliderHour } from './screen.ts';
+import { boxOf, expectRingCard, firstCard, phrase, slider, sliderHour, sliderPanel, sliderTab } from './screen.ts';
 
 /** Where the page's clock stands, held, while the screen opens: the sources stay under the phrase. */
 const START = Date.parse('2026-11-09T12:00:00Z');
@@ -16,6 +16,8 @@ const OLD_RULES = '2026-11-06T12:00:00Z';
 const LONGEST = '/#/?p=44.81760,20.45730&h=12&cit=BIH,MNE,RUS,SRB&visas=CAN,GBR,SCHENGEN,USA';
 /** Belgrade at 12 h with one citizenship and no visas. */
 const SHORTEST = '/#/?p=44.81760,20.45730&h=12&cit=RUS';
+/** The longest phrase in days, at 4–5 days: the tab «часы ↓» under the slider's panel (#83). */
+const LONGEST_IN_DAYS = '/#/?p=44.81760,20.45730&d=5&cit=BIH,MNE,RUS,SRB&visas=CAN,GBR,SCHENGEN,USA';
 
 /**
  * The phones of the tickets: small, the most common, large; and what Safari leaves of the iPhone 15/16 and the
@@ -63,12 +65,12 @@ async function expectApart(page: Page, panels: Record<string, Locator>): Promise
 	expect(onOneAnother, 'panels on one another').toEqual([]);
 }
 
-/** Opens `path` with the clock held 1 s after the load, and waits for the ring of 12 h. */
-async function open(page: Page, path: string): Promise<void> {
+/** Opens `path` with the clock held 1 s after the load, and waits for the ring of 12 h, or of the days it names. */
+async function open(page: Page, path: string, ring = '11–12 ч'): Promise<void> {
 	await page.clock.install({ time: START });
 	await page.clock.pauseAt(START + 1000);
 	await page.goto(path);
-	await expectRingCard(page, '11–12 ч');
+	await expectRingCard(page, ring);
 }
 
 test.beforeEach(({ ringApi }) => {
@@ -96,6 +98,20 @@ for (const { lowestHour, ...viewport } of PHONES) {
 				'current card': firstCard(page),
 			});
 		});
+
+		for (const [unit, path, ring] of [
+			['hours', LONGEST, '11–12 ч'],
+			['days', LONGEST_IN_DAYS, '4–5 дней'],
+		]) {
+			test(`in ${unit}, the slider's tab and panel are apart from the phrase and the current card, and on the screen`, async ({ page }) => {
+				await open(page, path, ring);
+
+				await expectApart(page, { phrase: phrase(page), 'slider tab': sliderTab(page), 'current card': firstCard(page) });
+				await expectApart(page, { phrase: phrase(page), 'slider panel': sliderPanel(page), 'current card': firstCard(page) });
+				const sliderBox = await boxOf(slider(page));
+				expect(fromEdges(page, sliderBox)).toMatchObject({ right: EDGE, bottom: EDGE });
+			});
+		}
 
 		test('the phrase, the slider and the current card stand 12 px from their edges of the screen', async ({ page }) => {
 			await open(page, LONGEST);
@@ -137,11 +153,13 @@ for (const { lowestHour, ...viewport } of PHONES) {
 			});
 		}
 
-		// Read with the shortest phrase, as on the prototype (#85): under the longest one, with its date of the visa
-		// rules, the slider of a short screen keeps only its 120 px.
+		// Read with the shortest phrase and fresh visa rules, as on the prototype (#85, #83): under the longest one, with
+		// its date of the visa rules, the slider of a short screen keeps only its 120 px. The tab «дни ↑» is over it.
 		for (const lowest of lowestHour === undefined ? [] : [lowestHour]) {
-			test(`with one citizenship, an hour of the slider is ${lowest} px high or more`, async ({ page }) => {
+			test(`with one citizenship, an hour of the slider is ${lowest} px high or more`, async ({ page, ringApi }) => {
+				ringApi.respond((call) => ({ ...squareRing(Number(call.lat), Number(call.lon), [0.05, 0.5]), ...visaRules() }));
 				await open(page, SHORTEST);
+				await expect(sliderTab(page)).toBeVisible();
 
 				expect((await boxOf(sliderHour(page, 1))).height).toBeGreaterThanOrEqual(lowest);
 			});
