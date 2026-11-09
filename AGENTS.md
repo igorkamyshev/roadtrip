@@ -49,7 +49,7 @@ Reviewing a branch or merging a ticket's work, the review step of `mattpocock-sk
 
 Issues live in GitHub Issues for `igorkamyshev/roadtrip`. See `docs/agents/issue-tracker.md`.
 
-Every change starts from an issue: file one before the first edit when none exists, and the PR's description says `Closes #N` (or `Part of #N`), which CI's check «Issue» reads.
+Every change starts from an issue: file one before the first edit when none exists, and the PR's description says `Closes #N` (or `Part of #N`), which CI's check «Issue» reads. A retro's change is `Part of #N` of the issue it looks back on.
 
 ### Triage labels
 
