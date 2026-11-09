@@ -1,6 +1,6 @@
 // Claude Code hook (.claude/settings.json) that lints what an agent changed once it
-// moves on from changing it: Oxlint checks the source files and the agent reads the
-// errors. It only reports: fixing and formatting happen at pre-commit, so a file
+// moves on from changing it: Oxlint checks the code, Stylelint the CSS, and the agent
+// reads the errors. It only reports: fixing and formatting happen at pre-commit, so a file
 // never changes under the agent between two edits (ADR 0002).
 //
 // An edit (PostToolUse of Edit, Write, MultiEdit) is only noted: the next edit may
@@ -26,7 +26,8 @@ import { spawnSync } from 'node:child_process';
 import { appendFileSync, existsSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, isAbsolute, join, relative } from 'node:path';
 
-const SOURCE = /\.(?:ts|tsx|js|mjs|cjs)$/u;
+const SOURCE = /\.(?:ts|tsx|js|mjs|cjs|css)$/u;
+const STYLESHEET = /\.css$/u;
 
 /** What the hook reads of an event: which tool (none at a stop), the file an edit names, the agent's directory and id, and whether this hook kept it from stopping. */
 interface HookEvent {
@@ -119,25 +120,56 @@ function changedSince(root: string, since: number): string[] {
 		.filter((file) => existsSync(file) && statSync(file).mtimeMs > since);
 }
 
-/** What the agent is told about `files` in the checkout at `root`: Oxlint's report, or that Oxlint is not installed; undefined when there is nothing to say. */
-function hookMessage(root: string, files: string[]): string | undefined {
+/** A linter of the checkout: its binary in `node_modules/.bin` and the arguments before the files. */
+interface Linter {
+	readonly bin: string;
+	readonly args: readonly string[];
+}
+
+const OXLINT: Linter = { bin: 'oxlint', args: [] };
+// A stylesheet the config ignores (a build's) leaves Stylelint nothing to lint, which is no error.
+const STYLELINT: Linter = { bin: 'stylelint', args: ['--allow-empty-input'] };
+
+/** What `linter` of the checkout at `root` reports on `files`; undefined when it finds nothing. */
+function report(root: string, linter: Linter, files: string[]): string | undefined {
 	if (files.length === 0) {
 		return undefined;
 	}
-	const oxlint = join(root, 'node_modules/.bin/oxlint');
-	if (!existsSync(oxlint)) {
-		return `Oxlint is not installed in ${root}: run \`pnpm install\` there, so your edits are linted.\n`;
-	}
-	const lint = spawnSync(
-		oxlint,
-		files.map((file) => relative(root, file)),
-		{ cwd: root, encoding: 'utf8' },
-	);
+	const lint = spawnSync(join(root, 'node_modules/.bin', linter.bin), [...linter.args, ...files.map((file) => relative(root, file))], {
+		cwd: root,
+		encoding: 'utf8',
+	});
 	// A file the config ignores (generated code) leaves Oxlint with nothing to lint.
 	if (lint.status === 0 || lint.stdout.includes('No files found to lint')) {
 		return undefined;
 	}
-	return `${lint.stdout}${lint.stderr}\nFix these before moving on; to disable a rule on one line, give the reason (AGENTS.md, Checks).\n`;
+	return `${lint.stdout}${lint.stderr}`;
+}
+
+/** What the agent is told about `files` in the checkout at `root`: the linters' reports, or that they are not installed; undefined when there is nothing to say. */
+function hookMessage(root: string, files: string[]): string | undefined {
+	if (files.length === 0) {
+		return undefined;
+	}
+	if (!existsSync(join(root, 'node_modules/.bin/oxlint'))) {
+		return `Oxlint and Stylelint are not installed in ${root}: run \`pnpm install\` there, so your edits are linted.\n`;
+	}
+	const reports = [
+		report(
+			root,
+			OXLINT,
+			files.filter((file) => !STYLESHEET.test(file)),
+		),
+		report(
+			root,
+			STYLELINT,
+			files.filter((file) => STYLESHEET.test(file)),
+		),
+	].filter((text) => text !== undefined);
+	if (reports.length === 0) {
+		return undefined;
+	}
+	return `${reports.join('\n')}\nFix these before moving on; to disable a rule on one line, give the reason (AGENTS.md, Checks).\n`;
 }
 
 /** The checkout and the source files to lint after `event`: none after an edit, which is only noted. */

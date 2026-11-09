@@ -8,7 +8,7 @@
 		"prepare": "git config core.hooksPath .githooks",
 		"format": "oxfmt",
 		"format:check": "oxfmt --check",
-		"lint": "oxlint && pnpm lint:project",
+		"lint": "oxlint && stylelint \"**/*.css\" && pnpm lint:project",
 		"lint:project": "fallow dead-code && fallow architecture && fallow dupes --fail-on-issues && fallow health --complexity && node lint/oxlint-overrides.ts && node lint/agents-pointers.ts",
 		"health": "fallow health --hotspots --targets",
 		"typecheck": "pnpm --recursive --if-present run typecheck",
@@ -24,6 +24,9 @@
 		"oxfmt": "0.76.0",
 		"oxlint": "1.91.0",
 		"oxlint-tsgolint": "7.0.2005",
+		"stylelint": "17.16.0",
+		"stylelint-config-standard": "40.0.0",
+		"stylelint-no-unsupported-browser-features": "8.1.2",
 		"typescript": "^5.9.3",
 		"vitest": "^5.1.0"
 	}

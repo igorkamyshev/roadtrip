@@ -93,7 +93,7 @@
 			{ "name": "web", "patterns": ["web/**"] },
 			{ "name": "lint", "patterns": ["lint/**"] },
 			{ "name": "scripts", "patterns": ["scripts/**"] },
-			{ "name": "root", "patterns": ["vitest.config.ts"] },
+			{ "name": "root", "patterns": ["vitest.config.ts", "stylelint.config.mjs"] },
 		],
 		"rules": [
 			{ "from": "et-logger", "allow": [] },

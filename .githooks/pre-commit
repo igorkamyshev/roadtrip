@@ -5,8 +5,9 @@ set -e
 node scripts/agents-symlinks.ts --stage
 
 # Fix, then format the staged files, and stage the result: formatting goes last
-# because Oxlint's fixes are not formatted. Symlinks are skipped: oxfmt would
-# format the file a CLAUDE.md symlink points at, which is staged on its own.
+# because Oxlint's and Stylelint's fixes are not formatted. Symlinks are skipped:
+# oxfmt would format the file a CLAUDE.md symlink points at, which is staged on
+# its own.
 files=$(git diff --cached --name-only --diff-filter=ACMR | while read -r f; do [ -L "$f" ] || echo "$f"; done)
 if [ -n "$files" ]; then
 	code=$(echo "$files" | grep -E '\.(ts|tsx|js|mjs|cjs)$' || true)
@@ -23,6 +24,11 @@ if [ -n "$files" ]; then
 				exit 1
 			}
 		fi
+	fi
+	# Stylelint fixes what it can in the stylesheets; what it cannot stops the commit.
+	css=$(echo "$files" | grep -E '\.css$' || true)
+	if [ -n "$css" ]; then
+		echo "$css" | xargs pnpm exec stylelint --fix --allow-empty-input
 	fi
 	echo "$files" | xargs pnpm exec oxfmt --no-error-on-unmatched-pattern
 	echo "$files" | xargs git add

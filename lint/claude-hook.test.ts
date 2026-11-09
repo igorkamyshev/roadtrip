@@ -10,16 +10,19 @@ const REPO_MODULES = fileURLToPath(new URL('../node_modules', import.meta.url));
 
 /** A file Oxlint refuses under the checkout's config below. */
 const BAD = 'debugger;\n';
+/** A stylesheet Stylelint refuses under the checkout's config below. */
+const BAD_CSS = 'a {}\n';
 
 let checkout: string;
 
 beforeEach(() => {
-	// A git checkout with this repo's Oxlint and a config of one rule.
+	// A git checkout with this repo's Oxlint and Stylelint, each with a config of one rule.
 	checkout = mkdtempSync(join(tmpdir(), 'claude-hook-'));
 	spawnSync('git', ['init', '-q'], { cwd: checkout });
 	symlinkSync(REPO_MODULES, join(checkout, 'node_modules'));
 	writeFileSync(join(checkout, '.gitignore'), 'node_modules\n');
 	writeFileSync(join(checkout, '.oxlintrc.json'), JSON.stringify({ rules: { 'no-debugger': 'error' } }));
+	writeFileSync(join(checkout, 'stylelint.config.mjs'), "export default { rules: { 'block-no-empty': true } };\n");
 	mkdirSync(join(checkout, 'src'));
 });
 
@@ -58,6 +61,23 @@ describe('the lint hook', () => {
 		const { status, told } = hook(shellCommand);
 		expect(status).toBe(2);
 		expect(told).toContain('src/card.tsx');
+	});
+
+	it('reports the errors of an edited stylesheet (.css), by Stylelint', () => {
+		const file = join(checkout, 'src/styles.css');
+		writeFileSync(file, BAD_CSS);
+		hook({ tool_name: 'Edit', tool_input: { file_path: file } });
+		const { status, told } = hook(shellCommand);
+		expect(status).toBe(2);
+		expect(told).toContain('block-no-empty');
+	});
+
+	it('reports a stylesheet a shell command wrote, and says nothing of a clean one', () => {
+		hook(shellCommand);
+		writeFileSync(join(checkout, 'src/styles.css'), BAD_CSS);
+		expect(hook(shellCommand).told).toContain('src/styles.css');
+		writeFileSync(join(checkout, 'src/styles.css'), 'a {\n\tcolor: red;\n}\n');
+		expect(hook(shellCommand)).toEqual({ status: 0, told: '' });
 	});
 
 	it('lints a change made by two edits once both are done', () => {
