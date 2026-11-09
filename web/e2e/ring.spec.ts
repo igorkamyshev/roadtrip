@@ -13,6 +13,7 @@ import {
 	ringIsStriped,
 	ringOnMap,
 	slider,
+	sliderHour,
 } from './screen.ts';
 
 const BELGRADE = { lat: 44.8176, lon: 20.4573 };
@@ -35,7 +36,7 @@ test('letting the slider go asks for one ring, for the hours where it stopped', 
 	await expectRingCard(page, 'до 1 ч');
 
 	await dragSlider(page, 5, async () => {
-		// Dragged through 2, 3 and 4 and still held: the bubble follows, nothing is asked for.
+		// Dragged through 2, 3 and 4 and still held: the cell under the pointer is chosen, nothing is asked for.
 		await expect(slider(page)).toHaveAttribute('aria-valuetext', '4–5 ч');
 		expect(ringApi.calls).toHaveLength(1);
 	});
@@ -58,7 +59,23 @@ test('a key moves N by an hour and asks at once', async ({ page, ringApi }) => {
 	expect(ringApi.calls.map((call) => call.hours)).toEqual([1, 2]);
 });
 
-test('a ring in memory comes back at once, without a request, and its hours have dots', async ({ page, ringApi }) => {
+test('a tap on an hour chooses it and asks for one ring; the chosen hour reads as its span', async ({ page, ringApi }) => {
+	ringApi.respond(ringFor);
+	await page.goto('/');
+	await expectRingCard(page, 'до 1 ч');
+	await expect(sliderHour(page, 1)).toHaveText('до 1');
+	await expect(sliderHour(page, 7)).toHaveText('7');
+
+	await sliderHour(page, 7).click();
+
+	await expectRingCard(page, '6–7 ч');
+	await expect(sliderHour(page, 7)).toHaveText('6–7');
+	await expect(sliderHour(page, 1)).toHaveText('1');
+	await expect(sliderHour(page, 12)).toHaveText('12');
+	expect(ringApi.calls.map((call) => call.hours)).toEqual([1, 7]);
+});
+
+test('a ring in memory comes back at once, without a request, and its hours are marked', async ({ page, ringApi }) => {
 	ringApi.respond(ringFor);
 	await page.goto('/');
 	await expectRingCard(page, 'до 1 ч');

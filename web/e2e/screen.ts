@@ -66,26 +66,34 @@ export async function expectRingCard(page: Page, hours: string): Promise<void> {
 	await expect(firstCard(page)).toHaveAttribute('data-state', /^(?:ring|no_cities)$/u);
 }
 
-/**
- * Drags the slider's thumb from its value to `hours`, passing every hour between, and calls `meanwhile` before it
- * lets go. Pointer events, as a finger's.
- */
-export async function dragSlider(page: Page, hours: number, meanwhile?: () => Promise<void>): Promise<void> {
-	const box = await page.locator('.sl-track').boundingBox();
+/** The slider's cell of `hours`: N, or the span («6–7») when it is the one chosen. */
+export const sliderHour = (page: Page, hours: number): Locator => slider(page).locator(`[data-hours="${hours}"]`);
+
+/** The middle of the slider's cell of `hours`. */
+async function middleOfHour(page: Page, hours: number): Promise<{ x: number; y: number }> {
+	const box = await sliderHour(page, hours).boundingBox();
 	if (box === null) {
 		throw new Error('the slider is not on the screen');
 	}
-	const yOf = (value: number) => box.y + box.height * (1 - (value - 1) / 11);
-	const x = box.x + box.width / 2;
+	return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+}
+
+/**
+ * Drags the slider from the middle of its chosen cell to the middle of the cell of `hours`, passing every hour between,
+ * and calls `meanwhile` before it lets go. Pointer events, as a finger's.
+ */
+export async function dragSlider(page: Page, hours: number, meanwhile?: () => Promise<void>): Promise<void> {
 	const from = Number(await slider(page).getAttribute('aria-valuenow'));
-	await page.mouse.move(x, yOf(from));
+	const start = await middleOfHour(page, from);
+	const end = await middleOfHour(page, hours);
+	await page.mouse.move(start.x, start.y);
 	await page.mouse.down();
-	await page.mouse.move(x, yOf(hours), { steps: 4 * Math.abs(hours - from) + 1 });
+	await page.mouse.move(end.x, end.y, { steps: 4 * Math.abs(hours - from) + 1 });
 	await meanwhile?.();
 	await page.mouse.up();
 }
 
-/** The hours the slider marks with a dot: their rings are in memory. */
+/** The hours the slider marks (`data-cached`, a light green cell): their rings are in memory. */
 export async function dottedHours(page: Page): Promise<number[]> {
 	const hours = await slider(page)
 		.locator('[data-cached]')

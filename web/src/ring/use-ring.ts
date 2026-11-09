@@ -62,7 +62,7 @@ function isMissing(answer: RingResponse | undefined): boolean {
 	return answer?.outcome === 'visa_rules_missing';
 }
 
-/** The hours whose rings are in memory for this origin and settings: the dots on the slider. */
+/** The hours whose rings are in memory for this origin and settings: the slider's marked cells. */
 export function useCachedHours(origin: LatLon | undefined, settings: Settings): ReadonlySet<number> {
 	const client = useQueryClient();
 	const subscribe = useCallback((onChange: () => void) => client.getQueryCache().subscribe(onChange), [client]);
