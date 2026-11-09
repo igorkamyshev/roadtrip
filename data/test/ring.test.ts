@@ -1,4 +1,4 @@
-// The engine's seam (spec «Решения по тестам», seam 1): graph, border table, origin, N and closed countries in,
+// The engine's seam (spec #20 «Решения по тестам», seam 1): graph, border table, origin, N and closed countries in,
 // the result out. The graphs are built from the OSM files in fixtures/ by the same builder as the world's, so
 // these tests check the builder too. Expected values are worked out by hand in each fixture's header.
 import { computeRing, type RingRequest } from 'engine';
@@ -34,6 +34,56 @@ describe('a ring', () => {
 		const inRing = (lat: number, lon: number) => result.outcome === 'ring' && ringContains(result.ring, lat, lon);
 		expect(inRing(0.005, 0.7)).toBe(true); // 0.6 km north of the road
 		expect(inRing(0.1, 0.7)).toBe(false); // 11 km north of it
+	});
+});
+
+describe('a plot of land without roads, walled in by roads', () => {
+	const plots = fixtureGraph('plots.osm');
+	/** Whether the N h ring from the west end of plots.osm's equator holds the point, with the closed countries. */
+	const inRingOf = (hours: number, closedCountries: string[] = []) => {
+		const result = computeRing(plots, borderTable, { ...request(0, 0, hours), closedCountries });
+		return (lat: number, lon: number) => result.outcome === 'ring' && ringContains(result.ring, lat, lon);
+	};
+
+	it('is in the ring when it is small, though far from every road', () => {
+		expect(inRingOf(2)(0.025, 0.625)).toBe(true); // A's middle, 2.8 km from its roads
+		expect(inRingOf(2)(-0.065, 0.74)).toBe(true); // in D, 1.7 km from its south road and from BBB
+	});
+
+	it('is not in the ring when it is large', () => {
+		expect(inRingOf(4)(0.15, 1.15)).toBe(false); // B's middle, 16.7 km from its roads
+		expect(inRingOf(4)(0.295, 1.15)).toBe(true); // 0.6 km south of B's north road: 3.25 h
+	});
+
+	it('is in the ring whose roads first wall it in, and not in the ring before', () => {
+		expect(inRingOf(3)(-0.025, 1.325)).toBe(false); // C's middle: 3 h of roads leave C open to the east
+		expect(inRingOf(4)(-0.025, 1.325)).toBe(true);
+		expect(inRingOf(4)(-0.04, 1.34)).toBe(true); // 1.1 km from C's south-east corner, its last road reached
+	});
+
+	it('is not in the rings after its own, with the land reached sooner', () => {
+		expect(inRingOf(3)(0.025, 0.625)).toBe(false); // A's middle
+		expect(inRingOf(3)(-0.065, 0.74)).toBe(false); // in D
+		expect(inRingOf(3)(0, 0.3)).toBe(false); // on the equator at 0.67 h
+	});
+
+	it('leaves the land reached sooner out of a ring that walls it in', () => {
+		const loops = fixtureGraph('nested-loops.osm');
+		const inRing = (hours: number, lat: number, lon: number) => {
+			const result = computeRing(loops, borderTable, request(0.525, 0.5, hours));
+			return result.outcome === 'ring' && ringContains(result.ring, lat, lon);
+		};
+
+		expect(inRing(1, 0.525, 0.525)).toBe(true); // L1's middle, 2.8 km from its roads
+		expect(inRing(2, 0.525, 0.525)).toBe(false);
+		expect(inRing(2, 0.485, 0.525)).toBe(true); // between L1 and L2, 1.7 km from each
+		expect(inRing(1, 0.485, 0.525)).toBe(false);
+	});
+
+	it('leaves out a closed country in it', () => {
+		expect(inRingOf(2)(-0.04, 0.74)).toBe(true); // BBB's middle, BBB open
+		expect(inRingOf(2, ['BBB'])(-0.04, 0.74)).toBe(false);
+		expect(inRingOf(2, ['BBB'])(-0.065, 0.74)).toBe(true); // in D, south of BBB
 	});
 });
 

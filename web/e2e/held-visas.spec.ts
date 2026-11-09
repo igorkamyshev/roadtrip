@@ -197,8 +197,8 @@ test.describe('the held visas of a link', () => {
 	test('without visas has none, though some were saved: the link wins', async ({ page, ringApi }) => {
 		await page.goto(`${LINK}&visas=USA`);
 		await expect(phrase(page)).toContainText('мои визы: США');
-		// The first page's request reaches the Worker before the page goes: else the reopened page's is the only one.
-		await ringApi.waitForCalls(1);
+		// The phrase shows the visas before the ring's request goes: a reload before it would drop the request.
+		expect((await ringApi.waitForCalls(1))[0].visas).toBe('USA');
 
 		await reopen(page, LINK);
 

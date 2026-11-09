@@ -10,9 +10,14 @@ export function plural(n: number, forms: readonly [one: string, few: string, man
 	return ones >= 2 && ones <= 4 && (tens < 10 || tens >= 20) ? forms[1] : forms[2];
 }
 
+/** The ring's hours as a span, on the slider's chosen cell: «до 1», «2–3». */
+export function hoursSpan(hours: number): string {
+	return hours === 1 ? 'до 1' : `${hours - 1}–${hours}`;
+}
+
 /** The ring's hours in short: «до 1 ч», «2–3 ч». */
 export function hoursShort(hours: number): string {
-	return hours === 1 ? 'до 1 ч' : `${hours - 1}–${hours} ч`;
+	return `${hoursSpan(hours)} ч`;
 }
 
 /** The ring's hours in the phrase: «до 1 часа», «2–3 часа», «5–6 часов». */

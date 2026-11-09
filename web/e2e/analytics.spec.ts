@@ -449,7 +449,7 @@ test.describe('ring result', () => {
 		expect(abandoned).not.toHaveProperty('source');
 		expect(abandoned.wait_ms).toBe(500);
 
-		// The late answer is in memory (its dot), and the next ring result follows the two: nothing came of it between.
+		// The late answer is in memory (its cell marked), and the next ring result follows the two: nothing came of it between.
 		await expect.poll(() => dottedHours(page)).toEqual([3, 5]);
 		ringApi.respond(() => belgradeRing());
 		await slider(page).press('ArrowUp');
