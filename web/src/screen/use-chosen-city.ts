@@ -1,8 +1,8 @@
-// The chosen city (spec #20 «Экран», «Карусель»): the card in the carousel's middle, a card tapped, a city tapped on the
-// map or picked in the list of all. The map goes to it and names it larger. A new ring chooses none and shows the carousel from its
-// start.
+// The chosen city (spec #20 «Экран», «Карусель»): the card in the carousel's middle, a card tapped, a city tapped on
+// the map or picked in the list of all. The map goes to it and names it larger. A new ring chooses none and shows the
+// carousel from its start.
 import { useEffect, useRef, useState, type RefObject } from 'react';
-import { scrollToCard, useCarouselStops } from '../cities/carousel.ts';
+import { inTheMiddle, scrollToCard, useCarouselStops } from '../cities/carousel.ts';
 import type { City } from '../cities/cities.ts';
 import type { MapHandle } from '../map/camera.ts';
 import type { ShownRing } from './use-shown-ring.ts';
@@ -51,10 +51,10 @@ export function useChosenCity(shown: ShownRing, map: RefObject<MapHandle | null>
 		}
 	});
 
-	// A city with a card off the middle is chosen when the carousel stops at it, which moves the map; the chosen one, or
-	// one with no card, here.
-	const bring = (place: City, minZoom?: number): void => {
-		if (place.id === city || !scrollToCard(carousel.current, place.id)) {
+	// A city whose card is off the carousel's middle is chosen when the carousel stops at it, which moves the map. A
+	// city whose card is in the middle, or that has no card, is chosen and the map moved to it at once.
+	const chooseAndShow = (place: City, minZoom?: number): void => {
+		if (inTheMiddle(carousel.current, place.id) || !scrollToCard(carousel.current, place.id)) {
 			choose(place.id);
 			map.current?.goTo(place, minZoom);
 		}
@@ -71,11 +71,11 @@ export function useChosenCity(shown: ShownRing, map: RefObject<MapHandle | null>
 			}
 		},
 		tapCard: (tapped) => {
-			bring(tapped);
+			chooseAndShow(tapped);
 		},
 		pick: (picked) => {
 			// The map comes close to a city with no card.
-			bring(picked, PICKED_CITY_ZOOM);
+			chooseAndShow(picked, PICKED_CITY_ZOOM);
 		},
 	};
 }

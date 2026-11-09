@@ -404,7 +404,7 @@ test.describe('the carousel and the map', () => {
 
 		await expect(chosenCard(page).locator('h3')).toHaveText('Ниш');
 		await expect.poll(async () => (await labelsOnMap(page)).chosen).toEqual(['Ниш']);
-		expect(await wentTo(page, { lat: 43.325, lon: 21.903 })).toBeLessThan(25);
+		expect(await wentTo(page, NIS)).toBeLessThan(25);
 
 		// Back to the first card: no city is chosen.
 		await firstCard(page).evaluate((card) => {
@@ -442,6 +442,22 @@ test.describe('the carousel and the map', () => {
 		await expect(chosenCard(page).locator('h3')).toHaveText('Ниш');
 	});
 
+	test('tapping the card in the middle chooses its city when another city is chosen, and the map goes to it', async ({ page }) => {
+		await scrollTo(page, 'Ниш');
+		await expect(chosenCard(page).locator('h3')).toHaveText('Ниш');
+		// Reşiţa, the 13th, has no card: the list of all opens at it, and the carousel stays at Niš.
+		await tapMap(page, { lat: 45.301, lon: 21.889 });
+		await page.keyboard.press('Escape');
+		await expect(page.getByRole('dialog')).toHaveCount(0);
+		await expect(chosenCard(page)).toHaveCount(0);
+
+		await tapCard(page, 'Ниш');
+
+		await expect(chosenCard(page).locator('h3')).toHaveText('Ниш');
+		await expect.poll(async () => (await labelsOnMap(page)).chosen).toEqual(['Ниш']);
+		expect(await wentTo(page, NIS)).toBeLessThan(25);
+	});
+
 	test('tapping «Маршрут» of a card opens the route, as before', async ({ page, network }) => {
 		await scrollTo(page, 'Ниш');
 		await expect(chosenCard(page).locator('h3')).toHaveText('Ниш');
@@ -457,7 +473,7 @@ test.describe('the carousel and the map', () => {
 	});
 
 	test('tapping a city of the carousel on the map scrolls the carousel to its card', async ({ page }) => {
-		await tapMap(page, { lat: 43.325, lon: 21.903 });
+		await tapMap(page, NIS);
 
 		await expect(chosenCard(page).locator('h3')).toHaveText('Ниш');
 		await expect(chosenCard(page)).toBeInViewport({ ratio: 0.9 });
