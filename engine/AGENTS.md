@@ -1,6 +1,6 @@
 # engine
 
-The ring engine ([spec #20](https://github.com/igorkamyshev/roadtrip/issues/20) «Движок», ADR 0001): `computeRing` in `src/index.ts`, where the origin meets its road (`src/start.ts`, `src/snap.ts`, which the Valhalla comparison in `data` shares), the border rules it applies from the border table in `rules` (`src/borders.ts`; land in no country's polygon, as the West Bank, counts at a border as the zone most of its roads lead to: `borderZones`), and the graph format it shares with the builder in `data` (`src/graph.ts`).
+The ring engine ([spec #20](../docs/specs/20.md) «Движок», ADR 0001): `computeRing` in `src/index.ts`, where the origin meets its road (`src/start.ts`, `src/snap.ts`, which the Valhalla comparison in `data` shares), the border rules it applies from the border table in `rules` (`src/borders.ts`; land in no country's polygon, as the West Bank, counts at a border as the zone most of its roads lead to: `borderZones`), and the graph format it shares with the builder in `data` (`src/graph.ts`).
 
 ## Portable
 
@@ -8,7 +8,7 @@ The engine runs in a Container under Node today and may move to a Worker or a br
 
 ## Engine version
 
-`ENGINE_VERSION` in `src/version.ts` is part of the data version in the ring cache key ([spec #20](https://github.com/igorkamyshev/roadtrip/issues/20) «Кэш колец»; `dataVersion` in `src/index.ts`, with the dataset's version and the border table's hash): an old ring stays cached under the old version. Bump it by one in the same change whenever the same input would give another result. A change to the border table's rows needs no bump: its hash is in the data version.
+`ENGINE_VERSION` in `src/version.ts` is part of the data version in the ring cache key ([spec #20](../docs/specs/20.md) «Кэш колец»; `dataVersion` in `src/index.ts`, with the dataset's version and the border table's hash): an old ring stays cached under the old version. Bump it by one in the same change whenever the same input would give another result. A change to the border table's rows needs no bump: its hash is in the data version.
 
 The sources such a change can be in, the engine's and the graph builder's, are `ENGINE_SOURCES` beside it, with what each holds, and their hash is `ENGINE_FINGERPRINT`. A change to any of them fails `data/test/engine-fingerprint.test.ts`, whose message prints the new fingerprint: bump the version if any ring can come out otherwise, and record the fingerprint either way. A new fingerprint with the same version says every ring stays as it was, as after a refactor. A new file the answer depends on joins `ENGINE_SOURCES`.
 
@@ -16,7 +16,7 @@ The sources such a change can be in, the engine's and the graph builder's, are `
 
 ## The Container's server and image
 
-`server/` is the engine server the Container runs ([spec #20](https://github.com/igorkamyshev/roadtrip/issues/20) «Container и очередь»), Node-only with its own tsconfig:
+`server/` is the engine server the Container runs ([spec #20](../docs/specs/20.md) «Container и очередь»), Node-only with its own tsconfig:
 
 - `main.ts` reads `dataset/dataset.json` (the dataset's version) and starts `compute-thread.ts`, a worker thread that loads `dataset/graph.graph` and the border table and runs `computeRing`, so the server's own thread keeps taking requests during a calculation. It listens on `PORT` only once both are loaded: the port being open is what the Container waits for.
 - `engine-server.ts` is the server itself, on web-standard Request and Response (`http.ts` serves it with `node:http`): `POST /ring` with the fields of the cache key, one calculation at a time in order, no timeout, a request for a ring that is queued or running gets its result with `joined`, a failure answers 500 with `{ name, message, stack }`. The Worker's tests run it in-process.

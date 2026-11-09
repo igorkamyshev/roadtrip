@@ -1,6 +1,6 @@
 # Monthly review of the visa exemptions' table
 
-The Owner's schedule starts an agent with this file once a month ([spec #20](https://github.com/igorkamyshev/roadtrip/issues/20) «Ежемесячная сверка таблицы исключений», #11). The run starts by filing its issue, «Сверка таблицы исключений, <месяц> <год>» with the label `ready-for-agent`, and ends in one pull request that closes it and brings the visa exemptions' table and the Schengen area up to date with their sources. A country opens or closes only when the Owner merges it.
+The Owner's schedule starts an agent with this file once a month ([spec #20](../specs/20.md) «Ежемесячная сверка таблицы исключений», #11). The run starts by filing its issue, «Сверка таблицы исключений, <месяц> <год>» with the label `ready-for-agent`, and ends in one pull request that closes it and brings the visa exemptions' table and the Schengen area up to date with their sources. A country opens or closes only when the Owner merges it.
 
 What you edit:
 
