@@ -10,7 +10,7 @@ export interface PlotRaster {
 
 const OUTSIDE = 0;
 const INSIDE = 1;
-/** An OUTSIDE cell a walk has taken. */
+/** An OUTSIDE cell a walk has reached. */
 const SEEN = 2;
 
 /**
@@ -39,7 +39,7 @@ class PlotWalk {
 	readonly #rows: number;
 	readonly #rowCellSquareMeters: Float64Array;
 	readonly #maxSquareMeters: number;
-	/** The cells taken whose neighbours are still to be seen. */
+	/** The cells of the plot whose neighbours are still to be looked at. */
 	readonly #stack: number[] = [];
 	/** The cells of the plot, while it is small. */
 	readonly #plot: number[] = [];
@@ -58,7 +58,7 @@ class PlotWalk {
 	fillFrom(start: number): void {
 		this.#begin(start);
 		for (let cell = this.#stack.pop(); cell !== undefined; cell = this.#stack.pop()) {
-			this.#take(cell);
+			this.#walkTo(cell);
 		}
 		if (this.#small) {
 			for (const cell of this.#plot) {
@@ -75,7 +75,8 @@ class PlotWalk {
 		this.#stack.push(start);
 	}
 
-	#take(cell: number): void {
+	/** Adds the cell to the plot, and queues its OUTSIDE neighbours. */
+	#walkTo(cell: number): void {
 		const columns = this.#columns;
 		const row = Math.floor(cell / columns);
 		const column = cell - row * columns;
@@ -86,12 +87,12 @@ class PlotWalk {
 			this.#plot.push(cell);
 		}
 		for (let nextRow = Math.max(0, row - 1); nextRow <= Math.min(this.#rows - 1, row + 1); nextRow++) {
-			this.#seeRow(nextRow * columns, column);
+			this.#queueOutside(nextRow * columns, column);
 		}
 	}
 
-	/** Takes on the OUTSIDE cells of the row that starts at `rowStart`, from column `column` − 1 to `column` + 1. */
-	#seeRow(rowStart: number, column: number): void {
+	/** Queues the OUTSIDE cells of the row that starts at `rowStart`, from column `column` − 1 to `column` + 1. */
+	#queueOutside(rowStart: number, column: number): void {
 		for (let next = Math.max(0, column - 1); next <= Math.min(this.#columns - 1, column + 1); next++) {
 			if (this.#cells[rowStart + next] === OUTSIDE) {
 				this.#cells[rowStart + next] = SEEN;

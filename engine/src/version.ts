@@ -13,8 +13,8 @@ export const ENGINE_VERSION = 6;
  */
 export const ENGINE_SOURCES: readonly string[] = [
 	// The engine: the ×1.2 of travel time, the 30 km/h off-road and the snapping (the 50 km limit, the 50 nodes
-	// reachable from the road), the contour (cell size, near-road radius, the small plots it fills, simplification, marching squares), how it
-	// reads the border table, the graph's format (GRAPH_FORMAT_VERSION) and the result's.
+	// reachable from the road), the contour (cell size, near-road radius, the small plots it fills, simplification,
+	// marching squares), how it reads the border table, the graph's format (GRAPH_FORMAT_VERSION) and the result's.
 	'engine/src/borders.ts',
 	'engine/src/contour.ts',
 	'engine/src/geo.ts',
@@ -52,4 +52,4 @@ export const ENGINE_SOURCES: readonly string[] = [
  * hex; data/test/engine-fingerprint.test.ts checks it. A new fingerprint with the same ENGINE_VERSION says the
  * change gives every ring as before.
  */
-export const ENGINE_FINGERPRINT = '351add4766d85eff6f3b86b1b20ddd6bfbe1874031228b2a599a0d3a7e3985c0';
+export const ENGINE_FINGERPRINT = 'f2af1144bcef2a0496aec00de266e8ba32a779a7752f6f31ee1827d412b185d1';

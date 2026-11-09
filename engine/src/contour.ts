@@ -7,7 +7,7 @@ import type { Passage } from './borders.ts';
 import { type CellGrid, E7, LocalProjection } from './geo.ts';
 import type { Graph } from './graph.ts';
 import type { MultiPolygon } from './index.ts';
-import { fillSmallPlots } from './plots.ts';
+import { fillSmallPlots, type PlotRaster } from './plots.ts';
 import type { OriginRoad } from './snap.ts';
 import { polygons, traceRings } from './trace.ts';
 import { edgeTravelSeconds, TRAVEL_PER_DRIVING } from './traverse.ts';
@@ -25,9 +25,10 @@ const NEAR_ROAD_METERS = 1000;
  * A plot of land further than NEAR_ROAD_METERS from every road, which the roads reached within N h wall in on every
  * side, is in the ring when it is smaller than this: land between the roads, not a mountain range, a steppe inside
  * a loop of roads or a large lake (#43). Without it the ring is lace, a hole between every two roads 2 km apart.
- * Picked on the rings of 3 and 6 h from Vienna, Prague, Madrid, Oslo and Östersund, before and after: 100 km² left
- * the farmland between the roads of Castile and Värmland in holes, 400 km² filled the Montes de Toledo and the
- * mountains of Slovakia.
+ * The area is the plot's own, beyond NEAR_ROAD_METERS: 200 km² is a loop of roads ~16 km across. Picked by looking
+ * at the rings of 3 and 6 h from Vienna, Prague, Madrid, Oslo and Östersund drawn with each threshold: at 100 km²
+ * the farmland between the roads of Castile and Värmland stayed in holes, at 400 km² the Montes de Toledo and the
+ * mountains of Slovakia went in the ring.
  */
 const SMALL_PLOT_SQUARE_METERS = 200_000_000;
 /** Off-road travel to and from a road, in seconds of travel per metre: 30 km/h of driving (spec «Привязка»). */
@@ -47,7 +48,10 @@ interface ContourInput {
 	readonly passage: Passage;
 	readonly locator: ZoneLocator;
 	readonly reached: Reached;
-	/** The ring holds the land reached in (lowerSeconds, upperSeconds] of travel. */
+	/**
+	 * The ring holds the land reached in (lowerSeconds, upperSeconds] of travel, and the small plots without roads
+	 * that the roads reached within upperSeconds wall in but those reached within lowerSeconds do not.
+	 */
 	readonly lowerSeconds: number;
 	readonly upperSeconds: number;
 }
@@ -65,10 +69,15 @@ export function ringContour(input: ContourInput): MultiPolygon {
  * meet without a gap or an overlap.
  */
 function ringCells({ passage, locator, lowerSeconds, upperSeconds }: ContourInput, grid: Grid): Uint8Array {
-	const inRing = reachedWithin(grid, upperSeconds);
-	const before = reachedWithin(grid, lowerSeconds);
+	const raster: PlotRaster = {
+		columns: grid.columns,
+		rows: grid.rows,
+		rowCellSquareMeters: eastMetersOfRows(grid).map((east) => east * grid.cellMeters),
+	};
+	const inRing = reachedWithin(grid, raster, upperSeconds);
+	const reachedSooner = reachedWithin(grid, raster, lowerSeconds);
 	for (let cell = 0; cell < inRing.length; cell++) {
-		inRing[cell] &= before[cell] ^ 1;
+		inRing[cell] &= reachedSooner[cell] ^ 1;
 	}
 	if (passage.open.includes(0)) {
 		const zones = locator.zonesOfCells(grid);
@@ -82,13 +91,12 @@ function ringCells({ passage, locator, lowerSeconds, upperSeconds }: ContourInpu
 }
 
 /** 1 for each cell reached within `seconds`, and for each cell of a small plot the cells reached within it wall in. */
-function reachedWithin(grid: Grid, seconds: number): Uint8Array {
+function reachedWithin(grid: Grid, raster: PlotRaster, seconds: number): Uint8Array {
 	const reached = new Uint8Array(grid.time.length);
 	for (let cell = 0; cell < reached.length; cell++) {
 		reached[cell] = grid.time[cell] <= seconds ? 1 : 0;
 	}
-	const rowCellSquareMeters = eastMetersOfRows(grid).map((east) => east * grid.cellMeters);
-	fillSmallPlots(reached, { columns: grid.columns, rows: grid.rows, rowCellSquareMeters }, SMALL_PLOT_SQUARE_METERS);
+	fillSmallPlots(reached, raster, SMALL_PLOT_SQUARE_METERS);
 	return reached;
 }
 

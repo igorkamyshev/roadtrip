@@ -52,18 +52,32 @@ describe('a plot of land without roads, walled in by roads', () => {
 
 	it('is not in the ring when it is large', () => {
 		expect(inRingOf(4)(0.15, 1.15)).toBe(false); // B's middle, 16.7 km from its roads
-		expect(inRingOf(4)(0.295, 1.15)).toBe(true); // 0.6 km from B's north road, reached at 3.22 h
+		expect(inRingOf(4)(0.295, 1.15)).toBe(true); // 0.6 km south of B's north road: 3.25 h
 	});
 
 	it('is in the ring whose roads first wall it in, and not in the ring before', () => {
 		expect(inRingOf(3)(-0.025, 1.325)).toBe(false); // C's middle: 3 h of roads leave C open to the east
 		expect(inRingOf(4)(-0.025, 1.325)).toBe(true);
+		expect(inRingOf(4)(-0.04, 1.34)).toBe(true); // 1.1 km from C's south-east corner, its last road reached
 	});
 
 	it('is not in the rings after its own, with the land reached sooner', () => {
 		expect(inRingOf(3)(0.025, 0.625)).toBe(false); // A's middle
 		expect(inRingOf(3)(-0.065, 0.74)).toBe(false); // in D
 		expect(inRingOf(3)(0, 0.3)).toBe(false); // on the equator at 0.67 h
+	});
+
+	it('leaves the land reached sooner out of a ring that walls it in', () => {
+		const loops = fixtureGraph('nested-loops.osm');
+		const inRing = (hours: number, lat: number, lon: number) => {
+			const result = computeRing(loops, borderTable, request(0.525, 0.5, hours));
+			return result.outcome === 'ring' && ringContains(result.ring, lat, lon);
+		};
+
+		expect(inRing(1, 0.525, 0.525)).toBe(true); // L1's middle, 2.8 km from its roads
+		expect(inRing(2, 0.525, 0.525)).toBe(false);
+		expect(inRing(2, 0.485, 0.525)).toBe(true); // between L1 and L2, 1.7 km from each
+		expect(inRing(1, 0.485, 0.525)).toBe(false);
 	});
 
 	it('leaves out a closed country in it', () => {
