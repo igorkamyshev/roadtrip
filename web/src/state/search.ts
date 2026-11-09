@@ -70,7 +70,7 @@ function hoursFromRaw(raw: unknown): number | undefined {
  */
 function codesFromText(text: string, valid: ReadonlySet<string>): string[] | undefined {
 	const codes = text.split(',');
-	return codes.every((code) => valid.has(code)) ? [...new Set(codes)].sort() : undefined;
+	return codes.every((code) => valid.has(code)) ? [...new Set(codes)].toSorted() : undefined;
 }
 
 export function stateFromSearch(search: ScreenSearch): ScreenState {

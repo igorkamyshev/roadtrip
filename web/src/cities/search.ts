@@ -40,7 +40,7 @@ export function searchCities(cities: readonly City[], text: string): City[] {
 	return entriesOf(cities)
 		.filter(({ names }) => names.some((name) => name.startsWith(wanted)))
 		.map(({ city }) => city)
-		.sort(biggestFirst)
+		.toSorted(biggestFirst)
 		.slice(0, SEARCH_RESULTS);
 }
 

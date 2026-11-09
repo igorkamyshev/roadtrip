@@ -75,7 +75,7 @@ export function CitizenshipSheet({ citizenships, onChange, onClose }: Citizenshi
 	const shown = CITIZENSHIP_CHOICES.filter((code) => searchable(countryName(code)).includes(wanted));
 	const toggle = (code: string): void => {
 		if (!citizenships.includes(code)) {
-			onChange([...citizenships, code].sort());
+			onChange([...citizenships, code].toSorted());
 		} else if (citizenships.length > 1) {
 			onChange(citizenships.filter((chosen) => chosen !== code));
 		}
@@ -134,7 +134,7 @@ export function VisasSheet({ visas, citizenships, onChange, onClose }: VisasShee
 	const wanted = searchable(filter);
 	const shown = SINGLE_COUNTRY_VISAS.filter((code) => searchable(countryName(code)).includes(wanted));
 	const toggle = (code: string): void => {
-		onChange(visas.includes(code) ? visas.filter((held) => held !== code) : [...visas, code].sort());
+		onChange(visas.includes(code) ? visas.filter((held) => held !== code) : [...visas, code].toSorted());
 	};
 	const item = (code: string, sub?: string): ReactElement => (
 		<PickItem

@@ -22,10 +22,7 @@ export const EXEMPTION_VISAS: readonly ExemptionVisa[] = ['SCHENGEN', 'USA', 'GB
 export const HELD_VISAS: readonly string[] = heldVisas();
 
 function heldVisas(): string[] {
-	const visas = [SCHENGEN, ...Object.keys(COUNTRIES).filter((code) => !SCHENGEN_AREA.includes(code))];
-	// In place, not toSorted: the client bundles this for browsers older than toSorted (es2022, web/vite.config.ts).
-	visas.sort();
-	return visas;
+	return [SCHENGEN, ...Object.keys(COUNTRIES).filter((code) => !SCHENGEN_AREA.includes(code))].toSorted();
 }
 
 /**
