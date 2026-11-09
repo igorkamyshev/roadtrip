@@ -1,6 +1,6 @@
 // The basemap (spec «Экран», «Карта»): Protomaps' vector tiles from our own domain, `/tiles/{z}/{x}/{y}`, the
-// fonts and sprites from our static assets, the labels in Russian, else in the local language, and the
-// attribution. The map is read by its style and the requests it made, never by pixels.
+// fonts and sprites from our static assets, the labels in Russian, else in the local language. The map is read by
+// its style and the requests it made, never by pixels. Its attribution is the screen's (attribution.spec.ts).
 import type { StyleSpecification } from 'maplibre-gl';
 import { expect, test } from './fixtures.ts';
 import { OFFLINE } from './offline.ts';
@@ -64,15 +64,6 @@ test('the labels are in Russian, else in the local language, on one line', async
 		),
 	);
 	expect([...names].toSorted()).toEqual(['"name"', '"name:ru"']);
-});
-
-test('the map credits OpenStreetMap and Protomaps', async ({ page }) => {
-	await page.goto('/');
-
-	const attribution = page.locator('.maplibregl-ctrl-attrib-inner');
-	await expect(attribution).toContainText('© OpenStreetMap');
-	await expect(attribution).toContainText('Protomaps');
-	await expect(attribution.locator('a', { hasText: 'OpenStreetMap' })).toHaveAttribute('href', 'https://www.openstreetmap.org/copyright');
 });
 
 test('the client keeps its map off window: it only announces it, and these tests listen', async ({ browser, baseURL }) => {

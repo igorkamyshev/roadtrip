@@ -111,10 +111,6 @@ a {
 	width: 100%;
 	height: 100%;
 }
-/* The attribution between the slider and the carousel, out from under the cards. */
-.map .maplibregl-ctrl-bottom-right {
-	bottom: 182px;
-}
 .crosshair {
 	position: absolute;
 	left: 50%;
@@ -551,6 +547,22 @@ a {
 .c-phrase p {
 	margin: 0;
 	text-wrap: balance;
+}
+/* The data's sources under the phrase for 5 s once the screen opens, over the map, left of the slider. */
+.c-phrase p.c-sources {
+	position: absolute;
+	top: calc(100% + 8px);
+	right: 58px;
+	width: fit-content;
+	max-width: calc(100% - 58px);
+	box-sizing: border-box;
+	padding: 4px 10px;
+	border-radius: 10px;
+	background: var(--surface);
+	box-shadow: var(--shadow);
+	color: var(--muted);
+	font-size: 12px;
+	line-height: 1.35;
 }
 /* «визовые правила от <дата>» under the phrase. */
 .c-phrase p.c-rules-date {

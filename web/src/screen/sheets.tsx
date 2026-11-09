@@ -3,6 +3,7 @@
 import { EXEMPTION_VISAS, utcDate } from 'rules/held-visas';
 import { useId, useLayoutEffect, useRef, useState, type ReactElement, type ReactNode, type Ref, type RefObject } from 'react';
 import { searchable } from '../cities/search.ts';
+import { DataSources } from './attribution.tsx';
 import { useMinute } from './clock.ts';
 import { CITIZENSHIP_CHOICES, countryName, DEFAULT_CITIZENSHIP, SINGLE_COUNTRY_VISAS, visaName } from './countries.ts';
 import { opensByRows, opensText } from './held-visas.ts';
@@ -238,9 +239,7 @@ export function InfoSheet({ onClose }: { readonly onClose: () => void }): ReactE
 				</div>
 				<p className="muted small">Время в пути — время за рулём ×1,2 и по 1,5 ч на каждой границе с паспортным контролем.</p>
 				<p className="muted small">
-					Источники данных: <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>,{' '}
-					<a href="https://www.geonames.org/">GeoNames</a> (<a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>),{' '}
-					<a href="https://protomaps.com/">Protomaps</a>, <a href="https://www.joinsherpa.com/">Sherpa</a>.
+					<DataSources />
 				</p>
 			</div>
 		</Sheet>
