@@ -439,95 +439,68 @@ a {
 }
 
 /* ---------- slider ---------- */
+/* A column of twelve cells, 1 h at the bottom, over the panel .c-vs. The chosen cell is the blue block under it,
+   which moves from cell to cell; a cell whose ring is in memory is light green. Not the prototype's track and thumb. */
 .sl {
+	height: 100%;
+	box-sizing: border-box;
+	padding: 6px;
+	border-radius: inherit;
 	touch-action: none;
 	user-select: none;
 	-webkit-user-select: none;
 	cursor: pointer;
 }
-.sl-tick {
-	position: absolute;
+.sl-cells {
+	--gap: 3px;
+	position: relative;
+	isolation: isolate;
+	height: 100%;
+	display: grid;
+	grid-template-rows: repeat(12, 1fr);
+	gap: var(--gap);
 }
-.sl-tick i {
-	display: block;
-	width: 4px;
-	height: 4px;
-	border-radius: 50%;
-	background: var(--borderline);
-}
-.sl-tick.on i {
-	background: #fff;
-}
-.sl-tick.sl-cached i {
-	width: 6px;
-	height: 6px;
-	background: var(--ok);
-	box-shadow: 0 0 0 2px var(--surface);
-}
-.sl-tick em {
-	position: absolute;
-	font-style: normal;
-	font-size: 11px;
+.sl-cell {
+	display: grid;
+	place-items: center;
+	min-height: 0;
+	border-radius: 9px;
+	font-size: 13px;
 	color: var(--muted);
 	font-variant-numeric: tabular-nums;
 }
-.sl-thumb {
-	position: absolute;
-	width: 26px;
-	height: 26px;
-	border-radius: 50%;
-	background: var(--surface);
-	border: 3px solid var(--ring);
-	box-sizing: border-box;
-	box-shadow: var(--shadow);
+.sl-cell[data-cached] {
+	background: color-mix(in srgb, var(--ok) 12%, transparent);
 }
-.sl-thumb b {
-	position: absolute;
-	background: var(--fg);
-	color: var(--bg);
-	font-size: 13px;
-	padding: 3px 8px;
-	border-radius: 8px;
+/* Over the blue block. */
+.sl-cell b {
+	position: relative;
+	z-index: 1;
+	font-weight: 400;
 	white-space: nowrap;
 }
-.sl-v {
-	padding: 13px 14px;
-	height: 100%;
-	box-sizing: border-box;
+.sl-cell.on b {
+	color: #fff;
+	font-weight: 700;
+	font-size: 12px;
+	letter-spacing: -0.02em;
 }
-.sl-v .sl-track {
-	position: relative;
-	width: 6px;
-	height: 100%;
-	border-radius: 3px;
-	background: var(--line);
-	margin: 0 auto;
+/* On the dark theme's lighter blue, the dark text of .btn.primary. */
+@media (prefers-color-scheme: dark) {
+	:root:not([data-theme='light']) .sl-cell.on b {
+		color: #0b1630;
+	}
 }
-.sl-v .sl-fill {
+.sl-chosen {
 	position: absolute;
 	left: 0;
 	right: 0;
 	bottom: 0;
+	height: calc((100% - 11 * var(--gap)) / 12);
+	border-radius: 9px;
 	background: var(--ring);
-	border-radius: 3px;
-}
-.sl-v .sl-tick {
-	left: 50%;
-	transform: translate(-50%, 50%);
-}
-.sl-v .sl-tick em {
-	right: 12px;
-	top: 50%;
-	transform: translateY(-50%);
-}
-.sl-v .sl-thumb {
-	left: 50%;
-	transform: translate(-50%, 50%);
-}
-.sl-v .sl-thumb b {
-	right: 34px;
-	top: 50%;
-	transform: translateY(-50%);
+	box-shadow: 0 1px 4px color-mix(in srgb, var(--ring) 40%, transparent);
+	transition: transform 150ms ease-out;
 }
 
 /* ---------- variant C: phrase + carousel ---------- */
@@ -609,12 +582,13 @@ a {
 	width: 20px;
 	height: 20px;
 }
+/* The slider's panel: down to the carousel, up to 450 px, about 36 px an hour; on a low screen, up to the phrase. */
 .c-vs {
 	position: absolute;
 	right: 6px;
-	top: 150px;
 	bottom: 214px;
-	width: 64px;
+	height: min(450px, 100% - 364px);
+	width: 52px;
 	z-index: 9;
 	background: color-mix(in srgb, var(--surface) 88%, transparent);
 	border-radius: 18px;

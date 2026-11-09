@@ -1,4 +1,4 @@
-// N and the ring (spec «Экран»: slider, map, the old ring while calculating; «Состояние, ссылка и память
+// N and the ring (spec #20 «Экран»: slider, map, the old ring while calculating; «Состояние, ссылка и память
 // браузера»: TanStack Query; stories 10–15, 22): a ring is asked for when the slider is let go, rings in memory
 // come back without a request, and a calculation keeps the old ring of the same origin, striped.
 import { allowGeolocation, expect, squareRing, test } from './fixtures.ts';
@@ -6,6 +6,7 @@ import {
 	dottedHours,
 	dragMap,
 	dragSlider,
+	recordSliderHours,
 	expectRingCard,
 	firstCard,
 	mapBounds,
@@ -13,6 +14,7 @@ import {
 	ringIsStriped,
 	ringOnMap,
 	slider,
+	sliderHour,
 } from './screen.ts';
 
 const BELGRADE = { lat: 44.8176, lon: 20.4573 };
@@ -35,7 +37,7 @@ test('letting the slider go asks for one ring, for the hours where it stopped', 
 	await expectRingCard(page, 'до 1 ч');
 
 	await dragSlider(page, 5, async () => {
-		// Dragged through 2, 3 and 4 and still held: the bubble follows, nothing is asked for.
+		// Dragged through 2, 3 and 4 and still held: the cell under the pointer is chosen, nothing is asked for.
 		await expect(slider(page)).toHaveAttribute('aria-valuetext', '4–5 ч');
 		expect(ringApi.calls).toHaveLength(1);
 	});
@@ -58,7 +60,44 @@ test('a key moves N by an hour and asks at once', async ({ page, ringApi }) => {
 	expect(ringApi.calls.map((call) => call.hours)).toEqual([1, 2]);
 });
 
-test('a ring in memory comes back at once, without a request, and its hours have dots', async ({ page, ringApi }) => {
+test('a tap on an hour chooses it and asks for one ring', async ({ page, ringApi }) => {
+	ringApi.respond(ringFor);
+	await page.goto('/');
+	await expectRingCard(page, 'до 1 ч');
+
+	await sliderHour(page, 7).click();
+
+	await expectRingCard(page, '6–7 ч');
+	expect(ringApi.calls.map((call) => call.hours)).toEqual([1, 7]);
+});
+
+test('the chosen hour reads as its span without «ч», the others as their hour', async ({ page, ringApi }) => {
+	ringApi.respond(ringFor);
+	await page.goto('/');
+	await expectRingCard(page, 'до 1 ч');
+	await expect(sliderHour(page, 1)).toHaveText('до 1');
+	await expect(sliderHour(page, 7)).toHaveText('7');
+
+	await sliderHour(page, 12).click();
+
+	await expectRingCard(page, '11–12 ч');
+	await expect(sliderHour(page, 12)).toHaveText('11–12');
+	await expect(sliderHour(page, 1)).toHaveText('1');
+});
+
+test('letting the slider go keeps the hours where it stopped, never the old ones for a moment', async ({ page, ringApi }) => {
+	ringApi.respond(ringFor);
+	await page.goto('/');
+	await expectRingCard(page, 'до 1 ч');
+	const shown = await recordSliderHours(page);
+
+	await dragSlider(page, 5);
+
+	await expectRingCard(page, '4–5 ч');
+	expect(await shown()).toEqual([2, 3, 4, 5]);
+});
+
+test('a ring in memory comes back at once, without a request, and its hours are marked', async ({ page, ringApi }) => {
 	ringApi.respond(ringFor);
 	await page.goto('/');
 	await expectRingCard(page, 'до 1 ч');

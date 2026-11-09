@@ -33,7 +33,7 @@ export interface ShownRing {
 	readonly closed: readonly string[];
 	/** The ring's cities, biggest first, once the ring is this request's (not an old one) and the cities came. */
 	readonly shownCities: readonly City[] | undefined;
-	/** The hours whose rings are in memory for this origin and settings: the slider's dots. */
+	/** The hours whose rings are in memory for this origin and settings: the slider's marked cells. */
 	readonly cachedHours: ReadonlySet<number>;
 }
 

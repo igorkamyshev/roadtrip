@@ -190,7 +190,7 @@ test.describe('the visa rules', () => {
 		expect(ringApi.calls.at(-1)?.cit).toBe('RUS');
 	});
 
-	test('missing are not kept: those hours get no dot, and asking for them again asks the Worker again', async ({ page, ringApi }) => {
+	test('missing are not kept: those hours get no mark, and asking for them again asks the Worker again', async ({ page, ringApi }) => {
 		ringApi.respond((call) =>
 			call.cit === 'RUS,SRB' && call.hours === 2
 				? { outcome: 'visa_rules_missing', missingCitizenship: 'SRB' }
@@ -199,7 +199,7 @@ test.describe('the visa rules', () => {
 		await page.goto(`${LINK}&cit=RUS,SRB`);
 		await expect(firstCard(page)).toContainText('Не удалось загрузить визовые правила для гражданства Сербия.');
 
-		// Another N, then back: a request each time, and a dot only for the ring.
+		// Another N, then back: a request each time, and a mark only for the ring.
 		await slider(page).press('ArrowUp');
 		// The ring of 2–3 h, 0.2°–0.3° around Belgrade, has none of the test's cities.
 		await expect(firstCard(page)).toContainText('Городов в кольце нет');
