@@ -964,7 +964,8 @@ a {
 	color: #fff;
 }
 /* Z2: the panel's own background goes to the cells; the strip is a tab outside it. */
-.c-vs.pv-z2 {
+.c-vs.pv-z2,
+.c-vs.pv-z3 {
 	background: none;
 	box-shadow: none;
 }
@@ -972,7 +973,8 @@ a {
 	padding: 0;
 	gap: 6px;
 }
-.pv-z2 .pv-cells {
+.pv-z2 .pv-cells,
+.pv-z3 .pv-cells {
 	padding: 6px;
 	border-radius: 18px;
 	background: color-mix(in srgb, var(--surface) 88%, transparent);
@@ -985,4 +987,18 @@ a {
 	border-radius: 13px;
 	background: color-mix(in srgb, var(--surface) 92%, transparent);
 	box-shadow: var(--shadow);
+}
+/* Z3: the panel as today, the tab on its left, out of the column's height. */
+.pv-z3 {
+	position: relative;
+	padding: 0;
+}
+.pv-z3 .pv-tab {
+	position: absolute;
+	right: calc(100% + 6px);
+	top: 6px;
+}
+.pv-z3 .pv-cells + .pv-tab {
+	top: auto;
+	bottom: 6px;
 }

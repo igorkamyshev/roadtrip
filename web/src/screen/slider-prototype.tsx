@@ -5,22 +5,24 @@
 // one unit at a time, as today. In hours, the 12 cells of today and the days folded into a strip «дни» on top; a step
 // up from 12 h (a key, a tap or a drag onto the strip) turns the column over: days 2–5 at full height, the hours
 // folded into a strip «часы» at the bottom. The column turns over when N is committed, not under the finger.
-// Z1: the strip inside the panel. Z2: the strip a tab outside it, above or below.
+// Z1: the strip inside the panel. Z2: the strip a tab outside it, above or below. Z2 won, but its tab takes ~32 px of
+// height from the hours, which a phone in Safari lacks; Z3: the tab beside the panel, on its left, at the top cell in
+// hours and the bottom cell in days, so the hours keep all of today's height.
 // The step of the scale is the screen's N: 1–12 are hours, 13–16 days 2–5.
 import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent, type ReactElement, type RefObject } from 'react';
 import { MAX_HOURS, MIN_HOURS } from '../state/search.ts';
 import { dayOfStep, hoursShort, hoursSpan, plural } from './copy.ts';
 
-const VARIANTS = ['z1', 'z2'] as const;
+const VARIANTS = ['z2', 'z3'] as const;
 type Variant = (typeof VARIANTS)[number];
-const NAMES: Readonly<Record<Variant, string>> = { z1: 'Z1 · полоска в панели', z2: 'Z2 · язычок снаружи' };
+const NAMES: Readonly<Record<Variant, string>> = { z2: 'Z2 · язычок сверху', z3: 'Z3 · язычок слева' };
 
 const HOUR_STEPS = Array.from({ length: 12 }, (_, index) => 12 - index);
 const DAY_STEPS = Array.from({ length: MAX_HOURS - 12 }, (_, index) => MAX_HOURS - index);
 
 function variantOfLocation(): Variant {
 	const value = new URLSearchParams(window.location.search).get('variant');
-	return VARIANTS.find((variant) => variant === value) ?? 'z1';
+	return VARIANTS.find((variant) => variant === value) ?? 'z3';
 }
 
 /** The variant of `?variant=`, and its setter, which writes it back before the hash. */
@@ -77,7 +79,7 @@ export function PrototypeSlider({ variant, value, onCommit, cached }: PrototypeS
 			ref={column}
 			{...handlers}
 		>
-			<Cells variant={variant} value={value} shown={shown} cached={cached} />
+			<Cells value={value} shown={shown} cached={cached} />
 		</div>
 	);
 }
@@ -97,14 +99,13 @@ function chosenLabel(step: number): ReactElement | string {
 }
 
 interface CellsProps {
-	readonly variant: Variant;
 	/** The committed N: the column's unit follows it, not the finger. */
 	readonly value: number;
 	readonly shown: number;
 	readonly cached: ReadonlySet<number>;
 }
 
-function Cells({ variant, value, shown, cached }: CellsProps): ReactElement {
+function Cells({ value, shown, cached }: CellsProps): ReactElement {
 	const inDays = dayOfStep(value) !== undefined;
 	const cell = (step: number): ReactElement => (
 		<span
@@ -119,10 +120,7 @@ function Cells({ variant, value, shown, cached }: CellsProps): ReactElement {
 	);
 	// The strip of the other unit: a step into it, 2 days from the hours, 12 h from the days.
 	const strip = (
-		<span
-			className={`pv-strip ${variant === 'z2' ? 'pv-tab' : ''} ${shown === (inDays ? 12 : 13) ? 'on' : ''}`}
-			data-step={inDays ? 12 : 13}
-		>
+		<span className={`pv-strip pv-tab ${shown === (inDays ? 12 : 13) ? 'on' : ''}`} data-step={inDays ? 12 : 13}>
 			{inDays ? 'часы ↓' : 'дни ↑'}
 		</span>
 	);
