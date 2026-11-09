@@ -504,12 +504,29 @@ a {
 }
 
 /* ---------- variant C: phrase + carousel ---------- */
-.c-phrase {
+/* The phrase and the slider's panel under it, one column from the top of the screen down to the carousel: a longer
+   phrase moves the slider down, never over it (#47). The map between them takes its taps. */
+.c-top {
 	position: absolute;
 	top: 12px;
 	left: 12px;
-	right: 12px;
+	right: 6px;
+	bottom: 214px;
 	z-index: 10;
+	display: flex;
+	flex-direction: column;
+	align-items: flex-end;
+	gap: 8px;
+	pointer-events: none;
+}
+.c-top > * {
+	pointer-events: auto;
+}
+.c-phrase {
+	position: relative;
+	align-self: stretch;
+	flex: none;
+	margin-right: 6px;
 	background: var(--surface);
 	border-radius: 18px;
 	box-shadow: var(--shadow);
@@ -521,7 +538,8 @@ a {
 	margin: 0;
 	text-wrap: balance;
 }
-/* The data's sources under the phrase for 5 s once the screen opens, over the map, left of the slider. */
+/* The data's sources under the phrase for 5 s once the screen opens, over the map, left of the slider. Out of the
+   column's layout, so the slider stays where it is when they go. */
 .c-phrase p.c-sources {
 	position: absolute;
 	top: calc(100% + 8px);
@@ -582,14 +600,14 @@ a {
 	width: 20px;
 	height: 20px;
 }
-/* The slider's panel: down to the carousel, up to 450 px, about 36 px an hour; on a low screen, up to the phrase. */
+/* The slider's panel, in .c-top: down to the carousel, up to 450 px, about 36 px an hour; on a low screen or under a
+   long phrase, up to 8 px under the phrase, and never lower than 120 px, to be taken by a finger. */
 .c-vs {
-	position: absolute;
-	right: 6px;
-	bottom: 214px;
-	height: min(450px, 100% - 364px);
+	flex: 1 1 0;
+	margin-top: auto;
+	min-height: 120px;
+	max-height: 450px;
 	width: 52px;
-	z-index: 9;
 	background: color-mix(in srgb, var(--surface) 88%, transparent);
 	border-radius: 18px;
 	box-shadow: var(--shadow);
