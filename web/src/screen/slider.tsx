@@ -1,4 +1,4 @@
-// The vertical slider of N (spec «Экран», «Ползунок»): 1–12 h at the right edge of the map, a column of twelve
+// The vertical slider of N (spec #20 «Экран», «Ползунок»): 1–12 h at the right edge of the map, a column of twelve
 // cells, 1 at the bottom. A cell is the ring from N − 1 to N h, and the chosen one is blue. While the slider is
 // dragged the cell under the pointer is chosen on the screen only; the new N is committed when it is let go (a key
 // commits at once), so a drag asks for one ring, not one per hour it passed, and a tap on a cell chooses it. The hours

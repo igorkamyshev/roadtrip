@@ -1,4 +1,4 @@
-// N and the ring (spec «Экран»: slider, map, the old ring while calculating; «Состояние, ссылка и память
+// N and the ring (spec #20 «Экран»: slider, map, the old ring while calculating; «Состояние, ссылка и память
 // браузера»: TanStack Query; stories 10–15, 22): a ring is asked for when the slider is let go, rings in memory
 // come back without a request, and a calculation keeps the old ring of the same origin, striped.
 import { allowGeolocation, expect, squareRing, test } from './fixtures.ts';
