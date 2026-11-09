@@ -13,7 +13,7 @@ Rules a reviewer checks by judgement: when a ticket's work is merged, and when a
 
 ## Product
 
-- Text the screen shows comes from the spec or the prototype. A line, message or label that neither has is a question for the Owner first. The exception is a label for screen readers (`aria-label`) that neither has: write it, and list it in the PR's description.
+- Text the screen shows comes from the spec, the prototype or the ticket. A line, message or label that none of them has is a question for the Owner first. The exception is a label for screen readers (`aria-label`) that none of them has: write it, and list it in the PR's description.
 - Production code takes no branch only a test takes. A test reads the page as a person does, or through an event the app sends anyway.
 
 ## Where code goes
