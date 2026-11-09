@@ -965,16 +965,19 @@ a {
 }
 /* Z2: the panel's own background goes to the cells; the strip is a tab outside it. */
 .c-vs.pv-z2,
+.c-vs.pv-z2f,
 .c-vs.pv-z3,
 .c-vs.pv-z3f {
 	background: none;
 	box-shadow: none;
 }
-.pv-z2 {
+.pv-z2,
+.pv-z2f {
 	padding: 0;
 	gap: 6px;
 }
 .pv-z2 .pv-cells,
+.pv-z2f .pv-cells,
 .pv-z3 .pv-cells,
 .pv-z3f .pv-cells {
 	padding: 6px;
@@ -1008,10 +1011,12 @@ a {
 	bottom: 6px;
 }
 /* Z3F: the column down to the bottom, over the carousel; the cards centre left of the slider and fade out under it. */
+.pv-screen-z2f .c-top,
 .pv-screen-z3f .c-top {
 	bottom: 12px;
 	z-index: 11;
 }
+.pv-screen-z2f .c-car,
 .pv-screen-z3f .c-car {
 	scroll-padding-right: 70px;
 	padding-right: 70px;
