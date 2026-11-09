@@ -223,6 +223,7 @@ test.describe('the held visas of a link', () => {
 
 		await expect(phrase(page)).toContainText('мои визы: Шенген');
 		await expect(page).toHaveURL(/#\/\?p=44\.81760,20\.45730&h=1&cit=RUS&visas=SCHENGEN$/u);
-		expect(ringApi.calls.at(-1)).toMatchObject({ lat: '44.81760', hours: 1, visas: 'SCHENGEN' });
+		// The URL follows the state at once; the ring's request comes after it.
+		await expect.poll(() => ringApi.calls.at(-1)).toMatchObject({ lat: '44.81760', hours: 1, visas: 'SCHENGEN' });
 	});
 });
