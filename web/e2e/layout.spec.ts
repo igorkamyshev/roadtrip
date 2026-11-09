@@ -1,7 +1,9 @@
-// The screen's layout (spec #20 «Экран»; #47, #85): the panels over the map, the phrase, the slider, the carousel's
-// current card or the pin's bar and the data's sources of the first 5 s, never on one another nor off the screen, each
-// 12 px from its edges of the screen, on the phones the screen is made for, with the longest phrase and the shortest.
-// The slider goes down to the bottom of the screen over the carousel. Read by the elements' boxes, never by pixels.
+// The screen's layout (spec #20 «Экран»; #47, #85, #77): the panels over the map, the phrase, the slider, the
+// carousel's current card or the pin's bar and the data's sources of the first 5 s, never on one another nor off the
+// screen, each 12 px from its edges of the screen, on the phones the screen is made for, with the longest phrase and
+// the shortest. The one exception: the sources, as wide as the phrase, may cover the slider's top for their 5 s where
+// it reaches up to the phrase. The slider goes down to the bottom of the screen over the carousel, and the current card
+// leaves room for the next one to peek out. Read by the elements' boxes, never by pixels.
 import type { Locator, Page } from '@playwright/test';
 import { expect, squareRing, test, visaRules } from './fixtures.ts';
 import { boxOf, expectRingCard, firstCard, phrase, slider, sliderHour, sliderPanel, sliderTab } from './screen.ts';
@@ -33,6 +35,10 @@ const PHONES = [
 
 /** Every floating panel stands this far from the screen's edges (#85). */
 const EDGE = 12;
+/** The gap between two cards of the carousel, as between panels (#85). */
+const BETWEEN = 8;
+/** What shows of the next card of the carousel, between the current one and the slider (#77). */
+const PEEK = 40;
 /** The slider's panel is at most this high (#44). */
 const TALLEST_SLIDER = 450;
 /** The gap between the phrase and the slider under it (#47). */
@@ -108,8 +114,7 @@ for (const { lowestHour, ...viewport } of PHONES) {
 			await open(page, SHORTEST);
 
 			const [cardBox, sliderBox] = await Promise.all([boxOf(firstCard(page)), boxOf(slider(page))]);
-			// The card, 8 px, the 40 px of the next card, the slider.
-			expect(sliderBox.x - (cardBox.x + cardBox.width)).toBeGreaterThanOrEqual(8 + 40 - 0.5);
+			expect(sliderBox.x - (cardBox.x + cardBox.width)).toBeGreaterThanOrEqual(BETWEEN + PEEK - 0.5);
 		});
 
 		for (const [unit, path, ring] of [

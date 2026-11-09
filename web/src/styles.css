@@ -47,7 +47,7 @@
 	--radius: 18px;
 	--radius-inner: 12px;
 
-	/* The slider's panel; the carousel's cards end --between left of it. */
+	/* The slider's panel; the carousel's current card ends --between and the next card's --peek left of it. */
 	--slider-width: 52px;
 	--beside-slider: calc(var(--edge-right) + var(--slider-width) + var(--between));
 }
@@ -557,9 +557,11 @@ a {
 	gap: var(--gap);
 }
 
-/* The other unit's tab: a pill of its own over or under the panel, as wide as it. A tap 8 px past it, over the map or
-   in the gap to the panel, takes it too: the slider chooses the tab past the panel's edge. */
+/* The other unit's tab: a pill of its own over or under the panel, as wide as it. A tap --reach past it, over the map
+   or in the gap to the panel, takes it too: the slider chooses the tab past the panel's edge. */
 .sl-tab {
+	--reach: 8px;
+
 	position: relative;
 	flex: none;
 	display: grid;
@@ -577,7 +579,7 @@ a {
 .sl-tab::before {
 	content: '';
 	position: absolute;
-	inset: calc(-1 * var(--between)) 0;
+	inset: calc(-1 * var(--reach)) 0;
 }
 
 .sl-tab.on {
@@ -776,13 +778,13 @@ a {
 
 /* The carousel, the whole width of the screen under the slider (#85): the current card at the left edge, up to
    300 px wide, and --peek of the next one out, between the current card and the slider's panel, so it shows that the
-   cards scroll; the next one fades out before the panel, so none shows under it. */
+   cards scroll; the next one fades out in the last 12 px before the panel, so none shows under it. */
 .c-car {
 	--peek: 40px;
 	--card: min(300px, 100% - var(--edge-left) - var(--beside-slider) - var(--peek));
 	--fade: linear-gradient(
 		to right,
-		#000 calc(var(--edge-left) + var(--card) + var(--between) + var(--peek) / 3),
+		#000 calc(100% - var(--edge-right) - var(--slider-width) - 12px),
 		transparent calc(100% - var(--edge-right) - var(--slider-width))
 	);
 
