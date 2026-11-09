@@ -44,6 +44,10 @@ The client: the one screen of the site (spec «Экран», «Состояни�
 
 With both, the plugin writes a chunk id into each JS file, uploads the maps under the release `roadtrip-web` of the commit's git SHA (`WORKERS_CI_COMMIT_SHA`, else `git rev-parse HEAD`) and removes the `.map` files from `dist/`: the deploy must ship exactly that `dist/`. A key PostHog refuses fails the build. Without them, as locally, in CI and in the screen tests, the plugin is left out: the build is as before and uploads nothing. The plugin runs `posthog-cli`, which downloads its binary from `releases.posthog.com` on first use (pnpm runs no install script of `@posthog/cli`).
 
+## Older browsers
+
+The screen runs where MapLibre 6 runs: Safari 15.4, Chrome 93, Firefox 92 and newer (`BROWSERS` in `vite.config.ts`; MapLibre's worker calls `.at()` and `Object.hasOwn`). The build lowers the syntax to them, and `older-browsers.ts` gives them what the client calls and they lack: `@vitejs/plugin-legacy` makes the polyfills (core-js, by what the bundle uses) a chunk of their own, and the page loads its entry through a small loader that takes that chunk first only in a browser without `toSorted`, `Object.groupBy` or `Promise.withResolvers`. So the client may call what `tsconfig.json`'s lib (es2024) has, and a newer browser downloads no polyfill: the first paint's budget is its (`bundle-budget.ts`). `e2e/older-browsers.spec.ts` checks both: Chromium without those methods loads the polyfills and shows the screen, and as it is asks for none.
+
 ## Basemap
 
 `src/map/basemap.ts` (spec «Экран» → «Карта»): the style of `@protomaps/basemaps` over the vector tiles of `GET /tiles/{z}/{x}/{y}`, which the Worker serves from the world's PMTiles archive (`worker/README.md`), credited «Protomaps © OpenStreetMap».

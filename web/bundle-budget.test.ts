@@ -2,9 +2,10 @@ import { randomBytes } from 'node:crypto';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { build } from 'vite';
+import { build, type PluginOption } from 'vite';
 import { afterEach, beforeEach, expect, it } from 'vitest';
 import { bundleBudget } from './bundle-budget.ts';
+import { olderBrowsers } from './older-browsers.ts';
 
 let root: string;
 
@@ -21,8 +22,11 @@ function noise(kb: number): string {
 	return `export const noise = ${JSON.stringify(randomBytes(kb * 1000).toString('base64'))};\n`;
 }
 
-/** Builds the client of `files` (its entry is `main.ts`) under a budget of `budgetKb`; `point.ts`, if any, is a chunk of its own. */
-async function buildWith(files: Record<string, string>, budgetKb: number): Promise<void> {
+/**
+ * Builds the client of `files` (its entry is `main.ts`) under a budget of `budgetKb`; `point.ts`, if any, is a chunk of
+ * its own. With `plugins`, the build has those first, as vite.config.ts has olderBrowsers.
+ */
+async function buildWith(files: Record<string, string>, budgetKb: number, plugins: PluginOption[] = []): Promise<void> {
 	for (const [name, text] of Object.entries(files)) {
 		writeFileSync(join(root, name), text);
 	}
@@ -30,7 +34,7 @@ async function buildWith(files: Record<string, string>, budgetKb: number): Promi
 		root,
 		configFile: false,
 		logLevel: 'silent',
-		plugins: [bundleBudget(budgetKb)],
+		plugins: [...plugins, bundleBudget(budgetKb)],
 		build: {
 			write: false,
 			rolldownOptions: {
@@ -57,4 +61,9 @@ it('counts a chunk the entry imports before it runs, though it is shared with a 
 		'point.ts': noise(30),
 	};
 	await expect(buildWith(files, 20)).rejects.toThrow(/over its budget of 20 KB/u);
+});
+
+it('leaves out the polyfills, which only an older browser loads (older-browsers.ts)', async () => {
+	const files = { 'main.ts': 'console.log([3, 1, 2].toSorted(), Object.groupBy([1, 2], (n) => n % 2));\n' };
+	await expect(buildWith(files, 1, olderBrowsers(['safari >= 15.4']))).resolves.toBeUndefined();
 });
