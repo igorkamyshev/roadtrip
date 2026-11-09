@@ -6,6 +6,7 @@ import {
 	dottedHours,
 	dragMap,
 	dragSlider,
+	recordSliderHours,
 	expectRingCard,
 	firstCard,
 	mapBounds,
@@ -59,20 +60,41 @@ test('a key moves N by an hour and asks at once', async ({ page, ringApi }) => {
 	expect(ringApi.calls.map((call) => call.hours)).toEqual([1, 2]);
 });
 
-test('a tap on an hour chooses it and asks for one ring; the chosen hour reads as its span', async ({ page, ringApi }) => {
+test('a tap on an hour chooses it and asks for one ring', async ({ page, ringApi }) => {
+	ringApi.respond(ringFor);
+	await page.goto('/');
+	await expectRingCard(page, 'до 1 ч');
+
+	await sliderHour(page, 7).click();
+
+	await expectRingCard(page, '6–7 ч');
+	expect(ringApi.calls.map((call) => call.hours)).toEqual([1, 7]);
+});
+
+test('the chosen hour reads as its span without «ч», the others as their hour', async ({ page, ringApi }) => {
 	ringApi.respond(ringFor);
 	await page.goto('/');
 	await expectRingCard(page, 'до 1 ч');
 	await expect(sliderHour(page, 1)).toHaveText('до 1');
 	await expect(sliderHour(page, 7)).toHaveText('7');
 
-	await sliderHour(page, 7).click();
+	await sliderHour(page, 12).click();
 
-	await expectRingCard(page, '6–7 ч');
-	await expect(sliderHour(page, 7)).toHaveText('6–7');
+	await expectRingCard(page, '11–12 ч');
+	await expect(sliderHour(page, 12)).toHaveText('11–12');
 	await expect(sliderHour(page, 1)).toHaveText('1');
-	await expect(sliderHour(page, 12)).toHaveText('12');
-	expect(ringApi.calls.map((call) => call.hours)).toEqual([1, 7]);
+});
+
+test('letting the slider go keeps the hours where it stopped, never the old ones for a moment', async ({ page, ringApi }) => {
+	ringApi.respond(ringFor);
+	await page.goto('/');
+	await expectRingCard(page, 'до 1 ч');
+	const shown = await recordSliderHours(page);
+
+	await dragSlider(page, 5);
+
+	await expectRingCard(page, '4–5 ч');
+	expect(await shown()).toEqual([2, 3, 4, 5]);
 });
 
 test('a ring in memory comes back at once, without a request, and its hours are marked', async ({ page, ringApi }) => {

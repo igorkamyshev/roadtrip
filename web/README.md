@@ -65,7 +65,7 @@ PostHog's tests (`e2e/analytics.spec.ts`) open the same build at `https://roadtr
 
 PostHog takes any change of the page in the seconds after a click for its answer, so a change of the screen on a timer turns the dead click of `analytics.spec.ts` into none: its test lets the page's clock run past every such timer (the data's sources under the phrase, 5 s) before it taps, and a new timer of the screen joins them there.
 
-The tests wait for the screen's state, not its copy: the first card's `data-state` names its state (`FirstCardState` of `src/screen/first-card.tsx`: `ring`, `no_cities`, `calculating`, `empty`, `error`…), and `expectRingCard` (`e2e/screen.ts`) waits for a ring's answer by it and the slider. Only the tests of a text read the text: the states' in `states.spec.ts`, the ring's count in `cities.spec.ts`.
+The tests wait for the screen's state, not its copy: the first card's `data-state` names its state (`FirstCardState` of `src/screen/first-card.tsx`: `ring`, `no_cities`, `calculating`, `empty`, `error`…), and `expectRingCard` (`e2e/screen.ts`) waits for a ring's answer by it and the slider. Only the tests of a text read the text: the states' in `states.spec.ts`, the ring's count in `cities.spec.ts`, the slider's cells in `ring.spec.ts`.
 
 ```bash
 pnpm e2e                               # at the root: builds the client, serves it with `vite preview` on this checkout's port, runs Chromium

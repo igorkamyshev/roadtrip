@@ -29,6 +29,8 @@ declare global {
 	interface Window {
 		/** The map the client announced, which the fixtures' init script keeps; undefined until then. */
 		mapForTests?: MapForTests;
+		/** The hours the slider showed since `recordSliderHours`, in order. */
+		sliderHoursShown?: number[];
 	}
 
 	interface WindowEventMap {
@@ -91,6 +93,20 @@ export async function dragSlider(page: Page, hours: number, meanwhile?: () => Pr
 	await page.mouse.move(end.x, end.y, { steps: 4 * Math.abs(hours - from) + 1 });
 	await meanwhile?.();
 	await page.mouse.up();
+}
+
+/**
+ * Records every hours the slider shows from now on (its `aria-valuenow` as it changes), and gives a reading of them in
+ * order.
+ */
+export async function recordSliderHours(page: Page): Promise<() => Promise<number[]>> {
+	await slider(page).evaluate((element) => {
+		window.sliderHoursShown = [];
+		new MutationObserver(() => {
+			window.sliderHoursShown?.push(Number(element.getAttribute('aria-valuenow')));
+		}).observe(element, { attributes: true, attributeFilter: ['aria-valuenow'] });
+	});
+	return async () => page.evaluate(() => window.sliderHoursShown ?? []);
 }
 
 /** The hours the slider marks (`data-cached`, a light green cell): their rings are in memory. */

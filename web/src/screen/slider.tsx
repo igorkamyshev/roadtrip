@@ -68,7 +68,10 @@ export function Slider({ value, onCommit, cached }: SliderProps): ReactElement {
 }
 
 interface Drag {
-	/** The hours under the pointer while the slider is dragged; undefined otherwise. */
+	/**
+	 * The hours under the pointer while the slider is dragged, and those it was let go at until the screen's N moves
+	 * (the link catches up a render later); undefined otherwise.
+	 */
 	readonly live: number | undefined;
 	readonly handlers: {
 		readonly onPointerDown: (event: PointerEvent<HTMLDivElement>) => void;
@@ -78,9 +81,20 @@ interface Drag {
 	};
 }
 
+/** The hours the pointer chose, and N when it was let go: until N moves, the slider keeps showing those hours. */
+interface Held {
+	readonly hours: number;
+	readonly letGoAt?: number;
+}
+
 /** A drag along the column: the cell under the pointer is chosen, and committed when the pointer is let go. */
 function useDrag(column: RefObject<HTMLDivElement | null>, value: number, onCommit: (hours: number) => void): Drag {
-	const [live, setLive] = useState<number>();
+	const [held, setHeld] = useState<Held>();
+	if (held?.letGoAt !== undefined && held.letGoAt !== value) {
+		// N has caught up with the hours let go: the slider shows N again, without a render of the old hours between.
+		setHeld(undefined);
+	}
+	const dragging = held !== undefined && held.letGoAt === undefined;
 	const hoursAt = (event: PointerEvent): number => {
 		const box = column.current?.getBoundingClientRect();
 		if (box === undefined || box.height === 0) {
@@ -93,26 +107,30 @@ function useDrag(column: RefObject<HTMLDivElement | null>, value: number, onComm
 	const handlers = {
 		onPointerDown: (event: PointerEvent<HTMLDivElement>) => {
 			event.currentTarget.setPointerCapture(event.pointerId);
-			setLive(hoursAt(event));
+			setHeld({ hours: hoursAt(event) });
 		},
 		onPointerMove: (event: PointerEvent) => {
-			if (live !== undefined) {
-				setLive(hoursAt(event));
+			if (dragging) {
+				setHeld({ hours: hoursAt(event) });
 			}
 		},
 		onPointerUp: (event: PointerEvent) => {
-			if (live === undefined) {
+			if (!dragging) {
 				return;
 			}
 			const hours = hoursAt(event);
-			setLive(undefined);
-			if (hours !== value) {
-				onCommit(hours);
+			if (hours === value) {
+				setHeld(undefined);
+				return;
 			}
+			setHeld({ hours, letGoAt: value });
+			onCommit(hours);
 		},
 		onPointerCancel: () => {
-			setLive(undefined);
+			if (dragging) {
+				setHeld(undefined);
+			}
 		},
 	};
-	return { live, handlers };
+	return { live: held?.hours, handlers };
 }
