@@ -1,34 +1,43 @@
 // The page's head (#70): Роадтрип's name and description, its mark as the tab's icon and on a phone's home screen, and
-// the picture a messenger shows for a link.
+// the picture a messenger shows for a link. The icons are images, so these tests read their pixels: a corner for the
+// square under the mark, the middle for the origin's red dot.
 import type { Page } from '@playwright/test';
 import { expect, openInProduction, PRODUCTION, test } from './fixtures.ts';
 
-test('the page is Роадтрип, and its description names visas, closed countries and the time at the border', async ({ page }) => {
-	await page.goto('/');
+/** #70's description, which names the visas, the closed countries and the time at the border. */
+const DESCRIPTION =
+	'Роадтрип показывает на карте, куда доехать на машине за N часов или дней с учётом виз и ВНЖ, закрытых стран и территорий, пунктов пропуска и времени на границе';
 
-	await expect(page).toHaveTitle('Роадтрип | Куда поехать на машине');
-	await expect(page.locator('meta[name="apple-mobile-web-app-title"]')).toHaveAttribute('content', 'Роадтрип');
-	const description = page.locator('meta[name="description"]');
-	await expect(description).toHaveAttribute('content', /виз/u);
-	await expect(description).toHaveAttribute('content', /закрытых стран/u);
-	await expect(description).toHaveAttribute('content', /времени на границе/u);
-	await expect(page.locator('meta[property="og:description"]')).toHaveAttribute(
-		'content',
-		(await description.getAttribute('content')) ?? '',
-	);
-});
+/** The light scheme's `--ring`, the square of the home screen's icon. */
+const RING_BLUE = '#1b5fd6';
+/** `--start` of the light scheme and of the dark one, the origin's dot in the middle of the mark. */
+const START_RED = '#e2412c';
+const START_RED_DARK = '#ff6a52';
+/** The light scheme's `--bg`, the link's picture's background. */
+const BACKGROUND = '#eef1ef';
+
+/** The `href` of the head's link `selector`; the test fails without the link. */
+async function hrefOf(page: Page, selector: string): Promise<string> {
+	const href = await page.locator(`link${selector}`).getAttribute('href');
+	expect(href, `a link${selector}`).not.toBeNull();
+	return href ?? '';
+}
 
 /**
- * An image the page loads from `url`: its size, and the colour of its pixel at `x`, `y` as `#rrggbb` once drawn
- * `drawn`×`drawn` (an SVG) or at its own size.
+ * An image the page loads from `url`: its size, and the colours (`#rrggbb`) of its pixels at `points`, once drawn
+ * `drawn`×`drawn` (an SVG) or at its own size; and whether any of its pixels is `find`.
  */
-async function imageAt(
+async function readImage(
 	page: Page,
 	url: string,
-	{ x = 0, y = 0, drawn }: { readonly x?: number; readonly y?: number; readonly drawn?: number } = {},
-): Promise<{ width: number; height: number; color: string }> {
+	{
+		points = [],
+		drawn,
+		find = '',
+	}: { readonly points?: readonly (readonly [number, number])[]; readonly drawn?: number; readonly find?: string },
+): Promise<{ width: number; height: number; colors: string[]; found: boolean }> {
 	return page.evaluate(
-		async ({ src, at, side }) => {
+		async ({ src, at, side, wanted }) => {
 			const image = new Image();
 			image.src = src;
 			await image.decode();
@@ -36,63 +45,98 @@ async function imageAt(
 			canvas.width = side ?? image.naturalWidth;
 			canvas.height = side ?? image.naturalHeight;
 			const context = canvas.getContext('2d');
-			context?.drawImage(image, 0, 0, canvas.width, canvas.height);
-			const [red = 0, green = 0, blue = 0] = context?.getImageData(at.x, at.y, 1, 1).data ?? [];
-			const hex = [red, green, blue].map((channel) => channel.toString(16).padStart(2, '0')).join('');
-			return { width: image.naturalWidth, height: image.naturalHeight, color: `#${hex}` };
+			if (!context) {
+				throw new Error('no 2d context');
+			}
+			context.drawImage(image, 0, 0, canvas.width, canvas.height);
+			const { data } = context.getImageData(0, 0, canvas.width, canvas.height);
+			const hexAt = (offset: number): string =>
+				`#${[0, 1, 2].map((channel) => (data[offset + channel] ?? 0).toString(16).padStart(2, '0')).join('')}`;
+			let found = false;
+			if (wanted !== '') {
+				for (let offset = 0; offset < data.length && !found; offset += 4) {
+					found = hexAt(offset) === wanted;
+				}
+			}
+			return {
+				width: image.naturalWidth,
+				height: image.naturalHeight,
+				colors: at.map(([x, y]) => hexAt((y * canvas.width + x) * 4)),
+				found,
+			};
 		},
-		{ src: url, at: { x, y }, side: drawn },
+		{ src: url, at: points, side: drawn, wanted: find },
 	);
 }
 
-/** The ring's blue of the light scheme (`--ring`), the square of the home screen's icon. */
-const RING_BLUE = '#1b5fd6';
+test('the page is Роадтрип, and its description names visas, closed countries and the time at the border', async ({ page }) => {
+	await page.goto('/');
+
+	await expect(page).toHaveTitle('Роадтрип | Куда поехать на машине');
+	await expect(page.locator('meta[name="apple-mobile-web-app-title"]')).toHaveAttribute('content', 'Роадтрип');
+	await expect(page.locator('meta[name="description"]')).toHaveAttribute('content', DESCRIPTION);
+	await expect(page.locator('meta[property="og:description"]')).toHaveAttribute('content', DESCRIPTION);
+});
 
 test('a phone puts the mark on a blue square on its home screen, under the name Роадтрип', async ({ page, request }) => {
 	await page.goto('/');
 
-	const touchIcon = (await page.locator('link[rel="apple-touch-icon"]').getAttribute('href')) ?? '';
-	expect(await imageAt(page, touchIcon)).toEqual({ width: 180, height: 180, color: RING_BLUE });
-
-	const manifestUrl = (await page.locator('link[rel="manifest"]').getAttribute('href')) ?? '';
-	const manifest = await request.get(manifestUrl);
-	expect(manifest.status()).toBe(200);
 	const icons = [
 		{ src: '/icon-192.png', sizes: '192x192', type: 'image/png' },
 		{ src: '/icon-512.png', sizes: '512x512', type: 'image/png' },
 		{ src: '/icon-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
 	];
+	const manifest = await request.get(await hrefOf(page, '[rel="manifest"]'));
+	expect(manifest.status()).toBe(200);
 	// Only the icon and its name: no app of its own on the home screen (#70, out of scope), so `display` is `browser`.
 	expect(await manifest.json()).toMatchObject({ name: 'Роадтрип', short_name: 'Роадтрип', display: 'browser', icons });
-	for (const { src, sizes } of icons) {
-		const [width, height] = sizes.split('x').map(Number);
-		expect(await imageAt(page, src)).toEqual({ width, height, color: RING_BLUE });
+
+	const homeIcons = [
+		{ src: await hrefOf(page, '[rel="apple-touch-icon"]'), side: 180 },
+		...icons.map(({ src, sizes }) => ({ src, side: Number(sizes.split('x')[0]) })),
+	];
+	for (const { src, side } of homeIcons) {
+		const middle = Math.floor(side / 2);
+		expect(
+			await readImage(page, src, {
+				points: [
+					[0, 0],
+					[middle, middle],
+				],
+			}),
+		).toMatchObject({
+			width: side,
+			height: side,
+			colors: [RING_BLUE, START_RED],
+		});
 	}
 });
 
 test('the tab shows the mark, its origin red in the light scheme and in the dark one', async ({ page, request }) => {
 	await page.goto('/');
 
-	const svg = (await page.locator('link[rel="icon"][type="image/svg+xml"]').getAttribute('href')) ?? '';
-	// The origin's dot in the middle of the mark: `--start` of each scheme (src/styles.css).
-	expect((await imageAt(page, svg, { x: 32, y: 32, drawn: 64 })).color).toBe('#e2412c');
+	const svg = await hrefOf(page, '[rel="icon"][type="image/svg+xml"]');
+	expect((await readImage(page, svg, { points: [[32, 32]], drawn: 64 })).colors).toEqual([START_RED]);
 	await page.emulateMedia({ colorScheme: 'dark' });
-	expect((await imageAt(page, svg, { x: 32, y: 32, drawn: 64 })).color).toBe('#ff6a52');
+	expect((await readImage(page, svg, { points: [[32, 32]], drawn: 64 })).colors).toEqual([START_RED_DARK]);
 
-	// For the browsers without SVG icons: 32 px, with 16 px in the same file.
-	// The page cannot fetch a path that ends in favicon.ico under Playwright's routes, so the test does.
-	const ico = await request.get((await page.locator('link[rel="icon"][sizes="32x32"]').getAttribute('href')) ?? '');
+	// For the browsers without SVG icons, 32 px. The page cannot fetch a path that ends in favicon.ico under
+	// Playwright's routes, so the test does.
+	const ico = await request.get(await hrefOf(page, '[rel="icon"][sizes="32x32"]'));
 	expect(ico.status()).toBe(200);
 	const data = `data:image/x-icon;base64,${(await ico.body()).toString('base64')}`;
-	expect(await imageAt(page, data, { x: 16, y: 16 })).toEqual({ width: 32, height: 32, color: '#e2412c' });
+	expect(await readImage(page, data, { points: [[16, 16]] })).toMatchObject({ width: 32, height: 32, colors: [START_RED] });
 });
 
-test("a link to the site shows a picture of 1200×630 on the screen's background", async ({ page }) => {
+test("a link to the site shows a picture of 1200×630 with the mark on the screen's background", async ({ page }) => {
 	await openInProduction(page);
 
-	const image = page.locator('meta[property="og:image"]');
-	await expect(image).toHaveAttribute('content', `${PRODUCTION}/og.png`);
+	await expect(page.locator('meta[property="og:image"]')).toHaveAttribute('content', `${PRODUCTION}/og.png`);
 	await expect(page.locator('meta[name="twitter:card"]')).toHaveAttribute('content', 'summary_large_image');
-	// `--bg` of the light scheme.
-	expect(await imageAt(page, `${PRODUCTION}/og.png`)).toEqual({ width: 1200, height: 630, color: '#eef1ef' });
+	expect(await readImage(page, `${PRODUCTION}/og.png`, { points: [[0, 0]], find: START_RED })).toEqual({
+		width: 1200,
+		height: 630,
+		colors: [BACKGROUND],
+		found: true,
+	});
 });
