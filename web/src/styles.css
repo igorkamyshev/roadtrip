@@ -1060,6 +1060,20 @@ a {
 	margin-top: auto;
 }
 
+/* «Откуда едем?»'s «Город», «На карте» and «Где я», one row on the card at any width, a phone's of 242 px too (#106):
+   the words' buttons, without icons, take 8 px of padding and share the rest of the row; «Где я», an icon, is a square
+   of their height. On a card narrower still the row wraps as before. */
+.c-card .acts.spread .btn {
+	flex: 1 1 auto;
+	padding: 0 8px;
+}
+
+.c-card .acts.spread .btn.square {
+	flex: none;
+	width: 40px;
+	padding: 0;
+}
+
 /* «Маршрут» of a city card: muted small text; its padding makes a finger's tap of 40 px without taking the room. */
 .c-card .c-route {
 	display: inline-block;
