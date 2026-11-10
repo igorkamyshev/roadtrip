@@ -43,9 +43,9 @@ export interface RingRequest {
 	/** The origin in degrees, already rounded by the caller. */
 	readonly origin: LatLon;
 	/**
-	 * The ring's bounds in hours of travel: it holds the places reached in (lowerHours, upperHours]. The ring of N
-	 * hours is (N − 1, N], the ring of day D is (12·(D − 1), 12·D] (spec #20 «Движок», #82); the engine takes any
-	 * band, the Worker checks it is one of the slider's.
+	 * The ring's bounds in hours of travel: it holds the places reached in (lowerHours, upperHours] (spec #20 «Движок»,
+	 * #82). The engine takes any band and knows no slider: the Worker checks it is one of the slider's cells
+	 * (worker/api's `cellRing`).
 	 */
 	readonly lowerHours: number;
 	readonly upperHours: number;

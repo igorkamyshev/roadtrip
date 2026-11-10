@@ -29,7 +29,7 @@ export interface ScreenState {
 	readonly origin: LatLon | undefined;
 	/**
 	 * The slider's cell by its ring's upper bound in hours (worker/api's `SLIDER_CELLS`): N for the ring of N hours,
-	 * 8·D for day D (#83, #140).
+	 * HOURS_PER_DAY·D for day D (#83).
 	 */
 	readonly hours: number;
 	/** Alpha-3, sorted, at least one. */
@@ -96,7 +96,7 @@ export function originFromSearch(p: string | undefined): LatLon | undefined {
 	return p === undefined ? undefined : pointFromText(p);
 }
 
-/** The slider's cell of the link's `h` or `d`: N, or 8·D for day D; 1 h by default. */
+/** The slider's cell of the link's `h` or `d`: N, or HOURS_PER_DAY·D for day D; 1 h by default. */
 export function hoursFromSearch({ h, d }: Pick<ScreenSearch, 'h' | 'd'>): number {
 	return d === undefined ? (h ?? DEFAULT_HOURS) : HOURS_PER_DAY * d;
 }

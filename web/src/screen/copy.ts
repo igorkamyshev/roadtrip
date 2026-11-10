@@ -11,7 +11,7 @@ export function plural(n: number, forms: readonly [one: string, few: string, man
 	return ones >= 2 && ones <= 4 && (tens < 10 || tens >= 20) ? forms[1] : forms[2];
 }
 
-// The ring is the slider's cell by its upper bound in hours: N, or 8·D for day D (#83, #140).
+// The ring is the slider's cell by its upper bound in hours: N, or HOURS_PER_DAY·D for day D (#83).
 
 /** Whether the slider's cell is a day's. */
 export function isDay(hours: number): boolean {

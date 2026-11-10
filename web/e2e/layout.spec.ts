@@ -14,6 +14,8 @@ import {
 	expectApart,
 	firstCard,
 	fromEdges,
+	LAST_DAY_RING,
+	LAST_HOUR_RING,
 	openHeld,
 	overlap,
 	phrase,
@@ -93,8 +95,8 @@ for (const { lowestHour, ...viewport } of PHONES) {
 		});
 
 		for (const [unit, path, ring] of [
-			['hours', LONGEST, '7–8 ч'],
-			['days', LONGEST_IN_DAYS, '6–7 дней'],
+			['hours', LONGEST, LAST_HOUR_RING],
+			['days', LONGEST_IN_DAYS, LAST_DAY_RING],
 		]) {
 			test(`in ${unit}, the slider's tab and panel are apart from the phrase and the current card, and on the screen`, async ({ page }) => {
 				await openHeld(page, path, ring);

@@ -42,8 +42,8 @@ export const SLIDER_CELLS: readonly number[] = [
 ];
 
 /**
- * The ring of the slider's cell with this upper bound: N hours is (N − 1, N], day D is (8·(D − 1), 8·D]
- * (GLOSSARY «Кольцо»).
+ * The ring of the slider's cell with this upper bound: N hours is (N − 1, N], day D is
+ * (HOURS_PER_DAY·(D − 1), HOURS_PER_DAY·D] (GLOSSARY «Кольцо»).
  */
 export function cellRing(upperHours: number): RingBounds {
 	return { lowerHours: upperHours - (upperHours > MAX_HOURS ? HOURS_PER_DAY : 1), upperHours };
@@ -51,7 +51,8 @@ export function cellRing(upperHours: number): RingBounds {
 
 /**
  * Whether `GET /api/ring` takes these bounds: a ring of one hour, (N − 1, N] for N from 1 to the last day's end,
- * 8·MAX_DAYS, or a day's, (8·(D − 1), 8·D] for D from 2 to MAX_DAYS (#82, #140). The slider asks for its cells only.
+ * HOURS_PER_DAY·MAX_DAYS, or a day's, `cellRing` of HOURS_PER_DAY·D for D from 2 to MAX_DAYS (#82). The slider asks
+ * for its cells only.
  */
 export function isScaleRing({ lowerHours, upperHours }: RingBounds): boolean {
 	if (!Number.isInteger(upperHours) || upperHours < 1 || upperHours > HOURS_PER_DAY * MAX_DAYS) {
@@ -69,7 +70,7 @@ export function isScaleRing({ lowerHours, upperHours }: RingBounds): boolean {
  * - `lat`, `lon`: the origin in degrees, as the person set it (the Worker rounds it for the calculation and the
  *   cache);
  * - `from`, `to`: the ring's bounds in hours (`isScaleRing`): the ring of N hours is `from=N−1&to=N`, N from 1 to
- *   8·MAX_DAYS, the ring of day D is `from=8·(D−1)&to=8·D`, D from 2 to MAX_DAYS;
+ *   HOURS_PER_DAY·MAX_DAYS, the ring of day D is `from=HOURS_PER_DAY·(D−1)&to=HOURS_PER_DAY·D`, D from 2 to MAX_DAYS;
  * - `cit`: the citizenships, at least one, each one of Sherpa's passports (rules' `SHERPA_PASSPORTS`);
  * - `visas`: the held visas, `SCHENGEN` and the codes of the countries outside Schengen (rules' `HELD_VISAS`: those
  *   of `COUNTRIES`, alpha-3, `RKS`, `NX`); may be empty or left out.
