@@ -6,6 +6,7 @@ import { isCurrentCard, scrollToCard, useCarouselStops } from '../cities/carouse
 import type { City } from '../cities/cities.ts';
 import type { MapHandle } from '../map/camera.ts';
 import type { ShownRing } from './use-shown-ring.ts';
+import { narrowOnly, wideCard } from './wide-carousel.prototype.tsx';
 
 /** The map comes at least this close to a city picked in the list of all. */
 const PICKED_CITY_ZOOM = 8;
@@ -43,18 +44,23 @@ export function useChosenCity(shown: ShownRing, map: RefObject<MapHandle | null>
 	useEffect(() => {
 		carousel.current?.scrollTo({ left: 0 });
 	}, [requestId]);
-	const onCarouselScroll = useCarouselStops(carousel, (id) => {
-		choose(id);
-		const stopped = shownCities?.find((candidate) => candidate.id === id);
-		if (stopped !== undefined) {
-			map.current?.goTo(stopped);
-		}
-	});
+	// PROTOTYPE (#99, after #104): on the wide screen a scroll chooses nothing.
+	const onCarouselScroll = useCarouselStops(
+		carousel,
+		narrowOnly((id) => {
+			choose(id);
+			const stopped = shownCities?.find((candidate) => candidate.id === id);
+			if (stopped !== undefined) {
+				map.current?.goTo(stopped);
+			}
+		}),
+	);
 
 	// A city whose card is not the current one is chosen when the carousel stops at it, which moves the map. A city
 	// whose card is the current one, or that has no card, is chosen and the map moved to it at once.
 	const chooseAndShow = (place: City, minZoom?: number): void => {
-		if (isCurrentCard(carousel.current, place.id) || !scrollToCard(carousel.current, place.id)) {
+		// PROTOTYPE (#99, after #104): on the wide screen a city is chosen at once, its card only nudged whole into view.
+		if (wideCard(carousel.current, place.id) || isCurrentCard(carousel.current, place.id) || !scrollToCard(carousel.current, place.id)) {
 			choose(place.id);
 			map.current?.goTo(place, minZoom);
 		}
@@ -65,7 +71,10 @@ export function useChosenCity(shown: ShownRing, map: RefObject<MapHandle | null>
 		carousel,
 		onCarouselScroll,
 		tap: (id) => {
-			if (!scrollToCard(carousel.current, id)) {
+			const onWide = wideCard(carousel.current, id) ? shownCities?.find((candidate) => candidate.id === id) : undefined;
+			if (onWide !== undefined) {
+				chooseAndShow(onWide);
+			} else if (!scrollToCard(carousel.current, id)) {
 				choose(id);
 				openList();
 			}

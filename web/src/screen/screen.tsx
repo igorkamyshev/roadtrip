@@ -11,9 +11,15 @@ import { ScreenPhrase } from './screen-phrase.tsx';
 import { ScreenSheets } from './screen-sheets.tsx';
 import { Slider } from './slider.tsx';
 import { useScreen } from './use-screen.ts';
+import { PrototypeExtras, useWide, WideScreen } from './wide-carousel.prototype.tsx';
 
 export function Screen(): ReactElement {
 	const screen = useScreen();
+	// PROTOTYPE (#99): the wide screen of #97 C, and the carousel's arrows on both.
+	const wide = useWide();
+	if (wide) {
+		return <WideScreen screen={screen} />;
+	}
 	const { state, shown, starts } = screen;
 	return (
 		<div className="screen">
@@ -29,6 +35,7 @@ export function Screen(): ReactElement {
 			</div>
 			{starts.pinning ? <PinBar onCancel={starts.cancelPinning} onStart={starts.startHere} /> : <Carousel screen={screen} />}
 			<ScreenSheets screen={screen} />
+			<PrototypeExtras screen={screen} wide={false} />
 		</div>
 	);
 }

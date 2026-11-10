@@ -950,3 +950,340 @@ a {
 .found-row {
 	padding: 10px 2px;
 }
+
+/* ---------- PROTOTYPE, never merged (#99, map #95): the carousel's arrows with a mouse, wide-carousel.prototype.tsx,
+   carousel-arrows.prototype.tsx; under them the wide screen of #97 C (the slider's row over the carousel), copied from
+   branch claude/fervent-tesla-qqsbc0, b6b9d85. */
+
+/* The wide screen: a grid over the map, the phrase and the sources on top, the middle, the carousel at the bottom. */
+.w {
+	position: absolute;
+	inset: 0;
+	z-index: 11;
+	display: grid;
+	grid-template-rows: auto minmax(0, 1fr) auto;
+	pointer-events: none;
+}
+
+.w > * > * {
+	pointer-events: auto;
+}
+
+.w-top {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: var(--between);
+	padding: var(--edge-top) var(--edge-right) 0 var(--edge-left);
+}
+
+.w-mid {
+	display: flex;
+	justify-content: flex-end;
+	min-height: 0;
+	padding: var(--between) var(--edge-right) var(--between) var(--edge-left);
+}
+
+.w-bottom {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: var(--between);
+	min-width: 0;
+}
+
+/* The carousel runs the whole width: no slider beside it. #104: no room after the last card, «и ещё K» ends at the
+   right edge; a fade of 12 px at both edges of the screen, in the edges' band. */
+.w .c-car {
+	--beside-slider: var(--edge-right);
+	--fade: linear-gradient(to right, transparent 0, #000 var(--edge-left), #000 calc(100% - var(--edge-right)), transparent 100%);
+
+	position: static;
+	width: 100%;
+	box-sizing: border-box;
+}
+
+.w .c-car::after {
+	display: none;
+}
+
+.w .c-pickbar {
+	position: static;
+	align-self: stretch;
+	margin: 0 var(--edge-right) var(--edge-bottom) var(--edge-left);
+}
+
+/* ---------- the slider ---------- */
+
+.ws {
+	display: flex;
+	gap: var(--between);
+	user-select: none;
+	/* stylelint-disable-next-line property-no-vendor-prefix -- Safari reads only the prefixed one (caniuse «user-select-none»). */
+	-webkit-user-select: none;
+}
+
+.ws-track {
+	display: flex;
+	gap: 10px;
+	padding: 6px;
+	box-sizing: border-box;
+	background: var(--surface);
+	border-radius: var(--radius);
+	box-shadow: var(--shadow);
+	touch-action: none;
+	cursor: pointer;
+}
+
+.ws-track:focus-visible {
+	outline: 2px solid var(--ring);
+	outline-offset: 2px;
+}
+
+.ws-group {
+	display: flex;
+	gap: 2px;
+	min-width: 0;
+	min-height: 0;
+}
+
+.ws-cell {
+	display: grid;
+	place-items: center;
+	border-radius: var(--radius-inner);
+	font-size: 14px;
+	color: var(--muted);
+	font-variant-numeric: tabular-nums;
+	transition: background 120ms ease-out;
+}
+
+.ws-cell:hover {
+	background: color-mix(in srgb, var(--ring) 10%, transparent);
+}
+
+.ws-cell[data-day] {
+	font-size: 17px;
+	background: color-mix(in srgb, var(--ring) 7%, transparent);
+}
+
+.ws-cell[data-cached] {
+	background: color-mix(in srgb, var(--ok) 12%, transparent);
+}
+
+.ws-cell.on {
+	background: var(--ring);
+	box-shadow: 0 1px 4px color-mix(in srgb, var(--ring) 40%, transparent);
+}
+
+.ws-cell .ws-num {
+	font-weight: 400;
+	white-space: nowrap;
+}
+
+.ws-cell.on .ws-num {
+	display: flex;
+	align-items: baseline;
+	gap: 2px;
+	color: #fff;
+	font-weight: 700;
+	font-size: 13px;
+}
+
+.ws-cell.on .ws-num small {
+	font-size: 10px;
+	font-weight: 600;
+}
+
+@media (prefers-color-scheme: dark) {
+	:root:not([data-theme='light']) .ws-cell.on .ws-num,
+	:root:not([data-theme='light']) .ws-tab.on {
+		color: #0b1630;
+	}
+}
+
+/* C: a row over the carousel's first cards, one unit at a time, the other unit's tab at its end; the row as wide in
+   both units, a day three hours wide. */
+.ws-c {
+	margin-left: var(--edge-left);
+	align-items: stretch;
+}
+
+.ws-c .ws-track {
+	width: min(560px, 100vw - var(--edge-left) - var(--edge-right) - 120px);
+}
+
+.ws-c .ws-group {
+	flex: 1;
+}
+
+.ws-c .ws-cell {
+	flex: 1 1 0;
+	height: 40px;
+}
+
+/* C's tab of the other unit: a pill of its own at the row's end, as tall as the row. */
+.ws-tab {
+	flex: none;
+	padding: 0 16px;
+	border: 0;
+	border-radius: var(--radius);
+	background: var(--surface);
+	box-shadow: var(--shadow);
+	font: inherit;
+	font-size: 14px;
+	font-weight: 600;
+	color: var(--ring);
+	white-space: nowrap;
+	cursor: pointer;
+}
+
+.ws-tab.on {
+	background: var(--ring);
+	color: #fff;
+}
+
+/* ---------- the switcher: not the design ---------- */
+
+.proto-bar {
+	position: fixed;
+	left: 12px;
+	top: 50%;
+	z-index: 100;
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	padding: 4px;
+	border-radius: 999px;
+	background: #111;
+	color: #ff0;
+	font:
+		600 13px/1 system-ui,
+		sans-serif;
+	box-shadow: 0 2px 12px rgb(0 0 0 / 40%);
+}
+
+.proto-bar button {
+	width: 28px;
+	height: 28px;
+	border: 0;
+	border-radius: 50%;
+	background: #333;
+	color: #ff0;
+	font-size: 18px;
+	cursor: pointer;
+}
+
+/* ---------- #99: the carousel's controls, fixed over the screen, placed by script from the carousel's box ---------- */
+
+/* A: a round arrow over each end of the row; .off while there is nowhere to go that way. */
+.pc-edge {
+	position: fixed;
+	z-index: 12;
+	display: grid;
+	place-items: center;
+	width: 40px;
+	height: 40px;
+	padding: 0;
+	border: 0;
+	border-radius: 50%;
+	background: var(--surface);
+	box-shadow: var(--shadow);
+	color: var(--fg);
+	cursor: pointer;
+	transition:
+		opacity 150ms ease-out,
+		background 120ms ease-out;
+}
+
+.pc-edge.off {
+	opacity: 0;
+	pointer-events: none;
+}
+
+/* B: one plate ‹ › as tall as the slider's row; the arrow of an end greyed. */
+.pc-pair {
+	position: fixed;
+	z-index: 12;
+	display: flex;
+	gap: 2px;
+	padding: 6px;
+	background: var(--surface);
+	border-radius: var(--radius);
+	box-shadow: var(--shadow);
+}
+
+.pc-pair button {
+	display: grid;
+	place-items: center;
+	width: 40px;
+	height: 40px;
+	padding: 0;
+	border: 0;
+	border-radius: var(--radius-inner);
+	background: transparent;
+	color: var(--fg);
+	cursor: pointer;
+	transition: background 120ms ease-out;
+}
+
+.pc-pair button:disabled {
+	color: var(--muted);
+	opacity: 0.4;
+	cursor: default;
+}
+
+/* The hover is a colour only, with a mouse (#105). */
+@media (hover: hover) and (pointer: fine) {
+	.pc-edge:hover,
+	.pc-pair button:not(:disabled):hover {
+		background: var(--surface-2);
+	}
+}
+
+/* C: a drag with the mouse scrolls the row; nothing in it is selected or dragged away meanwhile. */
+:root[data-pc-variant='C'] .c-car {
+	/* stylelint-disable-next-line plugin/no-unsupported-browser-features -- iOS shows no cursor; this is for a mouse. */
+	cursor: grab;
+	user-select: none;
+	/* stylelint-disable-next-line property-no-vendor-prefix -- Safari reads only the prefixed one (caniuse «user-select-none»). */
+	-webkit-user-select: none;
+}
+
+.c-car.pc-dragging,
+.c-car.pc-dragging * {
+	/* stylelint-disable-next-line plugin/no-unsupported-browser-features -- iOS shows no cursor; this is for a mouse. */
+	cursor: grabbing;
+}
+
+/* C: a thin scrollbar in the band under the cards; its hit area is taller than its line. */
+.pc-bar {
+	position: fixed;
+	z-index: 12;
+	height: 12px;
+	margin-top: -3px;
+	cursor: pointer;
+}
+
+.pc-bar::before {
+	content: '';
+	position: absolute;
+	inset: 4px 0;
+	border-radius: 2px;
+	background: color-mix(in srgb, var(--fg) 12%, transparent);
+}
+
+.pc-thumb {
+	position: absolute;
+	top: 3px;
+	height: 6px;
+	border-radius: 3px;
+	background: color-mix(in srgb, var(--fg) 45%, transparent);
+	/* stylelint-disable-next-line plugin/no-unsupported-browser-features -- iOS shows no cursor; this is for a mouse. */
+	cursor: grab;
+	touch-action: none;
+}
+
+.pc-thumb:hover,
+.pc-thumb.on {
+	background: color-mix(in srgb, var(--fg) 65%, transparent);
+}
