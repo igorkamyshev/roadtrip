@@ -20,7 +20,7 @@ test('ⓘ tells what is important to know, with the sources of the data', async 
 	}
 	// The licence of GeoNames, then of ESA WorldCover.
 	const licences = sheet.getByRole('link', { name: 'CC BY 4.0' });
-	await expect(licences).toHaveCount(3);
+	await expect(licences).toHaveCount(2);
 	for (const licence of await licences.all()) {
 		await expect(licence).toHaveAttribute('href', 'https://creativecommons.org/licenses/by/4.0/');
 	}

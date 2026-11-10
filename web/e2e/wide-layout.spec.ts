@@ -527,7 +527,7 @@ test.describe('a window that crosses the threshold', () => {
 	}) => {
 		await open(page);
 		await tapMap(page, NIS);
-		await expect.poll(async () => (await labelsOnMap(page)).chosen).toEqual(['Белград']);
+		await expect.poll(async () => (await labelsOnMap(page)).chosen).toEqual(['Ниш']);
 		await phrase(page).getByRole('button', { name: 'РФ' }).click();
 		const sheet = sheetPanel(page, 'Гражданство');
 		await sheet.getByRole('searchbox', { name: 'Найти гражданство' }).fill('ан');
