@@ -38,7 +38,7 @@ export function Carousel({ screen }: { readonly screen: ScreenModel }): ReactEle
 						},
 					}}
 				/>
-				{origin === undefined || shown.answer === undefined
+				{origin === undefined
 					? null
 					: cities?.slice(0, CAROUSEL_CITIES).map((city) => (
 							<CityCard

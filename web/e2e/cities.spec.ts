@@ -63,6 +63,11 @@ async function read(locator: Locator): Promise<string> {
 	return (await locator.innerText()).replaceAll(/\s+/gu, ' ').trim();
 }
 
+/** The cards of these cities as they read, in one reading. */
+async function readCards(page: Page, names: readonly string[]): Promise<string[]> {
+	return Promise.all(names.map((name) => read(cityCard(page, name))));
+}
+
 test.beforeEach(async ({ context }) => {
 	await allowGeolocation(context, BELGRADE);
 });
@@ -620,8 +625,11 @@ test.describe('a city card', () => {
 
 		// Nothing more for a Russian citizenship with a Schengen visa: no local name, no mark of the entry mode, no line on
 		// Russian plates.
+		// A city of 250 000 people is «250 тыс.».
+		await expect
+			.poll(() => readCards(page, ['Будапешт', 'Ниш', 'Сараево']))
+			.toEqual(['Будапешт 🇭🇺 · 1,7 млн Маршрут', 'Ниш 🇷🇸 · 250 тыс. Маршрут', 'Сараево 🇧🇦 · 697 тыс. Маршрут']);
 		const budapest = cityCard(page, 'Будапешт');
-		await expect.poll(() => read(budapest)).toBe('Будапешт 🇭🇺 · 1,7 млн Маршрут');
 		// The flag says its country to a screen reader, and as a tooltip.
 		await expect(budapest.getByRole('img', { name: 'Венгрия' })).toHaveAttribute('title', 'Венгрия');
 		const route = budapest.getByRole('link', { name: 'Маршрут' });
@@ -641,9 +649,6 @@ test.describe('a city card', () => {
 			);
 		}
 		expect((await route.boundingBox())?.height).toBeGreaterThanOrEqual(40);
-		// A city of 250 000 people is «250 тыс.».
-		expect(await read(cityCard(page, 'Ниш'))).toBe('Ниш 🇷🇸 · 250 тыс. Маршрут');
-		expect(await read(cityCard(page, 'Сараево'))).toBe('Сараево 🇧🇦 · 697 тыс. Маршрут');
 	});
 
 	test('keeps the population whole: a no-break space before «млн» and «тыс.»', async ({ page, ringApi }) => {
@@ -685,13 +690,17 @@ test.describe('a city card', () => {
 		);
 		await page.goto(LINK);
 
-		await expect.poll(() => read(cityCard(page, 'Сараево'))).toBe('Сараево 🇧🇦 · 697 тыс. Маршрут');
-		expect(await read(cityCard(page, 'Подгорица'))).toBe('Подгорица 🇲🇪 · 237 тыс. Маршрут');
-		expect(await read(cityCard(page, 'Будапешт'))).toBe('Будапешт 🇭🇺 · 1,7 млн Маршрут');
-		expect(await read(cityCard(page, 'Ниш'))).toBe('Ниш 🇷🇸 · 250 тыс. Маршрут');
+		await expect
+			.poll(() => readCards(page, ['Сараево', 'Подгорица', 'Будапешт', 'Ниш']))
+			.toEqual([
+				'Сараево 🇧🇦 · 697 тыс. Маршрут',
+				'Подгорица 🇲🇪 · 237 тыс. Маршрут',
+				'Будапешт 🇭🇺 · 1,7 млн Маршрут',
+				'Ниш 🇷🇸 · 250 тыс. Маршрут',
+			]);
 	});
 
-	test('come for the countries a held visa chosen in «Мои визы» opens', async ({ page, ringApi }) => {
+	test('a held visa chosen in «Мои визы» brings the cities of the countries it opens', async ({ page, ringApi }) => {
 		// An Indian: the visa double opens Bosnia and Herzegovina and Montenegro by a US visa (rows of the visa
 		// exemptions' table) and Hungary by a Schengen visa, and closes them without.
 		ringApi.respond((call) => {

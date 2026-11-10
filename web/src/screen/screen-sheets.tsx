@@ -29,7 +29,7 @@ export function ScreenSheets({ screen }: { readonly screen: ScreenModel }): Reac
 	if (sheet === 'info') {
 		return <InfoSheet onClose={closeSheet} />;
 	}
-	if (sheet === 'cities' && shown.shownCities !== undefined && shown.answer !== undefined) {
+	if (sheet === 'cities' && shown.shownCities !== undefined) {
 		return (
 			<CitiesSheet
 				cities={shown.shownCities}
