@@ -2,7 +2,12 @@
 // Wikidata have none or a broken one, written by Haiku subagents (data/AGENTS.md, «Cities file»). The deploy puts it
 // over the names of the cities file R2 holds (`withRussianNames`); the build of the cities file only reports the
 // cities it lacks (`missingRussianNames`).
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { type CitiesFile, type CityRow, decodeCities, encodeCities } from './cities-file.ts';
+
+/** The table the repository ships. */
+const SHIPPED_TABLE = join(import.meta.dirname, '../russian-names.tsv');
 
 /** The table's first line. */
 const HEADER = 'geonameid\tname\tru';
@@ -13,8 +18,17 @@ const RUSSIAN = /^[А-Яа-яЁё0-9][А-Яа-яЁё0-9 .()'-]*$/u;
 /** How many of the cities `missingRussianNames` lacks it names. */
 const BIGGEST_MISSING = 10;
 
+/** The table at `path`, the shipped one by default, checked: an error naming the file and the line for a bad one. */
+export function readRussianNames(path = SHIPPED_TABLE): Map<number, string> {
+	try {
+		return parseRussianNames(readFileSync(path, 'utf8'));
+	} catch (error) {
+		throw new Error(`${path}, ${error instanceof Error ? error.message : String(error)}`, { cause: error });
+	}
+}
+
 /** The table's Russian names by GeoNames' id; an error naming the line for a table of another shape or a name not in Russian. */
-export function parseRussianNames(text: string): Map<number, string> {
+function parseRussianNames(text: string): Map<number, string> {
 	const lines = text.split('\n');
 	if (lines[0] !== HEADER) {
 		throw new Error(`line 1: not the header ${JSON.stringify(HEADER)}: ${JSON.stringify(lines[0])}`);
