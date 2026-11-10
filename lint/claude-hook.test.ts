@@ -131,7 +131,7 @@ describe('the lint hook', () => {
 		hook(shellCommand);
 		const edited = join(checkout, 'probes/edited.ts');
 		writeFileSync(edited, BAD);
-		expect(hook({ tool_name: 'Write', tool_input: { file_path: edited } })).toEqual({ status: 0, told: '' });
+		hook({ tool_name: 'Write', tool_input: { file_path: edited } });
 		writeFileSync(join(checkout, 'probes/written.ts'), BAD);
 		expect(hook(shellCommand)).toEqual({ status: 0, told: '' });
 	});

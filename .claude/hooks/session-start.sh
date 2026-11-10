@@ -25,5 +25,5 @@ fi
 
 # The clone's origin/main may be days behind main, and a fetch that also names the
 # session's branch fails while that branch is not on GitHub yet: fetch main alone,
-# so a branch started from origin/main starts from main.
-git fetch --quiet origin main >&2 || echo "session-start: git fetch origin main failed, origin/main may be stale" >&2
+# so a branch started from origin/main starts from main; a minute at most.
+GIT_TERMINAL_PROMPT=0 timeout 60 git fetch --quiet origin main >&2 || echo "session-start: git fetch origin main failed, origin/main may be stale" >&2
