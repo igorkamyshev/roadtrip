@@ -280,6 +280,7 @@ describe('the russian-names command', () => {
 		expect(run.stderr).toContain('2 cities named; ids of the table not in the file: 1');
 	});
 
+	// The wrong way these catch: a command that writes the cities file before it has checked the whole table.
 	it.each([
 		['a Latin name', ['geonameid\tname\tru', '886990\tMarondera\tМарондера', '3430415\tNogoyá\tNogoyá'], 3],
 		['a line of two columns', ['geonameid\tname\tru', '886990\tМарондера'], 2],
