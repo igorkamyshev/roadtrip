@@ -15,7 +15,7 @@ jobs:
   # Everything but the screen tests, about a minute: the screen tests' parts run beside it.
   checks:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
 
     steps:
       - uses: actions/checkout@v4
@@ -73,7 +73,7 @@ jobs:
   # splits the tests by their count, not their time). Each part builds the client itself (web/playwright.config.ts,
   # `webServer`), so the first paint's budget fails each of them (web/vite.config.ts).
   e2e:
-    name: e2e ${{ matrix.shard }}/4
+    name: e2e ${{ matrix.shard }}/${{ strategy.job-total }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     strategy:
@@ -91,10 +91,14 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       # The Chromium that the installed @playwright/test asks for, cached by its version, so no second copy of the
-      # version lives here. Only the headless shell, which the tests run, and no system packages: the runner's image
-      # has Chrome's, and the client brings its own fonts (web/src/main.tsx).
+      # version lives here; an empty version fails the job rather than make a key of no version. Only the headless
+      # shell, which the tests run, and no system packages: the runner's image has Chrome's today (a new image without
+      # them fails at the next cache miss), and the client brings its own fonts (web/src/main.tsx).
       - id: playwright
-        run: echo "version=$(pnpm --filter web exec playwright --version | cut -d ' ' -f 2)" >> "$GITHUB_OUTPUT"
+        run: |
+          version=$(pnpm --filter web exec playwright --version | cut -d ' ' -f 2)
+          [ -n "$version" ] || { echo '::error::playwright --version printed no version'; exit 1; }
+          echo "version=$version" >> "$GITHUB_OUTPUT"
       - id: browsers
         uses: actions/cache@v4
         with:
@@ -103,7 +107,7 @@ jobs:
       - if: steps.browsers.outputs.cache-hit != 'true'
         run: pnpm --filter web exec playwright install --only-shell chromium
       # Playwright's default workers, half the runner's 4 CPUs: 4 a part ran slower (#136).
-      - run: pnpm e2e --shard=${{ matrix.shard }}/4
+      - run: pnpm e2e --shard=${{ matrix.shard }}/${{ strategy.job-total }}
       # A failed part keeps its screen tests' reports (web/README.md, «Tests»): failures.md and each failed test's
       # error-context.md with the page's aria snapshot, which the log alone cuts. One artifact a part, e2e-results-<part>:
       # upload-artifact takes a name once a run.
