@@ -14,7 +14,6 @@ export function Carousel({ screen }: { readonly screen: ScreenModel }): ReactEle
 	const { state, shown, card, starts, chosen, openSheet } = screen;
 	const { carousel, onCarouselScroll, onCarouselFocus } = chosen;
 	const { origin } = state;
-	const access = shown.answer?.access;
 	const cities = shown.shownCities;
 	const arrows = useCarouselArrows(carousel);
 	return (
@@ -39,15 +38,13 @@ export function Carousel({ screen }: { readonly screen: ScreenModel }): ReactEle
 						},
 					}}
 				/>
-				{origin === undefined || access === undefined
+				{origin === undefined || shown.answer === undefined
 					? null
 					: cities?.slice(0, CAROUSEL_CITIES).map((city) => (
 							<CityCard
 								key={city.id}
 								city={city}
 								origin={origin}
-								access={access}
-								citizenships={state.citizenships}
 								chosen={city.id === chosen.city}
 								onTap={() => {
 									chosen.tapCard(city);

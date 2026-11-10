@@ -8,7 +8,6 @@ import type { ScreenModel } from './use-screen.ts';
 
 export function ScreenSheets({ screen }: { readonly screen: ScreenModel }): ReactElement | null {
 	const { state, shown, starts, chosen, sheet, closeSheet } = screen;
-	const access = shown.answer?.access;
 	if (sheet === 'citizenships') {
 		return <CitizenshipSheet citizenships={state.citizenships} onChange={state.setCitizenships} onClose={closeSheet} />;
 	}
@@ -30,12 +29,11 @@ export function ScreenSheets({ screen }: { readonly screen: ScreenModel }): Reac
 	if (sheet === 'info') {
 		return <InfoSheet onClose={closeSheet} />;
 	}
-	if (sheet === 'cities' && shown.shownCities !== undefined && access !== undefined) {
+	if (sheet === 'cities' && shown.shownCities !== undefined && shown.answer !== undefined) {
 		return (
 			<CitiesSheet
 				cities={shown.shownCities}
 				hours={state.hours}
-				access={access}
 				chosen={chosen.city}
 				onPick={(city) => {
 					closeSheet();

@@ -21,10 +21,6 @@
 	/* The hatching of closed countries over the basemap: lines on a veil. */
 	--hatch: rgb(84 95 90 / 55%);
 	--hatch-veil: rgb(220 223 216 / 35%);
-	--evisa: #7f4b00;
-	--evisa-bg: #ffecc7;
-	--held: #54309e;
-	--held-bg: #ebe3fb;
 	--warn: #6e4a00;
 	--warn-bg: #fff4dc;
 	--err: #b42d25;
@@ -73,10 +69,6 @@
 		--halo: #1c2321;
 		--hatch: rgb(150 162 157 / 50%);
 		--hatch-veil: rgb(27 33 32 / 40%);
-		--evisa: #ffcf7d;
-		--evisa-bg: #3a2b0e;
-		--held: #cbb3ff;
-		--held-bg: #2c2444;
 		--warn: #ffcf7d;
 		--warn-bg: #2c2410;
 		--err: #ff8f85;
@@ -212,31 +204,6 @@ a {
 
 .small {
 	font-size: 13px;
-}
-
-.badge {
-	display: inline-block;
-	font-size: 12px;
-	font-weight: 500;
-	line-height: 1;
-	padding: 4px 7px;
-	border-radius: 6px;
-	white-space: nowrap;
-}
-
-.b-evisa {
-	background: var(--evisa-bg);
-	color: var(--evisa);
-}
-
-.b-held {
-	background: var(--held-bg);
-	color: var(--held);
-}
-
-.b-plain {
-	background: var(--surface-2);
-	color: var(--muted);
 }
 
 .note {
@@ -519,12 +486,6 @@ a {
 
 .row-name {
 	font-weight: 600;
-}
-
-.row-alt {
-	font-weight: 400;
-	color: var(--muted);
-	font-size: 13px;
 }
 
 .row-sub {
@@ -1111,10 +1072,6 @@ a {
 /* The chosen city's card: 2 px of --ring, close; the keyboard's focus looks otherwise (above). */
 .c-card.chosen {
 	outline: 2px solid var(--ring);
-}
-
-.c-card .plates {
-	color: var(--warn);
 }
 
 .c-card .c-more {

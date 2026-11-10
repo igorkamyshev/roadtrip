@@ -16,7 +16,7 @@ async function search(page: Page, label: string, text: string): Promise<void> {
 	await startSheet(page).getByRole('searchbox', { name: 'Найти город' }).fill(text);
 }
 
-/** The cities the search shows, as their rows read: name, local name, country and population. */
+/** The cities the search shows, as their rows read: name, the country's flag and population. */
 const found = (page: Page) => startSheet(page).getByTestId('found-city');
 
 test.beforeEach(({ ringApi }) => {
@@ -38,11 +38,13 @@ test.describe('the search', () => {
 		await expect(page).toHaveURL(/#\/\?p=44\.80400,20\.46500&h=1&cit=RUS$/u);
 	});
 
-	test('finds a city by the start of its local name, in any case, and says its country and population', async ({ page }) => {
+	test('finds a city by the start of its local name, in any case, and says its flag and population, not the local name', async ({
+		page,
+	}) => {
 		await page.goto('/');
 		await search(page, 'выберите', 'SZEG');
 
-		await expect(found(page)).toHaveText(['Сегед Szeged Венгрия · 161 тыс.'], { useInnerText: true });
+		await expect(found(page)).toHaveText(['Сегед 🇭🇺 · 161 тыс.'], { useInnerText: true });
 	});
 
 	test('takes ё for е and е for ё', async ({ page }) => {

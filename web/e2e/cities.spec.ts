@@ -100,10 +100,9 @@ test.describe('the first card', () => {
 		await page.goto('/#/?p=35.20000,33.40000&h=2');
 
 		await expect.poll(() => read(firstCard(page))).toBe('В кольце 1–2 ч 2 города в 1 стране Листайте → самые крупные');
-		await expect(cityCards(page).getByTestId('city-facts')).toHaveText([
-			'Famagusta · Северный Кипр · 43 тыс.',
-			'Kyrenia · Северный Кипр · 27 тыс.',
-		]);
+		// Northern Cyprus has no flag of its own.
+		await expect(cityCards(page).getByTestId('city-facts')).toHaveText(['⛳ · 43 тыс.', '⛳ · 27 тыс.']);
+		await expect(cityCard(page, 'Фамагуста').getByRole('img', { name: 'Северный Кипр' })).toHaveAttribute('title', 'Северный Кипр');
 	});
 
 	test('leaves out the cities of a closed territory', async ({ page, ringApi }) => {
@@ -169,18 +168,22 @@ const allCities = (page: Page) => page.getByRole('dialog', { name: /в коль�
 const rows = (page: Page) => allCities(page).getByTestId('city-row');
 
 test.describe('the list of all cities', () => {
-	test('lists every city of the ring, biggest first, with its country, population and entry mode', async ({ page, ringApi }) => {
+	test('lists every city of the ring, biggest first, with its flag and population, and no mark of its entry mode', async ({
+		page,
+		ringApi,
+	}) => {
 		ringApi.respond(() => ringAroundBelgrade(WITH_SCHENGEN_VISA));
 		await page.goto(LINK);
 		await page.getByRole('button', { name: /и ещё/u }).click();
 
 		await expect(rows(page)).toHaveCount(16);
 		expect(await Promise.all((await rows(page).all()).slice(0, 3).map((row) => read(row)))).toEqual([
-			'Будапешт Budapest Венгрия · 1,7 млн по визе Шенгена',
-			'Сараево Sarajevo Босния и Герцеговина · 697 тыс.',
-			'Ниш Niš Сербия · 250 тыс. страна старта',
+			'Будапешт 🇭🇺 · 1,7 млн',
+			'Сараево 🇧🇦 · 697 тыс.',
+			'Ниш 🇷🇸 · 250 тыс.',
 		]);
-		expect(await read(rows(page).last())).toBe('Lukavac Босния и Герцеговина · 45 тыс.');
+		expect(await read(rows(page).last())).toBe('Lukavac 🇧🇦 · 45 тыс.');
+		await expect(rows(page).first().getByRole('img', { name: 'Венгрия' })).toHaveAttribute('title', 'Венгрия');
 
 		await allCities(page).getByRole('button', { name: 'Закрыть' }).click();
 		await expect(allCities(page)).toHaveCount(0);
@@ -266,8 +269,8 @@ test.describe("the origin's city", () => {
 		// Belgrade, the second biggest, would be the second row.
 		await expect(rows(page).first()).toBeVisible();
 		expect(await Promise.all((await rows(page).all()).slice(0, 2).map((row) => read(row)))).toEqual([
-			'Будапешт Budapest Венгрия · 1,7 млн по визе Шенгена',
-			'Сараево Sarajevo Босния и Герцеговина · 697 тыс.',
+			'Будапешт 🇭🇺 · 1,7 млн',
+			'Сараево 🇧🇦 · 697 тыс.',
 		]);
 	});
 
@@ -611,17 +614,16 @@ test.describe('the carousel and the map', () => {
 });
 
 test.describe('a city card', () => {
-	test('says the name, the local name, the country and the population, and leads to Google Maps from the origin', async ({
-		page,
-		ringApi,
-	}) => {
+	test("says the name, the country's flag and the population, and leads to Google Maps from the origin", async ({ page, ringApi }) => {
 		ringApi.respond(() => ringAroundBelgrade(WITH_SCHENGEN_VISA));
 		await page.goto(LINK);
 
+		// Nothing more for a Russian citizenship with a Schengen visa: no local name, no mark of the entry mode, no line on
+		// Russian plates.
 		const budapest = cityCard(page, 'Будапешт');
-		await expect
-			.poll(() => read(budapest))
-			.toBe('Будапешт Budapest · Венгрия · 1,7 млн по визе Шенгена Российские номера не пустят Маршрут');
+		await expect.poll(() => read(budapest)).toBe('Будапешт 🇭🇺 · 1,7 млн Маршрут');
+		// The flag says its country to a screen reader, and as a tooltip.
+		await expect(budapest.getByRole('img', { name: 'Венгрия' })).toHaveAttribute('title', 'Венгрия');
 		const route = budapest.getByRole('link', { name: 'Маршрут' });
 		await expect(route).toHaveAttribute(
 			'href',
@@ -632,17 +634,16 @@ test.describe('a city card', () => {
 		// a finger's tap.
 		await expect(route).not.toHaveClass(/\bbtn\b/u);
 		await expect(route).toHaveJSProperty('childElementCount', 0);
-		const facts = budapest.getByText('Budapest · Венгрия · 1,7 млн');
+		const facts = budapest.getByTestId('city-facts');
 		for (const property of ['color', 'font-size', 'background-color'] as const) {
 			expect(await route.evaluate((link, name) => getComputedStyle(link).getPropertyValue(name), property), property).toBe(
 				await facts.evaluate((line, name) => getComputedStyle(line).getPropertyValue(name), property),
 			);
 		}
 		expect((await route.boundingBox())?.height).toBeGreaterThanOrEqual(40);
-		// The start country; a city of 250 000 people is «250 тыс.».
-		expect(await read(cityCard(page, 'Ниш'))).toBe('Ниш Niš · Сербия · 250 тыс. страна старта Маршрут');
-		// Without a visa, no mark.
-		expect(await read(cityCard(page, 'Сараево'))).toBe('Сараево Sarajevo · Босния и Герцеговина · 697 тыс. Маршрут');
+		// A city of 250 000 people is «250 тыс.».
+		expect(await read(cityCard(page, 'Ниш'))).toBe('Ниш 🇷🇸 · 250 тыс. Маршрут');
+		expect(await read(cityCard(page, 'Сараево'))).toBe('Сараево 🇧🇦 · 697 тыс. Маршрут');
 	});
 
 	test('keeps the population whole: a no-break space before «млн» and «тыс.»', async ({ page, ringApi }) => {
@@ -652,18 +653,28 @@ test.describe('a city card', () => {
 
 		// The text as it stands, its spaces unchanged: «toHaveText» and `read` take a no-break space for a space.
 		const facts = await cityCards(page).getByTestId('city-facts').allTextContents();
-		expect(facts.slice(0, 2)).toEqual(['Budapest · Венгрия · 1,7 млн', 'Sarajevo · Босния и Герцеговина · 697 тыс.']);
+		expect(facts.slice(0, 2)).toEqual(['🇭🇺 · 1,7 млн', '🇧🇦 · 697 тыс.']);
 	});
 
-	test('of a city without a Russian name says its local name alone', async ({ page, ringApi }) => {
+	test('of a city without a Russian name says its Latin name', async ({ page, ringApi }) => {
 		ringApi.respond(() => ringAroundBelgrade(RUSSIAN));
 		await page.goto(LINK);
 
-		expect(await read(cityCard(page, 'Lukavac'))).toBe('Lukavac Босния и Герцеговина · 45 тыс. Маршрут');
+		expect(await read(cityCard(page, 'Lukavac'))).toBe('Lukavac 🇧🇦 · 45 тыс. Маршрут');
 	});
 
-	test('marks the entry mode: an e-visa, a visa on arrival, a held visa of a country', async ({ page, ringApi }) => {
-		// Not the visa rules of anyone: one mode for each country, to read the marks.
+	test('of Kosovo shows ⛳ for a flag, and names Kosovo', async ({ page, ringApi }) => {
+		// Kosovo's code XK has no flag in Unicode.
+		ringApi.respond(() => ringAroundBelgrade({ ...RUSSIAN, RKS: { mode: 'visa_free', citizenship: 'RUS' } }));
+		await page.goto(LINK);
+
+		const pristina = cityCard(page, 'Приштина');
+		await expect.poll(() => read(pristina)).toBe('Приштина ⛳ · 550 тыс. Маршрут');
+		await expect(pristina.getByRole('img', { name: 'Косово' })).toHaveAttribute('title', 'Косово');
+	});
+
+	test('marks no entry mode: not an e-visa, a visa on arrival, a held visa, nor the start country', async ({ page, ringApi }) => {
+		// Not the visa rules of anyone: one mode for each country.
 		ringApi.respond(() =>
 			ringAroundBelgrade({
 				SRB: { mode: 'start' },
@@ -674,12 +685,13 @@ test.describe('a city card', () => {
 		);
 		await page.goto(LINK);
 
-		await expect(cityCard(page, 'Сараево')).toContainText('оформить заранее');
-		await expect(cityCard(page, 'Подгорица')).toContainText('виза на границе');
-		await expect(cityCard(page, 'Будапешт')).toContainText('по визе: Великобритания');
+		await expect.poll(() => read(cityCard(page, 'Сараево'))).toBe('Сараево 🇧🇦 · 697 тыс. Маршрут');
+		expect(await read(cityCard(page, 'Подгорица'))).toBe('Подгорица 🇲🇪 · 237 тыс. Маршрут');
+		expect(await read(cityCard(page, 'Будапешт'))).toBe('Будапешт 🇭🇺 · 1,7 млн Маршрут');
+		expect(await read(cityCard(page, 'Ниш'))).toBe('Ниш 🇷🇸 · 250 тыс. Маршрут');
 	});
 
-	test('names the held visa chosen in «Мои визы» that opens its country, as the phrase does', async ({ page, ringApi }) => {
+	test('come for the countries a held visa chosen in «Мои визы» opens', async ({ page, ringApi }) => {
 		// An Indian: the visa double opens Bosnia and Herzegovina and Montenegro by a US visa (rows of the visa
 		// exemptions' table) and Hungary by a Schengen visa, and closes them without.
 		ringApi.respond((call) => {
@@ -688,7 +700,7 @@ test.describe('a city card', () => {
 			return ringAroundBelgrade({ ...RUSSIAN, BIH: byVisa('USA'), MNE: byVisa('USA'), HUN: byVisa('SCHENGEN') });
 		});
 		await page.goto(`${LINK}&cit=IND`);
-		await expect(cityCard(page, 'Ниш')).toContainText('страна старта');
+		await expect(cityCard(page, 'Ниш')).toBeVisible();
 		await expect(cityCard(page, 'Сараево')).toHaveCount(0);
 
 		const visasSheet = page.getByRole('dialog', { name: 'Мои визы' });
@@ -697,34 +709,23 @@ test.describe('a city card', () => {
 		await visasSheet.getByRole('button', { name: 'Закрыть' }).click();
 
 		await expect.poll(() => ringApi.calls.at(-1)?.visas).toBe('USA');
-		await expect(cityCard(page, 'Сараево')).toContainText('по визе: США');
-		await expect(cityCard(page, 'Подгорица')).toContainText('по визе: США');
+		await expect(cityCard(page, 'Сараево')).toBeVisible();
+		await expect(cityCard(page, 'Подгорица')).toBeVisible();
 		await expect(cityCard(page, 'Будапешт')).toHaveCount(0);
 
 		// The link carries both visas: Hungary's cities come by Schengen's.
 		await page.goto(`${LINK}&cit=IND&visas=SCHENGEN,USA`);
 		await expect(phrase(page)).toContainText('мои визы: Шенген, США');
-		await expect(cityCard(page, 'Будапешт')).toContainText('по визе Шенгена');
-		await expect(cityCard(page, 'Сараево')).toContainText('по визе: США');
+		await expect(cityCard(page, 'Будапешт')).toBeVisible();
+		await expect(cityCard(page, 'Сараево')).toBeVisible();
 	});
 
-	test('warns of Russian plates in the EU only when a citizenship is Russian', async ({ page, ringApi }) => {
+	test('says nothing of Russian plates in the EU, with a Russian citizenship too', async ({ page, ringApi }) => {
 		ringApi.respond(() => ringAroundBelgrade({ ...WITH_SCHENGEN_VISA, HUN: { mode: 'visa_free', citizenship: 'SRB' } }));
-		await page.goto(`${LINK}&cit=SRB`);
-
-		await expect(cityCard(page, 'Будапешт')).toBeVisible();
-		await expect(cityCards(page).filter({ hasText: 'Российские номера не пустят' })).toHaveCount(0);
-
 		await page.goto(`${LINK}&cit=RUS,SRB`);
 
-		// Hungary, Romania and Croatia are in the EU; Serbia, Bosnia and Herzegovina and Montenegro are not.
-		await expect(cityCards(page).filter({ hasText: 'Российские номера не пустят' }).getByRole('heading')).toHaveText([
-			'Будапешт',
-			'Дебрецен',
-			'Арад',
-			'Сегед',
-			'Печ',
-			'Кечкемет',
-		]);
+		// Hungary is in the EU.
+		await expect.poll(() => read(cityCard(page, 'Будапешт'))).toBe('Будапешт 🇭🇺 · 1,7 млн Маршрут');
+		await expect(cityCards(page).filter({ hasText: /номер/u })).toHaveCount(0);
 	});
 });

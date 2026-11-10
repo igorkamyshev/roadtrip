@@ -1,5 +1,5 @@
 // Countries by name, in Russian (spec #20 «Экран»): `Intl.DisplayNames('ru')` by the alpha-2 of rules' `COUNTRIES`, and
-// our own names where it has none or not ours: Kosovo (`RKS`) and Northern Cyprus (`NX`).
+// our own names where it has none or not ours: Kosovo (`RKS`) and Northern Cyprus (`NX`). And by flag, for a city.
 import { COUNTRIES } from 'rules/countries';
 import { EXEMPTION_VISAS, HELD_VISAS, SCHENGEN } from 'rules/held-visas';
 import { SHERPA_PASSPORTS } from 'rules/passports';
@@ -13,6 +13,25 @@ export function countryName(code: string): string {
 	// Null for a country with no alpha-2; undefined for a code that is no country.
 	const alpha2: string | null | undefined = COUNTRIES[code];
 	return OWN_NAMES[code] ?? (typeof alpha2 === 'string' ? regionNames.of(alpha2) : undefined) ?? code;
+}
+
+/** A flag for a zone without one of its own: no alpha-2 (Northern Cyprus, the closed territories), or no flag in Unicode. */
+const NO_FLAG = '⛳';
+
+/** The alpha-2 codes that Unicode draws no flag for: Kosovo's `XK` is a user-assigned code. */
+const NOT_FLAGS: ReadonlySet<string> = new Set(['XK']);
+
+/** The regional indicator symbol 🇦; 🇧 to 🇿 follow it. */
+const REGIONAL_A = 0x1_f1_e6;
+
+const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+
+/** The zone's flag as an emoji (spec #20 «Карточка города»): the regional indicators of its alpha-2, or ⛳. */
+export function countryFlag(code: string): string {
+	const alpha2: string | null | undefined = COUNTRIES[code];
+	return typeof alpha2 === 'string' && !NOT_FLAGS.has(alpha2)
+		? alpha2.replaceAll(/[A-Z]/gu, (letter) => String.fromCodePoint(REGIONAL_A + LETTERS.indexOf(letter)))
+		: NO_FLAG;
 }
 
 /** The citizenships in the phrase and the cards: «РФ» for the Russian one, the others by name, joined by « + ». */
@@ -36,7 +55,7 @@ export const CITIZENSHIP_CHOICES: readonly string[] = [
 
 const VISA_NAMES: Readonly<Partial<Record<string, string>>> = { [SCHENGEN]: 'Шенген', USA: 'США' };
 
-/** A held visa's name: «Шенген», «США», or the country's. A city's «по визе: <страна>» names it so too. */
+/** A held visa's name: «Шенген», «США», or the country's. */
 export function visaName(code: string): string {
 	return VISA_NAMES[code] ?? countryName(code);
 }
