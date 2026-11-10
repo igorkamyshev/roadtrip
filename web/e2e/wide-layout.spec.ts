@@ -3,10 +3,12 @@
 // (e2e/windows.ts); and a window that crosses the threshold, which changes the look at once and closes or resets
 // nothing. On the wide screen the slider is a row at the bottom left, over the carousel's cards, and the carousel runs
 // the whole width. Read by the elements' boxes, never by pixels.
-import type { Page } from '@playwright/test';
+import type { Locator, Page } from '@playwright/test';
 import type { Access } from 'worker/api';
 import { CITIES, expect, serveCities, squareRing, test, visaRules } from './fixtures.ts';
+import type { RingApi } from './ring-api.ts';
 import {
+	type Box,
 	boxOf,
 	cardsInView,
 	carousel,
@@ -23,6 +25,7 @@ import {
 	sliderCells,
 	sliderPanel,
 	sliderTab,
+	sources,
 	tapMap,
 } from './screen.ts';
 import { onWindow, WIDE_WINDOWS, windowName, WINDOWS } from './windows.ts';
@@ -168,6 +171,144 @@ for (const window of ROW_WINDOWS) {
 		});
 	});
 }
+
+/** Where the page's clock stands, held, while the screen opens: the data's sources stay in the phrase's plate. */
+const START = Date.parse('2026-11-09T12:00:00Z');
+/** Visa rules three days old: «визовые правила от 6 ноября» in the phrase's plate. */
+const OLD_RULES = '2026-11-06T12:00:00Z';
+/** The phrase's plate is at most this wide (#103). */
+const WIDEST_PHRASE = 720;
+
+/** Answers every ring with visa rules from Sherpa at `loadedAt`. */
+const rulesFrom = (ringApi: RingApi, loadedAt: string): void => {
+	ringApi.respond(() => ({ ...squareRing(BELGRADE.lat, BELGRADE.lon, [1, 3]), ...visaRules(OPEN, loadedAt) }));
+};
+
+/** Opens `path` with the clock held 1 s after the load, and waits for its ring. */
+async function openHeld(page: Page, path: string, ring = '11–12 ч'): Promise<void> {
+	await page.clock.install({ time: START });
+	await page.clock.pauseAt(START + 1000);
+	await open(page, path, ring);
+}
+
+/** The line in the phrase's plate that dates old visa rules, «визовые правила от <дата>». */
+const rulesDate = (page: Page): Locator => phrase(page).getByTestId('rules-date');
+
+/** Whether `inner` lies wholly in `outer`. */
+const within = (inner: Box, outer: Box): boolean =>
+	inner.x >= outer.x &&
+	inner.y >= outer.y &&
+	inner.x + inner.width <= outer.x + outer.width &&
+	inner.y + inner.height <= outer.y + outer.height;
+
+/**
+ * Where the phrase breaks its lines badly, read from its text's boxes: a comma on another line than the word in brackets
+ * before it, and «мои визы:» on two lines (or not in the phrase). Empty when it breaks well.
+ */
+async function badBreaks(page: Page): Promise<string[]> {
+	return phrase(page).evaluate((plate) => {
+		// A stretch of text, whose boxes are one a line.
+		const range = document.createRange();
+		const bad: string[] = [];
+		for (const word of Array.from(plate.querySelectorAll('button'))) {
+			const after = word.nextSibling;
+			if (after?.nodeType === Node.TEXT_NODE && after.textContent?.startsWith(',') === true) {
+				range.setStart(after, 0);
+				range.setEnd(after, 1);
+				const last = Array.from(word.getClientRects()).at(-1);
+				const comma = Array.from(range.getClientRects()).at(0);
+				if (last === undefined || comma === undefined || comma.top >= last.bottom || comma.bottom <= last.top) {
+					bad.push(`«${word.textContent}» and its comma`);
+				}
+			}
+		}
+		const walker = document.createTreeWalker(plate, NodeFilter.SHOW_TEXT);
+		let visasLines = 0;
+		for (let text = walker.nextNode(); text !== null; text = walker.nextNode()) {
+			const found = /мои\s+визы:/u.exec(text.textContent ?? '');
+			if (found !== null) {
+				range.setStart(text, found.index);
+				range.setEnd(text, found.index + found[0].length);
+				visasLines = new Set(Array.from(range.getClientRects()).map((box) => Math.round(box.bottom))).size;
+			}
+		}
+		if (visasLines !== 1) {
+			bad.push('«мои визы:»');
+		}
+		return bad;
+	});
+}
+
+for (const window of WIDE_WINDOWS) {
+	test.describe(`on ${windowName(window)}`, () => {
+		test.use(onWindow(window));
+
+		test.beforeEach(({ ringApi }) => {
+			rulesFrom(ringApi, OLD_RULES);
+		});
+
+		for (const [phraseOf, path] of [
+			['the longest phrase', LONGEST],
+			['the shortest phrase', SHORTEST],
+		] as const) {
+			test(`with ${phraseOf}, the phrase is one plate 12 px from the top and the left, no wider than 720 px and the window less 24, with the visa rules' date and for 5 s the data's sources in it, apart from the slider's row and the cards`, async ({
+				page,
+			}) => {
+				await openHeld(page, path);
+				await expect(sources(page)).toBeVisible();
+
+				const [plate, date, links] = await Promise.all([boxOf(phrase(page)), boxOf(rulesDate(page)), boxOf(sources(page))]);
+				expect(fromEdges(page, plate).top).toBeCloseTo(EDGE, 0);
+				expect(fromEdges(page, plate).left).toBeCloseTo(EDGE, 0);
+				expect(plate.width).toBeLessThanOrEqual(Math.min(WIDEST_PHRASE, window.width - 2 * EDGE));
+				expect(within(date, plate), 'the date in the plate').toBe(true);
+				expect(within(links, plate), 'the sources in the plate').toBe(true);
+				expect(links.y, 'the sources under the date').toBeGreaterThanOrEqual(date.y + date.height);
+				await expectApart(page, { phrase: phrase(page), 'slider row': slider(page), ...(await cardsInView(page)) });
+			});
+		}
+
+		test('after 5 s the sources leave the plate: it gets lower, keeps its top, left and width, and the slider and the cards stay', async ({
+			page,
+		}) => {
+			await openHeld(page, LONGEST);
+			await expect(sources(page)).toBeVisible();
+			const [plate, row, card] = await Promise.all([boxOf(phrase(page)), boxOf(slider(page)), boxOf(firstCard(page))]);
+
+			await page.clock.runFor(5000);
+
+			await expect(sources(page)).toHaveCount(0);
+			await expect(page.getByRole('link', { name: 'OpenStreetMap' })).toHaveCount(0);
+			const after = await boxOf(phrase(page));
+			expect(after.height).toBeLessThan(plate.height);
+			expect(after).toMatchObject({ x: plate.x, y: plate.y, width: plate.width });
+			expect(await boxOf(slider(page))).toEqual(row);
+			expect(await boxOf(firstCard(page))).toEqual(card);
+		});
+
+		test('the longest phrase keeps each comma on the line of the word before it, and «мои визы:» on one line', async ({ page }) => {
+			await openHeld(page, LONGEST);
+
+			expect(await badBreaks(page)).toEqual([]);
+		});
+	});
+}
+
+test.describe('on 768×1024, touch', () => {
+	test.use(onWindow({ width: 768, height: 1024, pointer: 'touch', layout: 'wide' }));
+
+	test('the short phrase «Из точки Белград, 5–6 часов в пути. Гражданство РФ, мои визы: нет ⓘ» is one line', async ({ page, ringApi }) => {
+		rulesFrom(ringApi, new Date(START).toISOString());
+		await openHeld(page, '/#/?p=44.81760,20.45730&h=6&cit=RUS', '5–6 ч');
+		await expect(phrase(page)).toContainText('Из точки Белград, 5–6 часов в пути. Гражданство РФ, мои визы: нет');
+
+		const [first, last] = await Promise.all([
+			boxOf(phrase(page).getByRole('button', { name: 'Белград' })),
+			boxOf(phrase(page).getByRole('button', { name: 'Что важно знать' })),
+		]);
+		expect(first.y < last.y + last.height && last.y < first.y + first.height, '«Белград» and ⓘ on one line').toBe(true);
+	});
+});
 
 /** What the person has done on the screen and in «Гражданство», which a new look must keep. */
 async function whatTheyDid(page: Page) {
