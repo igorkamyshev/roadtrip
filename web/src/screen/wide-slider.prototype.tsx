@@ -5,7 +5,8 @@
 // A «Линейка под фразой»: a row of all 16 cells, hours then days, under the phrase at the top left.
 // B «Высокая колонка справа»: a column of all 16 cells at the right edge, from under the phrase to the bottom, the
 // carousel ending before it.
-// C «Шкала над каруселью»: a row over the carousel at the bottom left, one unit at a time with «часы | дни».
+// C «Шкала над каруселью»: a row over the carousel at the bottom left, one unit at a time, the other unit's tab at
+// its end, «дни →» on the right of the hours, «← часы» on the left of the days (#97, the Owner's pick).
 import { useEffect, useState, useSyncExternalStore, type KeyboardEvent, type PointerEvent, type ReactElement } from 'react';
 import { HOURS_PER_DAY, MAX_HOURS, SLIDER_CELLS } from 'worker/api';
 import { SourcesOnOpen } from './attribution.tsx';
@@ -183,7 +184,7 @@ function WideSlider({ variant, value, onCommit, cached }: WideSliderProps): Reac
 	};
 	return (
 		<div className={`ws ws-${variant.toLowerCase()}`}>
-			{variant === 'C' ? <Units inDays={isDay(shown)} onCommit={onCommit} /> : null}
+			{variant === 'C' && isDay(value) ? <Tab to={MAX_HOURS} shown={shown} onCommit={onCommit} /> : null}
 			<div
 				className="ws-track"
 				// oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- prototype: the slider's role, as in slider.tsx
@@ -215,54 +216,54 @@ function WideSlider({ variant, value, onCommit, cached }: WideSliderProps): Reac
 					setLive(undefined);
 				}}
 			>
-				<Groups oneUnit={variant === 'C'} shown={shown} cached={cached} />
+				<Groups unit={variant === 'C' ? value : undefined} shown={shown} cached={cached} />
 			</div>
+			{variant === 'C' && !isDay(value) ? <Tab to={HOURS_PER_DAY * 2} shown={shown} onCommit={onCommit} /> : null}
 		</div>
 	);
 }
 
-/** C's «часы | дни»: the other unit's nearest cell, as the narrow slider's tab. */
-function Units({ inDays, onCommit }: { readonly inDays: boolean; readonly onCommit: (hours: number) => void }): ReactElement {
+/**
+ * C's tab of the other unit at the row's end on its side, as the narrow slider's: «дни →» after the hours, «← часы»
+ * before the days. A tap, or a drag from the row past its end, chooses the other unit's nearest cell; the row turns
+ * only once that is committed.
+ */
+function Tab({
+	to,
+	shown,
+	onCommit,
+}: {
+	readonly to: number;
+	readonly shown: number;
+	readonly onCommit: (hours: number) => void;
+}): ReactElement {
 	return (
-		<div className="ws-units">
-			<button
-				type="button"
-				className={inDays ? '' : 'on'}
-				onClick={() => {
-					if (inDays) {
-						onCommit(MAX_HOURS);
-					}
-				}}
-			>
-				часы
-			</button>
-			<button
-				type="button"
-				className={inDays ? 'on' : ''}
-				onClick={() => {
-					if (!inDays) {
-						onCommit(HOURS_PER_DAY * 2);
-					}
-				}}
-			>
-				дни
-			</button>
-		</div>
+		<button
+			type="button"
+			className={shown === to ? 'ws-tab on' : 'ws-tab'}
+			data-hours={to}
+			onClick={() => {
+				onCommit(to);
+			}}
+		>
+			{isDay(to) ? 'дни →' : '← часы'}
+		</button>
 	);
 }
 
 function Groups({
-	oneUnit,
+	unit,
 	shown,
 	cached,
 }: {
-	readonly oneUnit: boolean;
+	/** C: the committed cell, whose unit alone the row shows; A and B show both. */
+	readonly unit: number | undefined;
 	readonly shown: number;
 	readonly cached: ReadonlySet<number>;
 }): ReactElement {
 	const cell = (hours: number): ReactElement => <Cell key={hours} hours={hours} shown={shown} cached={cached} />;
-	if (oneUnit) {
-		return <div className="ws-group">{(isDay(shown) ? DAY_CELLS : HOUR_CELLS).map((hours) => cell(hours))}</div>;
+	if (unit !== undefined) {
+		return <div className="ws-group">{(isDay(unit) ? DAY_CELLS : HOUR_CELLS).map((hours) => cell(hours))}</div>;
 	}
 	return (
 		<>

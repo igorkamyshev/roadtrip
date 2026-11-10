@@ -1102,7 +1102,7 @@ a {
 
 @media (prefers-color-scheme: dark) {
 	:root:not([data-theme='light']) .ws-cell.on .ws-num,
-	:root:not([data-theme='light']) .ws-units button.on {
+	:root:not([data-theme='light']) .ws-tab.on {
 		color: #0b1630;
 	}
 }
@@ -1187,8 +1187,8 @@ a {
 	min-height: 0;
 }
 
-/* C: a row over the carousel's first cards, one unit at a time, «часы | дни» before it; the row as wide as the
-   twelve hours, a day three hours wide. */
+/* C: a row over the carousel's first cards, one unit at a time, the other unit's tab at its end; the row as wide in
+   both units, a day three hours wide. */
 .ws-c {
 	margin-left: var(--edge-left);
 	align-items: stretch;
@@ -1207,28 +1207,23 @@ a {
 	height: 40px;
 }
 
-.ws-units {
-	display: flex;
-	padding: 6px;
-	gap: 2px;
-	background: var(--surface);
-	border-radius: var(--radius);
-	box-shadow: var(--shadow);
-}
-
-.ws-units button {
+/* C's tab of the other unit: a pill of its own at the row's end, as tall as the row. */
+.ws-tab {
+	flex: none;
+	padding: 0 16px;
 	border: 0;
-	padding: 0 12px;
-	border-radius: var(--radius-inner);
-	background: none;
+	border-radius: var(--radius);
+	background: var(--surface);
+	box-shadow: var(--shadow);
 	font: inherit;
 	font-size: 14px;
 	font-weight: 600;
 	color: var(--ring);
+	white-space: nowrap;
 	cursor: pointer;
 }
 
-.ws-units button.on {
+.ws-tab.on {
 	background: var(--ring);
 	color: #fff;
 }
