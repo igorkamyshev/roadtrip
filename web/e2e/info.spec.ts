@@ -1,5 +1,5 @@
 // ⓘ in the phrase (spec #20 «Экран», «ⓘ «Что важно знать»»; story 46): plates, the visa data's accuracy, Google
-// Maps' routes, the travel-time formula and the data's sources.
+// Maps' routes, the travel-time formula, the day of 8 hours (#140) and the data's sources.
 import { expect, test } from './fixtures.ts';
 import { phrase } from './screen.ts';
 
@@ -13,7 +13,7 @@ test('ⓘ tells what is important to know, with the sources of the data', async 
 		'В страны ЕС не пускают машины с российскими номерами. Если едете на такой машине, страны ЕС в кольце вам не подходят.',
 		'Визовые правила — по данным Sherpa и нашей таблицы исключений. Они меняются: перед поездкой проверьте правила въезда. Условия вроде многократной или уже использованной визы мы не проверяем.',
 		'Маршрут строят Google Карты. Они не знают, какие страны для вас закрыты, и могут повести через них. За их маршрут мы не отвечаем.',
-		'Время в пути — время за рулём ×1,2 и по 1,5 ч на каждой границе с паспортным контролем.',
+		'Время в пути — время за рулём ×1,2 и по 1,5 ч на каждой границе с паспортным контролем. День — 8 часов в пути, без ночёвки.',
 		'Источники данных: OpenStreetMap, GeoNames (CC BY 4.0, с изменениями), Protomaps, ESA WorldCover (CC BY 4.0), Sherpa.',
 	]) {
 		await expect(sheet).toContainText(text);

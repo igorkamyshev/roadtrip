@@ -71,10 +71,10 @@ test('the chosen hour reads as its span without «ч», the others as their hour
 	await expect(sliderHour(page, 1)).toHaveText('до 1');
 	await expect(sliderHour(page, 7)).toHaveText('7');
 
-	await sliderHour(page, 12).click();
+	await sliderHour(page, 8).click();
 
-	await expectRingCard(page, '11–12 ч');
-	await expect(sliderHour(page, 12)).toHaveText('11–12');
+	await expectRingCard(page, '7–8 ч');
+	await expect(sliderHour(page, 8)).toHaveText('7–8');
 	await expect(sliderHour(page, 1)).toHaveText('1');
 });
 

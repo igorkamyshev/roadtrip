@@ -362,12 +362,12 @@ test.describe('ring result', () => {
 		expect(result.wait_ms).toBe(1000);
 	});
 
-	test('tells a ring of days by its upper bound in hours: 24 for day 2', async ({ page, ringApi, posthog }) => {
+	test('tells a ring of days by its upper bound in hours: 16 for day 2', async ({ page, ringApi, posthog }) => {
 		ringApi.respond(() => belgradeRing());
 
 		await openInProduction(page, `${FROM_BELGRADE}&d=2&cit=RUS`);
 
-		await expect.poll(() => posthog.named('ring result'), SENT).toEqual([expect.objectContaining({ outcome: 'ring', hours: 24 })]);
+		await expect.poll(() => posthog.named('ring result'), SENT).toEqual([expect.objectContaining({ outcome: 'ring', hours: 16 })]);
 	});
 
 	for (const source of ['cache', 'joined'] as const) {
@@ -504,12 +504,12 @@ test.describe('ring result', () => {
 		await openInProduction(page, LINK_3_HOURS_RUS);
 		await expect(firstCard(page)).toContainText(/10\s*городов/u);
 
-		await dragSlider(page, 8);
+		await dragSlider(page, 7);
 
-		await expect.poll(() => posthog.named('ring result').map(({ hours }) => hours), SENT).toEqual([3, 8]);
+		await expect.poll(() => posthog.named('ring result').map(({ hours }) => hours), SENT).toEqual([3, 7]);
 		// The next ring result follows the two: nothing came of the hours passed between.
 		await slider(page).press('ArrowUp');
-		await expect.poll(() => posthog.named('ring result').map(({ hours }) => hours), SENT).toEqual([3, 8, 9]);
+		await expect.poll(() => posthog.named('ring result').map(({ hours }) => hours), SENT).toEqual([3, 7, 8]);
 	});
 });
 

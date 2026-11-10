@@ -1,12 +1,13 @@
-// The slider (spec #20 «Экран», «Ползунок»; #83, #97): the hours 1–12, then the days 2…MAX_DAYS. On the narrow screen a
-// column at the right edge of the map, on the wide one a row at the bottom left over the carousel (styles.css). It is
-// in one unit at a time, the other folded into a tab: in hours twelve cells, 1 at the bottom or the left, with «дни ↑»
-// over them or «дни →» right of them; in days a cell a day, 2 at the bottom or the left, with «часы ↓» under them or
-// «← часы» left of them. A cell is a ring, N − 1 to N h or D − 1 to D days, and the chosen one is blue. While the
-// slider is dragged the cell under the pointer, or the tab, is chosen on the screen only; the new cell is committed
-// when it is let go (a key commits at once), so a drag asks for one ring, not one per cell it passed, and a tap on a
-// cell or the tab chooses it. The slider turns to the other unit only once that is committed, never under the finger.
-// The cells whose rings are in memory are light green. Here the screen departs from the prototype's track and thumb.
+// The slider (spec #20 «Экран», «Ползунок»; #83, #97, #140): the hours 1…MAX_HOURS, then the days 2…MAX_DAYS. On the
+// narrow screen a column at the right edge of the map, on the wide one a row at the bottom left over the carousel
+// (styles.css). It is in one unit at a time, the other folded into a tab: in hours a cell an hour, 1 at the bottom or
+// the left, with «дни ↑» over them or «дни →» right of them; in days a cell a day, 2 at the bottom or the left, with
+// «часы ↓» under them or «← часы» left of them. A cell is a ring, N − 1 to N h or D − 1 to D days, and the chosen one
+// is blue. While the slider is dragged the cell under the pointer, or the tab, is chosen on the screen only; the new
+// cell is committed when it is let go (a key commits at once), so a drag asks for one ring, not one per cell it passed,
+// and a tap on a cell or the tab chooses it. The slider turns to the other unit only once that is committed, never
+// under the finger. The cells whose rings are in memory are light green. Here the screen departs from the prototype's
+// track and thumb.
 import { useRef, useState, type KeyboardEvent, type PointerEvent, type ReactElement, type RefObject } from 'react';
 import { HOURS_PER_DAY, MAX_HOURS, SLIDER_CELLS } from 'worker/api';
 import { useMedia } from '../use-media.ts';

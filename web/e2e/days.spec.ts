@@ -1,9 +1,9 @@
 // Days on the slider (#83; spec #20 «Экран», «Ползунок», «Состояние, ссылка и память браузера», with their
-// amendments): after the hours 1–12, the days 2…MAX_DAYS, day D the ring 12·(D − 1) to 12·D h. The slider shows one
-// unit at a time and folds the other into a tab, «дни ↑» over the hours' panel or «часы ↓» under the days'; it turns
-// to the other unit only once that is committed. The link says `d=D` for a day.
+// amendments): after the hours 1–8, the days 2…MAX_DAYS, day D the ring 8·(D − 1) to 8·D h, a day 8 h of travel
+// (#140). The slider shows one unit at a time and folds the other into a tab, «дни ↑» over the hours' panel or «часы ↓»
+// under the days'; it turns to the other unit only once that is committed. The link says `d=D` for a day.
 import type { Locator, Page } from '@playwright/test';
-import { allowGeolocation, BELGRADE, expect, LINK_12_HOURS_RUS, squareRing, test, visaRules } from './fixtures.ts';
+import { allowGeolocation, BELGRADE, expect, LINK_LAST_HOUR_RUS, squareRing, test, visaRules } from './fixtures.ts';
 import {
 	boxOf,
 	dottedHours,
@@ -40,57 +40,54 @@ test.beforeEach(async ({ context, ringApi }) => {
 	ringApi.respond(bandFor);
 });
 
-test('in hours the slider has twelve cells and «дни ↑» over them; a key up from 12 h asks for day 2, 12–24 h', async ({
-	page,
-	ringApi,
-}) => {
-	await page.goto(LINK_12_HOURS_RUS);
-	await expectRingCard(page, '11–12 ч');
-	await expect(sliderCells(page)).toHaveCount(12);
+test('in hours the slider has eight cells and «дни ↑» over them; a key up from 8 h asks for day 2, 8–16 h', async ({ page, ringApi }) => {
+	await page.goto(LINK_LAST_HOUR_RUS);
+	await expectRingCard(page, '7–8 ч');
+	await expect(sliderCells(page)).toHaveCount(8);
 	await expect(sliderTab(page)).toHaveText('дни ↑');
 	expect(await tabOverPanel(page)).toBe(true);
 
 	await slider(page).press('ArrowUp');
 
 	await expectRingCard(page, '1–2 дня');
-	// Days 2 to 5 (MAX_DAYS, docs/container-bench.md).
-	await expect(sliderCells(page)).toHaveCount(4);
+	// Days 2 to 7 (MAX_DAYS, docs/container-bench.md).
+	await expect(sliderCells(page)).toHaveCount(6);
 	await expect(sliderTab(page)).toHaveText('часы ↓');
 	expect(await tabOverPanel(page)).toBe(false);
-	expect(ringApi.calls.at(-1)).toMatchObject({ from: 12, hours: 24 });
+	expect(ringApi.calls.at(-1)).toMatchObject({ from: 8, hours: 16 });
 	await expect(page).toHaveURL(/#\/\?p=44\.81760,20\.45730&d=2&cit=RUS$/u);
 });
 
-test('a key down from day 2 goes back to 12 h', async ({ page }) => {
+test('a key down from day 2 goes back to 8 h', async ({ page }) => {
 	await page.goto(`${FROM_BELGRADE}&d=2&cit=RUS`);
 	await expectRingCard(page, '1–2 дня');
 
 	await slider(page).press('ArrowDown');
 
-	await expectRingCard(page, '11–12 ч');
-	await expect(sliderCells(page)).toHaveCount(12);
+	await expectRingCard(page, '7–8 ч');
+	await expect(sliderCells(page)).toHaveCount(8);
 });
 
-test('a tap on «часы ↓» chooses 12 h, and a tap on «дни ↑» day 2', async ({ page, ringApi }) => {
+test('a tap on «часы ↓» chooses 8 h, and a tap on «дни ↑» day 2', async ({ page, ringApi }) => {
 	await page.goto(`${FROM_BELGRADE}&d=4&cit=RUS`);
 	await expectRingCard(page, '3–4 дня');
 
 	await sliderTab(page).click();
-	await expectRingCard(page, '11–12 ч');
+	await expectRingCard(page, '7–8 ч');
 
 	await sliderTab(page).click();
 	await expectRingCard(page, '1–2 дня');
 	expect(ringApi.calls.map((call) => [call.from, call.hours])).toEqual([
-		[36, 48],
-		[11, 12],
-		[12, 24],
+		[24, 32],
+		[7, 8],
+		[8, 16],
 	]);
 });
 
 test('a drag from an hour onto «дни ↑» chooses day 2 when let go, and the column stays in hours until then', async ({ page, ringApi }) => {
-	await page.goto(LINK_12_HOURS_RUS);
-	await expectRingCard(page, '11–12 ч');
-	const [from, tab] = await Promise.all([boxOf(sliderHour(page, 10)), boxOf(sliderTab(page))]);
+	await page.goto(LINK_LAST_HOUR_RUS);
+	await expectRingCard(page, '7–8 ч');
+	const [from, tab] = await Promise.all([boxOf(sliderHour(page, 6)), boxOf(sliderTab(page))]);
 
 	await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
 	await page.mouse.down();
@@ -98,34 +95,34 @@ test('a drag from an hour onto «дни ↑» chooses day 2 when let go, and the
 
 	// Held on the tab: day 2 is chosen on the screen, the column is still the hours', nothing is asked for.
 	await expect(slider(page)).toHaveAttribute('aria-valuetext', '1–2 дня');
-	await expect(sliderCells(page)).toHaveCount(12);
+	await expect(sliderCells(page)).toHaveCount(8);
 	expect(ringApi.calls).toHaveLength(1);
 
 	await page.mouse.up();
 
 	await expectRingCard(page, '1–2 дня');
-	await expect(sliderCells(page)).toHaveCount(4);
+	await expect(sliderCells(page)).toHaveCount(6);
 	expect(ringApi.calls.map((call) => [call.from, call.hours])).toEqual([
-		[11, 12],
-		[12, 24],
+		[7, 8],
+		[8, 16],
 	]);
 });
 
-test('a tap on the panel over the cell of 12 h, short of the tab, chooses 12 h', async ({ page, ringApi }) => {
-	await page.goto(`${FROM_BELGRADE}&h=11&cit=RUS`);
-	await expectRingCard(page, '10–11 ч');
-	const [panel, cell] = await Promise.all([boxOf(sliderPanel(page)), boxOf(sliderHour(page, 12))]);
+test('a tap on the panel over the cell of 8 h, short of the tab, chooses 8 h', async ({ page, ringApi }) => {
+	await page.goto(`${FROM_BELGRADE}&h=7&cit=RUS`);
+	await expectRingCard(page, '6–7 ч');
+	const [panel, cell] = await Promise.all([boxOf(sliderPanel(page)), boxOf(sliderHour(page, 8))]);
 
 	// The panel's padding over the top cell.
 	await page.mouse.click(cell.x + cell.width / 2, (panel.y + cell.y) / 2);
 
-	await expectRingCard(page, '11–12 ч');
-	expect(ringApi.calls.at(-1)).toMatchObject({ from: 11, hours: 12 });
+	await expectRingCard(page, '7–8 ч');
+	expect(ringApi.calls.at(-1)).toMatchObject({ from: 7, hours: 8 });
 });
 
 test('the tab is as wide as the panel, and a tap just past it, over the map, takes it too', async ({ page }) => {
-	await page.goto(LINK_12_HOURS_RUS);
-	await expectRingCard(page, '11–12 ч');
+	await page.goto(LINK_LAST_HOUR_RUS);
+	await expectRingCard(page, '7–8 ч');
 	const [tab, panel] = await Promise.all([boxOf(sliderTab(page)), boxOf(sliderPanel(page))]);
 	expect(tab.width).toBeCloseTo(panel.width, 0);
 
@@ -138,9 +135,9 @@ test('the chosen day reads as its span over «дня», the others as their day'
 	await page.goto(`${FROM_BELGRADE}&d=3&cit=RUS`);
 	await expectRingCard(page, '2–3 дня');
 
-	await expect(sliderHour(page, 36)).toHaveText('2–3дня');
-	await expect(sliderHour(page, 24)).toHaveText('2');
-	await expect(sliderHour(page, 60)).toHaveText('5');
+	await expect(sliderHour(page, 24)).toHaveText('2–3дня');
+	await expect(sliderHour(page, 16)).toHaveText('2');
+	await expect(sliderHour(page, 56)).toHaveText('7');
 });
 
 test('the link d=3 opens the ring of 2–3 days', async ({ page, ringApi }) => {
@@ -153,14 +150,22 @@ test('the link d=3 opens the ring of 2–3 days', async ({ page, ringApi }) => {
 	// A band with cities around Belgrade, from 1° to 3°.
 	const call = await ringApi.answer({ ...squareRing(BELGRADE.lat, BELGRADE.lon, [1, 3]), ...visaRules() });
 
-	expect(call).toMatchObject({ lat: '44.81760', lon: '20.45730', from: 24, hours: 36 });
+	expect(call).toMatchObject({ lat: '44.81760', lon: '20.45730', from: 16, hours: 24 });
 	await expect(firstCard(page)).toHaveAttribute('data-state', 'ring');
 	await expect(firstCard(page)).toContainText('В кольце 2–3 дня');
 });
 
+test('the link d=7, the last day, asks for the ring of 48–56 h', async ({ page, ringApi }) => {
+	await page.goto(`${FROM_BELGRADE}&d=7&cit=RUS`);
+
+	await expectRingCard(page, '6–7 дней');
+	expect(ringApi.calls).toEqual([expect.objectContaining({ from: 48, hours: 56 })]);
+});
+
 for (const [what, search] of [
 	['both h and d', 'h=5&d=3'],
-	['a day after the last, 5', 'd=6'],
+	['a day after the last, 7', 'd=8'],
+	['an hour past the last, 8, as old links have (#140)', 'h=10'],
 	['day 1, which the hours are', 'd=1'],
 ]) {
 	test(`a link with ${what} opens 1 h`, async ({ page, ringApi }) => {
@@ -177,16 +182,16 @@ test('a day whose ring is in memory is marked, after going to the hours and back
 	await slider(page).press('ArrowDown');
 	await expectRingCard(page, '1–2 дня');
 	await slider(page).press('ArrowDown');
-	await expectRingCard(page, '11–12 ч');
+	await expectRingCard(page, '7–8 ч');
 
 	await slider(page).press('ArrowUp');
 
 	await expectRingCard(page, '1–2 дня');
-	expect(await dottedHours(page)).toEqual([24, 36]);
+	expect(await dottedHours(page)).toEqual([16, 24]);
 	expect(ringApi.calls).toHaveLength(3);
 });
 
-// On the wide screen the slider is a row over the carousel (#97): the hours 1…12 left to right with «дни →» right of
+// On the wide screen the slider is a row over the carousel (#97): the hours 1…8 left to right with «дни →» right of
 // them, the days with «← часы» left of them. The same state, keys and commit on letting go as the column's.
 /**
  * Presses the mouse at the middle of `from`, moves it in steps to the middle of `onto`, and calls `meanwhile` before it
@@ -217,40 +222,40 @@ async function tabRightOfCells(page: Page): Promise<boolean> {
 test.describe('on the wide screen', () => {
 	test.use({ viewport: { width: 1440, height: 900 } });
 
-	test('in hours the row has twelve cells and «дни →» right of them; a key right from 12 h goes to day 2, with «← часы» left of its four', async ({
+	test('in hours the row has eight cells and «дни →» right of them; a key right from 8 h goes to day 2, with «← часы» left of its six', async ({
 		page,
 		ringApi,
 	}) => {
-		await page.goto(LINK_12_HOURS_RUS);
-		await expectRingCard(page, '11–12 ч');
-		await expect(sliderCells(page)).toHaveCount(12);
+		await page.goto(LINK_LAST_HOUR_RUS);
+		await expectRingCard(page, '7–8 ч');
+		await expect(sliderCells(page)).toHaveCount(8);
 		await expect(sliderTab(page)).toHaveText('дни →');
 		expect(await tabRightOfCells(page)).toBe(true);
 
 		await slider(page).press('ArrowRight');
 
 		await expectRingCard(page, '1–2 дня');
-		await expect(sliderCells(page)).toHaveCount(4);
+		await expect(sliderCells(page)).toHaveCount(6);
 		await expect(sliderTab(page)).toHaveText('← часы');
 		expect(await tabRightOfCells(page)).toBe(false);
-		expect(ringApi.calls.at(-1)).toMatchObject({ from: 12, hours: 24 });
+		expect(ringApi.calls.at(-1)).toMatchObject({ from: 8, hours: 16 });
 	});
 
-	test('a tap on «← часы» chooses 12 h, and a tap on «дни →» day 2', async ({ page, ringApi }) => {
+	test('a tap on «← часы» chooses 8 h, and a tap on «дни →» day 2', async ({ page, ringApi }) => {
 		await page.goto(`${FROM_BELGRADE}&d=4&cit=RUS`);
 		await expectRingCard(page, '3–4 дня');
 		await expect(sliderTab(page)).toHaveText('← часы');
 
 		await sliderTab(page).click();
-		await expectRingCard(page, '11–12 ч');
+		await expectRingCard(page, '7–8 ч');
 		await expect(sliderTab(page)).toHaveText('дни →');
 
 		await sliderTab(page).click();
 		await expectRingCard(page, '1–2 дня');
 		expect(ringApi.calls.map((call) => [call.from, call.hours])).toEqual([
-			[36, 48],
-			[11, 12],
-			[12, 24],
+			[24, 32],
+			[7, 8],
+			[8, 16],
 		]);
 	});
 
@@ -260,39 +265,39 @@ test.describe('on the wide screen', () => {
 		expect(await tabRightOfCells(page)).toBe(true);
 		const shown = await recordSliderHours(page);
 
-		await dragOnto(page, { from: sliderHour(page, 3), onto: sliderHour(page, 9) }, async () => {
-			await expect(slider(page)).toHaveAttribute('aria-valuetext', '8–9 ч');
+		await dragOnto(page, { from: sliderHour(page, 3), onto: sliderHour(page, 7) }, async () => {
+			await expect(slider(page)).toHaveAttribute('aria-valuetext', '6–7 ч');
 			expect(ringApi.calls).toHaveLength(1);
 		});
 
-		await expectRingCard(page, '8–9 ч');
-		expect(await shown()).toEqual([4, 5, 6, 7, 8, 9]);
-		expect(ringApi.calls.map((call) => call.hours)).toEqual([3, 9]);
+		await expectRingCard(page, '6–7 ч');
+		expect(await shown()).toEqual([4, 5, 6, 7]);
+		expect(ringApi.calls.map((call) => call.hours)).toEqual([3, 7]);
 	});
 
 	test('a drag from an hour past the row’s end onto «дни →» chooses day 2 when let go, and the row stays in hours until then', async ({
 		page,
 		ringApi,
 	}) => {
-		await page.goto(LINK_12_HOURS_RUS);
-		await expectRingCard(page, '11–12 ч');
+		await page.goto(LINK_LAST_HOUR_RUS);
+		await expectRingCard(page, '7–8 ч');
 		expect(await tabRightOfCells(page)).toBe(true);
 
-		await dragOnto(page, { from: sliderHour(page, 10), onto: sliderTab(page) }, async () => {
+		await dragOnto(page, { from: sliderHour(page, 6), onto: sliderTab(page) }, async () => {
 			await expect(slider(page)).toHaveAttribute('aria-valuetext', '1–2 дня');
-			await expect(sliderCells(page)).toHaveCount(12);
+			await expect(sliderCells(page)).toHaveCount(8);
 			expect(ringApi.calls).toHaveLength(1);
 		});
 
 		await expectRingCard(page, '1–2 дня');
-		await expect(sliderCells(page)).toHaveCount(4);
+		await expect(sliderCells(page)).toHaveCount(6);
 		expect(ringApi.calls.map((call) => [call.from, call.hours])).toEqual([
-			[11, 12],
-			[12, 24],
+			[7, 8],
+			[8, 16],
 		]);
 	});
 
-	test('a drag from a day past the row’s start onto «← часы» chooses 12 h when let go, and the row stays in days until then', async ({
+	test('a drag from a day past the row’s start onto «← часы» chooses 8 h when let go, and the row stays in days until then', async ({
 		page,
 		ringApi,
 	}) => {
@@ -300,17 +305,17 @@ test.describe('on the wide screen', () => {
 		await expectRingCard(page, '2–3 дня');
 		expect(await tabRightOfCells(page)).toBe(false);
 
-		await dragOnto(page, { from: sliderHour(page, 36), onto: sliderTab(page) }, async () => {
-			await expect(slider(page)).toHaveAttribute('aria-valuetext', '11–12 ч');
-			await expect(sliderCells(page)).toHaveCount(4);
+		await dragOnto(page, { from: sliderHour(page, 24), onto: sliderTab(page) }, async () => {
+			await expect(slider(page)).toHaveAttribute('aria-valuetext', '7–8 ч');
+			await expect(sliderCells(page)).toHaveCount(6);
 			expect(ringApi.calls).toHaveLength(1);
 		});
 
-		await expectRingCard(page, '11–12 ч');
-		await expect(sliderCells(page)).toHaveCount(12);
+		await expectRingCard(page, '7–8 ч');
+		await expect(sliderCells(page)).toHaveCount(8);
 		expect(ringApi.calls.map((call) => [call.from, call.hours])).toEqual([
-			[24, 36],
-			[11, 12],
+			[16, 24],
+			[7, 8],
 		]);
 	});
 });

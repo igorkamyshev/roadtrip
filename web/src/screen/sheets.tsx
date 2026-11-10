@@ -1,10 +1,12 @@
 // The sheets the phrase opens (spec #20 «Экран»): «Гражданство», «Мои визы» and «Что важно знать». «Откуда едем»
 // (src/start/start-sheet.tsx) and the list of all cities (src/cities/cities-sheet.tsx) are `Sheet`s too.
 import { EXEMPTION_VISAS, utcDate } from 'rules/held-visas';
+import { HOURS_PER_DAY } from 'worker/api';
 import { useId, useLayoutEffect, useRef, useState, type ReactElement, type ReactNode, type Ref, type RefObject } from 'react';
 import { searchable } from '../cities/search.ts';
 import { DataSources } from './attribution.tsx';
 import { useMinute } from './clock.ts';
+import { plural } from './copy.ts';
 import { CITIZENSHIP_CHOICES, countryName, DEFAULT_CITIZENSHIP, SINGLE_COUNTRY_VISAS, visaName } from './countries.ts';
 import { opensByRows, opensText } from './held-visas.ts';
 import { CheckIcon, CloseIcon, InfoIcon, SearchIcon, WarnIcon } from './icons.tsx';
@@ -252,7 +254,10 @@ export function InfoSheet({ onClose }: { readonly onClose: () => void }): ReactE
 						отвечаем.
 					</span>
 				</div>
-				<p className="muted small">Время в пути — время за рулём ×1,2 и по 1,5 ч на каждой границе с паспортным контролем.</p>
+				<p className="muted small">
+					Время в пути — время за рулём ×1,2 и по 1,5 ч на каждой границе с паспортным контролем. День — {HOURS_PER_DAY}{' '}
+					{plural(HOURS_PER_DAY, ['час', 'часа', 'часов'])} в пути, без ночёвки.
+				</p>
 				<p className="muted small">
 					<DataSources />
 				</p>

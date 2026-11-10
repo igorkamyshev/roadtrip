@@ -5,7 +5,7 @@
 //       [--from <hours>] [--closed <alpha-3,alpha-3,…>] [--out <file.geojson>]
 //
 // For example, with https://download.geofabrik.de/europe/andorra-latest.osm.pbf, --lat 42.5063 --lon 1.5218 --hours 2.
-// The ring is (N − 1, N] hours, or (--from, N]: `--from 12 --hours 24` is the ring of day 2 (#82). `--closed` lists
+// The ring is (N − 1, N] hours, or (--from, N]: `--from 8 --hours 16` is the ring of day 2 (#82, #140). `--closed` lists
 // the closed countries; those the border table closes for everyone are closed anyway.
 import { writeFileSync } from 'node:fs';
 import { parseArgs } from 'node:util';
