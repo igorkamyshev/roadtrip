@@ -494,6 +494,26 @@ test.describe('the carousel and the map', () => {
 			.toContain('https://www.google.com/maps/dir/?api=1&origin=44.81760%2C20.45730&destination=43.325%2C21.903&travelmode=driving');
 	});
 
+	test('tapping «Маршрут» of the next card, not the chosen one, opens the route and leaves the carousel where it was', async ({
+		page,
+		network,
+	}) => {
+		await scrollTo(page, 'Ниш');
+		await expect(chosenCard(page).locator('h3')).toHaveText('Ниш');
+		const next = chosenCard(page).locator('xpath=following-sibling::*[1]').getByRole('link', { name: 'Маршрут' });
+		const href = await next.getAttribute('href');
+		// Where the link is in the next card's part left in view: a click by locator would scroll the carousel to it.
+		const link = await boxOf(next);
+
+		const route = page.waitForEvent('popup');
+		await page.mouse.click(link.x + 16, link.y + link.height / 2);
+
+		await route;
+		await expect.poll(() => network.blocked).toContain(href);
+		await page.clock.fastForward(1000);
+		await expect(chosenCard(page).locator('h3')).toHaveText('Ниш');
+	});
+
 	test('tapping a city of the carousel on the map scrolls the carousel to its card', async ({ page }) => {
 		await tapMap(page, NIS);
 
@@ -562,15 +582,23 @@ test.describe('a city card', () => {
 		await expect
 			.poll(() => read(budapest))
 			.toBe('Будапешт Budapest · Венгрия · 1,7 млн по визе Шенгена Российские номера не пустят Маршрут');
-		await expect(budapest.getByRole('link', { name: 'Маршрут' })).toHaveAttribute(
+		const route = budapest.getByRole('link', { name: 'Маршрут' });
+		await expect(route).toHaveAttribute(
 			'href',
 			'https://www.google.com/maps/dir/?api=1&origin=44.81760%2C20.45730&destination=47.498%2C19.04&travelmode=driving',
 		);
-		await expect(budapest.getByRole('link', { name: 'Маршрут' })).toHaveAttribute('target', '_blank');
-		// A quiet link, not a button (#75): no button's look, no icon, and still a finger's tap.
-		await expect(budapest.getByRole('link', { name: 'Маршрут' })).not.toHaveClass(/\bbtn\b/u);
-		await expect(budapest.getByRole('link', { name: 'Маршрут' }).locator('svg')).toHaveCount(0);
-		expect((await budapest.getByRole('link', { name: 'Маршрут' }).boundingBox())?.height).toBeGreaterThanOrEqual(40);
+		await expect(route).toHaveAttribute('target', '_blank');
+		// A quiet link, not a button (#75): no button's look, no icon, the color and size of the card's facts, and still
+		// a finger's tap.
+		await expect(route).not.toHaveClass(/\bbtn\b/u);
+		await expect(route.locator('svg')).toHaveCount(0);
+		const facts = budapest.getByText('Budapest · Венгрия · 1,7 млн');
+		for (const property of ['color', 'font-size', 'background-color'] as const) {
+			expect(await route.evaluate((link, name) => getComputedStyle(link).getPropertyValue(name), property), property).toBe(
+				await facts.evaluate((line, name) => getComputedStyle(line).getPropertyValue(name), property),
+			);
+		}
+		expect((await route.boundingBox())?.height).toBeGreaterThanOrEqual(40);
 		// The start country; a city of 250 000 people is «250 тыс.».
 		expect(await read(card(page, 'Ниш'))).toBe('Ниш Niš · Сербия · 250 тыс. страна старта Маршрут');
 		// Without a visa, no mark.
