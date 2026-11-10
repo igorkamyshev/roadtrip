@@ -91,9 +91,92 @@ export function showCard(carousel: HTMLElement | null, city: number): boolean {
 
 /** On the wide screen: shows whole the card that holds `focused`, which the browser only scrolls into view itself. */
 export function showFocusedCard(carousel: HTMLElement | null, focused: Element): void {
-	let card: Element | null = focused;
+	cardHolding(carousel, focused)?.scrollIntoView({ inline: 'nearest', block: 'nearest' });
+}
+
+/** The carousel's card that holds `inside`, or undefined outside its cards. */
+function cardHolding(carousel: HTMLElement | null, inside: Element): HTMLElement | undefined {
+	let card: Element | null = inside;
 	while (card !== null && card.parentElement !== carousel) {
 		card = card.parentElement;
 	}
-	card?.scrollIntoView({ inline: 'nearest', block: 'nearest' });
+	return card instanceof HTMLElement ? card : undefined;
 }
+
+/** A step of the carousel: back, to the left, or forward. */
+export type Direction = -1 | 1;
+
+/** The carousel's cards, in order. */
+const cardsOf = (carousel: HTMLElement): HTMLElement[] =>
+	Array.from(carousel.children).filter((card): card is HTMLElement => card instanceof HTMLElement);
+
+/** How far the carousel's cards stand in from its left edge: where the first one stands before any scroll. */
+const insetOf = (carousel: HTMLElement): number => cardsOf(carousel).at(0)?.offsetLeft ?? 0;
+
+/** The carousel's scroll offset that puts `card` at its left edge, where a card snaps on the narrow screen. */
+const atLeftEdge = (carousel: HTMLElement, card: HTMLElement): number => card.offsetLeft - insetOf(carousel);
+
+/** The carousel's scroll offset, kept between its start and its end. */
+export const withinRow = (carousel: HTMLElement, left: number): number =>
+	Math.min(Math.max(0, left), carousel.scrollWidth - carousel.clientWidth);
+
+/**
+ * Where a step of the arrows takes the carousel scrolled to `from` on the wide screen (#99): the part of the row in
+ * view, between its edges' padding. Forward, the first card not whole in it comes to the left edge; back, the cards
+ * before the first whole one fill it, the last of them at the right edge. Undefined where the row has nothing more
+ * that way.
+ */
+export function pageTarget(carousel: HTMLElement, from: number, direction: Direction): number | undefined {
+	const cards = cardsOf(carousel);
+	const left = from + insetOf(carousel);
+	// oxlint-disable-next-line unicorn/prefer-number-coercion -- a computed length ends in «px», which Number() reads as NaN.
+	const right = from + carousel.clientWidth - Number.parseFloat(getComputedStyle(carousel).paddingRight);
+	if (direction === 1) {
+		const next = cards.find((card) => card.offsetLeft + card.offsetWidth > right + 0.5);
+		return next === undefined ? undefined : withinRow(carousel, atLeftEdge(carousel, next));
+	}
+	const before = cards.findLast((card) => card.offsetLeft < left - 0.5);
+	return before === undefined ? undefined : withinRow(carousel, before.offsetLeft + before.offsetWidth - (right - from));
+}
+
+/**
+ * Where a step of the arrows or the wheel takes the carousel scrolled to `from` on the narrow screen (#99): a card, the
+ * next one or the one before the current one comes to the left edge. Undefined at the row's end that way.
+ */
+export function cardTarget(carousel: HTMLElement, from: number, direction: Direction): number | undefined {
+	const cards = cardsOf(carousel);
+	const start = from + insetOf(carousel);
+	// The current card, the one nearest the left edge.
+	const distances = cards.map((card) => Math.abs(card.offsetLeft - start));
+	const index = distances.indexOf(Math.min(...distances)) + direction;
+	const next = index < 0 ? undefined : cards.at(index);
+	return next === undefined ? undefined : withinRow(carousel, atLeftEdge(carousel, next));
+}
+
+/**
+ * The card next to the one that holds `focused`, that way, which can take the focus, and what takes it: its name's
+ * button, «и ещё» itself. Undefined at the row's end; a card with nothing to focus, as the ring's first card, is
+ * passed over.
+ */
+export function neighbourToFocus(
+	carousel: HTMLElement | null,
+	focused: Element,
+	direction: Direction,
+): { readonly card: HTMLElement; readonly target: HTMLElement } | undefined {
+	const holding = cardHolding(carousel, focused);
+	if (carousel === null || holding === undefined) {
+		return undefined;
+	}
+	const cards = cardsOf(carousel);
+	const ordered = direction === 1 ? cards : cards.toReversed();
+	for (const card of ordered.slice(ordered.indexOf(holding) + 1)) {
+		const target = card.matches('button') ? card : card.querySelector<HTMLElement>('button, a[href]');
+		if (target !== null) {
+			return { card, target };
+		}
+	}
+	return undefined;
+}
+
+/** The carousel's scroll offset that puts `card` at its left edge: the narrow screen's step to a focused card. */
+export const leftEdgeOf = (carousel: HTMLElement, card: HTMLElement): number => withinRow(carousel, atLeftEdge(carousel, card));

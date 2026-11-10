@@ -77,6 +77,12 @@ export async function reopen(page: Page, ringApi: RingApi, path: string): Promis
 /** The phrase over the map: «Из точки [Белград], до 1 часа в пути. … ⓘ». */
 export const phrase = (page: Page): Locator => page.getByTestId('phrase');
 
+/** Turns the pin mode on, from Belgrade, the origin's word in the phrase: «Откуда едем» and «Указать на карте». */
+export async function startPinning(page: Page): Promise<void> {
+	await phrase(page).getByRole('button', { name: 'Белград' }).click();
+	await page.getByRole('dialog', { name: 'Откуда едем' }).getByRole('button', { name: 'Указать на карте' }).click();
+}
+
 /**
  * The first card of the carousel: the ring's summary or the state, which its `data-state` names (`FirstCardState` of
  * src/screen/first-card.tsx): a test that waits for the screen to get somewhere waits on that, not on the copy.
@@ -93,6 +99,12 @@ export const slider = (page: Page): Locator => page.getByRole('slider', { name: 
 
 /** The carousel at the bottom of the screen: the first card, the city cards, «и ещё». */
 export const carousel = (page: Page): Locator => page.getByTestId('carousel');
+
+/**
+ * The carousel's arrows, the plate ‹ › that scrolls it with a mouse (#99): in the slider's row at the right edge on the
+ * wide screen, over the cards at the left edge on the narrow one; none without a mouse.
+ */
+export const carouselArrows = (page: Page): Locator => page.getByTestId('carousel-arrows');
 
 /** «и ещё K / Все города →», the carousel's last card when the ring has more cities than cards. */
 export const moreCard = (page: Page): Locator => carousel(page).getByRole('button', { name: /и ещё/u });

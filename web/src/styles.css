@@ -123,14 +123,20 @@ a {
 	color: var(--ring);
 }
 
-/* A grid at any width: on the narrow screen everything in it stands out of the flow, on the wide one the grid lays out
-   the panels (below, `.screen` under `@media (--wide)`). The same display either side of the threshold, so that a
-   window crossing it does not rebuild the layout of what the screen holds, an open sheet and its scroll among it. */
+/* A grid at any width: on the narrow screen it lays out only the carousel at the bottom and, with a mouse, its arrows
+   over it (#99), and everything else stands out of the flow; on the wide one it lays out the panels (below, `.screen`
+   under `@media (--wide)`). The same display either side of the threshold, so that a window crossing it does not
+   rebuild the layout of what the screen holds, an open sheet and its scroll among it. */
 .screen {
 	position: relative;
 	height: 100%;
 	overflow: hidden;
 	display: grid;
+	grid-template:
+		'.' minmax(0, 1fr)
+		'arrows' auto
+		'cards' auto
+		/ minmax(0, 1fr);
 }
 
 /* ---------- map ---------- */
@@ -706,9 +712,11 @@ a {
 		height: auto;
 	}
 
+	/* 560 px, or less where the row's area is narrower: by the carousel's arrows (.c-vs). */
 	.sl-panel {
-		flex: none;
+		flex: 0 1 auto;
 		width: 560px;
+		min-width: 0;
 	}
 
 	.sl-cells {
@@ -857,8 +865,8 @@ a {
 
 /* On the wide screen the screen is a grid (#97, #104): at the top the phrase's plate, with the data's sources in it
    (#103, below), at the bottom the carousel the whole width, and over its cards the slider's row at the left edge,
-   --between over them (the carousel's top padding). The row has a place for the carousel's arrows at the right edge,
-   `arrows`, empty until they come (#99). .c-top gives up its column, and its children are the grid's; the map, the
+   --between over them (the carousel's top padding). The row has the carousel's arrows at the right edge, `arrows`, as
+   wide as they are and empty without them (#99). .c-top gives up its column, and its children are the grid's; the map, the
    pin's bar and the sheets stand over it as on the narrow screen. */
 @media (--wide) {
 	.screen {
@@ -908,12 +916,15 @@ a {
 		white-space: nowrap;
 	}
 
+	/* As long as the row with its tab, and no longer than its area, which the carousel's arrows leave it: there its
+	   panel narrows (#97). */
 	.c-vs {
 		grid-area: slider;
 		justify-self: start;
 		position: relative;
 		z-index: 11;
 		width: auto;
+		max-width: 100%;
 		min-height: 0;
 		max-height: none;
 		margin-top: 0;
@@ -933,10 +944,8 @@ a {
 		transparent calc(100% - var(--edge-right) - var(--slider-width))
 	);
 
-	position: absolute;
-	left: 0;
-	right: 0;
-	bottom: 0;
+	grid-area: cards;
+	position: relative;
 	z-index: 10;
 	display: flex;
 	gap: var(--between);
@@ -970,8 +979,6 @@ a {
 	.c-car {
 		--fade: linear-gradient(to right, transparent, #000 var(--edge-left), #000 calc(100% - var(--edge-right)), transparent);
 
-		grid-area: cards;
-		position: relative;
 		padding: var(--between) var(--edge-right) var(--edge-bottom) var(--edge-left);
 
 		/* The row only scrolls (#104): no snapping, which would undo a card shown whole by its nearer edge, and that edge
@@ -982,6 +989,47 @@ a {
 
 	.c-car::after {
 		content: none;
+	}
+}
+
+/* The carousel's arrows with a mouse (#99): a plate as high as the slider's row, two buttons in its 6 px of padding.
+   On the narrow screen it stands over the cards at the left edge, --between over them (the carousel's own 4 px of top
+   padding make up the rest), in the screen's row `arrows`, so the layout, not a reading of the carousel, gives it
+   room. */
+.c-arrows {
+	grid-area: arrows;
+	justify-self: start;
+	position: relative;
+	z-index: 11;
+	display: flex;
+	gap: 2px;
+	margin: 0 0 calc(var(--between) - 4px) var(--edge-left);
+	padding: 6px;
+	background: var(--surface);
+	border-radius: var(--radius);
+	box-shadow: var(--shadow);
+}
+
+.c-arrows button {
+	display: grid;
+	place-items: center;
+	width: 40px;
+	height: 40px;
+	border-radius: var(--radius-inner);
+}
+
+/* At the row's end that way an arrow is grey and does nothing; the plate stays as it is. */
+.c-arrows button:disabled {
+	color: var(--borderline);
+	cursor: default;
+}
+
+/* On the wide screen it stands in the slider's row at the right edge, level with it, and --between at least from it:
+   the row narrows for it (.c-vs). */
+@media (--wide) {
+	.c-arrows {
+		align-self: start;
+		margin: 0 0 0 var(--between);
 	}
 }
 

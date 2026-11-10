@@ -14,6 +14,7 @@ import {
 	boxOf,
 	cardsInView,
 	carousel,
+	carouselArrows,
 	expectApart,
 	expectRingCard,
 	firstCard,
@@ -28,6 +29,7 @@ import {
 	sliderPanel,
 	sliderTab,
 	sources,
+	startPinning,
 	tapMap,
 } from './screen.ts';
 import { onWindow, WIDE_WINDOWS, windowName, WINDOWS } from './windows.ts';
@@ -174,17 +176,118 @@ for (const window of ROW_WINDOWS) {
 	});
 }
 
+/** The carousel's arrows' buttons (#99): 40 × 40, in a plate as high as the slider's row. */
+const ARROW = 40;
+
+for (const window of ROW_WINDOWS.filter(({ pointer }) => pointer === 'mouse')) {
+	test.describe(`on ${windowName(window)}`, () => {
+		test.use(onWindow(window));
+
+		for (const [unit, path, ring] of [
+			['hours', LONGEST, '11–12 ч'],
+			['days', LONGEST_IN_DAYS, '4–5 дней'],
+		] as const) {
+			test(`in ${unit}, the carousel's arrows stand in the slider's row 12 px from the right, level with it and at least 8 px from it, and the row keeps its 560 px`, async ({
+				page,
+			}) => {
+				await open(page, path, ring);
+
+				const [plate, row, panel, ...buttons] = await Promise.all(
+					[carouselArrows(page), slider(page), sliderPanel(page), ...(await carouselArrows(page).getByRole('button').all())].map(
+						async (element) => boxOf(element),
+					),
+				);
+				expect(fromEdges(page, plate).right).toBeCloseTo(EDGE, 0);
+				expect(plate.y).toBeCloseTo(row.y, 0);
+				expect(plate.height).toBeCloseTo(row.height, 0);
+				expect(plate.x - (row.x + row.width)).toBeGreaterThanOrEqual(BETWEEN);
+				expect(panel.width).toBeCloseTo(SLIDER_ROW, 0);
+				expect(buttons.map(({ width, height }) => [Math.round(width), Math.round(height)])).toEqual([
+					[ARROW, ARROW],
+					[ARROW, ARROW],
+				]);
+				await expectApart(page, {
+					phrase: phrase(page),
+					'slider row': slider(page),
+					arrows: carouselArrows(page),
+					...(await cardsInView(page)),
+				});
+			});
+		}
+	});
+}
+
+test.describe('on 720×500, mouse', () => {
+	test.use(onWindow({ width: 720, height: 500, pointer: 'mouse', layout: 'wide' }));
+
+	// The row about 500 px, an hour's cell about 40 px, a day's about three times that (#97).
+	for (const [unit, path, ring, cellWidth] of [
+		['hours', LONGEST, '11–12 ч', 40],
+		['days', LONGEST_IN_DAYS, '4–5 дней', 120],
+	] as const) {
+		test(`in ${unit}, the slider's row narrows to about 500 px for the carousel's arrows, at least 8 px from them, apart and on the screen`, async ({
+			page,
+		}) => {
+			await open(page, path, ring);
+
+			const [plate, row, panel, cell] = await Promise.all(
+				[carouselArrows(page), slider(page), sliderPanel(page), sliderCells(page).first()].map(async (element) => boxOf(element)),
+			);
+			expect(fromEdges(page, plate).right).toBeCloseTo(EDGE, 0);
+			expect(plate.y).toBeCloseTo(row.y, 0);
+			expect(plate.x - (row.x + row.width)).toBeGreaterThanOrEqual(BETWEEN - 0.5);
+			expect(panel.width).toBeLessThan(SLIDER_ROW);
+			expect(Math.abs(panel.width / 500 - 1), `a row of ${panel.width} px`).toBeLessThanOrEqual(0.05);
+			expect(Math.abs(cell.width / cellWidth - 1), `a cell of ${cell.width} px`).toBeLessThanOrEqual(0.05);
+			await expectApart(page, {
+				phrase: phrase(page),
+				'slider row': slider(page),
+				arrows: carouselArrows(page),
+				...(await cardsInView(page)),
+			});
+		});
+	}
+});
+
+test.describe('on 719×500, mouse', () => {
+	test.use(onWindow({ width: 719, height: 500, pointer: 'mouse', layout: 'narrow' }));
+
+	test("with the longest phrase, the carousel's arrows stand over the cards 12 px from the left, 8 px over them, apart from the phrase, the slider and the card at the left edge", async ({
+		page,
+	}) => {
+		await open(page, LONGEST, '11–12 ч');
+
+		const [plate, card] = await Promise.all([boxOf(carouselArrows(page)), boxOf(firstCard(page))]);
+		expect(fromEdges(page, plate).left).toBeCloseTo(EDGE, 0);
+		expect(card.y - (plate.y + plate.height)).toBeCloseTo(BETWEEN, 0);
+		await expectApart(page, {
+			phrase: phrase(page),
+			slider: slider(page),
+			arrows: carouselArrows(page),
+			'card at the left edge': firstCard(page),
+		});
+	});
+});
+
+for (const window of WINDOWS.filter(({ pointer }) => pointer === 'touch')) {
+	test.describe(`on ${windowName(window)}`, () => {
+		test.use(onWindow(window));
+
+		test('without a mouse the carousel has no arrows, though its cards scroll', async ({ page }) => {
+			await open(page);
+			await expect(page.getByTestId('city-card')).toHaveCount(12);
+
+			expect(await carousel(page).evaluate((element) => element.scrollWidth - element.clientWidth)).toBeGreaterThan(0);
+			await expect(carouselArrows(page)).toHaveCount(0);
+		});
+	});
+}
+
 /** Where the first card stands, to the pixel: how far from the left and the bottom edges, and how wide. */
 async function firstCardPlace(page: Page): Promise<{ left: number; bottom: number; width: number }> {
 	const box = await boxOf(firstCard(page));
 	const { left, bottom } = fromEdges(page, box);
 	return { left: Math.round(left), bottom: Math.round(bottom), width: Math.round(box.width) };
-}
-
-/** Turns the pin mode on from the phrase, «Откуда едем» and «Указать на карте». */
-async function startPinning(page: Page): Promise<void> {
-	await phrase(page).getByRole('button', { name: 'Белград' }).click();
-	await page.getByRole('dialog', { name: 'Откуда едем' }).getByRole('button', { name: 'Указать на карте' }).click();
 }
 
 /** The boxes of the pin's panel, its hint and its buttons. */

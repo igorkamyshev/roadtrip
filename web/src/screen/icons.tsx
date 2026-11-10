@@ -32,6 +32,18 @@ export const CloseIcon = (): ReactElement => (
 	</Icon>
 );
 
+export const BackIcon = (): ReactElement => (
+	<Icon>
+		<path d="m15 18-6-6 6-6" />
+	</Icon>
+);
+
+export const ForwardIcon = (): ReactElement => (
+	<Icon>
+		<path d="m9 18 6-6-6-6" />
+	</Icon>
+);
+
 export const PinIcon = (): ReactElement => (
 	<Icon>
 		<path d="M12 21s-7-6.2-7-12a7 7 0 0 1 14 0c0 5.8-7 12-7 12z" />
