@@ -3,12 +3,13 @@
 // unit at a time and folds the other into a tab, «дни ↑» over the hours' panel or «часы ↓» under the days'; it turns
 // to the other unit only once that is committed. The link says `d=D` for a day.
 import type { Locator, Page } from '@playwright/test';
-import { allowGeolocation, BELGRADE, expect, SHORTEST, squareRing, test, visaRules } from './fixtures.ts';
+import { allowGeolocation, BELGRADE, expect, LINK_12_HOURS_RUS, squareRing, test, visaRules } from './fixtures.ts';
 import {
 	boxOf,
 	dottedHours,
 	expectRingCard,
 	firstCard,
+	FROM_BELGRADE,
 	phrase,
 	recordSliderHours,
 	slider,
@@ -43,7 +44,7 @@ test('in hours the slider has twelve cells and «дни ↑» over them; a key u
 	page,
 	ringApi,
 }) => {
-	await page.goto(SHORTEST);
+	await page.goto(LINK_12_HOURS_RUS);
 	await expectRingCard(page, '11–12 ч');
 	await expect(sliderCells(page)).toHaveCount(12);
 	await expect(sliderTab(page)).toHaveText('дни ↑');
@@ -61,7 +62,7 @@ test('in hours the slider has twelve cells and «дни ↑» over them; a key u
 });
 
 test('a key down from day 2 goes back to 12 h', async ({ page }) => {
-	await page.goto('/#/?p=44.81760,20.45730&d=2&cit=RUS');
+	await page.goto(`${FROM_BELGRADE}&d=2&cit=RUS`);
 	await expectRingCard(page, '1–2 дня');
 
 	await slider(page).press('ArrowDown');
@@ -71,7 +72,7 @@ test('a key down from day 2 goes back to 12 h', async ({ page }) => {
 });
 
 test('a tap on «часы ↓» chooses 12 h, and a tap on «дни ↑» day 2', async ({ page, ringApi }) => {
-	await page.goto('/#/?p=44.81760,20.45730&d=4&cit=RUS');
+	await page.goto(`${FROM_BELGRADE}&d=4&cit=RUS`);
 	await expectRingCard(page, '3–4 дня');
 
 	await sliderTab(page).click();
@@ -87,7 +88,7 @@ test('a tap on «часы ↓» chooses 12 h, and a tap on «дни ↑» day 2'
 });
 
 test('a drag from an hour onto «дни ↑» chooses day 2 when let go, and the column stays in hours until then', async ({ page, ringApi }) => {
-	await page.goto(SHORTEST);
+	await page.goto(LINK_12_HOURS_RUS);
 	await expectRingCard(page, '11–12 ч');
 	const [from, tab] = await Promise.all([boxOf(sliderHour(page, 10)), boxOf(sliderTab(page))]);
 
@@ -111,7 +112,7 @@ test('a drag from an hour onto «дни ↑» chooses day 2 when let go, and the
 });
 
 test('a tap on the panel over the cell of 12 h, short of the tab, chooses 12 h', async ({ page, ringApi }) => {
-	await page.goto('/#/?p=44.81760,20.45730&h=11&cit=RUS');
+	await page.goto(`${FROM_BELGRADE}&h=11&cit=RUS`);
 	await expectRingCard(page, '10–11 ч');
 	const [panel, cell] = await Promise.all([boxOf(sliderPanel(page)), boxOf(sliderHour(page, 12))]);
 
@@ -123,7 +124,7 @@ test('a tap on the panel over the cell of 12 h, short of the tab, chooses 12 h',
 });
 
 test('the tab is as wide as the panel, and a tap just past it, over the map, takes it too', async ({ page }) => {
-	await page.goto(SHORTEST);
+	await page.goto(LINK_12_HOURS_RUS);
 	await expectRingCard(page, '11–12 ч');
 	const [tab, panel] = await Promise.all([boxOf(sliderTab(page)), boxOf(sliderPanel(page))]);
 	expect(tab.width).toBeCloseTo(panel.width, 0);
@@ -134,7 +135,7 @@ test('the tab is as wide as the panel, and a tap just past it, over the map, tak
 });
 
 test('the chosen day reads as its span over «дня», the others as their day', async ({ page }) => {
-	await page.goto('/#/?p=44.81760,20.45730&d=3&cit=RUS');
+	await page.goto(`${FROM_BELGRADE}&d=3&cit=RUS`);
 	await expectRingCard(page, '2–3 дня');
 
 	await expect(sliderHour(page, 36)).toHaveText('2–3дня');
@@ -144,7 +145,7 @@ test('the chosen day reads as its span over «дня», the others as their day'
 
 test('the link d=3 opens the ring of 2–3 days', async ({ page, ringApi }) => {
 	ringApi.hold();
-	await page.goto('/#/?p=44.81760,20.45730&d=3&cit=RUS');
+	await page.goto(`${FROM_BELGRADE}&d=3&cit=RUS`);
 
 	await expect(phrase(page)).toContainText('Из точки Белград, 2–3 дня в пути.');
 	await expect(firstCard(page)).toHaveAttribute('data-state', 'calculating');
@@ -163,7 +164,7 @@ for (const [what, search] of [
 	['day 1, which the hours are', 'd=1'],
 ]) {
 	test(`a link with ${what} opens 1 h`, async ({ page, ringApi }) => {
-		await page.goto(`/#/?p=44.81760,20.45730&${search}&cit=RUS`);
+		await page.goto(`${FROM_BELGRADE}&${search}&cit=RUS`);
 
 		await expectRingCard(page, 'до 1 ч');
 		expect(ringApi.calls).toEqual([expect.objectContaining({ from: 0, hours: 1 })]);
@@ -171,7 +172,7 @@ for (const [what, search] of [
 }
 
 test('a day whose ring is in memory is marked, after going to the hours and back', async ({ page, ringApi }) => {
-	await page.goto('/#/?p=44.81760,20.45730&d=3&cit=RUS');
+	await page.goto(`${FROM_BELGRADE}&d=3&cit=RUS`);
 	await expectRingCard(page, '2–3 дня');
 	await slider(page).press('ArrowDown');
 	await expectRingCard(page, '1–2 дня');
@@ -220,7 +221,7 @@ test.describe('on the wide screen', () => {
 		page,
 		ringApi,
 	}) => {
-		await page.goto(SHORTEST);
+		await page.goto(LINK_12_HOURS_RUS);
 		await expectRingCard(page, '11–12 ч');
 		await expect(sliderCells(page)).toHaveCount(12);
 		await expect(sliderTab(page)).toHaveText('дни →');
@@ -236,7 +237,7 @@ test.describe('on the wide screen', () => {
 	});
 
 	test('a tap on «← часы» chooses 12 h, and a tap on «дни →» day 2', async ({ page, ringApi }) => {
-		await page.goto('/#/?p=44.81760,20.45730&d=4&cit=RUS');
+		await page.goto(`${FROM_BELGRADE}&d=4&cit=RUS`);
 		await expectRingCard(page, '3–4 дня');
 		await expect(sliderTab(page)).toHaveText('← часы');
 
@@ -254,7 +255,7 @@ test.describe('on the wide screen', () => {
 	});
 
 	test('a drag along the row shows each hour under the pointer and asks for one ring when let go', async ({ page, ringApi }) => {
-		await page.goto('/#/?p=44.81760,20.45730&h=3&cit=RUS');
+		await page.goto(`${FROM_BELGRADE}&h=3&cit=RUS`);
 		await expectRingCard(page, '2–3 ч');
 		expect(await tabRightOfCells(page)).toBe(true);
 		const shown = await recordSliderHours(page);
@@ -273,7 +274,7 @@ test.describe('on the wide screen', () => {
 		page,
 		ringApi,
 	}) => {
-		await page.goto(SHORTEST);
+		await page.goto(LINK_12_HOURS_RUS);
 		await expectRingCard(page, '11–12 ч');
 		expect(await tabRightOfCells(page)).toBe(true);
 
@@ -295,7 +296,7 @@ test.describe('on the wide screen', () => {
 		page,
 		ringApi,
 	}) => {
-		await page.goto('/#/?p=44.81760,20.45730&d=3&cit=RUS');
+		await page.goto(`${FROM_BELGRADE}&d=3&cit=RUS`);
 		await expectRingCard(page, '2–3 дня');
 		expect(await tabRightOfCells(page)).toBe(false);
 

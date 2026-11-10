@@ -9,7 +9,6 @@ import {
 	BELGRADE,
 	expect,
 	failGeolocation,
-	FROM_BELGRADE,
 	LINK_3_HOURS_RUS,
 	openInProduction,
 	POSTHOG_PROXY,
@@ -19,7 +18,18 @@ import {
 	visaRules,
 } from './fixtures.ts';
 import type { RingReply } from './ring-api.ts';
-import { dottedHours, dragSlider, expectRingCard, firstCard, holdTheClock, leave, mapAtRest, phrase, slider } from './screen.ts';
+import {
+	dottedHours,
+	dragSlider,
+	expectRingCard,
+	firstCard,
+	FROM_BELGRADE,
+	holdTheClock,
+	leave,
+	mapAtRest,
+	phrase,
+	slider,
+} from './screen.ts';
 
 /** While the clock stands still, lets the page run what is due now (its zero timeouts) until `done` holds. */
 async function runNowUntil(page: Page, done: () => Promise<boolean> | boolean): Promise<void> {
