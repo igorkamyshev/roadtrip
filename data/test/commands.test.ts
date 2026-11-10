@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterAll, describe, expect, it } from 'vitest';
-import { decodeCities, parseCitiesFile } from '../src/cities-file.ts';
+import { decodeCities, encodeCities, parseCitiesFile } from '../src/cities-file.ts';
 import { field, items } from 'engine/json';
 import { fixturePath } from './fixture-graph.ts';
 
@@ -22,6 +22,12 @@ function ringGeometry(output: string): unknown {
 }
 
 const geonames = (name: string) => fixturePath(`geonames/${name}`);
+
+/** The russian-names command as a process, which may fail. */
+const russianNames = (...args: string[]) =>
+	spawnSync(process.execPath, [fileURLToPath(new URL('../src/cli/russian-names.ts', import.meta.url)), ...args], {
+		encoding: 'utf8',
+	});
 
 /** The cities file a command wrote, its cities biggest first. */
 const writtenCities = (path: string) => decodeCities(parseCitiesFile(JSON.parse(readFileSync(path, 'utf8'))));
@@ -138,7 +144,7 @@ describe('the build-cities command', () => {
 		rmSync(directory, { recursive: true });
 	});
 
-	it("writes the cities file of GeoNames' files, the zones by the polygons of a graph, and adds the parts of a city to the report", () => {
+	it("writes the cities file of GeoNames' files, the zones by the polygons of a graph, and adds the parts of a city and the names the table lacks to the report", () => {
 		const out = join(directory, 'cities.json');
 		// What build-graph wrote of the report before.
 		const report = join(directory, 'report.md');
@@ -171,8 +177,10 @@ describe('the build-cities command', () => {
 			[146384, 'Лимасол', 'Limassol', 0.3, 3.2, 154_000, 'CYP'],
 			[146617, '', 'Famagusta', 0.7, 2.7, 42_526, 'NX'],
 			[146412, 'Кирения', 'Kyrenia', 0.5, 2.5, 26_701, 'NX'],
+			// Outside every polygon of zones.osm, in its GeoNames country.
+			[3_430_415, '', 'Nogoyá', -32.393, -59.79, 20_442, 'ARG'],
 		]);
-		expect(run.stderr).toContain('6 cities of 9 lines');
+		expect(run.stderr).toContain('7 cities of 10 lines');
 		expect(run.stderr).toContain('parts of a city, left out: 1; the biggest: 146500 Engomi (Nicosia, 1.1 km)');
 		expect(readFileSync(report, 'utf8')).toBe(
 			[
@@ -188,9 +196,15 @@ describe('the build-cities command', () => {
 				'| --- | --- | --- | --- |',
 				'| Engomi (146500) | 18\u00A0000 | Nicosia | 1,1 |',
 				'',
+				'## Русские названия',
+				'',
+				'Городов без русского названия, которых нет в таблице `data/russian-names.tsv`: 1. Самые большие: Famagusta (146617).',
+				'',
 			].join('\n'),
 		);
-		expect(run.stderr).toContain('Russian names: 5 from GeoNames, 0 from Wikidata, 1 without');
+		expect(run.stderr).toContain('Russian names: 5 from GeoNames, 0 from Wikidata, 2 without');
+		// Nogoyá's is in the shipped table, which the deploy puts in.
+		expect(run.stderr).toContain('without a Russian name and not in the table of Russian names: 1; the biggest: 146617 Famagusta');
 		expect(run.stderr).toMatch(/MB in brotli/u);
 	});
 
@@ -211,5 +225,84 @@ describe('the build-cities command', () => {
 		);
 
 		expect(writtenCities(out).map(([, , local]) => local)).toEqual(['Nicosia', 'Limassol', 'Famagusta', 'Kyrenia']);
+	});
+});
+
+describe('the russian-names command', () => {
+	const directory = mkdtempSync(join(tmpdir(), 'roadtrip-commands-'));
+	afterAll(() => {
+		rmSync(directory, { recursive: true });
+	});
+
+	/**
+	 * A cities file as R2 holds it: Marondera's Russian name broken, Nogoyá's missing, Belgrade's GeoNames'. Indented,
+	 * so that a command that rewrites it at all changes its bytes.
+	 */
+	const fetchedCities = (name: string) => {
+		const path = join(directory, name);
+		writeFileSync(
+			path,
+			JSON.stringify(
+				encodeCities([
+					[792_680, 'Белград', 'Belgrade', 44.804, 20.465, 1_273_651, 'SRB'],
+					[886_990, 'Маронdera', 'Marondera', -18.185, 31.552, 61_998, 'ZWE'],
+					[3_430_415, '', 'Nogoyá', -32.393, -59.79, 20_442, 'ARG'],
+				]),
+				undefined,
+				'\t',
+			),
+		);
+		return path;
+	};
+	const table = (name: string, lines: readonly string[]) => {
+		const path = join(directory, name);
+		writeFileSync(path, `${lines.join('\n')}\n`);
+		return path;
+	};
+
+	it("puts the table's Russian names over the file's, and leaves the other cities as they were", () => {
+		const cities = fetchedCities('cities.json');
+		const names = table('names.tsv', [
+			'geonameid\tname\tru',
+			'99347\tAl Hillah\tЭль-Хилла',
+			'886990\tMarondera\tМарондера',
+			'3430415\tNogoyá\tНогоя',
+		]);
+
+		const run = russianNames(cities, '--names', names);
+
+		expect(run.status).toBe(0);
+		expect(writtenCities(cities)).toEqual([
+			[792_680, 'Белград', 'Belgrade', 44.804, 20.465, 1_273_651, 'SRB'],
+			[886_990, 'Марондера', 'Marondera', -18.185, 31.552, 61_998, 'ZWE'],
+			[3_430_415, 'Ногоя', 'Nogoyá', -32.393, -59.79, 20_442, 'ARG'],
+		]);
+		expect(run.stderr).toContain('2 cities named; ids of the table not in the file: 1');
+	});
+
+	// The wrong way these catch: a command that writes the cities file before it has checked the whole table.
+	it.each([
+		['a Latin name', ['geonameid\tname\tru', '886990\tMarondera\tМарондера', '3430415\tNogoyá\tNogoyá'], 3],
+		['a line of two columns', ['geonameid\tname\tru', '886990\tМарондера'], 2],
+		['a repeated id', ['geonameid\tname\tru', '886990\tMarondera\tМарондера', '886990\tMarondera\tМаррондера'], 3],
+		['another header', ['id\tname\tru', '886990\tMarondera\tМарондера'], 1],
+	])('fails on a table with %s, naming its line, and leaves the cities file as it was', (_, lines, line) => {
+		const cities = fetchedCities('untouched.json');
+		const before = readFileSync(cities);
+
+		const run = russianNames(cities, '--names', table('bad.tsv', lines));
+
+		expect(run.status).not.toBe(0);
+		expect(run.stderr).toContain(`line ${line}`);
+		expect(readFileSync(cities)).toEqual(before);
+	});
+
+	it('reads the shipped table without --names', () => {
+		const cities = fetchedCities('shipped.json');
+
+		const run = russianNames(cities);
+
+		expect(run.status).toBe(0);
+		expect(writtenCities(cities).map(([, ru]) => ru)).toEqual(['Белград', 'Марондера', 'Ногоя']);
 	});
 });

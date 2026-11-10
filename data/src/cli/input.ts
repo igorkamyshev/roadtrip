@@ -1,10 +1,23 @@
 import { spawn } from 'node:child_process';
-import { createReadStream, createWriteStream, mkdtempSync, rmSync } from 'node:fs';
+import { createReadStream, createWriteStream, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, join, resolve } from 'node:path';
 import { createInterface } from 'node:readline';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
+import { parseRussianNames } from '../russian-names.ts';
+
+/** The table of Russian names the repository ships (src/russian-names.ts). */
+const RUSSIAN_NAMES_TABLE = join(import.meta.dirname, '../../russian-names.tsv');
+
+/** The table of Russian names at `path`, checked: an error naming the file and the line for a bad one. */
+export function readRussianNames(path = RUSSIAN_NAMES_TABLE): Map<number, string> {
+	try {
+		return parseRussianNames(readFileSync(path, 'utf8'));
+	} catch (error) {
+		throw new Error(`${path}, ${error instanceof Error ? error.message : String(error)}`, { cause: error });
+	}
+}
 
 /**
  * A path as the person typed it: `pnpm --filter data <command>` runs in data/, so a relative path is taken from

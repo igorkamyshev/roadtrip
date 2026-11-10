@@ -23,7 +23,7 @@ The land cover of the `light` and `dark` flavors (the `landcover` layer, z0–7)
 
 ## GeoNames (CC BY 4.0)
 
-The cities file. [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/legalcode.en) §3(a) asks to name the source, link the licence and «indicate if You modified the Licensed Material»: the file keeps the places of 15 000 people and more and fills a missing Russian name from Wikidata, hence «с изменениями». It may be met «in any reasonable manner based on the medium, means, and context», so ⓘ alone would do; the line shows it with the rest.
+The cities file. [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/legalcode.en) §3(a) asks to name the source, link the licence and «indicate if You modified the Licensed Material»: the file keeps the places of 15 000 people and more and fills a missing Russian name from Wikidata or our table of Russian names, hence «с изменениями». It may be met «in any reasonable manner based on the medium, means, and context», so ⓘ alone would do; the line shows it with the rest.
 
 ## MapLibre (BSD-3)
 
