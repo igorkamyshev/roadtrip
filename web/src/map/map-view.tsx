@@ -7,7 +7,7 @@ import { useEffect, useImperativeHandle, useRef, type ReactElement, type Ref } f
 import { DropPin } from '../screen/icons.tsx';
 import { PIN_HINT } from '../screen/pin-bar.tsx';
 import type { LatLon } from '../state/point.ts';
-import { mapHandle, useCamera, type MapHandle } from './camera.ts';
+import { mapHandle, useCamera, type Camera, type MapHandle } from './camera.ts';
 import type { MapCity, RingGeometry } from './overlay.ts';
 import { useCityTaps, useMapLibre, useOverlay } from './use-map.ts';
 
@@ -23,8 +23,8 @@ export interface MapViewProps {
 	readonly ring: RingGeometry | undefined;
 	/** The ring stands in for one being calculated: running stripes. */
 	readonly striped: boolean;
-	/** Changes with every new ring to show whole; undefined while the ring is an old one. */
-	readonly fit: string | undefined;
+	/** When the camera shows a new ring whole, and the room it leaves on the wide screen (camera.ts). */
+	readonly camera: Pick<Camera, 'fit' | 'freeArea'>;
 	/** The pin mode: the pin in the middle of the map. */
 	readonly pinning: boolean;
 	/** The zones to hatch: the countries and closed territories `access` closes. */
@@ -36,13 +36,14 @@ export interface MapViewProps {
 	readonly ref?: Ref<MapHandle>;
 }
 
-export function MapView({ origin, ring, striped, fit, pinning, closed, cities, onCity, ref }: MapViewProps): ReactElement {
+export function MapView({ origin, ring, striped, camera, pinning, closed, cities, onCity, ref }: MapViewProps): ReactElement {
+	const { fit, freeArea } = camera;
 	const container = useRef<HTMLDivElement>(null);
 	const map = useMapLibre(container, origin);
-	useImperativeHandle(ref, () => mapHandle(map, origin), [map, origin]);
+	useImperativeHandle(ref, () => mapHandle(map, origin, freeArea), [map, origin, freeArea]);
 	useCityTaps(map, pinning ? undefined : onCity);
 	useOverlay(map, { origin, ring, striped, closed, cities });
-	useCamera(map, { origin, ring, fit });
+	useCamera(map, { origin, ring, fit, freeArea });
 	usePinFocus(map, pinning);
 
 	// Last: the effects above have shown the screen's state on the loaded map by now (MAP_EVENT).

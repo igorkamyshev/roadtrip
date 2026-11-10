@@ -865,15 +865,16 @@ a {
 
 /* On the wide screen the screen is a grid (#97, #104): at the top the phrase's plate, with the data's sources in it
    (#103, below), at the bottom the carousel the whole width, and over its cards the slider's row at the left edge,
-   --between over them (the carousel's top padding). The row has the carousel's arrows at the right edge, `arrows`, as
-   wide as they are and empty without them (#99). .c-top gives up its column, and its children are the grid's; the map, the
+   --between over them (the carousel's top padding); between the plate and the row the free area of the map's camera
+   (.c-free). The row has the carousel's arrows at the right edge, `arrows`, as wide as they are and empty without
+   them (#99). .c-top gives up its column, and its children are the grid's; the map, the
    pin's bar and the sheets stand over it as on the narrow screen. */
 @media (--wide) {
 	.screen {
 		grid-template:
 			'.     .       .       .    ' var(--edge-top)
 			'.     phrase  phrase  .    ' auto
-			'.     .       .       .    ' minmax(0, 1fr)
+			'.     free    free    .    ' minmax(0, 1fr)
 			'.     slider  arrows  .    ' auto
 			'cards cards   cards   cards' auto
 			/ var(--edge-left) minmax(0, 1fr) auto var(--edge-right);
@@ -914,6 +915,15 @@ a {
 	.nowrap-wide,
 	.c-phrase .c-sources a {
 		white-space: nowrap;
+	}
+
+	/* The part of the screen no panel covers, where the camera shows a new ring whole and a chosen city in the middle
+	   (#108, src/map/camera.ts): from the phrase's plate down to the slider's row, from edge to edge, --edge in from
+	   each, past the safe area at the screen's edges. Nothing to see or tap: the map under it takes the taps. */
+	.c-free {
+		grid-area: free;
+		margin: var(--edge) 0;
+		pointer-events: none;
 	}
 
 	/* As long as the row with its tab, and no longer than its area, which the carousel's arrows leave it: there its

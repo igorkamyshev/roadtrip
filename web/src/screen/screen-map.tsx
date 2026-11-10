@@ -3,6 +3,7 @@
 // ring's biggest cities, and tells of a tap on a city.
 import { lazy, Suspense, useMemo, type ReactElement } from 'react';
 import type { City } from '../cities/cities.ts';
+import type { FreeArea } from '../map/camera.ts';
 import type { MapCity } from '../map/overlay.ts';
 import { CAROUSEL_CITIES } from './carousel.tsx';
 import type { ScreenModel } from './use-screen.ts';
@@ -12,7 +13,8 @@ const MapView = lazy(async () => ({ default: (await import('../map/map-view.tsx'
 /** The ring's cities the map dots, the biggest: a 12-hour ring holds thousands. */
 const MAP_CITIES = 250;
 
-export function ScreenMap({ screen }: { readonly screen: ScreenModel }): ReactElement {
+/** The map under the screen; `freeArea` is the part of it no panel covers on the wide screen (screen.tsx). */
+export function ScreenMap({ screen, freeArea }: { readonly screen: ScreenModel; readonly freeArea: FreeArea }): ReactElement {
 	const { state, shown, starts, chosen, map } = screen;
 	const { shownCities } = shown;
 	const mapCities = useMemo(() => citiesOnMap(shownCities ?? [], chosen.city), [shownCities, chosen.city]);
@@ -25,7 +27,7 @@ export function ScreenMap({ screen }: { readonly screen: ScreenModel }): ReactEl
 				origin={state.origin}
 				ring={shown.geometry}
 				striped={striped}
-				fit={striped || shown.geometry === undefined ? undefined : shown.requestId}
+				camera={{ fit: striped || shown.geometry === undefined ? undefined : shown.requestId, freeArea }}
 				pinning={starts.pinning}
 				closed={shown.closed}
 				cities={mapCities}
