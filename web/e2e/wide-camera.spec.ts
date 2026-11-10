@@ -4,10 +4,10 @@
 // its middle. What changes later, the data's sources leaving the plate or a modal closing, moves nothing. The narrow
 // screen keeps its fixed room (e2e/cities.spec.ts, e2e/ring.spec.ts). Read by the panels' boxes and the map's own
 // projection of the ring and the city, never by pixels.
-import type { Locator, Page } from '@playwright/test';
+import type { Page } from '@playwright/test';
 import type { Access } from 'worker/api';
 import { expect, squareRing, test, visaRules } from './fixtures.ts';
-import { boxOf, expectRingCard, labelsOnMap, mapAtRest, phrase, ringOnMap, slider, sources, whereOnScreen } from './screen.ts';
+import { boxOf, cityCard, expectRingCard, labelsOnMap, mapAtRest, phrase, ringOnMap, slider, sources, whereOnScreen } from './screen.ts';
 import { onWindow, WIDE_WINDOWS, windowName } from './windows.ts';
 
 const BELGRADE = { lat: 44.8176, lon: 20.4573 };
@@ -36,10 +36,6 @@ const PIXEL = 1;
 const START = Date.parse('2026-11-09T12:00:00Z');
 /** Longer than the data's sources stay in the phrase's plate once the screen opens. */
 const SOURCES_PAST_MS = 6000;
-
-/** The card of the city of this name in the carousel. */
-const card = (page: Page, name: string): Locator =>
-	page.getByTestId('city-card').filter({ has: page.getByRole('heading', { name, exact: true }) });
 
 /** The free area of the wide screen now: from the phrase's plate down to the slider's row, from edge to edge, 12 px in. */
 async function freeArea(page: Page): Promise<{ top: number; right: number; bottom: number; left: number }> {
@@ -134,7 +130,7 @@ for (const window of WIDE_WINDOWS) {
 			await page.clock.fastForward(SOURCES_PAST_MS);
 			await mapAtRest(page);
 
-			await card(page, 'Будапешт').getByRole('button', { name: 'Будапешт' }).click();
+			await cityCard(page, 'Будапешт').getByRole('button', { name: 'Будапешт' }).click();
 
 			await expect.poll(async () => (await labelsOnMap(page)).chosen).toEqual(['Будапешт']);
 			await page.clock.fastForward(FLIGHT_PAST_MS);

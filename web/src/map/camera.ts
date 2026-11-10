@@ -79,7 +79,7 @@ export interface Camera {
 	readonly ring: RingGeometry | undefined;
 	/** Changes with every new ring to show whole; undefined while the ring is an old one. */
 	readonly fit: string | undefined;
-	/** One function for good: another one would show the ring again. */
+	/** The part of the screen no panel covers, on the wide screen; one function for good: another would show the ring again. */
 	readonly freeArea: FreeArea;
 }
 

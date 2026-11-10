@@ -113,9 +113,10 @@ button {
 	cursor: pointer;
 }
 
+/* The keyboard's focus, in the text's colour 3 px out: never the blue of the chosen card's mark, close to it (#104). */
 :focus-visible {
-	outline: 2px solid var(--ring);
-	outline-offset: 2px;
+	outline: 2px solid var(--fg);
+	outline-offset: 3px;
 }
 
 a {
@@ -982,6 +983,11 @@ a {
 		grid-area: cards;
 		position: relative;
 		padding: var(--between) var(--edge-right) var(--edge-bottom) var(--edge-left);
+
+		/* The row only scrolls (#104): no snapping, which would undo a card shown whole by its nearer edge, and that edge
+		   is inside the fade. */
+		scroll-snap-type: none;
+		scroll-padding-right: var(--edge-right);
 	}
 
 	.c-car::after {
@@ -1030,8 +1036,8 @@ a {
 }
 
 .c-card-tap:focus-visible::after {
-	outline: 2px solid var(--ring);
-	outline-offset: 2px;
+	outline: 2px solid var(--fg);
+	outline-offset: 3px;
 }
 
 .c-card h3.err {
@@ -1049,7 +1055,8 @@ a {
 	line-height: 1;
 }
 
-.c-card.focus {
+/* The chosen city's card: 2 px of --ring, close; the keyboard's focus looks otherwise (above). */
+.c-card.chosen {
 	outline: 2px solid var(--ring);
 }
 
@@ -1113,6 +1120,21 @@ a {
 	display: flex;
 	gap: 8px;
 	justify-content: flex-end;
+}
+
+/* On the wide screen the pin's panel stands where the carousel's first card does, at the left and bottom edges (#107),
+   as wide as what it holds: one line, the hint and right after it the buttons. At the threshold, where the window is
+   narrower than that, the buttons go under the hint. */
+@media (--wide) {
+	.c-pickbar {
+		right: auto;
+		box-sizing: border-box;
+		max-width: calc(100% - var(--edge-left) - var(--edge-right));
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 10px 12px;
+	}
 }
 
 @media (prefers-reduced-motion: reduce) {

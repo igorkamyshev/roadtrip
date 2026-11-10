@@ -27,12 +27,11 @@ export function ScreenMap({ screen, freeArea }: { readonly screen: ScreenModel; 
 				origin={state.origin}
 				ring={shown.geometry}
 				striped={striped}
-				fit={striped || shown.geometry === undefined ? undefined : shown.requestId}
+				camera={{ fit: striped || shown.geometry === undefined ? undefined : shown.requestId, freeArea }}
 				pinning={starts.pinning}
 				closed={shown.closed}
 				cities={mapCities}
 				onCity={chosen.tap}
-				freeArea={freeArea}
 			/>
 		</Suspense>
 	);

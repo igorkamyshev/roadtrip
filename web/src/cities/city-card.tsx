@@ -14,7 +14,7 @@ export interface CityCardProps {
 	/** The entry modes of the answer shown. */
 	readonly access: Access;
 	readonly citizenships: readonly string[];
-	/** The chosen city: the carousel's current card, labelled larger on the map. */
+	/** The chosen city: its card is marked where it stands, its label larger on the map. */
 	readonly chosen: boolean;
 	/** A tap anywhere on the card but «Маршрут». */
 	readonly onTap: () => void;
@@ -23,7 +23,7 @@ export interface CityCardProps {
 export function CityCard({ city, origin, access, citizenships, chosen, onTap }: CityCardProps): ReactElement {
 	return (
 		<div
-			className={chosen ? 'c-card focus' : 'c-card'}
+			className={chosen ? 'c-card chosen' : 'c-card'}
 			data-testid="city-card"
 			data-city={city.id}
 			aria-current={chosen ? 'true' : undefined}
