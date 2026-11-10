@@ -4,7 +4,6 @@
 import type { ReactElement } from 'react';
 import type { Access } from 'worker/api';
 import { countryName } from '../screen/countries.ts';
-import { RouteIcon } from '../screen/icons.tsx';
 import type { LatLon } from '../state/point.ts';
 import type { City } from './cities.ts';
 import { entryMark, platesBanned, populationText, routeUrl } from './copy.ts';
@@ -39,8 +38,9 @@ export function CityCard({ city, origin, access, citizenships, chosen, onTap }: 
 			<EntryMark city={city} access={access} />
 			{platesBanned(city, citizenships) ? <div className="small plates">Российские номера не пустят</div> : null}
 			<div className="acts">
-				<a className="btn primary" href={routeUrl(origin, city)} target="_blank" rel="noopener noreferrer">
-					<RouteIcon /> Маршрут
+				{/* A quiet link, not the card's brightest thing (#75). */}
+				<a className="c-route" href={routeUrl(origin, city)} target="_blank" rel="noopener noreferrer">
+					Маршрут
 				</a>
 			</div>
 		</div>
