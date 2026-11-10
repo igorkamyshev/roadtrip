@@ -1,6 +1,7 @@
 {
-	// The Worker and the prototype stand (stand/), bundled by wrangler, with the runtime's types from `wrangler types`. Its tests run in Node and have
-	// their own tsconfig.test.json. The engine's and rules' sources it imports use `.ts` specifiers.
+	// The Worker and the prototype stand (stand/, worker/README.md «The prototype stand»), bundled by wrangler, with
+	// the runtime's types from `wrangler types`. The Worker's tests run in Node and have their own tsconfig.test.json.
+	// The engine's and rules' sources it imports use `.ts` specifiers.
 	"compilerOptions": {
 		"target": "es2024",
 		"lib": ["es2024"],

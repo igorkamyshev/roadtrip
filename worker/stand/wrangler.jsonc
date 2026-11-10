@@ -3,6 +3,8 @@
 	// The prototype stand (#100, worker/README.md «The prototype stand»): not the Worker roadtrip, whose config is
 	// ../wrangler.jsonc. Deployed only on request, by its own Workers Builds trigger, from the branch named then.
 	"name": "roadtrip-stand",
+	// Also named in the script `deploy:stand` (worker/package.json), whose path wins: there fallow finds the entry,
+	// since it reads no wrangler config but the package's. Keep both: this one serves `wrangler dev --config`.
 	"main": "index.ts",
 	"compatibility_date": "2026-10-01",
 	// Its one address, https://roadtrip-stand.kamyshev.workers.dev: the last branch deployed is the one it shows.

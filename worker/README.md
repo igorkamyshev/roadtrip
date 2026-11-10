@@ -149,13 +149,13 @@ The agent never sees these secrets. All were set on 2026-11-08; this says where 
 A second Worker, `roadtrip-stand`, at `https://roadtrip-stand.kamyshev.workers.dev` (#100): the client of a prototype's branch, shown with production's data so the Owner can try it on their desktop. It is not this Worker: its code and config are `stand/index.ts` and `stand/wrangler.jsonc`, and `wrangler.jsonc` above stays as it is.
 
 - It serves the branch's `web/dist` as its static assets. Every path without a file reaches its Worker, which asks `https://roadtrip.kamyshev.me` for the same path: `/api/ring`, `/tiles/…`, and `/data/…`, which the stand's build does not have (no `fetch-dataset`). The rings, the basemap, the zone outlines and the cities file are production's.
-- It asks production by its public address, so the zone's WAF rate limit on `/api/ring` applies. Production sees every request from the stand as one client, Cloudflare's address `2a06:98c0:3600::103`: the stand's visitors share one limit of 20 requests in 10 s per data centre (on 2026-11-10, 60 requests in 5 s through the stand got 19 rings and 41 answers 429). A sweep of the slider is 12.
-- The browser sends no events of its own off `PRODUCTION_HOST`, nor the `X-POSTHOG-*` ids. The rings it asks for are still `ring served` events of this Worker, with `distinct_id` `server`.
+- It asks production by its public address, so the zone's WAF rate limit on `/api/ring` applies. Production sees every request from the stand as one client, Cloudflare's address `2a06:98c0:3600::103`: the stand's visitors share one limit, the zone's rule «roadtrip: 20 requests to /api/ring per 10 s per IP» (per IP and data centre, blocking for 10 s). On 2026-11-10, 60 requests in 5 s through the stand got 19 rings and 41 answers 429. A sweep of the whole slider is up to 16 rings (`SLIDER_CELLS`).
+- The browser sends no events of its own off `PRODUCTION_HOST`, nor the `X-POSTHOG-*` ids. The rings it asks for are still `ring served` events of this Worker, with `distinct_id` `server`: trying a prototype adds to production's ring counts.
 - One branch at a time: the last one deployed is the one it shows. Which one that is: the latest build of the stand's Worker (`docs/agents/infrastructure.md`, «Check a deploy», with its tag), `build_trigger_metadata.branch`.
 
 ### Deploy a branch
 
-Nothing is deployed by hand here either: Workers Builds builds the branch from GitHub with the build token, as it does `main`. The stand's trigger, «Deploy on request», runs `pnpm --filter worker run deploy:stand` (the client's build, then `wrangler deploy` of `stand/`). It starts on no push (its branch is `stand-deploys-only-on-request`, which nobody pushes), only on this one call, with the branch pushed to GitHub:
+Nothing is deployed by hand here either: Workers Builds builds the branch from GitHub with the build token, as it does `main`. Never start `roadtrip`'s trigger with a prototype's branch: that puts it on production. The stand's trigger, «Deploy on request», runs `pnpm --filter worker run deploy:stand` (the client's build, then `wrangler deploy` of `stand/`). It starts on no push (its branch is `stand-deploys-only-on-request`, which nobody pushes), only on this one call, with the branch pushed to GitHub:
 
 ```js
 async () => {
@@ -174,4 +174,4 @@ The branch must have `stand/` (every branch from `main` since #100). The build t
 
 Once the Owner has chosen, switch the address off: `POST /accounts/{account_id}/workers/scripts/roadtrip-stand/subdomain` with `{ "enabled": false }`. The Worker and its trigger stay, and the next deploy turns the address on again.
 
-To remove the stand for good: `DELETE /accounts/{account_id}/builds/triggers/4dfad845-37e3-45bf-880a-5e5c48b80c24`, then `DELETE /accounts/{account_id}/workers/scripts/roadtrip-stand`; in the repository `stand/`, the `deploy:stand` script, `stand/**/*.ts` in `tsconfig.worker.json`, this section and the stand's row in `docs/agents/infrastructure.md`.
+To remove the stand for good: `DELETE /accounts/{account_id}/builds/triggers/4dfad845-37e3-45bf-880a-5e5c48b80c24`, then `DELETE /accounts/{account_id}/workers/scripts/roadtrip-stand`; in the repository `stand/`, the `deploy:stand` script, `stand/**/*.ts` and the stand in the comment of `tsconfig.worker.json`, this section, the stand's row and paragraph in `docs/agents/infrastructure.md` (and «All three triggers» there back to «Both»), and the stand in the `worker` line of the root `AGENTS.md`.
