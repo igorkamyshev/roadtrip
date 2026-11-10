@@ -244,3 +244,20 @@ export function squareRing(
 		...visaRules(),
 	};
 }
+
+/** Every country around Serbia open to a Russian with a Schengen visa, Kosovo closed. */
+const AROUND_SERBIA_WITH_SCHENGEN: Access = {
+	SRB: { mode: 'start' },
+	BIH: { mode: 'visa_free', citizenship: 'RUS' },
+	MNE: { mode: 'visa_free', citizenship: 'RUS' },
+	HUN: { mode: 'held_visa', visa: 'SCHENGEN' },
+	ROU: { mode: 'held_visa', visa: 'SCHENGEN' },
+	HRV: { mode: 'held_visa', visa: 'SCHENGEN' },
+	RKS: { mode: 'closed', closedForEveryone: true },
+};
+
+/**
+ * The ring of the carousel's tests, 2–3 h around Belgrade (`openTheCarousel` of e2e/screen.ts): a band from 1° to 3°
+ * with every country around open, which holds 12 city cards and «и ещё», a row that scrolls on every window.
+ */
+export const carouselRing = (): RingResponse => ({ ...squareRing(44.8176, 20.4573, [1, 3]), ...visaRules(AROUND_SERBIA_WITH_SCHENGEN) });

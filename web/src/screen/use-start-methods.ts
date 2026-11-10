@@ -16,12 +16,14 @@ export interface StartMethods {
 	readonly locate: () => void;
 	/** A city found in the search becomes the origin. */
 	readonly startFromCity: (city: City) => void;
-	/** The pin mode: the pin in the middle of the map and its bar in place of the carousel. */
+	/** The pin mode: the pin in the middle of the map and its panel in place of the carousel. */
 	readonly pinning: boolean;
 	readonly startPinning: () => void;
 	readonly cancelPinning: () => void;
 	/** «Старт здесь»: the point under the pin becomes the origin. */
 	readonly startHere: () => void;
+	/** The origin's slot in the phrase, which has the focus once the pin mode ends, whichever way (#107). */
+	readonly startSlot: RefObject<HTMLButtonElement | null>;
 }
 
 export interface StartMethodsInput {
@@ -38,6 +40,11 @@ export function useStartMethods({ state, analytics, map, closeSheet }: StartMeth
 	const { setStart } = state;
 	const geolocation = useGeolocation({ origin: state.origin, setStart, analytics, closeSheet });
 	const [pinning, setPinning] = useState(false);
+	const startSlot = useRef<HTMLButtonElement>(null);
+	const endPinning = (): void => {
+		setPinning(false);
+		startSlot.current?.focus();
+	};
 	return {
 		...geolocation,
 		startFromCity: (city) => {
@@ -49,16 +56,15 @@ export function useStartMethods({ state, analytics, map, closeSheet }: StartMeth
 			closeSheet();
 			setPinning(true);
 		},
-		cancelPinning: () => {
-			setPinning(false);
-		},
+		cancelPinning: endPinning,
 		startHere: () => {
 			const center = map.current?.center();
-			setPinning(false);
+			endPinning();
 			if (center !== undefined) {
 				setStart({ method: 'pin', origin: center });
 			}
 		},
+		startSlot,
 	};
 }
 

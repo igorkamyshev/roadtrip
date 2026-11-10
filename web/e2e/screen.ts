@@ -77,6 +77,18 @@ export async function reopen(page: Page, ringApi: RingApi, path: string): Promis
 /** The phrase over the map: «Из точки [Белград], до 1 часа в пути. … ⓘ». */
 export const phrase = (page: Page): Locator => page.getByTestId('phrase');
 
+/** The line under the phrase that dates old visa rules, «визовые правила от <дата>». */
+export const rulesDate = (page: Page): Locator => phrase(page).getByTestId('rules-date');
+
+/** The map's canvas, as a screen reader names it (MapLibre's locale, `Map.Title`). */
+export const theMap = (page: Page): Locator => page.getByRole('region', { name: 'Карта' });
+
+/** Turns the pin mode on, from Belgrade, the origin's word in the phrase: «Откуда едем» and «Указать на карте». */
+export async function startPinning(page: Page): Promise<void> {
+	await phrase(page).getByRole('button', { name: 'Белград' }).click();
+	await page.getByRole('dialog', { name: 'Откуда едем' }).getByRole('button', { name: 'Указать на карте' }).click();
+}
+
 /**
  * The first card of the carousel: the ring's summary or the state, which its `data-state` names (`FirstCardState` of
  * src/screen/first-card.tsx): a test that waits for the screen to get somewhere waits on that, not on the copy.
@@ -94,6 +106,83 @@ export const slider = (page: Page): Locator => page.getByRole('slider', { name: 
 /** The carousel at the bottom of the screen: the first card, the city cards, «и ещё». */
 export const carousel = (page: Page): Locator => page.getByTestId('carousel');
 
+/**
+ * The carousel's arrows, the plate ‹ › that scrolls it with a mouse (#99): in the slider's row at the right edge on the
+ * wide screen, over the cards at the left edge on the narrow one; none without a mouse.
+ */
+export const carouselArrows = (page: Page): Locator => page.getByTestId('carousel-arrows');
+
+/** «и ещё K / Все города →», the carousel's last card when the ring has more cities than cards. */
+export const moreCard = (page: Page): Locator => carousel(page).getByRole('button', { name: /и ещё/u });
+
+/** The cards of the carousel's cities, in order. */
+export const cityCards = (page: Page): Locator => page.getByTestId('city-card');
+
+/** The card of the city whose name is in its heading. */
+export const cityCard = (page: Page, name: string): Locator =>
+	cityCards(page).filter({ has: page.getByRole('heading', { name, exact: true }) });
+
+/**
+ * The name of the first city card the window's right edge cuts, 12 px in, where the wide screen's row fades out: the
+ * row shows it only in part.
+ */
+export async function cutCard(page: Page): Promise<string> {
+	const { width } = page.viewportSize() ?? { width: 0 };
+	for (const card of await cityCards(page).all()) {
+		const box = await boxOf(card);
+		if (box.x + box.width > width - 12) {
+			return card.getByRole('heading').innerText();
+		}
+	}
+	throw new Error('every city card is whole in the row');
+}
+
+/** The card of the chosen city: the carousel marks it current. */
+export const chosenCard = (page: Page): Locator => cityCards(page).and(page.locator('[aria-current="true"]'));
+
+/**
+ * The carousel's cards wholly in the window, by name for `expectApart`: the first card, the city cards and «и ещё»
+ * that the row shows whole where it stands now.
+ */
+export async function cardsInView(page: Page): Promise<Record<string, Locator>> {
+	const { width } = page.viewportSize() ?? { width: 0 };
+	const cities = page.getByTestId('city-card');
+	const cards: [string, Locator][] = [
+		['first card', firstCard(page)],
+		...Array.from({ length: await cities.count() }, (_, i): [string, Locator] => [`city card ${i + 1}`, cities.nth(i)]),
+		['«и ещё»', moreCard(page)],
+	];
+	const boxes = await Promise.all(cards.map(async ([, card]) => ((await card.count()) === 0 ? null : card.boundingBox())));
+	return Object.fromEntries(
+		cards.filter((_, i) => {
+			const box = boxes[i];
+			return box !== null && box.x >= 0 && box.x + box.width <= width;
+		}),
+	);
+}
+
+/**
+ * The open sheet of this title, the panel itself: a sheet from the bottom on the narrow screen, a modal in the middle
+ * on the wide one. Its dialog fills the screen with the scrim.
+ */
+export const sheetPanel = (page: Page, title: string | RegExp): Locator => page.getByRole('dialog', { name: title }).getByTestId('sheet');
+
+/** Where the open sheet of this title stands, to the pixel: its left edge, width, middle across, top, height and bottom. */
+export async function sheetPlace(
+	page: Page,
+	title: string | RegExp,
+): Promise<{ left: number; width: number; middle: number; top: number; height: number; bottom: number }> {
+	const box = await boxOf(sheetPanel(page, title));
+	return {
+		left: Math.round(box.x),
+		width: Math.round(box.width),
+		middle: Math.round(box.x + box.width / 2),
+		top: Math.round(box.y),
+		height: Math.round(box.height),
+		bottom: Math.round(box.y + box.height),
+	};
+}
+
 /** Where an element is on the screen, its box in CSS pixels; it must be there. */
 export async function boxOf(element: Locator): Promise<{ x: number; y: number; width: number; height: number }> {
 	const box = await element.boundingBox();
@@ -101,6 +190,32 @@ export async function boxOf(element: Locator): Promise<{ x: number; y: number; w
 		throw new Error(`${String(element)} is not on the screen`);
 	}
 	return box;
+}
+
+/** A box on the screen in CSS pixels, as `boxOf` reads it. */
+export type Box = Awaited<ReturnType<typeof boxOf>>;
+
+/** Whether two boxes share any area: touching edges do not. */
+export function overlap(a: Box, b: Box): boolean {
+	return a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
+}
+
+/** Each box inside the screen, and no two of them on one another. */
+export async function expectApart(page: Page, panels: Record<string, Locator>): Promise<void> {
+	const { width, height } = page.viewportSize() ?? { width: 0, height: 0 };
+	const boxes = await Promise.all(Object.entries(panels).map(async ([name, element]) => ({ name, at: await boxOf(element) })));
+	const off = boxes
+		.filter(({ at }) => at.x < 0 || at.y < 0 || at.x + at.width > width || at.y + at.height > height)
+		.map(({ name }) => name);
+	expect(off, 'panels off the screen').toEqual([]);
+	const onOneAnother = boxes.flatMap((a, i) => boxes.slice(i + 1).flatMap((b) => (overlap(a.at, b.at) ? [`${a.name} and ${b.name}`] : [])));
+	expect(onOneAnother, 'panels on one another').toEqual([]);
+}
+
+/** How far the box stands from each edge of the screen. */
+export function fromEdges(page: Page, box: Box): { top: number; right: number; bottom: number; left: number } {
+	const { width, height } = page.viewportSize() ?? { width: 0, height: 0 };
+	return { top: box.y, right: width - box.x - box.width, bottom: height - box.y - box.height, left: box.x };
 }
 
 /**
@@ -122,7 +237,10 @@ export const sliderHour = (page: Page, hours: number): Locator => slider(page).l
 /** The slider's cells in the unit it shows: the twelve hours, or the days (#83). */
 export const sliderCells = (page: Page): Locator => slider(page).locator('[data-hours]');
 
-/** The slider's panel of cells, and its tab of the other unit: «дни ↑» over the hours, «часы ↓» under the days. */
+/**
+ * The slider's panel of cells, and its tab of the other unit: «дни ↑» over the hours and «часы ↓» under the days in the
+ * column of the narrow screen, «дни →» right of them and «← часы» left of them in the row of the wide one.
+ */
 export const sliderPanel = (page: Page): Locator => slider(page).getByTestId('slider-panel');
 export const sliderTab = (page: Page): Locator => slider(page).locator('[data-tab]');
 
@@ -289,6 +407,14 @@ export async function distanceFromTheMiddle(page: Page, at: { readonly lat: numb
 	return Math.hypot(canvasBox.x + x - middle.x, canvasBox.y + y - middle.y);
 }
 
+/** Where the map shows the point (lat, lon) on the screen, in CSS pixels from the window's top left corner. */
+export async function whereOnScreen(page: Page, at: { readonly lat: number; readonly lon: number }): Promise<{ x: number; y: number }> {
+	await mapIsUp(page);
+	const { x, y } = offTheMap(await page.evaluate(([lat, lon]) => window.mapForTests?.project([lon, lat]), [at.lat, at.lon]));
+	const canvas = await boxOf(page.getByTestId('map'));
+	return { x: canvas.x + x, y: canvas.y + y };
+}
+
 /** The map's visible bounds, [west, south, east, north], once the camera has stopped. */
 export async function mapBounds(page: Page): Promise<[number, number, number, number]> {
 	await mapAtRest(page);
@@ -324,6 +450,65 @@ export async function mapAtRest(page: Page): Promise<void> {
 		return map !== undefined && !map.isMoving();
 	});
 }
+
+/** Where a test's held clock stands while the screen opens. */
+const START = Date.parse('2026-11-09T12:00:00Z');
+
+/**
+ * Holds the page's clock 1 s after the load: none of its timers and frames runs but as the test runs the clock, so a
+ * busy machine changes nothing. The data's sources stay under the phrase for its first 5 s.
+ */
+export async function holdTheClock(page: Page): Promise<void> {
+	await page.clock.install({ time: START });
+	await page.clock.pauseAt(START + 1000);
+}
+
+/**
+ * Runs the page's held clock a frame at a time until `done`: what the page does on its timers and frames, MapLibre's
+ * loading and TanStack Query's telling of an answer among them, waits for the clock.
+ */
+export async function runUntil(page: Page, done: () => Promise<boolean>, message: string): Promise<void> {
+	await expect
+		.poll(
+			async () => {
+				await page.clock.runFor(16);
+				return done();
+			},
+			{ message, intervals: [50], timeout: 20_000 },
+		)
+		.toBe(true);
+}
+
+/** Longer than any timer of the screen a test waits past: the carousel's stop (140 ms), the map's easing and flight. */
+const TIMERS_PAST_MS = 2500;
+
+/** Runs the page's held clock past every timer of the screen, and waits until the map stops. */
+export async function settle(page: Page): Promise<void> {
+	await page.clock.runFor(TIMERS_PAST_MS);
+	await mapAtRest(page);
+}
+
+/**
+ * Runs the page's held clock until the map is up, then past its flight to the ring: well under the data's sources' 5 s,
+ * which a test runs past itself.
+ */
+export async function runUntilMapAtRest(page: Page): Promise<void> {
+	await runUntil(page, async () => page.evaluate(() => window.mapForTests !== undefined), 'the map announced');
+	await settle(page);
+}
+
+/**
+ * Opens the ring of the carousel's tests (`carouselRing` of e2e/fixtures.ts), 2–3 h around Belgrade, on the held
+ * clock: its 12 city cards, the map up and come to rest on it.
+ */
+export async function openTheCarousel(page: Page): Promise<void> {
+	await page.goto('/#/?p=44.81760,20.45730&h=3');
+	await runUntil(page, async () => (await cityCards(page).count()) === 12, 'the 12 city cards');
+	await runUntilMapAtRest(page);
+}
+
+/** How far the carousel is scrolled from its start, in CSS pixels. */
+export const scrolled = async (page: Page): Promise<number> => carousel(page).evaluate((element) => element.scrollLeft);
 
 /** The map's style once it has loaded: its sprite, its fonts and the tiles of the view are in. */
 export async function loadedStyle(page: Page): Promise<StyleSpecification> {

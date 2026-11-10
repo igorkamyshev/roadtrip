@@ -1,8 +1,8 @@
 // The data's sources (spec #20 «Экран»: the map's attribution and ⓘ «Что важно знать»), one line for both. They live
 // behind ⓘ; OpenStreetMap's attribution guidelines want them seen when the map opens, so they also show under the
-// phrase for 5 s once the screen opens, then fold into ⓘ, as the guidelines allow. Their place under the phrase stays
-// when they go, so the slider under them never moves (#77). What each licence asks, with its words:
-// docs/attribution.md.
+// phrase for 5 s once the screen opens, then fold into ⓘ, as the guidelines allow. On the narrow screen their place
+// under the phrase stays when they go, so the slider under them never moves (#77); on the wide one they stand in the
+// phrase's plate and go with their place (#103). What each licence asks, with its words: docs/attribution.md.
 import { useEffect, useState, type ReactElement } from 'react';
 
 /** How long the sources show under the phrase once the screen opens. */
@@ -25,8 +25,8 @@ export function DataSources(): ReactElement {
 	);
 }
 
-/** The sources under the phrase for 5 s once the screen opens; after that their place, empty. */
-export function SourcesOnOpen(): ReactElement {
+/** Whether the sources still show under the phrase: for 5 s once the screen opens. */
+export function useSourcesOnOpen(): boolean {
 	const [shown, setShown] = useState(true);
 	useEffect(() => {
 		const timer = setTimeout(() => {
@@ -36,6 +36,18 @@ export function SourcesOnOpen(): ReactElement {
 			clearTimeout(timer);
 		};
 	}, []);
+	return shown;
+}
+
+/**
+ * The sources under the phrase while `shown` (`useSourcesOnOpen`). After that, on the narrow screen their place
+ * stays, empty, under the phrase (`keepPlace`); on the wide one they stand in the phrase's plate, and go with no place
+ * kept: nothing under the plate moves when it gets lower (#103).
+ */
+export function SourcesOnOpen({ shown, keepPlace }: { readonly shown: boolean; readonly keepPlace: boolean }): ReactElement | null {
+	if (!shown && !keepPlace) {
+		return null;
+	}
 	return (
 		<p className={shown ? 'c-sources' : 'c-sources gone'} data-testid="sources">
 			<DataSources />

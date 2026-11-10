@@ -14,7 +14,7 @@ export interface CityCardProps {
 	/** The entry modes of the answer shown. */
 	readonly access: Access;
 	readonly citizenships: readonly string[];
-	/** The chosen city: the carousel's current card, labelled larger on the map. */
+	/** The chosen city: its card is marked where it stands, its label larger on the map. */
 	readonly chosen: boolean;
 	/** A tap anywhere on the card but «Маршрут». */
 	readonly onTap: () => void;
@@ -23,7 +23,7 @@ export interface CityCardProps {
 export function CityCard({ city, origin, access, citizenships, chosen, onTap }: CityCardProps): ReactElement {
 	return (
 		<div
-			className={chosen ? 'c-card focus' : 'c-card'}
+			className={chosen ? 'c-card clickable chosen' : 'c-card clickable'}
 			data-testid="city-card"
 			data-city={city.id}
 			aria-current={chosen ? 'true' : undefined}
@@ -80,7 +80,7 @@ export function EntryMark({ city, access }: { readonly city: City; readonly acce
 /** «и ещё K / Все города →»: opens the list of all the ring's cities. */
 export function MoreCard({ more, onOpen }: { readonly more: number; readonly onOpen: () => void }): ReactElement {
 	return (
-		<button type="button" className="c-card" onClick={onOpen}>
+		<button type="button" className="c-card clickable" onClick={onOpen}>
 			<span className="muted small">и ещё</span>
 			<div className="big">{more}</div>
 			<div className="c-more">Все города →</div>

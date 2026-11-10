@@ -1,5 +1,6 @@
 /* The screen's look, ported from the prototype's variant C (branch claude/you-mshpw6, prototypes/screen/). One
-   full-screen map with everything over it; the same screen on a desktop. */
+   full-screen map with everything over it, laid out for the narrow screen first and over it for the wide one
+   (`@media (--wide)`, src/media.json). */
 :root {
 	--bg: #eef1ef;
 	--surface: #fff;
@@ -30,6 +31,9 @@
 	--err-bg: #fde7e4;
 	--ok: #1d6f47;
 	--shadow: 0 2px 10px rgb(16 30 26 / 14%), 0 1px 2px rgb(16 30 26 / 10%);
+
+	/* The veil over the ground of what is under the mouse (#105, below): a little darker, whatever the ground. */
+	--hover: rgb(0 0 0 / 6%);
 	--font: 'Golos Text', system-ui, -apple-system, 'Segoe UI', 'Roboto', sans-serif;
 	--display: 'Unbounded', 'Golos Text', system-ui, sans-serif;
 
@@ -79,6 +83,7 @@
 		--err-bg: #3b1915;
 		--ok: #6fd3a0;
 		--shadow: 0 2px 14px rgb(0 0 0 / 55%);
+		--hover: rgb(0 0 0 / 25%);
 
 		color-scheme: dark;
 	}
@@ -112,19 +117,30 @@ button {
 	cursor: pointer;
 }
 
+/* The keyboard's focus, in the text's colour 3 px out: never the blue of the chosen card's mark, close to it (#104). */
 :focus-visible {
-	outline: 2px solid var(--ring);
-	outline-offset: 2px;
+	outline: 2px solid var(--fg);
+	outline-offset: 3px;
 }
 
 a {
 	color: var(--ring);
 }
 
+/* A grid at any width: on the narrow screen it lays out only the carousel at the bottom and, with a mouse, its arrows
+   over it (#99), and everything else stands out of the flow; on the wide one it lays out the panels (below, `.screen`
+   under `@media (--wide)`). The same display either side of the threshold, so that a window crossing it does not
+   rebuild the layout of what the screen holds, an open sheet and its scroll among it. */
 .screen {
 	position: relative;
 	height: 100%;
 	overflow: hidden;
+	display: grid;
+	grid-template:
+		'.' minmax(0, 1fr)
+		'arrows' auto
+		'cards' auto
+		/ minmax(0, 1fr);
 }
 
 /* ---------- map ---------- */
@@ -331,6 +347,31 @@ a {
 	display: flex;
 	flex-direction: column;
 	box-shadow: var(--shadow);
+}
+
+/* On the wide screen a sheet is a modal in the middle (#98): 480 px, or the window less --edge on each side; its top
+   10 % down the window but no higher than --edge-top, and it grows down to --edge-bottom over the bottom at most. A
+   steady one (a list with a filter, src/screen/sheets.tsx) keeps one height, 640 px or down to that limit, and its
+   body scrolls; the others are as high as what they hold. The same <dialog>: a window that crosses the threshold
+   changes its look and closes nothing. */
+@media (--wide) {
+	.sheet {
+		--modal-top: max(10%, var(--edge-top));
+
+		inset: var(--modal-top) 0 auto;
+		width: min(480px, 100% - var(--edge-left) - var(--edge-right));
+		max-height: calc(100% - var(--modal-top) - var(--edge-bottom));
+		margin-inline: auto;
+		border-radius: var(--radius);
+	}
+
+	.sheet.steady {
+		height: min(640px, 100% - var(--modal-top) - var(--edge-bottom));
+	}
+
+	.sheet.steady .sheet-body {
+		flex: 1;
+	}
 }
 
 .sheet-head {
@@ -546,14 +587,16 @@ a {
 	box-shadow: var(--shadow);
 }
 
-/* Its rows, one a cell, are set by the slider: twelve hours or the days. */
+/* Its cells, twelve hours or the days, as many as the slider gives it, in the column the first at the bottom (the
+   slider puts the last first). */
 .sl-cells {
 	--gap: 2px;
 
 	position: relative;
 	isolation: isolate;
 	height: 100%;
-	display: grid;
+	display: flex;
+	flex-direction: column;
 	gap: var(--gap);
 }
 
@@ -588,8 +631,10 @@ a {
 }
 
 .sl-cell {
+	flex: 1 1 0;
 	display: grid;
 	place-items: center;
+	min-width: 0;
 	min-height: 0;
 	border-radius: var(--radius-inner);
 	font-size: 13px;
@@ -643,15 +688,62 @@ a {
 	}
 }
 
+/* The blue block: a cell's size in the first cell, moved by a cell and a gap for each before the chosen one; the slider
+   gives it --cells and --chosen. */
 .sl-chosen {
+	--cells: 1;
+	--chosen: 0;
+
 	position: absolute;
 	left: 0;
 	right: 0;
 	bottom: 0;
+	height: calc((100% - (var(--cells) - 1) * var(--gap)) / var(--cells));
+	transform: translateY(calc(-1 * var(--chosen) * (100% + var(--gap))));
 	border-radius: var(--radius-inner);
 	background: var(--ring);
 	box-shadow: 0 1px 4px color-mix(in srgb, var(--ring) 40%, transparent);
 	transition: transform 150ms ease-out;
+}
+
+/* On the wide screen the slider is a row (#97): the cells 560 px long and 40 px high in either unit, the first at the
+   left; the tab as high as the panel, «дни →» right of the hours, «← часы» left of the days, which moves them right
+   by its width. A tap --reach past the tab's ends takes it too. */
+@media (--wide) {
+	.sl {
+		flex-direction: row-reverse;
+		justify-content: flex-end;
+		height: auto;
+	}
+
+	/* 560 px, or less where the row's area is narrower: by the carousel's arrows (.c-vs). */
+	.sl-panel {
+		flex: 0 1 auto;
+		width: 560px;
+		min-width: 0;
+	}
+
+	.sl-cells {
+		flex-direction: row-reverse;
+		height: 40px;
+	}
+
+	.sl-tab {
+		height: auto;
+		padding: 0 14px;
+	}
+
+	.sl-tab::before {
+		inset: 0 calc(-1 * var(--reach));
+	}
+
+	.sl-chosen {
+		top: 0;
+		right: auto;
+		width: calc((100% - (var(--cells) - 1) * var(--gap)) / var(--cells));
+		height: auto;
+		transform: translateX(calc(var(--chosen) * (100% + var(--gap))));
+	}
 }
 
 /* ---------- variant C: phrase + carousel ---------- */
@@ -756,6 +848,7 @@ a {
 	width: 26px;
 	height: 26px;
 	vertical-align: -6px;
+	border-radius: 50%;
 	color: var(--muted);
 }
 
@@ -775,6 +868,84 @@ a {
 	width: var(--slider-width);
 }
 
+/* On the wide screen the screen is a grid (#97, #104): at the top the phrase's plate, with the data's sources in it
+   (#103, below), at the bottom the carousel the whole width, and over its cards the slider's row at the left edge,
+   --between over them (the carousel's top padding); between the plate and the row the free area of the map's camera
+   (.c-free). The row has the carousel's arrows at the right edge, `arrows`, as wide as they are and empty without
+   them (#99). .c-top gives up its column, and its children are the grid's; the map, the
+   pin's bar and the sheets stand over it as on the narrow screen. */
+@media (--wide) {
+	.screen {
+		grid-template:
+			'.     .       .       .    ' var(--edge-top)
+			'.     phrase  phrase  .    ' auto
+			'.     free    free    .    ' minmax(0, 1fr)
+			'.     slider  arrows  .    ' auto
+			'cards cards   cards   cards' auto
+			/ var(--edge-left) minmax(0, 1fr) auto var(--edge-right);
+	}
+
+	.c-top {
+		/* stylelint-disable-next-line plugin/no-unsupported-browser-features -- caniuse's «partial» is the accessibility of an element with a role of its own (a button, a table) under display: contents; .c-top is a bare div. */
+		display: contents;
+	}
+
+	/* The phrase is one plate at the top left edges, as wide as its text up to 720 px (#103): its lines fill it, and
+	   under them stand the date of old visa rules and, for the first 5 s, the data's sources. */
+	.c-phrase {
+		grid-area: phrase;
+		justify-self: start;
+		box-sizing: border-box;
+		max-width: 720px;
+		z-index: 11;
+	}
+
+	.c-phrase p {
+		text-wrap: pretty;
+	}
+
+	/* The sources under a line, as wide as the plate whatever their length: they wrap in it, never widen it. They go
+	   with their place after 5 s (src/screen/attribution.tsx), and the plate gets lower. */
+	.c-phrase .c-sources {
+		contain: inline-size;
+		margin-top: 8px;
+		padding: 6px 0 0;
+		border-top: 1px solid var(--line);
+		border-radius: 0;
+		background: none;
+		box-shadow: none;
+	}
+
+	/* A comma stays on its word's line, «мои визы:» on one, and each source and «CC BY 4.0» whole. */
+	.nowrap-wide,
+	.c-phrase .c-sources a {
+		white-space: nowrap;
+	}
+
+	/* The part of the screen no panel covers, where the camera shows a new ring whole and a chosen city in the middle
+	   (#108, src/map/camera.ts): from the phrase's plate down to the slider's row, from edge to edge, --edge in from
+	   each, past the safe area at the screen's edges. Nothing to see or tap: the map under it takes the taps. */
+	.c-free {
+		grid-area: free;
+		margin: var(--edge) 0;
+		pointer-events: none;
+	}
+
+	/* As long as the row with its tab, and no longer than its area, which the carousel's arrows leave it: there its
+	   panel narrows (#97). */
+	.c-vs {
+		grid-area: slider;
+		justify-self: start;
+		position: relative;
+		z-index: 11;
+		width: auto;
+		max-width: 100%;
+		min-height: 0;
+		max-height: none;
+		margin-top: 0;
+	}
+}
+
 /* The carousel, the whole width of the screen under the slider (#85): the current card at the left edge, up to
    280 px wide, and --peek of the next one out, between the current card and the slider's panel, so it shows that the
    cards scroll; the next one fades out in the last 12 px before the panel, so none shows under it. */
@@ -788,10 +959,8 @@ a {
 		transparent calc(100% - var(--edge-right) - var(--slider-width))
 	);
 
-	position: absolute;
-	left: 0;
-	right: 0;
-	bottom: 0;
+	grid-area: cards;
+	position: relative;
 	z-index: 10;
 	display: flex;
 	gap: var(--between);
@@ -816,6 +985,67 @@ a {
 	content: '';
 	flex: none;
 	width: max(0px, 100% - min(var(--card-max), 100% - var(--peek)) - var(--between));
+}
+
+/* On the wide screen the carousel is a row the whole width under the slider's row, --between under it (#104): its
+   cards stand between the edges at rest and fade out in the 12 px of either edge, the last, «и ещё K», at the right
+   one with no room after it, so when all fit the row does not scroll. No peek, no fading before the slider. */
+@media (--wide) {
+	.c-car {
+		--fade: linear-gradient(to right, transparent, #000 var(--edge-left), #000 calc(100% - var(--edge-right)), transparent);
+
+		padding: var(--between) var(--edge-right) var(--edge-bottom) var(--edge-left);
+
+		/* The row only scrolls (#104): no snapping, which would undo a card shown whole by its nearer edge, and that edge
+		   is inside the fade. */
+		scroll-snap-type: none;
+		scroll-padding-right: var(--edge-right);
+	}
+
+	.c-car::after {
+		content: none;
+	}
+}
+
+/* The carousel's arrows with a mouse (#99): a plate as high as the slider's row, two buttons in its 6 px of padding.
+   On the narrow screen it stands over the cards at the left edge, --between over them (the carousel's own 4 px of top
+   padding make up the rest), in the screen's row `arrows`, so the layout, not a reading of the carousel, gives it
+   room. */
+.c-arrows {
+	grid-area: arrows;
+	justify-self: start;
+	position: relative;
+	z-index: 11;
+	display: flex;
+	gap: 2px;
+	margin: 0 0 calc(var(--between) - 4px) var(--edge-left);
+	padding: 6px;
+	background: var(--surface);
+	border-radius: var(--radius);
+	box-shadow: var(--shadow);
+}
+
+.c-arrows button {
+	display: grid;
+	place-items: center;
+	width: 40px;
+	height: 40px;
+	border-radius: var(--radius-inner);
+}
+
+/* At the row's end that way an arrow is grey and does nothing; the plate stays as it is. */
+.c-arrows button:disabled {
+	color: var(--borderline);
+	cursor: default;
+}
+
+/* On the wide screen it stands in the slider's row at the right edge, level with it, and --between at least from it:
+   the row narrows for it (.c-vs). */
+@media (--wide) {
+	.c-arrows {
+		align-self: start;
+		margin: 0 0 0 var(--between);
+	}
 }
 
 .c-card {
@@ -859,8 +1089,8 @@ a {
 }
 
 .c-card-tap:focus-visible::after {
-	outline: 2px solid var(--ring);
-	outline-offset: 2px;
+	outline: 2px solid var(--fg);
+	outline-offset: 3px;
 }
 
 .c-card h3.err {
@@ -878,7 +1108,8 @@ a {
 	line-height: 1;
 }
 
-.c-card.focus {
+/* The chosen city's card: 2 px of --ring, close; the keyboard's focus looks otherwise (above). */
+.c-card.chosen {
 	outline: 2px solid var(--ring);
 }
 
@@ -899,7 +1130,22 @@ a {
 	margin-top: auto;
 }
 
-/* «Маршрут» of a city card: muted small text; its padding makes a finger's tap of 40 px without taking the room. */
+/* «Откуда едем?»'s «Город», «На карте» and «Где я», one row on the card at any width, a phone's of 242 px too (#106):
+   the words' buttons, without icons, take 8 px of padding and share the rest of the row; «Где я», an icon, is a square
+   of their height. On a card narrower still the row wraps as before. */
+.c-card .acts.spread .btn {
+	flex: 1 1 auto;
+	padding: 0 8px;
+}
+
+.c-card .acts.spread .btn.square {
+	flex: none;
+	width: 40px;
+	padding: 0;
+}
+
+/* «Маршрут» of a city card: muted small text, underlined with dots like the phrase's words; its padding makes a
+   finger's tap of 40 px without taking the room. */
 .c-card .c-route {
 	display: inline-block;
 	padding: 12px;
@@ -907,6 +1153,8 @@ a {
 	font-size: 13px;
 	line-height: 16px;
 	color: var(--muted);
+	/* stylelint-disable-next-line plugin/no-unsupported-browser-features -- the line's style alone is in Chrome 57, Safari 12.1 and Firefox 36 (MDN); caniuse's «partial» is the rest of «text-decoration styling». */
+	text-decoration-style: dotted;
 	text-underline-offset: 2px;
 }
 
@@ -930,6 +1178,21 @@ a {
 	justify-content: flex-end;
 }
 
+/* On the wide screen the pin's panel stands where the carousel's first card does, at the left and bottom edges (#107),
+   as wide as what it holds: one line, the hint and right after it the buttons. At the threshold, where the window is
+   narrower than that, the buttons go under the hint. */
+@media (--wide) {
+	.c-pickbar {
+		right: auto;
+		box-sizing: border-box;
+		max-width: calc(100% - var(--edge-left) - var(--edge-right));
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 10px 12px;
+	}
+}
+
 @media (prefers-reduced-motion: reduce) {
 	*,
 	*::before,
@@ -949,4 +1212,34 @@ a {
 
 .found-row {
 	padding: 10px 2px;
+}
+
+/* ---------- hover, with a mouse (#105) ---------- */
+
+/* With a mouse, at any width, what a click does something on answers the mouse over it, and only that: buttons, rows,
+   cells and the cards one can click get a little darker ground, a veil over whatever ground they have, in either
+   theme; the phrase's words and «Маршрут» a solid underline for the dotted one. Only the colour changes: nothing
+   moves or grows, and no outline (the chosen card has the blue one). The first card, which a click does nothing on,
+   does not answer, its buttons do. Without a mouse nothing answers: a touch screen's tap would leave it on. */
+@media (--mouse) {
+	.btn:hover,
+	.ico-btn:hover,
+	.c-info:hover,
+	.c-card.clickable:hover,
+	.c-arrows button:not(:disabled):hover,
+	.sl-cell:hover,
+	.sl-tab:hover,
+	.pick-item:hover,
+	.row:hover {
+		background-image: linear-gradient(var(--hover), var(--hover));
+	}
+
+	.tok:not(.static):hover {
+		border-bottom-style: solid;
+	}
+
+	.c-card .c-route:hover {
+		/* stylelint-disable-next-line plugin/no-unsupported-browser-features -- as at rest (.c-card .c-route): the line's style alone is in every browser of the list. */
+		text-decoration-style: solid;
+	}
 }

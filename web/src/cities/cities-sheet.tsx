@@ -41,7 +41,7 @@ export function CitiesSheet({ cities, hours, access, chosen, onPick, onClose }: 
 	}, [cities, chosen, list]);
 	const title = `${cities.length} ${plural(cities.length, ['город', 'города', 'городов'])} в кольце ${hoursShort(hours)}`;
 	return (
-		<Sheet title={title} onClose={onClose} bodyRef={body}>
+		<Sheet title={title} onClose={onClose} bodyRef={body} steady>
 			<div className="city-list" style={{ height: list.getTotalSize() }}>
 				{list.getVirtualItems().map((item) => {
 					const city = cities[item.index];

@@ -1,6 +1,6 @@
 // The phrase over the map (spec #20 «Экран»): «Из точки [Белград], 2–3 часа в пути. Гражданство [РФ], мои визы:
 // [нет] ⓘ», and under it «визовые правила от <дата>» when they are old. Each word in brackets opens a sheet.
-import type { ReactElement, ReactNode } from 'react';
+import type { ReactElement, ReactNode, Ref } from 'react';
 import { useMinute } from './clock.ts';
 import { hoursLong } from './copy.ts';
 import { InfoIcon } from './icons.tsx';
@@ -12,22 +12,25 @@ export interface PhraseProps {
 	/** A ring is being calculated: the spinner next to the hours. */
 	readonly busy: boolean;
 	readonly onStart: () => void;
+	/** The origin's word, where the focus comes back when the pin mode ends. */
+	readonly startRef?: Ref<HTMLButtonElement>;
 	readonly onInfo: () => void;
 	/**
 	 * After «в пути.»: the settings' words, «Гражданство [РФ], мои визы: [нет]», each a `PhraseToken`.
-	 * The line «визовые правила от <дата>» (`VisaRulesDate`) goes under the phrase, as its `footer`.
+	 * The line «визовые правила от <дата>» (`VisaRulesDate`) goes under the phrase, as its `footer`, and on the wide
+	 * screen the data's sources under it (#103).
 	 */
 	readonly settings?: ReactNode;
 	readonly footer?: ReactNode;
 }
 
-export function Phrase({ startLabel, hours, busy, onStart, onInfo, settings, footer }: PhraseProps): ReactElement {
+export function Phrase({ startLabel, hours, busy, onStart, startRef, onInfo, settings, footer }: PhraseProps): ReactElement {
 	return (
 		<div className="c-phrase" data-testid="phrase">
 			<p>
 				Из точки {/* The comma stays on the token's line. */}
 				<span className="nowrap">
-					<PhraseToken onClick={onStart} wanted={startLabel === undefined}>
+					<PhraseToken onClick={onStart} wanted={startLabel === undefined} ref={startRef}>
 						{startLabel ?? 'выберите'}
 					</PhraseToken>
 					,
@@ -79,13 +82,15 @@ export function PhraseToken({
 	children,
 	onClick,
 	wanted = false,
+	ref,
 }: {
 	readonly children: ReactNode;
 	readonly onClick: () => void;
 	readonly wanted?: boolean;
+	readonly ref?: Ref<HTMLButtonElement>;
 }): ReactElement {
 	return (
-		<button type="button" className={wanted ? 'tok want' : 'tok'} onClick={onClick}>
+		<button type="button" className={wanted ? 'tok want' : 'tok'} onClick={onClick} ref={ref}>
 			{children}
 		</button>
 	);
