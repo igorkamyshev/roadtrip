@@ -2,7 +2,7 @@
 // it, the pin mode, and the marker where the person put it.
 import type { Locator, Page } from '@playwright/test';
 import { allowGeolocation, expect, squareRing, test } from './fixtures.ts';
-import { dragMap, expectRingCard, firstCard, mapCenter, phrase, ringOnMap, slider, startOnMap } from './screen.ts';
+import { boxOf, dragMap, expectRingCard, firstCard, mapCenter, phrase, ringOnMap, slider, startOnMap } from './screen.ts';
 
 const BELGRADE = { lat: 44.8176, lon: 20.4573 };
 /** The pin mode's hint with a mouse, which moves the map either way (#107), and without one. */
@@ -37,6 +37,33 @@ test('without geolocation «выберите» blinks in the phrase and the firs
 	await expect(slider(page)).toHaveCount(0);
 	expect(ringApi.calls).toHaveLength(0);
 });
+
+for (const viewport of [
+	{ width: 390, height: 844 },
+	{ width: 1440, height: 900 },
+]) {
+	for (const colorScheme of ['light', 'dark'] as const) {
+		test.describe(`on ${viewport.width}×${viewport.height}, ${colorScheme}`, () => {
+			test.use({ viewport, colorScheme });
+
+			test('«Откуда едем?» has «Город», «На карте» and «Где я» in one row on the card', async ({ page }) => {
+				await page.goto('/');
+				await expect(firstCard(page)).toHaveAttribute('data-state', 'no_origin');
+
+				const card = await boxOf(firstCard(page));
+				const buttons = await Promise.all(
+					['Город', 'На карте', 'Где я'].map(async (name) => boxOf(firstCard(page).getByRole('button', { name }))),
+				);
+				const [first] = buttons;
+				expect(buttons.map((button) => Math.round(button.y))).toEqual(buttons.map(() => Math.round(first.y)));
+				for (const button of buttons) {
+					expect(button.x).toBeGreaterThanOrEqual(card.x);
+					expect(button.x + button.width).toBeLessThanOrEqual(card.x + card.width);
+				}
+			});
+		});
+	}
+}
 
 test('the sheet «Откуда едем» says when the browser gave no position', async ({ page }) => {
 	await page.goto('/');

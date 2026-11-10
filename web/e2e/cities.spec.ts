@@ -609,6 +609,16 @@ test.describe('a city card', () => {
 		expect(await read(card(page, 'Сараево'))).toBe('Сараево Sarajevo · Босния и Герцеговина · 697 тыс. Маршрут');
 	});
 
+	test('keeps the population whole: a no-break space before «млн» and «тыс.»', async ({ page, ringApi }) => {
+		ringApi.respond(() => ringAroundBelgrade(WITH_SCHENGEN_VISA));
+		await page.goto(LINK);
+		await expect(cityCards(page)).toHaveCount(12);
+
+		// The text as it stands, its spaces unchanged: «toHaveText» and `read` take a no-break space for a space.
+		const facts = await cityCards(page).getByTestId('city-facts').allTextContents();
+		expect(facts.slice(0, 2)).toEqual(['Budapest · Венгрия · 1,7 млн', 'Sarajevo · Босния и Герцеговина · 697 тыс.']);
+	});
+
 	test('of a city without a Russian name says its local name alone', async ({ page, ringApi }) => {
 		ringApi.respond(() => ringAroundBelgrade(RUSSIAN));
 		await page.goto(LINK);
