@@ -66,14 +66,6 @@ export const WarnIcon = (): ReactElement => (
 	</Icon>
 );
 
-export const RouteIcon = (): ReactElement => (
-	<Icon>
-		<circle cx="6" cy="19" r="2" />
-		<circle cx="18" cy="5" r="2" />
-		<path d="M8 19h8.5a3.5 3.5 0 0 0 0-7h-9a3.5 3.5 0 0 1 0-7H16" />
-	</Icon>
-);
-
 /** The pin in the middle of the map in the pin mode: filled, its tip on the point. */
 export const DropPin = (): ReactElement => (
 	<svg viewBox="0 0 24 24" aria-hidden="true">

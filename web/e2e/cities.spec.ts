@@ -567,6 +567,10 @@ test.describe('a city card', () => {
 			'https://www.google.com/maps/dir/?api=1&origin=44.81760%2C20.45730&destination=47.498%2C19.04&travelmode=driving',
 		);
 		await expect(budapest.getByRole('link', { name: 'Маршрут' })).toHaveAttribute('target', '_blank');
+		// A quiet link, not a button (#75): no button's look, no icon, and still a finger's tap.
+		await expect(budapest.getByRole('link', { name: 'Маршрут' })).not.toHaveClass(/\bbtn\b/u);
+		await expect(budapest.getByRole('link', { name: 'Маршрут' }).locator('svg')).toHaveCount(0);
+		expect((await budapest.getByRole('link', { name: 'Маршрут' }).boundingBox())?.height).toBeGreaterThanOrEqual(40);
 		// The start country; a city of 250 000 people is «250 тыс.».
 		expect(await read(card(page, 'Ниш'))).toBe('Ниш Niš · Сербия · 250 тыс. страна старта Маршрут');
 		// Without a visa, no mark.
