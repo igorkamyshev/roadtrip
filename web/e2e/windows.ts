@@ -30,8 +30,17 @@ export const WINDOWS: readonly TestWindow[] = [
 	{ width: 1920, height: 1080, pointer: 'mouse', layout: 'wide' },
 ];
 
+/** The row of the table of this size. */
+function rowOf(width: number, height: number): TestWindow {
+	const row = WINDOWS.find((window) => window.width === width && window.height === height);
+	if (row === undefined) {
+		throw new Error(`The table has no window ${width}×${height}`);
+	}
+	return row;
+}
+
 /** The desktop of the tickets' checks, a row of the table. */
-export const DESKTOP: TestWindow = { width: 1440, height: 900, pointer: 'mouse', layout: 'wide' };
+export const DESKTOP = rowOf(1440, 900);
 
 /** The windows of the wide layout. */
 export const WIDE_WINDOWS = WINDOWS.filter((window) => window.layout === 'wide');

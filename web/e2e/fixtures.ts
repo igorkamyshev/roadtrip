@@ -88,19 +88,22 @@ export const BELGRADE = { lat: 44.8176, lon: 20.4573 };
 export const BUDAPEST = { lat: 47.498, lon: 19.04 };
 export const NIS = { lat: 43.325, lon: 21.903 };
 
+/** A link to Belgrade, `BELGRADE` as the link writes it, for a test to add its hours or days, citizenships and visas. */
+export const FROM_BELGRADE = '/#/?p=44.81760,20.45730';
+
 /** Links to Belgrade's ring: of 1–2 h, of 2–3 h, and of 2–3 h for a citizen of Russia. */
-export const LINK_2_HOURS = '/#/?p=44.81760,20.45730&h=2';
-export const LINK_3_HOURS = '/#/?p=44.81760,20.45730&h=3';
-export const LINK_3_HOURS_RUS = '/#/?p=44.81760,20.45730&h=3&cit=RUS';
+export const LINK_2_HOURS = `${FROM_BELGRADE}&h=2`;
+export const LINK_3_HOURS = `${FROM_BELGRADE}&h=3`;
+export const LINK_3_HOURS_RUS = `${FROM_BELGRADE}&h=3&cit=RUS`;
 
 /**
  * The longest phrase and the shortest: Belgrade at 12 h and at 4–5 days, with four citizenships and four visas, or one
  * citizenship and no visas. In days the slider has its tab «часы ↓» or «← часы» (#83).
  */
-export const LONGEST = '/#/?p=44.81760,20.45730&h=12&cit=BIH,MNE,RUS,SRB&visas=CAN,GBR,SCHENGEN,USA';
-export const SHORTEST = '/#/?p=44.81760,20.45730&h=12&cit=RUS';
-export const LONGEST_IN_DAYS = '/#/?p=44.81760,20.45730&d=5&cit=BIH,MNE,RUS,SRB&visas=CAN,GBR,SCHENGEN,USA';
-export const SHORTEST_IN_DAYS = '/#/?p=44.81760,20.45730&d=5&cit=RUS';
+export const LONGEST = `${FROM_BELGRADE}&h=12&cit=BIH,MNE,RUS,SRB&visas=CAN,GBR,SCHENGEN,USA`;
+export const SHORTEST = `${FROM_BELGRADE}&h=12&cit=RUS`;
+export const LONGEST_IN_DAYS = `${FROM_BELGRADE}&d=5&cit=BIH,MNE,RUS,SRB&visas=CAN,GBR,SCHENGEN,USA`;
+export const SHORTEST_IN_DAYS = `${FROM_BELGRADE}&d=5&cit=RUS`;
 
 /** Visa rules three days older than the held clock (`holdTheClock` of e2e/screen.ts): «визовые правила от 6 ноября». */
 export const OLD_RULES = '2026-11-06T12:00:00Z';
@@ -268,6 +271,15 @@ export function squareRing(
 		source: 'calculation',
 		...visaRules(),
 	};
+}
+
+/** A ring per N, whatever the origin: a band from N − 1 to N tenths of a degree around the origin the call asks for. */
+export function ringOfHours(call: {
+	readonly lat: string;
+	readonly lon: string;
+	readonly hours: number;
+}): Extract<RingResponse, { outcome: 'ring' }> {
+	return squareRing(Number(call.lat), Number(call.lon), [(call.hours - 1) / 10, call.hours / 10]);
 }
 
 /** Every country around Serbia open to a Russian with a Schengen visa, Kosovo closed. */

@@ -5,14 +5,14 @@
 // `page.clock` sets: the tests below name the countries each count is made of, so a change of the table that
 // changes a count changes them too.
 import type { Locator, Page } from '@playwright/test';
-import { allowGeolocation, BELGRADE, expect, LINK_2_HOURS, squareRing, test } from './fixtures.ts';
+import { allowGeolocation, BELGRADE, expect, LINK_2_HOURS, ringOfHours, squareRing, test } from './fixtures.ts';
 import { expectRingCard, firstCard, phrase, reopen } from './screen.ts';
 
 test.beforeEach(async ({ context, page, ringApi }) => {
 	await allowGeolocation(context, BELGRADE);
 	// oxlint-disable-next-line roadtrip/clock-through-screen -- a date on a running clock: the table's rows act by the page's date, and the tests drive none of its timers
 	await page.clock.install({ time: new Date('2026-11-07T12:00:00Z') });
-	ringApi.respond((call) => squareRing(Number(call.lat), Number(call.lon), [(call.hours - 1) / 10, call.hours / 10]));
+	ringApi.respond(ringOfHours);
 });
 
 const visasSheet = (page: Page) => page.getByRole('dialog', { name: 'Мои визы' });
@@ -83,6 +83,7 @@ test.describe('the sheet «Мои визы»', () => {
 
 	test('counts only the rows acting today: none after its last day, and those for the citizenships chosen', async ({ page, ringApi }) => {
 		// MKD's rows for the USA, the UK and Canada end on 2026-12-31.
+		// oxlint-disable-next-line roadtrip/clock-through-screen -- another date on the running clock of beforeEach
 		await page.clock.setSystemTime(new Date('2027-01-01T00:00:00Z'));
 		await page.goto(LINK_2_HOURS);
 		await phrase(page).getByRole('button', { name: 'нет' }).click();
