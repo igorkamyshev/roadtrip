@@ -10,6 +10,9 @@ Nothing is deployed by hand ([spec #20](../specs/20.md) «Набор данны�
 | ------------------------- | ---------------------------------- | -------------------------------------- | ----------------- |
 | `roadtrip-error-tracking` | `44628a3a33c14a7a98ad064976904dda` | `3fd91a31-bd70-49d0-ba5f-54ae3d45fb36` | `wrangler deploy` |
 | `roadtrip`                | `9cb118bdadc145da87a91743d9d461b9` | `5d0acd69-e1e3-4ad2-ac21-47399686d952` | below             |
+| `roadtrip-stand`          | `5c5ce92e0daa45468d85345a0957dbd3` | `4dfad845-37e3-45bf-880a-5e5c48b80c24` | `deploy:stand`    |
+
+`roadtrip-stand` is the prototype stand (`worker/README.md`, «The prototype stand»): its trigger, «Deploy on request», deploys no push, only the branch named in a call that starts it.
 
 `roadtrip`'s `deploy` (`worker/package.json`) runs three steps:
 
