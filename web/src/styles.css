@@ -855,17 +855,16 @@ a {
 	width: var(--slider-width);
 }
 
-/* On the wide screen the screen is a grid (#97, #104): at the top the phrase and the data's sources, at the bottom the
-   carousel the whole width, and over its cards the slider's row at the left edge, --between over them (the carousel's
-   top padding). The row has a place for the carousel's arrows at the right edge, `arrows`, empty until they come
-   (#99). .c-top gives up its column, and its children are the grid's; the map, the pin's bar and the sheets stand
-   over it as on the narrow screen. */
+/* On the wide screen the screen is a grid (#97, #104): at the top the phrase's plate, with the data's sources in it
+   (#103, below), at the bottom the carousel the whole width, and over its cards the slider's row at the left edge,
+   --between over them (the carousel's top padding). The row has a place for the carousel's arrows at the right edge,
+   `arrows`, empty until they come (#99). .c-top gives up its column, and its children are the grid's; the map, the
+   pin's bar and the sheets stand over it as on the narrow screen. */
 @media (--wide) {
 	.screen {
 		grid-template:
 			'.     .       .       .    ' var(--edge-top)
 			'.     phrase  phrase  .    ' auto
-			'.     sources sources .    ' auto
 			'.     .       .       .    ' minmax(0, 1fr)
 			'.     slider  arrows  .    ' auto
 			'cards cards   cards   cards' auto
@@ -877,16 +876,36 @@ a {
 		display: contents;
 	}
 
+	/* The phrase is one plate at the top left edges, as wide as its text up to 720 px (#103): its lines fill it, and
+	   under them stand the date of old visa rules and, for the first 5 s, the data's sources. */
 	.c-phrase {
 		grid-area: phrase;
+		justify-self: start;
+		box-sizing: border-box;
+		max-width: 720px;
 		z-index: 11;
 	}
 
-	.c-sources {
-		grid-area: sources;
-		position: relative;
-		z-index: 11;
-		margin-top: var(--between);
+	.c-phrase p {
+		text-wrap: pretty;
+	}
+
+	/* The sources under a line, as wide as the plate whatever their length: they wrap in it, never widen it. They go
+	   with their place after 5 s (src/screen/attribution.tsx), and the plate gets lower. */
+	.c-phrase .c-sources {
+		contain: inline-size;
+		margin-top: 8px;
+		padding: 6px 0 0;
+		border-top: 1px solid var(--line);
+		border-radius: 0;
+		background: none;
+		box-shadow: none;
+	}
+
+	/* A comma stays on its word's line, «мои визы:» on one, and each source and «CC BY 4.0» whole. */
+	.nowrap-wide,
+	.c-phrase .c-sources a {
+		white-space: nowrap;
 	}
 
 	.c-vs {
