@@ -4,7 +4,7 @@ import { useEffect, useState, type ReactElement, type ReactNode } from 'react';
 import type { CitiesCount } from '../cities/in-ring.ts';
 import type { RingFailure } from '../ring/fetch-ring.ts';
 import { hoursShort, plural } from './copy.ts';
-import { LocateIcon, PinIcon, SearchIcon } from './icons.tsx';
+import { LocateIcon } from './icons.tsx';
 
 export type FirstCardState =
 	| { readonly kind: 'no_origin'; readonly geolocationFailed: boolean }
@@ -77,10 +77,11 @@ function NoOriginCard({
 			<p className="muted small">
 				{geolocationFailed ? 'Браузер не дал доступ к геолокации. ' : ''}Найдите город или укажите точку на карте.
 			</p>
-			<div className="acts">
+			{/* One row on a phone's card too (#106): the words share it, «Где я», an icon, is a square. */}
+			<div className="acts spread">
 				<SearchButton onSearch={actions.onSearch} primary />
 				<PinButton onPin={actions.onPin} />
-				<button type="button" className="btn" onClick={actions.onLocate} aria-label="Где я">
+				<button type="button" className="btn square" onClick={actions.onLocate} aria-label="Где я">
 					<LocateIcon />
 				</button>
 			</div>
@@ -224,7 +225,7 @@ function FailureCard({
 function SearchButton({ onSearch, primary = false }: { readonly onSearch: () => void; readonly primary?: boolean }): ReactElement {
 	return (
 		<button type="button" className={primary ? 'btn primary' : 'btn'} onClick={onSearch}>
-			<SearchIcon /> Город
+			Город
 		</button>
 	);
 }
@@ -232,7 +233,7 @@ function SearchButton({ onSearch, primary = false }: { readonly onSearch: () => 
 function PinButton({ onPin }: { readonly onPin: () => void }): ReactElement {
 	return (
 		<button type="button" className="btn" onClick={onPin}>
-			<PinIcon /> На карте
+			На карте
 		</button>
 	);
 }
