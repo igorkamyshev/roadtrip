@@ -45,6 +45,21 @@ async function runNowUntil(page: Page, done: () => Promise<boolean> | boolean): 
 /** posthog-js sends its queue every few seconds. */
 const SENT = { timeout: 15_000 };
 
+/**
+ * The values of an event that could be Belgrade, the origin, or a rounding of it: a number within 0.05° of its latitude
+ * or longitude, or a text with 44.8 or 20.4–20.5 in it. PostHog's own clock is neither: its `$time` (1794253220.435) is
+ * far from both, and the seconds of its dates («…:40:20.410Z») follow a colon.
+ */
+function nearTheOrigin(value: unknown): unknown[] {
+	if (typeof value === 'number') {
+		return Math.abs(value - BELGRADE.lat) < 0.05 || Math.abs(value - BELGRADE.lon) < 0.05 ? [value] : [];
+	}
+	if (typeof value === 'string') {
+		return /(?<![\d:])(?:44\.8|20\.[45])/u.test(value) ? [value] : [];
+	}
+	return typeof value === 'object' && value !== null ? Object.values(value).flatMap((part) => nearTheOrigin(part)) : [];
+}
+
 test('one page view a load, and no URL PostHog gets has the link’s #…, however the state changes', async ({ page, ringApi, posthog }) => {
 	ringApi.respond((call) => squareRing(BELGRADE.lat, BELGRADE.lon, [call.hours - 1, call.hours]));
 
@@ -55,10 +70,8 @@ test('one page view a load, and no URL PostHog gets has the link’s #…, howev
 	await expect.poll(() => posthog.named('ring result'), SENT).toHaveLength(2);
 
 	expect(posthog.named('$pageview')).toEqual([expect.objectContaining({ $current_url: `${PRODUCTION}/` })]);
-	const sent = JSON.stringify(posthog.events);
-	expect(sent).not.toContain('#/');
-	expect(sent).not.toContain('44.8');
-	expect(sent).not.toContain('20.4');
+	expect(JSON.stringify(posthog.events)).not.toContain('#/');
+	expect(posthog.events.flatMap((sent) => nearTheOrigin(sent.properties))).toEqual([]);
 });
 
 test("every ring request carries the browser's PostHog ids, the first one of the load too", async ({ page, ringApi, posthog }) => {

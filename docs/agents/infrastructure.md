@@ -38,7 +38,7 @@ The first builds, 2026-11-08, dataset `2026-11-07` with its 357 MB graph, are fa
 - The image: 535 MB unpacked, 315 MB compressed, the graph's layer ~253 MB of it (the same image rebuilt locally from the world build's artifact).
 - Every deploy pushes the graph's layer again: BuildKit stamps the layer with the build's time, so the same graph never makes the same layer (a fixed mtime on the file does not help), and the images stay in the registry until deleted: about 200 deploys fill the account's 50 GB, which ytc's images share.
 
-The Container on the world graph, the same image in Docker under `standard-2`'s limits (1 vCPU, 6 GiB): the graph loads in 0.23–0.27 s, the port opens 0.7–1.9 s after the process starts, with 384 MiB in use; a warm 12 h ring from Frankfurt took 3.4–4.6 s, a ring of days up to 5 at most 5.8 s and 891 MiB (`docs/container-bench.md`, «Кольца дней»). Cloudflare's own part of a cold start (placing the instance, up to 27 s right after a stop) is in `docs/container-bench.md`. A cold start in production was not observed yet: without the Owner's `SHERPA_API_KEY` no request gets past the visa rules to the Container.
+The Container on the world graph, the same image in Docker under `standard-2`'s limits (1 vCPU, 6 GiB): the graph loads in 0.23–0.27 s, the port opens 0.7–1.9 s after the process starts, with 384 MiB in use; a warm 12 h ring from Frankfurt took 3.4–4.6 s, a ring of days up to 5 at most 5.8 s and 891 MiB (`docs/container-bench.md`, «Кольца дней»). Cloudflare's own part of a cold start (placing the instance, up to 27 s right after a stop) is in `docs/container-bench.md`.
 
 ### Check a deploy
 
@@ -81,7 +81,7 @@ async () => {
 };
 ```
 
-Then the site itself: `https://roadtrip.kamyshev.me/` (the client), `/data/cities.json` and `/data/zones.json` (the dataset's static files), `/tiles/0/0/0` (the basemap) and `/api/ring?lat=…&lon=…&from=0&to=1&cit=RUS`, which needs the Owner's `SHERPA_API_KEY`: without it every ring is `visa_rules_missing`.
+Then the site itself: `https://roadtrip.kamyshev.me/` (the client), `/data/cities.json` and `/data/zones.json` (the dataset's static files), `/tiles/0/0/0` (the basemap) and `/api/ring?lat=…&lon=…&from=0&to=1&cit=RUS`, which answers a ring with the visa rules of Sherpa (the Owner's `SHERPA_API_KEY` is set; without it every ring would be `visa_rules_missing`).
 
 ### Run a build again
 

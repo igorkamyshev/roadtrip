@@ -28,5 +28,6 @@ Rules a reviewer checks by judgement: when a ticket's work is merged, and when a
 - A change that contradicts an ADR in `docs/adr/` edits that ADR in the same commit.
 - A one-off harness (a benchmark, a probe workflow) is deleted when its ticket ends, or runs only on `workflow_dispatch`.
 - A change updates every README and agent doc line that describes what it changed.
+- A PR's description describes its head: a commit that changes what the description says (a number, a decision, an open question) changes the description too.
 - The spec, `docs/specs/20.md` (issue #20 copied when its work ended), is frozen. A change that makes a section of it untrue adds a line under that section in `docs/specs/20-amendments.md`.
 - A mention of the spec names its issue and section: `[spec #20](docs/specs/20.md) «Экран»` in Markdown (the path relative to the file), and `spec #20 «Экран»` in code, which `roadtrip/spec-names-its-issue` checks. It means the section with its amendments.
