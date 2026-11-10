@@ -247,7 +247,7 @@ export async function expectRingCard(page: Page, hours: string): Promise<void> {
  */
 export const sliderHour = (page: Page, hours: number): Locator => slider(page).locator(`[data-hours="${hours}"]`);
 
-/** The slider's cells in the unit it shows: the twelve hours, or the days (#83). */
+/** The slider's cells in the unit it shows: the eight hours, or the days (#83). */
 export const sliderCells = (page: Page): Locator => slider(page).locator('[data-hours]');
 
 /**

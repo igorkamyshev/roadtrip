@@ -155,6 +155,13 @@ test('the link d=3 opens the ring of 2–3 days', async ({ page, ringApi }) => {
 	await expect(firstCard(page)).toContainText('В кольце 2–3 дня');
 });
 
+test('the link d=7, the last day, asks for the ring of 48–56 h', async ({ page, ringApi }) => {
+	await page.goto(`${FROM_BELGRADE}&d=7&cit=RUS`);
+
+	await expectRingCard(page, '6–7 дней');
+	expect(ringApi.calls).toEqual([expect.objectContaining({ from: 48, hours: 56 })]);
+});
+
 for (const [what, search] of [
 	['both h and d', 'h=5&d=3'],
 	['a day after the last, 7', 'd=8'],

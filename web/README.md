@@ -11,7 +11,7 @@ One line per file, so that two changes of the screen seldom touch the same line.
   - The opening state (`src/state/startup.ts`: the link, else the saved state, else the defaults), then the router (its context says where the opening state came from) and the Query client.
 - `src/router.tsx`: one route `/` with hash history; `validateSearch`, `parseSearch` and `stringifySearch` from `src/state/search.ts` keep the link literal: `/#/?p=44.81760,20.45730&h=3&cit=RUS,SRB&visas=GEO,SCHENGEN`, or `d=2` in place of `h` for a ring of days.
 - `src/state/`: the state in the link and its defaults.
-  - `search.ts`: the origin, the slider's cell (`hours` of the state, its ring's upper bound: N, or 12·D for day D; `h=N` or `d=D` in the link, never both: both, or either off the scale, give 1 h), the citizenships (Sherpa's passports sorted, `RUS` by default) and the held visas (`rules`' `HELD_VISAS` sorted, none by default and left out of the link then); anything else in `cit` or `visas` takes the default.
+  - `search.ts`: the origin, the slider's cell (`hours` of the state, its ring's upper bound: N, or 8·D for day D; `h=N` or `d=D` in the link, never both: both, or either off the scale, give 1 h), the citizenships (Sherpa's passports sorted, `RUS` by default) and the held visas (`rules`' `HELD_VISAS` sorted, none by default and left out of the link then); anything else in `cit` or `visas` takes the default.
   - `point.ts`: the origin as a point to 5 decimals.
   - `startup.ts`: the saved snapshot.
   - `use-screen-state.ts`: the changes, each a `navigate` with `replace: true` plus the snapshot, and how the origin was set, which the link does not keep (`start`, `setStart`).
