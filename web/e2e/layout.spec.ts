@@ -4,21 +4,25 @@
 // the shortest. The sources are as wide as the phrase, and their place stays when they go. The slider goes down to
 // the bottom of the screen over the carousel, and the current card leaves room for the next one to peek out. Read by
 // the elements' boxes, never by pixels.
-import type { Locator, Page } from '@playwright/test';
+import type { Page } from '@playwright/test';
 import { expect, squareRing, test, visaRules } from './fixtures.ts';
 import {
 	boxOf,
+	cityCards,
 	expectApart,
 	expectRingCard,
 	firstCard,
 	fromEdges,
 	overlap,
 	phrase,
+	rulesDate,
+	runUntil,
 	slider,
 	sliderHour,
 	sliderPanel,
 	sliderTab,
 	sources,
+	startPinning,
 } from './screen.ts';
 
 /** Where the page's clock stands, held, while the screen opens: the sources stay under the phrase. */
@@ -60,15 +64,20 @@ const UNDER_THE_PHRASE = 8;
 /** The slider is never lower than this, to be taken by a finger (#47). */
 const LOWEST_SLIDER = 120;
 
-/** The line under the phrase that dates old visa rules, «визовые правила от <дата>». */
-const rulesDate = (page: Page): Locator => phrase(page).getByTestId('rules-date');
-
 /** Opens `path` with the clock held 1 s after the load, and waits for the ring of 12 h, or of the days it names. */
 async function open(page: Page, path: string, ring = '11–12 ч'): Promise<void> {
 	await page.clock.install({ time: START });
 	await page.clock.pauseAt(START + 1000);
 	await page.goto(path);
 	await expectRingCard(page, ring);
+}
+
+/**
+ * Waits for the cities file, which the phrase names Belgrade by, and the cards of the ring's cities. A file that comes
+ * once the clock is held shows only as the clock runs: a frame at a time, far from the sources' 5 s.
+ */
+async function citiesCame(page: Page): Promise<void> {
+	await runUntil(page, async () => (await cityCards(page).count()) > 0, 'the cards of the ring’s cities');
 }
 
 test.beforeEach(({ ringApi }) => {
@@ -131,8 +140,8 @@ for (const { lowestHour, ...viewport } of PHONES) {
 
 		test('in the pin mode, the panels of the longest phrase are apart and on the screen', async ({ page }) => {
 			await open(page, LONGEST);
-			await phrase(page).getByRole('button', { name: 'Белград' }).click();
-			await page.getByRole('dialog', { name: 'Откуда едем' }).getByRole('button', { name: 'Указать на карте' }).click();
+			await citiesCame(page);
+			await startPinning(page);
 			await expect(page.getByRole('button', { name: 'Старт здесь' })).toBeVisible();
 
 			await expectApart(page, {

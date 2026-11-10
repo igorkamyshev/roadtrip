@@ -5,7 +5,7 @@
 // the whole width; the first card stands where it does with a ring in every state (#106); the phrase is one plate at
 // the top left, with the date of old visa rules and the first 5 s' data's sources in it (#103). Read by the elements'
 // boxes, never by pixels.
-import type { Locator, Page } from '@playwright/test';
+import type { Page } from '@playwright/test';
 import type { Access } from 'worker/api';
 import { CITIES, expect, serveCities, squareRing, test, visaRules } from './fixtures.ts';
 import type { RingApi } from './ring-api.ts';
@@ -22,6 +22,7 @@ import {
 	labelsOnMap,
 	moreCard,
 	phrase,
+	rulesDate,
 	sheetPanel,
 	sheetPlace,
 	slider,
@@ -402,9 +403,6 @@ async function openHeld(page: Page, path: string, ring = '11–12 ч'): Promise<
 	await page.clock.pauseAt(START + 1000);
 	await open(page, path, ring);
 }
-
-/** The line in the phrase's plate that dates old visa rules, «визовые правила от <дата>». */
-const rulesDate = (page: Page): Locator => phrase(page).getByTestId('rules-date');
 
 /** Whether `inner` lies wholly in `outer`. */
 const within = (inner: Box, outer: Box): boolean =>

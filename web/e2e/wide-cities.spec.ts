@@ -4,46 +4,35 @@
 // the chosen city's card at the left edge, where the narrow screen's chosen card stands. And at any width the
 // keyboard's focus looks other than the chosen card's mark. The narrow screen's carousel is `cities.spec.ts`'s.
 import type { Locator, Page } from '@playwright/test';
-import type { Access } from 'worker/api';
-import { CITIES, expect, squareRing, test, visaRules } from './fixtures.ts';
-import { boxOf, carousel, chosenCard, cityCard, cityCards, dragMap, labelsOnMap, mapAtRest, mapCenter, mapZoom, tapMap } from './screen.ts';
+import { carouselRing, CITIES, expect, test } from './fixtures.ts';
+import {
+	boxOf,
+	carousel,
+	chosenCard,
+	cityCard,
+	cityCards,
+	cutCard,
+	dragMap,
+	holdTheClock,
+	labelsOnMap,
+	mapCenter,
+	mapZoom,
+	openTheCarousel,
+	runUntil,
+	scrolled,
+	settle,
+	tapMap,
+} from './screen.ts';
 import { onWindow, type TestWindow, windowName, WINDOWS } from './windows.ts';
-
-const BELGRADE = { lat: 44.8176, lon: 20.4573 };
-const LINK = '/#/?p=44.81760,20.45730&h=3';
-
-/** A Russian with a Schengen visa around Serbia: every city of `CITIES` in the band is in the ring. */
-const OPEN: Access = {
-	SRB: { mode: 'start' },
-	BIH: { mode: 'visa_free', citizenship: 'RUS' },
-	MNE: { mode: 'visa_free', citizenship: 'RUS' },
-	HUN: { mode: 'held_visa', visa: 'SCHENGEN' },
-	ROU: { mode: 'held_visa', visa: 'SCHENGEN' },
-	HRV: { mode: 'held_visa', visa: 'SCHENGEN' },
-	RKS: { mode: 'closed', closedForEveryone: true },
-};
 
 /** The windows of the ticket's checks: a desktop with a mouse, and a tablet upright with a touch screen. */
 const CHECKED = WINDOWS.filter(({ width, height }) => (width === 1440 && height === 900) || (width === 768 && height === 1024));
 
 test.beforeEach(async ({ page, ringApi }) => {
-	// The page's clock, which the map's easing and the carousel's stop run by: a test moves it past them.
-	await page.clock.install();
-	ringApi.respond(() => ({ ...squareRing(BELGRADE.lat, BELGRADE.lon, [1, 3]), ...visaRules(OPEN) }));
+	// The map's easing and the carousel's stop run by the page's clock: a test runs it past them.
+	await holdTheClock(page);
+	ringApi.respond(carouselRing);
 });
-
-/** Opens the ring 2–3 h around Belgrade, with its 12 city cards, once the map is up and has fit it. */
-async function open(page: Page): Promise<void> {
-	await page.goto(LINK);
-	await expect(cityCards(page)).toHaveCount(12);
-	await mapAtRest(page);
-}
-
-/** Lets every timer of the screen run out: the carousel's stop, the map's easing. */
-async function settle(page: Page): Promise<void> {
-	await page.clock.fastForward(2000);
-	await mapAtRest(page);
-}
 
 /** Where a city of `CITIES` is. */
 function placeOf(name: string): { lat: number; lon: number } {
@@ -77,18 +66,6 @@ const WENT_TO = 80;
 /** The row's room for its cards: inside the 12 px of either edge, where it fades out (#104). */
 const EDGE = 12;
 
-/** The name of the first city card the window's right edge cuts: the row shows it only in part. */
-async function cutCard(page: Page): Promise<string> {
-	const { width } = page.viewportSize() ?? { width: 0 };
-	for (const card of await cityCards(page).all()) {
-		const box = await boxOf(card);
-		if (box.x + box.width > width - EDGE) {
-			return card.getByRole('heading').innerText();
-		}
-	}
-	throw new Error('every city card is whole in the row');
-}
-
 /**
  * Clicks, or taps on a touch screen, the card where the row shows it, on its heading's line: a click of Playwright's
  * would scroll a card cut by the edge into view first. Gives the point it pressed.
@@ -100,9 +77,6 @@ async function pressCard(page: Page, pointer: TestWindow['pointer'], name: strin
 	await (pointer === 'touch' ? page.touchscreen.tap(at.x, at.y) : page.mouse.click(at.x, at.y));
 	return at;
 }
-
-/** How far the row is scrolled from its start. */
-const scrolled = (page: Page) => carousel(page).evaluate((element) => element.scrollLeft);
 
 /** Where the city's card stands whole in the row: at its left or right edge, between them, or `cut` by one. */
 async function wholeAt(page: Page, name: string): Promise<'left' | 'right' | 'between' | 'cut'> {
@@ -137,7 +111,7 @@ for (const window of CHECKED) {
 		test.use(onWindow(window));
 
 		test('scrolling the row chooses no city and leaves the map where it is', async ({ page }) => {
-			await open(page);
+			await openTheCarousel(page);
 			const center = await mapCenter(page);
 
 			await carousel(page).evaluate((element) => {
@@ -153,7 +127,7 @@ for (const window of CHECKED) {
 		test('a card the edge cuts, pressed, chooses its city: the map goes to it, and the row moves only to show the card whole', async ({
 			page,
 		}) => {
-			await open(page);
+			await openTheCarousel(page);
 			const name = await cutCard(page);
 			const { width } = page.viewportSize() ?? { width: 0 };
 			const cut = await boxOf(cityCard(page, name));
@@ -187,7 +161,7 @@ for (const window of CHECKED) {
 		test('a city tapped on the map whose card is out of view is chosen: the row brings the card whole to its nearer edge, the map goes to it', async ({
 			page,
 		}) => {
-			await open(page);
+			await openTheCarousel(page);
 			await expect(cityCard(page, 'Суботица')).not.toBeInViewport();
 			expect(await fromTheMapMiddle(page, 'Суботица')).toBeGreaterThan(WENT_TO);
 
@@ -201,7 +175,7 @@ for (const window of CHECKED) {
 		test('a city picked in the list of all is chosen at once: a card out of view comes whole to the nearer edge, one in view stays', async ({
 			page,
 		}) => {
-			await open(page);
+			await openTheCarousel(page);
 
 			await pickInTheList(page, 'Мостар');
 
@@ -221,7 +195,7 @@ for (const window of CHECKED) {
 		});
 
 		test('Tab goes through the cards: the card in focus comes whole into view, its city not chosen', async ({ page }) => {
-			await open(page);
+			await openTheCarousel(page);
 			const center = await mapCenter(page);
 			await cityCard(page, 'Будапешт').getByRole('button').focus();
 
@@ -244,7 +218,7 @@ test.describe('a window that turns narrow', () => {
 	test.use({ viewport: { width: 1440, height: 900 } });
 
 	test("puts the chosen city's card at the left edge at once, and the map stays", async ({ page }) => {
-		await open(page);
+		await openTheCarousel(page);
 		await pressCard(page, 'mouse', 'Ниш');
 		await expect(chosenCard(page).getByRole('heading')).toHaveText('Ниш');
 		await carousel(page).evaluate((element) => {
@@ -262,7 +236,7 @@ test.describe('a window that turns narrow', () => {
 	});
 
 	test('with no city chosen, chooses none, and the map stays', async ({ page }) => {
-		await open(page);
+		await openTheCarousel(page);
 		await carousel(page).evaluate((element) => {
 			element.scrollLeft = 600;
 		});
@@ -278,7 +252,7 @@ test.describe('a window that turns narrow', () => {
 	});
 
 	test('with a city chosen that has no card, keeps it chosen, marks no card, and the map stays', async ({ page }) => {
-		await open(page);
+		await openTheCarousel(page);
 		// Reşiţa has no card: tapped on the map, it is chosen, and the list of all opens.
 		await tapMap(page, placeOf('Решица'));
 		await page.keyboard.press('Escape');
@@ -340,11 +314,16 @@ for (const window of [...CHECKED, ...WINDOWS.filter(({ width, height }) => width
 		test("the keyboard's focus on a card is an outline of --fg 3 px out, the chosen card's mark one of --ring 2 px close", async ({
 			page,
 		}) => {
-			await open(page);
+			await openTheCarousel(page);
 			await cityCard(page, 'Будапешт').getByRole('button').focus();
 			await page.keyboard.press('Enter');
+			// On the phone the card is chosen by the stop of the carousel's smooth scroll to it, which the browser runs.
+			await runUntil(
+				page,
+				async () => (await chosenCard(page).getByRole('heading').allInnerTexts()).join() === 'Будапешт',
+				'Будапешт chosen',
+			);
 			await settle(page);
-			await expect(chosenCard(page).getByRole('heading')).toHaveText('Будапешт');
 
 			await page.keyboard.press('Tab');
 			await page.keyboard.press('Tab');

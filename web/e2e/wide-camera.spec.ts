@@ -7,7 +7,22 @@
 import type { Page } from '@playwright/test';
 import type { Access } from 'worker/api';
 import { expect, squareRing, test, visaRules } from './fixtures.ts';
-import { boxOf, cityCard, expectRingCard, labelsOnMap, mapAtRest, phrase, ringOnMap, slider, sources, whereOnScreen } from './screen.ts';
+import {
+	boxOf,
+	cityCard,
+	expectRingCard,
+	holdTheClock,
+	labelsOnMap,
+	mapAtRest,
+	phrase,
+	ringOnMap,
+	runUntil,
+	runUntilMapAtRest,
+	settle,
+	slider,
+	sources,
+	whereOnScreen,
+} from './screen.ts';
 import { onWindow, WIDE_WINDOWS, windowName } from './windows.ts';
 
 const BELGRADE = { lat: 44.8176, lon: 20.4573 };
@@ -32,8 +47,6 @@ const NARROWER = squareRing(BELGRADE.lat, BELGRADE.lon, [0.5, 1.5]);
 const EDGE = 12;
 /** A projected point may land this far off, in CSS pixels. */
 const PIXEL = 1;
-/** Where the page's clock stands while the screen opens. */
-const START = Date.parse('2026-11-09T12:00:00Z');
 /** Longer than the data's sources stay in the phrase's plate once the screen opens. */
 const SOURCES_PAST_MS = 6000;
 
@@ -64,27 +77,6 @@ function expectWithin(frame: Awaited<ReturnType<typeof ringFrame>>, area: Awaite
 	expect(frame.right, 'the ring off the right edge').toBeLessThanOrEqual(area.right + PIXEL);
 }
 
-/** Longer than the map's flight to a new ring, by the page's clock. */
-const FLIGHT_PAST_MS = 2500;
-
-/**
- * Runs the page's held clock a frame at a time until the map is up, then past its flight: MapLibre loads and flies by
- * the page's frames, which a held clock holds too. Well under the sources' 5 s of the page's time.
- */
-async function runUntilMapAtRest(page: Page): Promise<void> {
-	await expect
-		.poll(
-			async () => {
-				await page.clock.runFor(16);
-				return page.evaluate(() => window.mapForTests !== undefined);
-			},
-			{ intervals: [50], timeout: 20_000 },
-		)
-		.toBe(true);
-	await page.clock.runFor(FLIGHT_PAST_MS);
-	await mapAtRest(page);
-}
-
 /** The map's centre and zoom, once it has stopped. */
 async function view(page: Page): Promise<unknown> {
 	await mapAtRest(page);
@@ -106,8 +98,7 @@ for (const window of WIDE_WINDOWS) {
 			page,
 		}) => {
 			// The clock held, then run past the map's flight but not the sources' 5 s.
-			await page.clock.install({ time: START });
-			await page.clock.pauseAt(START + 1000);
+			await holdTheClock(page);
 			await page.goto(LONGEST);
 			await expectRingCard(page, '11–12 ч');
 			await runUntilMapAtRest(page);
@@ -123,18 +114,18 @@ for (const window of WIDE_WINDOWS) {
 		});
 
 		test('a city chosen by a click on its card comes to the middle of the free area', async ({ page }) => {
-			await page.clock.install();
+			await holdTheClock(page);
 			await page.goto(LONGEST);
 			await expectRingCard(page, '11–12 ч');
+			await runUntilMapAtRest(page);
 			// Past the sources' 5 s: the plate is as low as it stays.
-			await page.clock.fastForward(SOURCES_PAST_MS);
-			await mapAtRest(page);
+			await page.clock.runFor(SOURCES_PAST_MS);
+			await expect(sources(page)).toHaveCount(0);
 
 			await cityCard(page, 'Будапешт').getByRole('button', { name: 'Будапешт' }).click();
 
+			await settle(page);
 			await expect.poll(async () => (await labelsOnMap(page)).chosen).toEqual(['Будапешт']);
-			await page.clock.fastForward(FLIGHT_PAST_MS);
-			await mapAtRest(page);
 			const [at, area] = await Promise.all([whereOnScreen(page, BUDAPEST), freeArea(page)]);
 			expect(Math.abs(at.x - (area.left + area.right) / 2), 'across').toBeLessThanOrEqual(PIXEL);
 			expect(Math.abs(at.y - (area.top + area.bottom) / 2), 'down').toBeLessThanOrEqual(PIXEL);
@@ -143,18 +134,20 @@ for (const window of WIDE_WINDOWS) {
 		test('a ring that comes while a modal is open shows whole in the free area once it closes', async ({ page, ringApi }) => {
 			// Without the US visa the ring is a narrower band: the camera comes closer.
 			ringApi.respond((call) => ({ ...(call.visas?.includes('USA') === true ? RING : NARROWER), ...visaRules(OPEN) }));
-			await page.clock.install();
+			await holdTheClock(page);
 			await page.goto(LONGEST);
 			await expectRingCard(page, '11–12 ч');
-			await page.clock.fastForward(SOURCES_PAST_MS);
-			await mapAtRest(page);
+			await runUntilMapAtRest(page);
+			await page.clock.runFor(SOURCES_PAST_MS);
+			await expect(sources(page)).toHaveCount(0);
 
 			await phrase(page).getByRole('button', { name: /США/u }).click();
 			const visas = page.getByRole('dialog', { name: 'Мои визы' });
 			await visas.getByTestId('pick-item').filter({ hasText: /^США/u }).click();
-			await expect.poll(() => ringOnMap(page)).toEqual([NARROWER.ring]);
-			await page.clock.fastForward(FLIGHT_PAST_MS);
-			await mapAtRest(page);
+			// The new ring, which comes on the page's timers, and the map's flight to it.
+			const narrower = JSON.stringify([NARROWER.ring]);
+			await runUntil(page, async () => JSON.stringify(await ringOnMap(page)) === narrower, 'the narrower ring on the map');
+			await settle(page);
 			await expect(visas).toBeVisible();
 
 			await page.keyboard.press('Escape');

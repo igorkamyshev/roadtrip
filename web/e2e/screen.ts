@@ -77,6 +77,9 @@ export async function reopen(page: Page, ringApi: RingApi, path: string): Promis
 /** The phrase over the map: «Из точки [Белград], до 1 часа в пути. … ⓘ». */
 export const phrase = (page: Page): Locator => page.getByTestId('phrase');
 
+/** The line under the phrase that dates old visa rules, «визовые правила от <дата>». */
+export const rulesDate = (page: Page): Locator => phrase(page).getByTestId('rules-date');
+
 /** The map's canvas, as a screen reader names it (MapLibre's locale, `Map.Title`). */
 export const theMap = (page: Page): Locator => page.getByRole('region', { name: 'Карта' });
 
@@ -118,6 +121,21 @@ export const cityCards = (page: Page): Locator => page.getByTestId('city-card');
 /** The card of the city whose name is in its heading. */
 export const cityCard = (page: Page, name: string): Locator =>
 	cityCards(page).filter({ has: page.getByRole('heading', { name, exact: true }) });
+
+/**
+ * The name of the first city card the window's right edge cuts, 12 px in, where the wide screen's row fades out: the
+ * row shows it only in part.
+ */
+export async function cutCard(page: Page): Promise<string> {
+	const { width } = page.viewportSize() ?? { width: 0 };
+	for (const card of await cityCards(page).all()) {
+		const box = await boxOf(card);
+		if (box.x + box.width > width - 12) {
+			return card.getByRole('heading').innerText();
+		}
+	}
+	throw new Error('every city card is whole in the row');
+}
 
 /** The card of the chosen city: the carousel marks it current. */
 export const chosenCard = (page: Page): Locator => cityCards(page).and(page.locator('[aria-current="true"]'));
@@ -432,6 +450,65 @@ export async function mapAtRest(page: Page): Promise<void> {
 		return map !== undefined && !map.isMoving();
 	});
 }
+
+/** Where a test's held clock stands while the screen opens. */
+const START = Date.parse('2026-11-09T12:00:00Z');
+
+/**
+ * Holds the page's clock 1 s after the load: none of its timers and frames runs but as the test runs the clock, so a
+ * busy machine changes nothing. The data's sources stay under the phrase for its first 5 s.
+ */
+export async function holdTheClock(page: Page): Promise<void> {
+	await page.clock.install({ time: START });
+	await page.clock.pauseAt(START + 1000);
+}
+
+/**
+ * Runs the page's held clock a frame at a time until `done`: what the page does on its timers and frames, MapLibre's
+ * loading and TanStack Query's telling of an answer among them, waits for the clock.
+ */
+export async function runUntil(page: Page, done: () => Promise<boolean>, message: string): Promise<void> {
+	await expect
+		.poll(
+			async () => {
+				await page.clock.runFor(16);
+				return done();
+			},
+			{ message, intervals: [50], timeout: 20_000 },
+		)
+		.toBe(true);
+}
+
+/** Longer than any timer of the screen a test waits past: the carousel's stop (140 ms), the map's easing and flight. */
+const TIMERS_PAST_MS = 2500;
+
+/** Runs the page's held clock past every timer of the screen, and waits until the map stops. */
+export async function settle(page: Page): Promise<void> {
+	await page.clock.runFor(TIMERS_PAST_MS);
+	await mapAtRest(page);
+}
+
+/**
+ * Runs the page's held clock until the map is up, then past its flight to the ring: well under the data's sources' 5 s,
+ * which a test runs past itself.
+ */
+export async function runUntilMapAtRest(page: Page): Promise<void> {
+	await runUntil(page, async () => page.evaluate(() => window.mapForTests !== undefined), 'the map announced');
+	await settle(page);
+}
+
+/**
+ * Opens the ring of the carousel's tests (`carouselRing` of e2e/fixtures.ts), 2–3 h around Belgrade, on the held
+ * clock: its 12 city cards, the map up and come to rest on it.
+ */
+export async function openTheCarousel(page: Page): Promise<void> {
+	await page.goto('/#/?p=44.81760,20.45730&h=3');
+	await runUntil(page, async () => (await cityCards(page).count()) === 12, 'the 12 city cards');
+	await runUntilMapAtRest(page);
+}
+
+/** How far the carousel is scrolled from its start, in CSS pixels. */
+export const scrolled = async (page: Page): Promise<number> => carousel(page).evaluate((element) => element.scrollLeft);
 
 /** The map's style once it has loaded: its sprite, its fonts and the tiles of the view are in. */
 export async function loadedStyle(page: Page): Promise<StyleSpecification> {
