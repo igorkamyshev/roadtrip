@@ -13,7 +13,7 @@ mode=$1
 out=$(realpath -m "${OUT:-rings}")
 mkdir -p "$out"
 closed=$(jq -cn --arg closed "${CLOSED:-}" '$closed | split(",") | map(select(. != ""))')
-IFS=';' read -ra rings <<< "$RINGS"
+IFS=";" read -ra requests <<< "${RINGS:?RINGS names the rings}"
 summary=${GITHUB_STEP_SUMMARY:-/dev/stdout}
 
 # The Container's answer, a Calculation, as the GeoJSON `ring` writes.
@@ -35,7 +35,7 @@ if [ "$mode" = container ]; then
 	} >> "$summary"
 fi
 
-for ring in "${rings[@]}"; do
+for ring in "${requests[@]}"; do
 	read -r name lat lon from to <<< "$ring"
 	file="$out/$name-$from-$to.geojson"
 	if [ "$mode" = ring ]; then
