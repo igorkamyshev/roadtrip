@@ -5,6 +5,7 @@
 // (e2e/fixtures.ts).
 import { layers, namedFlavor } from '@protomaps/basemaps';
 import type { ExpressionSpecification, LayerSpecification, StyleSpecification } from 'maplibre-gl';
+import { matchesMedia } from '../media.ts';
 
 const SOURCE = 'protomaps';
 
@@ -13,7 +14,7 @@ const RUSSIAN_NAME: ExpressionSpecification = ['coalesce', ['get', 'name:ru'], [
 
 /** The basemap in the page's colour scheme: Protomaps' `light`, or `dark` as the screen's dark scheme. */
 export function basemapStyle(): StyleSpecification {
-	const flavor = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+	const flavor = matchesMedia('dark') ? 'dark' : 'light';
 	// Absolute URLs, as MapLibre wants them; concatenated, because URL() would encode the braces.
 	const origin = location.origin;
 	return {

@@ -81,6 +81,31 @@ export const CITIES: readonly CityRow[] = [
 ];
 
 /**
+ * Places of the tests, as { lat, lon }: Belgrade, the origin of most; Budapest, the biggest city of `CITIES`, so the
+ * first city card of a ring that holds it; and Niš.
+ */
+export const BELGRADE = { lat: 44.8176, lon: 20.4573 };
+export const BUDAPEST = { lat: 47.498, lon: 19.04 };
+export const NIS = { lat: 43.325, lon: 21.903 };
+
+/** Links to Belgrade's ring: of 1–2 h, of 2–3 h, and of 2–3 h for a citizen of Russia. */
+export const LINK_2_HOURS = '/#/?p=44.81760,20.45730&h=2';
+export const LINK_3_HOURS = '/#/?p=44.81760,20.45730&h=3';
+export const LINK_3_HOURS_RUS = '/#/?p=44.81760,20.45730&h=3&cit=RUS';
+
+/**
+ * The longest phrase and the shortest: Belgrade at 12 h and at 4–5 days, with four citizenships and four visas, or one
+ * citizenship and no visas. In days the slider has its tab «часы ↓» or «← часы» (#83).
+ */
+export const LONGEST = '/#/?p=44.81760,20.45730&h=12&cit=BIH,MNE,RUS,SRB&visas=CAN,GBR,SCHENGEN,USA';
+export const SHORTEST = '/#/?p=44.81760,20.45730&h=12&cit=RUS';
+export const LONGEST_IN_DAYS = '/#/?p=44.81760,20.45730&d=5&cit=BIH,MNE,RUS,SRB&visas=CAN,GBR,SCHENGEN,USA';
+export const SHORTEST_IN_DAYS = '/#/?p=44.81760,20.45730&d=5&cit=RUS';
+
+/** Visa rules three days older than the held clock (`holdTheClock` of e2e/screen.ts): «визовые правила от 6 ноября». */
+export const OLD_RULES = '2026-11-06T12:00:00Z';
+
+/**
  * The production host. The screen opened there (`openInProduction`) is the very build of the other tests, served by
  * the same preview server, but runs PostHog as it does in production: nothing in the client knows it is a test.
  */
@@ -260,4 +285,20 @@ const AROUND_SERBIA_WITH_SCHENGEN: Access = {
  * The ring of the carousel's tests, 2–3 h around Belgrade (`openTheCarousel` of e2e/screen.ts): a band from 1° to 3°
  * with every country around open, which holds 12 city cards and «и ещё», a row that scrolls on every window.
  */
-export const carouselRing = (): RingResponse => ({ ...squareRing(44.8176, 20.4573, [1, 3]), ...visaRules(AROUND_SERBIA_WITH_SCHENGEN) });
+export const carouselRing = (): RingResponse => ({
+	...squareRing(BELGRADE.lat, BELGRADE.lon, [1, 3]),
+	...visaRules(AROUND_SERBIA_WITH_SCHENGEN),
+});
+
+/**
+ * Every country around Serbia, the start, open to a Russian: the band of 2–3 h around Belgrade (1° to 3°) holds 16
+ * cities of `CITIES`, 12 cards and «и ещё 4».
+ */
+export const OPEN_AROUND_SERBIA: Access = {
+	SRB: { mode: 'start' },
+	BIH: { mode: 'visa_free', citizenship: 'RUS' },
+	MNE: { mode: 'visa_free', citizenship: 'RUS' },
+	HUN: { mode: 'visa_free', citizenship: 'RUS' },
+	ROU: { mode: 'visa_free', citizenship: 'RUS' },
+	HRV: { mode: 'visa_free', citizenship: 'RUS' },
+};

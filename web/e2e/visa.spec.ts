@@ -2,11 +2,8 @@
 // «визовые правила от», the card `visa_rules_missing`; «Состояние, ссылка и память браузера»; stories on
 // citizenships): what the person sees and what the screen asks the API.
 import type { Page } from '@playwright/test';
-import { allowGeolocation, expect, squareRing, test, visaRules, ZONE_OUTLINES } from './fixtures.ts';
+import { allowGeolocation, BELGRADE, expect, LINK_2_HOURS, squareRing, test, visaRules, ZONE_OUTLINES } from './fixtures.ts';
 import { dottedHours, expectRingCard, firstCard, hatchedZones, outlinesOnMap, phrase, reopen, ringOnMap, slider } from './screen.ts';
-
-const BELGRADE = { lat: 44.8176, lon: 20.4573 };
-const LINK = '/#/?p=44.81760,20.45730&h=2';
 
 test.beforeEach(async ({ context, ringApi }) => {
 	await allowGeolocation(context, BELGRADE);
@@ -27,7 +24,7 @@ test.describe('the citizenships', () => {
 	});
 
 	test('are chosen in their sheet: several, at least one, Russian first and by default', async ({ page, ringApi }) => {
-		await page.goto(LINK);
+		await page.goto(LINK_2_HOURS);
 		await expectRingCard(page, '1–2 ч');
 
 		await phrase(page).getByRole('button', { name: 'РФ' }).click();
@@ -60,7 +57,7 @@ test.describe('the citizenships', () => {
 	});
 
 	test("are Sherpa's passports, filtered by name, in Russian", async ({ page }) => {
-		await page.goto(LINK);
+		await page.goto(LINK_2_HOURS);
 		await phrase(page).getByRole('button', { name: 'РФ' }).click();
 		const filter = sheet(page).getByRole('searchbox', { name: 'Найти гражданство' });
 		const names = () => sheet(page).getByTestId('pick-item').allInnerTexts();
@@ -82,7 +79,7 @@ test.describe('the citizenships', () => {
 	});
 
 	test('in a link open with it, sorted, and are saved', async ({ page, ringApi }) => {
-		await page.goto(`${LINK}&cit=SRB,DEU`);
+		await page.goto(`${LINK_2_HOURS}&cit=SRB,DEU`);
 
 		await expect(phrase(page)).toContainText('Гражданство Германия + Сербия');
 		await expect(page).toHaveURL(/&h=2&cit=DEU,SRB$/u);
@@ -95,7 +92,7 @@ test.describe('the citizenships', () => {
 
 	for (const cit of ['PRK', 'RUS,XXX', 'rus', '']) {
 		test(`that are not Sherpa's passports in a link take the default: cit=${cit}`, async ({ page, ringApi }) => {
-			await page.goto(`${LINK}&cit=${cit}`);
+			await page.goto(`${LINK_2_HOURS}&cit=${cit}`);
 
 			await expect(page).toHaveURL(/&h=2&cit=RUS$/u);
 			expect((await ringApi.waitForCalls(1))[0].cit).toBe('RUS');
@@ -116,7 +113,7 @@ test.describe('the hatching', () => {
 				ALB: { mode: 'evisa', citizenship: 'RUS' },
 			}),
 		}));
-		await page.goto(LINK);
+		await page.goto(LINK_2_HOURS);
 
 		await expect.poll(() => hatchedZones(page)).toEqual(['CRIMEA', 'HUN', 'UKR']);
 		await expect.poll(() => outlinesOnMap(page)).toEqual(ZONE_OUTLINES.features.map((feature) => feature.properties.zone));
@@ -128,7 +125,7 @@ test.describe('the hatching', () => {
 				? { ...squareRing(Number(call.lat), Number(call.lon), [0, 0.1]), ...visaRules({ HUN: { mode: 'closed' } }) }
 				: { outcome: 'visa_rules_missing', missingCitizenship: 'SRB' },
 		);
-		await page.goto(LINK);
+		await page.goto(LINK_2_HOURS);
 		await expect.poll(() => hatchedZones(page)).toEqual(['HUN']);
 
 		await phrase(page).getByRole('button', { name: 'РФ' }).click();
@@ -141,6 +138,7 @@ test.describe('the hatching', () => {
 
 test.describe('the visa rules', () => {
 	test.beforeEach(async ({ page }) => {
+		// oxlint-disable-next-line roadtrip/clock-through-screen -- a date on a running clock: the rules' age counts from the page's date, and the tests drive none of its timers
 		await page.clock.install({ time: new Date('2026-11-07T12:00:00Z') });
 	});
 
@@ -149,7 +147,7 @@ test.describe('the visa rules', () => {
 			...squareRing(Number(call.lat), Number(call.lon), [0, call.hours / 10]),
 			...visaRules(undefined, call.hours === 2 ? '2026-11-05T11:59:00Z' : '2026-11-05T12:01:00Z'),
 		}));
-		await page.goto(LINK);
+		await page.goto(LINK_2_HOURS);
 
 		await expect(phrase(page)).toContainText('визовые правила от 5 ноября');
 		await slider(page).press('ArrowUp');
@@ -162,14 +160,14 @@ test.describe('the visa rules', () => {
 			...squareRing(Number(call.lat), Number(call.lon), [0, 0.1]),
 			...visaRules(undefined, '2025-12-30T09:00:00Z'),
 		}));
-		await page.goto(LINK);
+		await page.goto(LINK_2_HOURS);
 
 		await expect(phrase(page)).toContainText('визовые правила от 30 декабря 2025');
 	});
 
 	test('missing for a citizenship: no ring, the card says which, and «Гражданство» opens its sheet', async ({ page, ringApi }) => {
 		ringApi.respond(() => ({ outcome: 'visa_rules_missing', missingCitizenship: 'SRB' }));
-		await page.goto(`${LINK}&cit=RUS,SRB`);
+		await page.goto(`${LINK_2_HOURS}&cit=RUS,SRB`);
 
 		await expect(firstCard(page)).toContainText('Не удалось загрузить визовые правила для гражданства Сербия.');
 		await expect(firstCard(page)).toContainText('Попробуйте позже или уберите это гражданство');
@@ -190,7 +188,7 @@ test.describe('the visa rules', () => {
 				? { outcome: 'visa_rules_missing', missingCitizenship: 'SRB' }
 				: squareRing(Number(call.lat), Number(call.lon), [(call.hours - 1) / 10, call.hours / 10]),
 		);
-		await page.goto(`${LINK}&cit=RUS,SRB`);
+		await page.goto(`${LINK_2_HOURS}&cit=RUS,SRB`);
 		await expect(firstCard(page)).toContainText('Не удалось загрузить визовые правила для гражданства Сербия.');
 
 		// Another N, then back: a request each time, and a mark only for the ring.
@@ -221,7 +219,7 @@ test.describe('the visa rules', () => {
 
 	test('missing for the Russian citizenship says «РФ», as the phrase does', async ({ page, ringApi }) => {
 		ringApi.respond(() => ({ outcome: 'visa_rules_missing', missingCitizenship: 'RUS' }));
-		await page.goto(LINK);
+		await page.goto(LINK_2_HOURS);
 
 		await expect(firstCard(page)).toContainText('Не удалось загрузить визовые правила для гражданства РФ.');
 	});

@@ -5,20 +5,18 @@
 // `page.clock` sets: the tests below name the countries each count is made of, so a change of the table that
 // changes a count changes them too.
 import type { Locator, Page } from '@playwright/test';
-import { allowGeolocation, expect, squareRing, test } from './fixtures.ts';
+import { allowGeolocation, BELGRADE, expect, LINK_2_HOURS, squareRing, test } from './fixtures.ts';
 import { expectRingCard, firstCard, phrase, reopen } from './screen.ts';
-
-const BELGRADE = { lat: 44.8176, lon: 20.4573 };
-const LINK = '/#/?p=44.81760,20.45730&h=2';
 
 test.beforeEach(async ({ context, page, ringApi }) => {
 	await allowGeolocation(context, BELGRADE);
+	// oxlint-disable-next-line roadtrip/clock-through-screen -- a date on a running clock: the table's rows act by the page's date, and the tests drive none of its timers
 	await page.clock.install({ time: new Date('2026-11-07T12:00:00Z') });
 	ringApi.respond((call) => squareRing(Number(call.lat), Number(call.lon), [(call.hours - 1) / 10, call.hours / 10]));
 });
 
-const sheet = (page: Page) => page.getByRole('dialog', { name: 'Мои визы' });
-const section = (page: Page, name: string) => sheet(page).getByRole('region', { name });
+const visasSheet = (page: Page) => page.getByRole('dialog', { name: 'Мои визы' });
+const section = (page: Page, name: string) => visasSheet(page).getByRole('region', { name });
 /** A choice of `within` (the sheet or a section of it) by its name, without the counter under it. */
 const choiceIn = (within: Locator, name: string) =>
 	within.getByTestId('pick-item').filter({
@@ -27,8 +25,8 @@ const choiceIn = (within: Locator, name: string) =>
 			.getByTestId('pick-name')
 			.filter({ hasText: new RegExp(`^${name}$`, 'u') }),
 	});
-const choice = (page: Page, name: string) => choiceIn(sheet(page), name);
-const subOf = (page: Page, name: string) => choice(page, name).getByTestId('pick-sub');
+const visaChoice = (page: Page, name: string) => choiceIn(visasSheet(page), name);
+const subOf = (page: Page, name: string) => visaChoice(page, name).getByTestId('pick-sub');
 
 test.describe('the held visas', () => {
 	test('are none by default: «мои визы: нет» in the phrase, none in the request and the link', async ({ page, ringApi }) => {
@@ -45,10 +43,10 @@ test.describe('the sheet «Мои визы»', () => {
 	test('lists Schengen and the visas that open other countries, with what each opens today, then the visa of one country', async ({
 		page,
 	}) => {
-		await page.goto(LINK);
+		await page.goto(LINK_2_HOURS);
 		await phrase(page).getByRole('button', { name: 'нет' }).click();
 
-		await expect(sheet(page)).toContainText('Визы и ВНЖ, которые у вас уже есть.');
+		await expect(visasSheet(page)).toContainText('Визы и ВНЖ, которые у вас уже есть.');
 		const four = section(page, 'Шенген и визы, которые открывают другие страны');
 		await expect(four.getByTestId('pick-name')).toHaveText(['Шенген', 'США', 'Великобритания', 'Канада']);
 		// For a Russian on 2026-11-07. Schengen: ALB, AND, MKD, MNE, SRB, BIH, CYP, GEO, MAR, MEX, BLZ, PAN. The USA: ALB,
@@ -86,24 +84,24 @@ test.describe('the sheet «Мои визы»', () => {
 	test('counts only the rows acting today: none after its last day, and those for the citizenships chosen', async ({ page, ringApi }) => {
 		// MKD's rows for the USA, the UK and Canada end on 2026-12-31.
 		await page.clock.setSystemTime(new Date('2027-01-01T00:00:00Z'));
-		await page.goto(LINK);
+		await page.goto(LINK_2_HOURS);
 		await phrase(page).getByRole('button', { name: 'нет' }).click();
 
-		await expect(sheet(page).getByTestId('pick-sub')).toHaveText([
+		await expect(visasSheet(page).getByTestId('pick-sub')).toHaveText([
 			'Открывает весь Шенген и ещё 12 стран, например Черногорию и Сербию',
 			'Открывает ещё 9 стран',
 			'Открывает ещё 7 стран',
 			'Открывает ещё 6 стран',
 		]);
 
-		await reopen(page, ringApi, `${LINK}&cit=IND`);
+		await reopen(page, ringApi, `${LINK_2_HOURS}&cit=IND`);
 		await phrase(page).getByRole('button', { name: 'нет' }).click();
 		// For an Indian, the rows for some citizenships too: MDA, CYP, ARM, CRI, COL, PER, TWN, PHL.
 		await expect(subOf(page, 'Шенген')).toHaveText('Открывает весь Шенген и ещё 19 стран, например Черногорию и Сербию');
 	});
 
 	test('filters the visas of one country by name', async ({ page }) => {
-		await page.goto(LINK);
+		await page.goto(LINK_2_HOURS);
 		await phrase(page).getByRole('button', { name: 'нет' }).click();
 		const one = section(page, 'Виза одной страны');
 		const filter = one.getByRole('searchbox', { name: 'Найти страну' });
@@ -120,24 +118,24 @@ test.describe('the sheet «Мои визы»', () => {
 	});
 
 	test('chooses visas: each change is in the phrase, the request and the link, and none is fine', async ({ page, ringApi }) => {
-		await page.goto(LINK);
+		await page.goto(LINK_2_HOURS);
 		await phrase(page).getByRole('button', { name: 'нет' }).click();
 
-		await choice(page, 'Шенген').click();
-		await expect(choice(page, 'Шенген')).toHaveAttribute('aria-pressed', 'true');
+		await visaChoice(page, 'Шенген').click();
+		await expect(visaChoice(page, 'Шенген')).toHaveAttribute('aria-pressed', 'true');
 		await expect(phrase(page)).toContainText('мои визы: Шенген');
 		await expect.poll(() => ringApi.calls.at(-1)?.visas).toBe('SCHENGEN');
 		await expect(page).toHaveURL(/&cit=RUS&visas=SCHENGEN$/u);
 
 		await section(page, 'Виза одной страны').getByRole('searchbox', { name: 'Найти страну' }).fill('груз');
-		await choice(page, 'Грузия').click();
-		await choice(page, 'США').click();
+		await visaChoice(page, 'Грузия').click();
+		await visaChoice(page, 'США').click();
 		await expect(phrase(page)).toContainText('мои визы: Шенген, США, Грузия');
 		await expect.poll(() => ringApi.calls.at(-1)?.visas).toBe('GEO,SCHENGEN,USA');
 		await expect(page).toHaveURL(/&cit=RUS&visas=GEO,SCHENGEN,USA$/u);
 
 		for (const name of ['Шенген', 'США', 'Грузия']) {
-			await choice(page, name).click();
+			await visaChoice(page, name).click();
 		}
 		await expect(phrase(page)).toContainText('мои визы: нет');
 		await expect(page).toHaveURL(/&cit=RUS$/u);
@@ -147,8 +145,8 @@ test.describe('the sheet «Мои визы»', () => {
 			.toEqual([null, 'SCHENGEN', 'GEO,SCHENGEN', 'GEO,SCHENGEN,USA', 'GEO,USA', 'GEO']);
 		await expectRingCard(page, '1–2 ч');
 
-		await sheet(page).getByRole('button', { name: 'Закрыть' }).click();
-		await expect(sheet(page)).toBeHidden();
+		await visasSheet(page).getByRole('button', { name: 'Закрыть' }).click();
+		await expect(visasSheet(page)).toBeHidden();
 	});
 });
 
@@ -165,11 +163,11 @@ test('«Мои визы» of the card `empty` opens the sheet, and a visa chosen
 				}
 			: squareRing(Number(call.lat), Number(call.lon), [0.1, 0.2]),
 	);
-	await page.goto(LINK);
+	await page.goto(LINK_2_HOURS);
 	await expect(firstCard(page)).toContainText('Дальше 1 ч не уехать');
 
 	await firstCard(page).getByRole('button', { name: 'Мои визы' }).click();
-	await sheet(page)
+	await visasSheet(page)
 		.getByTestId('pick-item')
 		.filter({ hasText: /^Шенген/u })
 		.click();
@@ -180,7 +178,7 @@ test('«Мои визы» of the card `empty` opens the sheet, and a visa chosen
 
 test.describe('the held visas of a link', () => {
 	test('open with it, sorted, are saved, and show as chosen', async ({ page, ringApi }) => {
-		await page.goto(`${LINK}&visas=SCHENGEN,GEO`);
+		await page.goto(`${LINK_2_HOURS}&visas=SCHENGEN,GEO`);
 
 		await expect(phrase(page)).toContainText('мои визы: Шенген, Грузия');
 		await expect(page).toHaveURL(/&h=2&cit=RUS&visas=GEO,SCHENGEN$/u);
@@ -190,14 +188,14 @@ test.describe('the held visas of a link', () => {
 		await expect(page).toHaveURL(/&h=2&cit=RUS&visas=GEO,SCHENGEN$/u);
 		await expect(phrase(page)).toContainText('мои визы: Шенген, Грузия');
 		await phrase(page).getByRole('button', { name: 'Шенген, Грузия' }).click();
-		await expect(sheet(page).getByRole('button', { pressed: true }).getByTestId('pick-name')).toHaveText(['Шенген', 'Грузия']);
+		await expect(visasSheet(page).getByRole('button', { pressed: true }).getByTestId('pick-name')).toHaveText(['Шенген', 'Грузия']);
 	});
 
 	test('without visas has none, though some were saved: the link wins', async ({ page, ringApi }) => {
-		await page.goto(`${LINK}&visas=USA`);
+		await page.goto(`${LINK_2_HOURS}&visas=USA`);
 		await expect(phrase(page)).toContainText('мои визы: США');
 
-		await reopen(page, ringApi, LINK);
+		await reopen(page, ringApi, LINK_2_HOURS);
 
 		await expect(phrase(page)).toContainText('мои визы: нет');
 		await expect(page).toHaveURL(/&h=2&cit=RUS$/u);
@@ -206,7 +204,7 @@ test.describe('the held visas of a link', () => {
 
 	for (const visas of ['DEU', 'SCHENGEN,XXX', 'schengen', '']) {
 		test(`that are not held visas take the default, none: visas=${visas}`, async ({ page, ringApi }) => {
-			await page.goto(`${LINK}&visas=${visas}`);
+			await page.goto(`${LINK_2_HOURS}&visas=${visas}`);
 
 			await expect(page).toHaveURL(/&h=2&cit=RUS$/u);
 			expect((await ringApi.waitForCalls(1))[0].visas).toBeNull();

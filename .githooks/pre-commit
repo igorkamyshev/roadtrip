@@ -35,7 +35,8 @@ if [ -n "$files" ]; then
 fi
 
 # The project as a whole: dead code, architecture, duplication, cognitive complexity, the
-# overrides' files and the pointers to the packages' AGENTS.md (lint/agents-pointers.ts).
+# overrides' files, the pointers to the packages' AGENTS.md (lint/agents-pointers.ts) and the screen tests'
+# names, each helper in one place (lint/e2e-names.ts).
 # Its report shows only when it fails: a clean run is twenty lines of banners.
 out=$(pnpm --silent lint:project 2>&1) || {
 	echo "$out"

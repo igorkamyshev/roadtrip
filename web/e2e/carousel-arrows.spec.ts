@@ -13,6 +13,7 @@ import {
 	cityCard,
 	cityCards,
 	cutCard,
+	EDGE,
 	firstCard,
 	holdTheClock,
 	openTheCarousel,
@@ -21,12 +22,8 @@ import {
 	settle,
 	startPinning,
 } from './screen.ts';
-import { onWindow, windowName, WINDOWS } from './windows.ts';
+import { DESKTOP, onWindow, windowName, WINDOWS } from './windows.ts';
 
-/** The row's room for its cards on the wide screen, and where the narrow screen's current card stands: 12 px in. */
-const EDGE = 12;
-
-const DESKTOP = { width: 1440, height: 900 };
 /** A narrow window with a mouse: the phone's layout, with the arrows. */
 const NARROW_WINDOW = { width: 719, height: 500 };
 
@@ -70,7 +67,7 @@ async function wholeAtTheLeftEdge(page: Page, name: string): Promise<boolean> {
 }
 
 test.describe(`on ${DESKTOP.width}×${DESKTOP.height}, mouse`, () => {
-	test.use({ viewport: DESKTOP });
+	test.use(onWindow(DESKTOP));
 
 	test('an arrow steps the part of the row in view: forward the first card the right edge cuts comes to the left one, back the cards before the first whole one fill the view; no city is chosen', async ({
 		page,

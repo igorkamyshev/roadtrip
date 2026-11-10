@@ -1,12 +1,11 @@
 // The state in the link and in the browser (spec #20 «Состояние, ссылка и память браузера»; stories 43–45): on load
 // the link wins, then the saved state, then the defaults; every change is in the link, without new history
 // entries, and saved; invalid parameters take their defaults.
-import { allowGeolocation, expect, squareRing, test } from './fixtures.ts';
+import { allowGeolocation, BELGRADE, expect, squareRing, test } from './fixtures.ts';
 import { dragSlider, expectRingCard, phrase, reopen, slider } from './screen.ts';
 
-const BELGRADE = { lat: 44.8176, lon: 20.4573 };
-const SARAJEVO = '43.85630,18.41310';
-const NIS = '43.32470,21.90330';
+const SARAJEVO_IN_LINK = '43.85630,18.41310';
+const NIS_IN_LINK = '43.32470,21.90330';
 
 test.beforeEach(async ({ context, ringApi }) => {
 	// The person is in Belgrade and lets the site know: a link or the saved state must still win.
@@ -15,23 +14,23 @@ test.beforeEach(async ({ context, ringApi }) => {
 });
 
 test('a link opens its own state, not where the person is', async ({ page, ringApi }) => {
-	await page.goto(`/#/?p=${SARAJEVO}&h=2`);
+	await page.goto(`/#/?p=${SARAJEVO_IN_LINK}&h=2`);
 
 	await expectRingCard(page, '1–2 ч');
 	// The origin's label is the origin's city: the one of the cities file within whose limits it is.
 	await expect(phrase(page)).toContainText('Из точки Сараево, 1–2 часа в пути.');
 	await expect(slider(page)).toHaveAttribute('aria-valuenow', '2');
 	expect(ringApi.calls).toEqual([expect.objectContaining({ lat: '43.85630', lon: '18.41310', hours: 2 })]);
-	await expect(page).toHaveURL(new RegExp(`#/\\?p=${SARAJEVO}&h=2&cit=RUS$`, 'u'));
+	await expect(page).toHaveURL(new RegExp(`#/\\?p=${SARAJEVO_IN_LINK}&h=2&cit=RUS$`, 'u'));
 });
 
 test('without a link the saved state opens, and goes into the link', async ({ page, ringApi }) => {
-	await page.goto(`/#/?p=${SARAJEVO}&h=2`);
+	await page.goto(`/#/?p=${SARAJEVO_IN_LINK}&h=2`);
 	await expectRingCard(page, '1–2 ч');
 
 	await reopen(page, ringApi, '/');
 
-	await expect(page).toHaveURL(new RegExp(`#/\\?p=${SARAJEVO}&h=2&cit=RUS$`, 'u'));
+	await expect(page).toHaveURL(new RegExp(`#/\\?p=${SARAJEVO_IN_LINK}&h=2&cit=RUS$`, 'u'));
 	await expectRingCard(page, '1–2 ч');
 	expect(ringApi.calls.map((call) => [call.lat, call.lon, call.hours])).toEqual([
 		['43.85630', '18.41310', 2],
@@ -40,14 +39,14 @@ test('without a link the saved state opens, and goes into the link', async ({ pa
 });
 
 test('an opened link overwrites the saved state', async ({ page, ringApi }) => {
-	await page.goto(`/#/?p=${SARAJEVO}&h=2`);
+	await page.goto(`/#/?p=${SARAJEVO_IN_LINK}&h=2`);
 	await expectRingCard(page, '1–2 ч');
 
-	await reopen(page, ringApi, `/#/?p=${NIS}&h=6`);
+	await reopen(page, ringApi, `/#/?p=${NIS_IN_LINK}&h=6`);
 	await expectRingCard(page, '5–6 ч');
 	await reopen(page, ringApi, '/');
 
-	await expect(page).toHaveURL(new RegExp(`#/\\?p=${NIS}&h=6&cit=RUS$`, 'u'));
+	await expect(page).toHaveURL(new RegExp(`#/\\?p=${NIS_IN_LINK}&h=6&cit=RUS$`, 'u'));
 	await expectRingCard(page, '5–6 ч');
 	expect(ringApi.calls.at(-1)).toMatchObject({ lat: '43.32470', lon: '21.90330', hours: 6 });
 });
@@ -75,8 +74,8 @@ const invalidLinks: readonly { link: string; becomes: string }[] = [
 	{ link: '/#/?p=abc&h=99', becomes: '#/?p=44.81760,20.45730&h=1&cit=RUS' },
 	{ link: '/#/?p=91.00000,20.00000&h=0', becomes: '#/?p=44.81760,20.45730&h=1&cit=RUS' },
 	{ link: '/#/?p=44.81760,181&h=2.5', becomes: '#/?p=44.81760,20.45730&h=1&cit=RUS' },
-	{ link: `/#/?p=${SARAJEVO}&h=13`, becomes: `#/?p=${SARAJEVO}&h=1&cit=RUS` },
-	{ link: '/#/?p=43.8563,18.4131&h=03', becomes: `#/?p=${SARAJEVO}&h=3&cit=RUS` },
+	{ link: `/#/?p=${SARAJEVO_IN_LINK}&h=13`, becomes: `#/?p=${SARAJEVO_IN_LINK}&h=1&cit=RUS` },
+	{ link: '/#/?p=43.8563,18.4131&h=03', becomes: `#/?p=${SARAJEVO_IN_LINK}&h=3&cit=RUS` },
 ];
 
 for (const { link, becomes } of invalidLinks) {

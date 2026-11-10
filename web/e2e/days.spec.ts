@@ -3,7 +3,7 @@
 // unit at a time and folds the other into a tab, «дни ↑» over the hours' panel or «часы ↓» under the days'; it turns
 // to the other unit only once that is committed. The link says `d=D` for a day.
 import type { Locator, Page } from '@playwright/test';
-import { allowGeolocation, expect, squareRing, test, visaRules } from './fixtures.ts';
+import { allowGeolocation, BELGRADE, expect, squareRing, test, visaRules } from './fixtures.ts';
 import {
 	boxOf,
 	dottedHours,
@@ -18,11 +18,10 @@ import {
 	sliderTab,
 } from './screen.ts';
 
-const BELGRADE = { lat: 44.8176, lon: 20.4573 };
 const AT_12_HOURS = '/#/?p=44.81760,20.45730&h=12&cit=RUS';
 
 /** A ring per request: a band from its lower to its upper bound in tenths of a degree around the origin. */
-const ringFor = (call: { lat: string; lon: string; from: number; hours: number }) =>
+const bandFor = (call: { lat: string; lon: string; from: number; hours: number }) =>
 	squareRing(Number(call.lat), Number(call.lon), [call.from / 10, call.hours / 10]);
 
 /** Whether the tab stands over the panel (true) or under it (false), apart from it. */
@@ -39,7 +38,7 @@ async function tabOverPanel(page: Page): Promise<boolean> {
 
 test.beforeEach(async ({ context, ringApi }) => {
 	await allowGeolocation(context, BELGRADE);
-	ringApi.respond(ringFor);
+	ringApi.respond(bandFor);
 });
 
 test('in hours the slider has twelve cells and «дни ↑» over them; a key up from 12 h asks for day 2, 12–24 h', async ({

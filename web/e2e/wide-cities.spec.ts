@@ -13,6 +13,7 @@ import {
 	cityCards,
 	cutCard,
 	dragMap,
+	EDGE,
 	holdTheClock,
 	labelsOnMap,
 	mapCenter,
@@ -62,9 +63,6 @@ async function fromTheMapMiddle(page: Page, name: string): Promise<number> {
 
 /** The camera went to a city when it stands this close to the map's middle. */
 const WENT_TO = 80;
-
-/** The row's room for its cards: inside the 12 px of either edge, where it fades out (#104). */
-const EDGE = 12;
 
 /**
  * Clicks, or taps on a touch screen, the card where the row shows it, on its heading's line: a click of Playwright's

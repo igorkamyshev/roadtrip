@@ -33,5 +33,14 @@ export default {
 		'declaration-no-important': true,
 		'max-nesting-depth': 3,
 		'color-named': 'never',
+		// A media query goes by its name in web/src/media.json, `@media (--wide)`, where the JS reads it too: none is
+		// written out (the build's customMedia, web/vite.config.ts). Custom media pass any list.
+		'media-feature-name-allowed-list': [
+			[],
+			{ message: (name) => `@media (${name}: …): write the query in web/src/media.json and use it by its name, (--name)` },
+		],
+		// So no feature is left for the notation of its range: it would only tell a written-out `min-width` how to be
+		// written out otherwise.
+		'media-feature-range-notation': null,
 	},
 };

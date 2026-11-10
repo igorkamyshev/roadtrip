@@ -1,11 +1,10 @@
 // The first card by state (spec #20 «Экран», «Первая карточка, по состояниям»; stories 7, 9, 21, 47, 48): the
 // engine's outcomes without a ring, the WAF's block and failures, with the spec's texts and buttons.
 import type { RingResponse } from 'worker/api';
-import { allowGeolocation, expect, squareRing, test, visaRules } from './fixtures.ts';
+import { allowGeolocation, BELGRADE, expect, squareRing, test, visaRules } from './fixtures.ts';
 import type { RingReply } from './ring-api.ts';
-import { expectRingCard, firstCard, ringOnMap } from './screen.ts';
+import { expectRingCard, firstCard, holdTheClock, ringOnMap, runUntil } from './screen.ts';
 
-const BELGRADE = { lat: 44.8176, lon: 20.4573 };
 /** A link to Belgrade with N = 5. */
 const LINK = '/#/?p=44.81760,20.45730&h=5';
 
@@ -78,21 +77,26 @@ const failures: readonly { failure: string; reply: RingReply; state: string; tex
 for (const { failure, reply, state, texts } of failures) {
 	test(`${failure}: the first card says so, and «Повторить» asks again`, async ({ page, context, ringApi }) => {
 		await allowGeolocation(context, BELGRADE);
-		await page.clock.install();
+		await holdTheClock(page);
 		ringApi.respond(() => reply);
 		await page.goto('/');
 
-		await expect(firstCard(page)).toHaveAttribute('data-state', state);
+		await runUntil(page, async () => (await firstCard(page).getAttribute('data-state')) === state, `the first card's state ${state}`);
 		for (const text of texts) {
 			await expect(firstCard(page)).toContainText(text);
 		}
 		// Nothing repeats the request by itself, a minute later by the page's clock: «Повторить» below is the second.
-		await page.clock.fastForward(60_000);
+		await page.clock.runFor(60_000);
 		expect(ringApi.calls).toHaveLength(1);
 
 		ringApi.respond((call) => squareRing(Number(call.lat), Number(call.lon), [0, 0.5]));
 		await firstCard(page).getByRole('button', { name: 'Повторить' }).click();
 
+		await runUntil(
+			page,
+			async () => /^(?:ring|no_cities)$/u.test((await firstCard(page).getAttribute('data-state')) ?? ''),
+			'the ring card',
+		);
 		await expectRingCard(page, 'до 1 ч');
 		expect(ringApi.calls).toHaveLength(2);
 		expect(ringApi.calls[1]).toEqual(ringApi.calls[0]);

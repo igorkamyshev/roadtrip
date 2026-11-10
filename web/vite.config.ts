@@ -50,9 +50,9 @@ function sourceMaps(env: NodeJS.ProcessEnv): PluginOption {
 }
 
 /**
- * The screen's media queries by name (spec #20 «Экран», #96): the CSS writes `@media (--wide)` or `@media (--mouse)`,
- * custom media as Media Queries 5 has them, and the build puts in each the query of that name from src/media.json,
- * where the JS reads them too (`matchMedia(media.wide)`). So each is written in one place. A name it does not know
+ * The screen's media queries by name (spec #20 «Экран», #96): the CSS writes `@media (--wide)`, `@media (--dark)` and
+ * so on, custom media as Media Queries 5 has them, and the build puts in each the query of that name from
+ * src/media.json, where the JS reads them too (src/media.ts). So each is written in one place. A name it does not know
  * fails the build, and so does one under `not`, after `or` or in a list, where the query put in its place would read
  * differently: the CSS writes the narrow screen first and the wide one over it.
  */
