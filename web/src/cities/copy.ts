@@ -9,11 +9,16 @@ const ONE_DECIMAL = new Intl.NumberFormat('ru', { maximumFractionDigits: 1 });
 const NO_BREAK_SPACE = ' ';
 
 /** «1,7 млн», «1 млн», «250 тыс.»: millions to a tenth, thousands whole. */
-export function populationText(population: number): string {
+function populationText(population: number): string {
 	// 999 600 is «1 млн», not «1000 тыс.».
 	return population >= 999_500
 		? `${ONE_DECIMAL.format(population / 1e6)}${NO_BREAK_SPACE}млн`
 		: `${Math.round(population / 1000)}${NO_BREAK_SPACE}тыс.`;
+}
+
+/** «Население: 1,7 млн»: the population as a city card and a row of a list say it. */
+export function populationLine(population: number): string {
+	return `Население: ${populationText(population)}`;
 }
 
 /** The route from the origin to the city by car in Google Maps (https://developers.google.com/maps/documentation/urls). */

@@ -6,7 +6,7 @@ import type { ReactElement } from 'react';
 import { countryFlag, countryName } from '../screen/countries.ts';
 import type { LatLon } from '../state/point.ts';
 import type { City } from './cities.ts';
-import { populationText, routeUrl } from './copy.ts';
+import { populationLine, routeUrl } from './copy.ts';
 
 export interface CityCardProps {
 	readonly city: City;
@@ -36,7 +36,7 @@ export function CityCard({ city, origin, chosen, onTap }: CityCardProps): ReactE
 				<CountryFlag zone={city.zone} />
 			</div>
 			<div className="muted small" data-testid="city-facts">
-				{populationText(city.population)}
+				{populationLine(city.population)}
 			</div>
 			<div className="acts">
 				{/* A quiet link, not the card's brightest thing (#75). */}
@@ -67,7 +67,7 @@ export function CityRowText({ city }: { readonly city: City }): ReactElement {
 				{city.name}
 			</span>{' '}
 			<CountryFlag zone={city.zone} />
-			<span className="row-sub">{populationText(city.population)}</span>
+			<span className="row-sub">{populationLine(city.population)}</span>
 		</span>
 	);
 }
