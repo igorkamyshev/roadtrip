@@ -6,8 +6,10 @@ import type { RingResponse, RingSource } from 'worker/api';
 import type { RingResultOutcome } from '../src/analytics/events.ts';
 import {
 	allowGeolocation,
+	BELGRADE,
 	expect,
 	failGeolocation,
+	LINK_3_HOURS_RUS,
 	openInProduction,
 	POSTHOG_PROXY,
 	PRODUCTION,
@@ -16,21 +18,7 @@ import {
 	visaRules,
 } from './fixtures.ts';
 import type { RingReply } from './ring-api.ts';
-import { dottedHours, dragSlider, expectRingCard, firstCard, leave, mapAtRest, phrase, slider } from './screen.ts';
-
-const BELGRADE = { lat: 44.8176, lon: 20.4573 };
-const LINK = '/#/?p=44.81760,20.45730&h=3&cit=RUS';
-
-/** Where the page's clock starts in the tests that hold it, in ms since the epoch. */
-const START = Date.UTC(2026, 10, 7, 10);
-/**
- * Stops the page's clock before the page loads, so that the screen's ask is at a known time: a minute after `START`,
- * which a busy machine cannot have passed between the two calls. `page.clock.resume()` lets posthog-js send.
- */
-async function holdTheClock(page: Page): Promise<void> {
-	await page.clock.install({ time: START });
-	await page.clock.pauseAt(START + 60_000);
-}
+import { dottedHours, dragSlider, expectRingCard, firstCard, holdTheClock, leave, mapAtRest, phrase, slider } from './screen.ts';
 
 /** While the clock stands still, lets the page run what is due now (its zero timeouts) until `done` holds. */
 async function runNowUntil(page: Page, done: () => Promise<boolean> | boolean): Promise<void> {
@@ -63,7 +51,7 @@ function nearTheOrigin(value: unknown): unknown[] {
 test('one page view a load, and no URL PostHog gets has the link’s #…, however the state changes', async ({ page, ringApi, posthog }) => {
 	ringApi.respond((call) => squareRing(BELGRADE.lat, BELGRADE.lon, [call.hours - 1, call.hours]));
 
-	await openInProduction(page, LINK);
+	await openInProduction(page, LINK_3_HOURS_RUS);
 	await expectRingCard(page, '2–3 ч');
 	await dragSlider(page, 5);
 	await expectRingCard(page, '4–5 ч');
@@ -77,7 +65,7 @@ test('one page view a load, and no URL PostHog gets has the link’s #…, howev
 test("every ring request carries the browser's PostHog ids, the first one of the load too", async ({ page, ringApi, posthog }) => {
 	ringApi.respond((call) => squareRing(BELGRADE.lat, BELGRADE.lon, [call.hours - 1, call.hours]));
 
-	await openInProduction(page, LINK);
+	await openInProduction(page, LINK_3_HOURS_RUS);
 	await expectRingCard(page, '2–3 ч');
 	await dragSlider(page, 5);
 	await expect.poll(() => posthog.named('ring result'), SENT).toHaveLength(2);
@@ -93,7 +81,7 @@ test("every ring request carries the browser's PostHog ids, the first one of the
 
 test('an error the screen did not catch goes to PostHog', async ({ page, ringApi, posthog }) => {
 	ringApi.respond((call) => squareRing(BELGRADE.lat, BELGRADE.lon, [call.hours - 1, call.hours]));
-	await openInProduction(page, LINK);
+	await openInProduction(page, LINK_3_HOURS_RUS);
 	await expectRingCard(page, '2–3 ч');
 
 	await page.evaluate(() => {
@@ -121,7 +109,7 @@ test('posthog-js comes after the screen, and still gets the errors thrown before
 	});
 	ringApi.respond((call) => squareRing(BELGRADE.lat, BELGRADE.lon, [call.hours - 1, call.hours]));
 
-	await openInProduction(page, LINK);
+	await openInProduction(page, LINK_3_HOURS_RUS);
 	await expect(phrase(page)).toContainText('2–3 часа в пути.');
 	await page.evaluate(() => {
 		setTimeout(() => {
@@ -155,7 +143,7 @@ test('off the production host PostHog is not started: nothing goes to it', async
 	});
 	ringApi.respond((call) => squareRing(BELGRADE.lat, BELGRADE.lon, [call.hours - 1, call.hours]));
 
-	await page.goto(LINK);
+	await page.goto(LINK_3_HOURS_RUS);
 	await expectRingCard(page, '2–3 ч');
 	await dragSlider(page, 5);
 	await expectRingCard(page, '4–5 ч');
@@ -203,7 +191,7 @@ test.describe('start set', () => {
 	}) => {
 		ringApi.respond((call) => squareRing(BELGRADE.lat, BELGRADE.lon, [call.hours - 1, call.hours]));
 
-		await openInProduction(page, LINK);
+		await openInProduction(page, LINK_3_HOURS_RUS);
 
 		// In whichever order posthog-js sends them.
 		await expect.poll(() => posthog.ours.toSorted(), SENT).toEqual(['link opened', 'ring result', 'start set']);
@@ -219,7 +207,7 @@ test.describe('start set', () => {
 		posthog,
 	}) => {
 		ringApi.respond((call) => squareRing(BELGRADE.lat, BELGRADE.lon, [call.hours - 1, call.hours]));
-		await openInProduction(page, LINK);
+		await openInProduction(page, LINK_3_HOURS_RUS);
 		await expect.poll(() => posthog.named('start set'), SENT).toHaveLength(1);
 
 		await page.goto('about:blank');
@@ -267,7 +255,7 @@ test.describe('start set', () => {
 
 	test('by the pin: the city nearest to it', async ({ page, ringApi, posthog }) => {
 		ringApi.respond((call) => squareRing(Number(call.lat), Number(call.lon), [0, 0.5]));
-		await openInProduction(page, LINK);
+		await openInProduction(page, LINK_3_HOURS_RUS);
 		await expectRingCard(page, '2–3 ч');
 
 		await phrase(page).getByRole('button', { name: 'Белград' }).click();
@@ -286,7 +274,7 @@ test.describe('start set', () => {
 		await page.route('**/data/cities.json', (route) => route.fulfill({ status: 404 }));
 		ringApi.respond((call) => squareRing(BELGRADE.lat, BELGRADE.lon, [call.hours - 1, call.hours]));
 
-		await openInProduction(page, LINK);
+		await openInProduction(page, LINK_3_HOURS_RUS);
 
 		await expect.poll(() => posthog.named('start set'), SENT).toHaveLength(1);
 		const [startSet] = posthog.named('start set');
@@ -375,7 +363,7 @@ test.describe('ring result', () => {
 		test(`tells the source ${source}`, async ({ page, ringApi, posthog }) => {
 			ringApi.respond(() => belgradeRing(source));
 
-			await openInProduction(page, LINK);
+			await openInProduction(page, LINK_3_HOURS_RUS);
 
 			await expect.poll(() => posthog.named('ring result'), SENT).toEqual([expect.objectContaining({ outcome: 'ring', source })]);
 		});
@@ -383,7 +371,7 @@ test.describe('ring result', () => {
 
 	test('from memory: source memory, wait 0, as it came', async ({ page, ringApi, posthog }) => {
 		ringApi.respond(() => belgradeRing());
-		await openInProduction(page, LINK);
+		await openInProduction(page, LINK_3_HOURS_RUS);
 		await expect(firstCard(page)).toContainText(/10\s*городов/u);
 		await dragSlider(page, 5);
 		await expect.poll(() => ringApi.calls, SENT).toHaveLength(2);
@@ -421,7 +409,7 @@ test.describe('ring result', () => {
 		test(`tells ${outcome}${reply === 'network error' ? ' when the network fails' : ''}`, async ({ page, ringApi, posthog }) => {
 			ringApi.respond(() => reply);
 
-			await openInProduction(page, LINK);
+			await openInProduction(page, LINK_3_HOURS_RUS);
 
 			await expect(firstCard(page)).toContainText(card);
 			await expect.poll(() => posthog.named('ring result'), SENT).toHaveLength(1);
@@ -435,7 +423,7 @@ test.describe('ring result', () => {
 
 	test('«Повторить» is a request of its own', async ({ page, ringApi, posthog }) => {
 		ringApi.respond(() => ({ status: 502 }));
-		await openInProduction(page, LINK);
+		await openInProduction(page, LINK_3_HOURS_RUS);
 		await expect(firstCard(page)).toContainText('Не получилось');
 
 		ringApi.respond(() => belgradeRing());
@@ -446,7 +434,7 @@ test.describe('ring result', () => {
 
 	test('a request the person moved on from is abandoned at once, and its late answer tells nothing', async ({ page, ringApi, posthog }) => {
 		await holdTheClock(page);
-		await openInProduction(page, LINK);
+		await openInProduction(page, LINK_3_HOURS_RUS);
 		await ringApi.waitForCalls(1);
 		await page.clock.runFor(500);
 
@@ -484,7 +472,7 @@ test.describe('ring result', () => {
 	});
 
 	test('a request the person left the page during is abandoned by beacon', async ({ page, ringApi, posthog }) => {
-		await openInProduction(page, LINK);
+		await openInProduction(page, LINK_3_HOURS_RUS);
 		await ringApi.waitForCalls(1);
 		await expect.poll(() => posthog.named('start set'), SENT).toHaveLength(1);
 
@@ -502,7 +490,7 @@ test.describe('ring result', () => {
 
 	test('none while the slider moves: only where it is let go', async ({ page, ringApi, posthog }) => {
 		ringApi.respond(() => belgradeRing());
-		await openInProduction(page, LINK);
+		await openInProduction(page, LINK_3_HOURS_RUS);
 		await expect(firstCard(page)).toContainText(/10\s*городов/u);
 
 		await dragSlider(page, 8);
@@ -522,9 +510,10 @@ test('taps on the map are no dead clicks or rage clicks; a tap on text that does
 	// The project's dead clicks on, as the Owner may switch them.
 	posthog.remoteConfig = { ...posthog.remoteConfig, captureDeadClicks: true };
 	// PostHog waits a few seconds after a click for the page to change: the page's clock runs them.
+	// oxlint-disable-next-line roadtrip/clock-through-screen -- a running clock: posthog-js loads, watches the taps and sends on its own timers, and the test only jumps it past PostHog's waits
 	await page.clock.install();
 	ringApi.respond((call) => squareRing(BELGRADE.lat, BELGRADE.lon, [call.hours - 1, call.hours]));
-	await openInProduction(page, LINK);
+	await openInProduction(page, LINK_3_HOURS_RUS);
 	await expectRingCard(page, '2–3 ч');
 	await mapAtRest(page);
 	// The data's sources leave the phrase 5 s after the screen opens: PostHog would take that for the answer to a tap.

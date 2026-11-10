@@ -3,12 +3,10 @@
 // test's mouse still moves over the page. Over a city on the map the cursor shows it can be clicked, where a click
 // would pick it, mouse or not; elsewhere the map's own grab, and grab everywhere in the pin mode.
 import type { Locator, Page } from '@playwright/test';
-import { expect, squareRing, test, visaRules } from './fixtures.ts';
+import { BELGRADE, expect, LINK_3_HOURS, squareRing, test, visaRules } from './fixtures.ts';
 import { cityCards, firstCard, mapAtRest, startPinning, theMap, whereOnScreen } from './screen.ts';
-import { onWindow, type TestWindow, windowName, WINDOWS } from './windows.ts';
+import { DESKTOP, onWindow, type TestWindow, windowName, WINDOWS } from './windows.ts';
 
-const BELGRADE = { lat: 44.8176, lon: 20.4573 };
-const LINK = '/#/?p=44.81760,20.45730&h=3';
 /** A city of the ring 2–3 h around Belgrade, on the map clear of the panels at 1440×900. */
 const SUBOTICA = { lat: 46.1, lon: 19.667 };
 
@@ -16,16 +14,14 @@ const SUBOTICA = { lat: 46.1, lon: 19.667 };
 const NARROW_WITH_A_MOUSE: TestWindow = { width: 390, height: 844, pointer: 'mouse', layout: 'narrow' };
 
 /** The ticket's windows: a desktop and a narrow window with a mouse; a phone and a tablet upright without one. */
-const CHECKED: readonly TestWindow[] = [
+const HOVER_WINDOWS: readonly TestWindow[] = [
 	...WINDOWS.filter(
 		({ width, height }) => (width === 1440 && height === 900) || (width === 390 && height === 844) || (width === 768 && height === 1024),
 	),
 	NARROW_WITH_A_MOUSE,
 ];
-const WITH_A_MOUSE = CHECKED.filter((window) => window.pointer === 'mouse');
-const WITHOUT_A_MOUSE = CHECKED.filter((window) => window.pointer === 'touch');
-
-const DESKTOP = { viewport: { width: 1440, height: 900 } };
+const WITH_A_MOUSE = HOVER_WINDOWS.filter((window) => window.pointer === 'mouse');
+const WITHOUT_A_MOUSE = HOVER_WINDOWS.filter((window) => window.pointer === 'touch');
 
 test.beforeEach(({ ringApi }) => {
 	ringApi.respond(() => ({ ...squareRing(BELGRADE.lat, BELGRADE.lon, [1, 3]), ...visaRules() }));
@@ -61,7 +57,7 @@ async function mouseOver(page: Page, at: { readonly lat: number; readonly lon: n
 
 /** A city card's background with the mouse away from it and over it, on its name. */
 async function cityCardUnderTheMouse(page: Page): Promise<{ away: string; over: string }> {
-	await page.goto(LINK);
+	await page.goto(LINK_3_HOURS);
 	const card = cityCards(page).first();
 	await expect(card).toBeVisible();
 	return underTheMouse(page, card, card.getByRole('heading'));
@@ -92,14 +88,14 @@ for (const window of WITHOUT_A_MOUSE) {
 }
 
 test.describe('on 1440×900, mouse', () => {
-	test.use(DESKTOP);
+	test.use(onWindow(DESKTOP));
 
 	test('a card that cannot be clicked, one with an error, keeps its background under the mouse; its «Повторить» answers', async ({
 		page,
 		ringApi,
 	}) => {
 		ringApi.respond(() => ({ status: 502 }));
-		await page.goto(LINK);
+		await page.goto(LINK_3_HOURS);
 		await expect(firstCard(page)).toHaveAttribute('data-state', 'error');
 
 		const card = await underTheMouse(page, firstCard(page), firstCard(page).getByRole('heading'));
@@ -110,7 +106,7 @@ test.describe('on 1440×900, mouse', () => {
 	});
 
 	test("the cursor is a pointer over a city on the map, the map's grab beside it, and grab over it in the pin mode", async ({ page }) => {
-		await page.goto(LINK);
+		await page.goto(LINK_3_HOURS);
 		await expect(cityCards(page)).not.toHaveCount(0);
 
 		await mouseOver(page, SUBOTICA);

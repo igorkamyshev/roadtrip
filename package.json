@@ -9,7 +9,7 @@
 		"format": "oxfmt",
 		"format:check": "oxfmt --check",
 		"lint": "oxlint && stylelint \"**/*.css\" && pnpm lint:project",
-		"lint:project": "fallow dead-code && fallow architecture && fallow dupes --fail-on-issues && fallow health --complexity && node lint/oxlint-overrides.ts && node lint/agents-pointers.ts",
+		"lint:project": "fallow dead-code && fallow architecture && fallow dupes --fail-on-issues && fallow health --complexity && node lint/oxlint-overrides.ts && node lint/agents-pointers.ts && node lint/e2e-names.ts",
 		"health": "fallow health --hotspots --targets",
 		"typecheck": "pnpm --recursive --if-present run typecheck",
 		"test": "vitest run",

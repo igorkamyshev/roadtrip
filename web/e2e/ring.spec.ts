@@ -1,30 +1,27 @@
 // N and the ring (spec #20 «Экран»: slider, map, the old ring while calculating; «Состояние, ссылка и память
 // браузера»: TanStack Query; stories 10–15, 22): a ring is asked for when the slider is let go, rings in memory
 // come back without a request, and a calculation keeps the old ring of the same origin, striped.
-import { allowGeolocation, expect, squareRing, test } from './fixtures.ts';
+import { allowGeolocation, BELGRADE, expect, squareRing, test } from './fixtures.ts';
 import {
 	dottedHours,
 	dragMap,
 	dragSlider,
-	recordSliderHours,
 	expectRingCard,
 	firstCard,
+	holdTheClock,
 	mapBounds,
 	phrase,
+	recordSliderHours,
 	ringIsStriped,
 	ringOnMap,
 	slider,
 	sliderHour,
 } from './screen.ts';
 
-const BELGRADE = { lat: 44.8176, lon: 20.4573 };
-/** Where the page's clock starts in the tests that hold it, in ms since the epoch. */
-const START = Date.UTC(2026, 10, 7, 10);
-const MINUTE = 60_000;
 const BELGRADE_CALL = { lat: '44.81760', lon: '20.45730' };
 
 /** A ring per N: a band from N − 1 to N tenths of a degree around the origin. */
-const ringFor = (call: { lat: string; lon: string; hours: number }) =>
+const ringOfHours = (call: { lat: string; lon: string; hours: number }) =>
 	squareRing(Number(call.lat), Number(call.lon), [(call.hours - 1) / 10, call.hours / 10]);
 
 test.beforeEach(async ({ context }) => {
@@ -32,7 +29,7 @@ test.beforeEach(async ({ context }) => {
 });
 
 test('letting the slider go asks for one ring, for the hours where it stopped', async ({ page, ringApi }) => {
-	ringApi.respond(ringFor);
+	ringApi.respond(ringOfHours);
 	await page.goto('/');
 	await expectRingCard(page, 'до 1 ч');
 
@@ -49,7 +46,7 @@ test('letting the slider go asks for one ring, for the hours where it stopped', 
 });
 
 test('a key moves N by an hour and asks at once', async ({ page, ringApi }) => {
-	ringApi.respond(ringFor);
+	ringApi.respond(ringOfHours);
 	await page.goto('/');
 	await expectRingCard(page, 'до 1 ч');
 
@@ -61,7 +58,7 @@ test('a key moves N by an hour and asks at once', async ({ page, ringApi }) => {
 });
 
 test('a tap on an hour chooses it and asks for one ring', async ({ page, ringApi }) => {
-	ringApi.respond(ringFor);
+	ringApi.respond(ringOfHours);
 	await page.goto('/');
 	await expectRingCard(page, 'до 1 ч');
 
@@ -72,7 +69,7 @@ test('a tap on an hour chooses it and asks for one ring', async ({ page, ringApi
 });
 
 test('the chosen hour reads as its span without «ч», the others as their hour', async ({ page, ringApi }) => {
-	ringApi.respond(ringFor);
+	ringApi.respond(ringOfHours);
 	await page.goto('/');
 	await expectRingCard(page, 'до 1 ч');
 	await expect(sliderHour(page, 1)).toHaveText('до 1');
@@ -86,7 +83,7 @@ test('the chosen hour reads as its span without «ч», the others as their hour
 });
 
 test('letting the slider go keeps the hours where it stopped, never the old ones for a moment', async ({ page, ringApi }) => {
-	ringApi.respond(ringFor);
+	ringApi.respond(ringOfHours);
 	await page.goto('/');
 	await expectRingCard(page, 'до 1 ч');
 	const shown = await recordSliderHours(page);
@@ -98,7 +95,7 @@ test('letting the slider go keeps the hours where it stopped, never the old ones
 });
 
 test('a ring in memory comes back at once, without a request, and its hours are marked', async ({ page, ringApi }) => {
-	ringApi.respond(ringFor);
+	ringApi.respond(ringOfHours);
 	await page.goto('/');
 	await expectRingCard(page, 'до 1 ч');
 	await dragSlider(page, 5);
@@ -109,13 +106,13 @@ test('a ring in memory comes back at once, without a request, and its hours are 
 	await dragSlider(page, 1);
 
 	await expectRingCard(page, 'до 1 ч');
-	await expect.poll(() => ringOnMap(page)).toEqual([ringFor({ ...BELGRADE_CALL, hours: 1 }).ring]);
+	await expect.poll(() => ringOnMap(page)).toEqual([ringOfHours({ ...BELGRADE_CALL, hours: 1 }).ring]);
 	expect(await ringIsStriped(page)).toBe(false);
 	expect(ringApi.calls).toHaveLength(2);
 });
 
 test('while a ring is calculated the old ring of the same origin stays, striped, and the phrase spins', async ({ page, ringApi }) => {
-	ringApi.respond((call) => (call.hours === 1 ? ringFor(call) : undefined));
+	ringApi.respond((call) => (call.hours === 1 ? ringOfHours(call) : undefined));
 	await page.goto('/');
 	await expectRingCard(page, 'до 1 ч');
 
@@ -125,7 +122,7 @@ test('while a ring is calculated the old ring of the same origin stays, striped,
 	await expect(firstCard(page)).toContainText('Считаем…');
 	await expect(phrase(page).getByRole('status', { name: 'Считаем' })).toBeVisible();
 	await expect.poll(() => ringIsStriped(page)).toBe(true);
-	expect(await ringOnMap(page)).toEqual([ringFor({ ...BELGRADE_CALL, hours: 1 }).ring]);
+	expect(await ringOnMap(page)).toEqual([ringOfHours({ ...BELGRADE_CALL, hours: 1 }).ring]);
 
 	await ringApi.answer(squareRing(BELGRADE.lat, BELGRADE.lon, [0.4, 0.9]), 3);
 
@@ -152,7 +149,7 @@ test('a new ring is shown whole', async ({ page, ringApi }) => {
 });
 
 test('the ring of another origin is not kept while the new origin’s ring is calculated', async ({ page, ringApi }) => {
-	ringApi.respond((call) => (call.lat === BELGRADE_CALL.lat ? ringFor(call) : undefined));
+	ringApi.respond((call) => (call.lat === BELGRADE_CALL.lat ? ringOfHours(call) : undefined));
 	await page.goto('/');
 	await expectRingCard(page, 'до 1 ч');
 
@@ -167,10 +164,8 @@ test('the ring of another origin is not kept while the new origin’s ring is ca
 });
 
 test('a calculation that takes over 5 s says it takes longer than usual', async ({ page, ringApi }) => {
-	// The page's time stands still from the load: the 5 s count from the card's start, whatever the machine's load. It
-	// stops a minute after the install, which a busy machine cannot have passed.
-	await page.clock.install({ time: START });
-	await page.clock.pauseAt(START + MINUTE);
+	// The page's time stands still from the load: the 5 s count from the card's start, whatever the machine's load.
+	await holdTheClock(page);
 	await page.goto('/');
 	await expect(firstCard(page)).toContainText('Считаем…');
 
@@ -181,12 +176,12 @@ test('a calculation that takes over 5 s says it takes longer than usual', async 
 	await expect(firstCard(page)).toContainText('Считаем…');
 	await expect(firstCard(page)).toContainText('Чуть дольше обычного, досчитываем — подождите');
 	await page.clock.resume();
-	await ringApi.answer(ringFor({ ...BELGRADE_CALL, hours: 1 }));
+	await ringApi.answer(ringOfHours({ ...BELGRADE_CALL, hours: 1 }));
 	await expectRingCard(page, 'до 1 ч');
 });
 
 test('an answer that comes after the person moved on is not shown, but is kept in memory', async ({ page, ringApi }) => {
-	ringApi.respond((call) => (call.hours === 1 ? ringFor(call) : undefined));
+	ringApi.respond((call) => (call.hours === 1 ? ringOfHours(call) : undefined));
 	await page.goto('/');
 	await expectRingCard(page, 'до 1 ч');
 	await slider(page).press('ArrowUp');
@@ -194,14 +189,14 @@ test('an answer that comes after the person moved on is not shown, but is kept i
 	await slider(page).press('ArrowUp');
 	await expect(firstCard(page)).toContainText('Кольцо 2–3 ч');
 
-	await ringApi.answer(ringFor({ ...BELGRADE_CALL, hours: 2 }), 2);
+	await ringApi.answer(ringOfHours({ ...BELGRADE_CALL, hours: 2 }), 2);
 
 	await expect.poll(() => dottedHours(page)).toEqual([1, 2]);
 	await expect(firstCard(page)).toContainText('Кольцо 2–3 ч');
 	await expect(firstCard(page)).toContainText('Считаем…');
-	expect(await ringOnMap(page)).toEqual([ringFor({ ...BELGRADE_CALL, hours: 1 }).ring]);
+	expect(await ringOnMap(page)).toEqual([ringOfHours({ ...BELGRADE_CALL, hours: 1 }).ring]);
 	await slider(page).press('ArrowDown');
 	await expectRingCard(page, '1–2 ч');
-	await expect.poll(() => ringOnMap(page)).toEqual([ringFor({ ...BELGRADE_CALL, hours: 2 }).ring]);
+	await expect.poll(() => ringOnMap(page)).toEqual([ringOfHours({ ...BELGRADE_CALL, hours: 2 }).ring]);
 	expect(ringApi.calls.map((call) => call.hours)).toEqual([1, 2, 3]);
 });

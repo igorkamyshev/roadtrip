@@ -4,30 +4,12 @@
 // whatever the filter, 640 px or down to 12 px over the bottom; «Откуда едем» and «Что важно знать» are as high as
 // what they hold, and grow down. The scrim, Esc and «Закрыть» close each. Read by the boxes, never by pixels.
 import type { Locator, Page } from '@playwright/test';
-import type { Access } from 'worker/api';
-import { expect, squareRing, test, visaRules } from './fixtures.ts';
-import { boxOf, expectRingCard, phrase, sheetPanel, sheetPlace } from './screen.ts';
+import { BELGRADE, expect, LINK_3_HOURS_RUS, OPEN_AROUND_SERBIA, squareRing, test, visaRules } from './fixtures.ts';
+import { boxOf, EDGE, expectRingCard, MODAL_WIDTH, phrase, sheetPanel, sheetPlace } from './screen.ts';
 import { onWindow, WIDE_WINDOWS, windowName } from './windows.ts';
 
-const BELGRADE = { lat: 44.8176, lon: 20.4573 };
-const LINK = '/#/?p=44.81760,20.45730&h=3&cit=RUS';
-
-/** Every country around Serbia open: the band of 2–3 h holds 16 cities of the fixtures, 12 cards and «и ещё 4». */
-const OPEN: Access = {
-	SRB: { mode: 'start' },
-	BIH: { mode: 'visa_free', citizenship: 'RUS' },
-	MNE: { mode: 'visa_free', citizenship: 'RUS' },
-	HUN: { mode: 'visa_free', citizenship: 'RUS' },
-	ROU: { mode: 'visa_free', citizenship: 'RUS' },
-	HRV: { mode: 'visa_free', citizenship: 'RUS' },
-};
-
-/** A modal is this wide (#98). */
-const MODAL_WIDTH = 480;
 /** The modals with a filter, and the list of all, are this high, where the window has room (#98). */
 const MODAL_HEIGHT = 640;
-/** Every floating panel stands this far from the screen's edges (#85): a modal's top and bottom no closer. */
-const EDGE = 12;
 
 const MODAL_NAMES = ['Гражданство', 'Мои визы', 'Откуда едем', 'Что важно знать', 'Все города'] as const;
 type ModalName = (typeof MODAL_NAMES)[number];
@@ -44,7 +26,7 @@ const MODALS: Record<ModalName, (page: Page) => Locator> = {
 /** The list of all is titled by the ring: «16 городов в кольце 2–3 ч». */
 const title = (name: ModalName): string | RegExp => (name === 'Все города' ? /в кольце/u : name);
 
-async function open(page: Page, name: ModalName): Promise<void> {
+async function openModal(page: Page, name: ModalName): Promise<void> {
 	await MODALS[name](page).click();
 	await expect(sheetPanel(page, title(name))).toBeVisible();
 }
@@ -62,8 +44,8 @@ async function fromItsEnd(page: Page, name: ModalName, windowHeight: number): Pr
 }
 
 test.beforeEach(async ({ page, ringApi }) => {
-	ringApi.respond(() => ({ ...squareRing(BELGRADE.lat, BELGRADE.lon, [1, 3]), ...visaRules(OPEN) }));
-	await page.goto(LINK);
+	ringApi.respond(() => ({ ...squareRing(BELGRADE.lat, BELGRADE.lon, [1, 3]), ...visaRules(OPEN_AROUND_SERBIA) }));
+	await page.goto(LINK_3_HOURS_RUS);
 	await expectRingCard(page, '2–3 ч');
 });
 
@@ -78,7 +60,7 @@ for (const window of WIDE_WINDOWS) {
 
 		for (const name of MODAL_NAMES) {
 			test(`«${name}» is 480 px in the middle, its top 10 % down, in the window`, async ({ page }) => {
-				await open(page, name);
+				await openModal(page, name);
 
 				const place = await sheetPlace(page, title(name));
 				expect(place).toMatchObject({ width: MODAL_WIDTH, middle: Math.round(window.width / 2), top });
@@ -91,7 +73,7 @@ for (const window of WIDE_WINDOWS) {
 			['Мои визы', 'Найти страну', 'Серб'],
 		] as const) {
 			test(`«${name}» is 640 px high or down to 12 px over the bottom, with no filter and a narrow one`, async ({ page }) => {
-				await open(page, name);
+				await openModal(page, name);
 				expect(await sheetPlace(page, name)).toMatchObject({ top, height });
 
 				await sheetPanel(page, name).getByRole('searchbox', { name: filter }).fill(narrow);
@@ -102,21 +84,21 @@ for (const window of WIDE_WINDOWS) {
 		}
 
 		test('the list of all is 640 px high or down to 12 px over the bottom', async ({ page }) => {
-			await open(page, 'Все города');
+			await openModal(page, 'Все города');
 
 			expect(await sheetPlace(page, title('Все города'))).toMatchObject({ top, height });
 		});
 
 		for (const name of ['Откуда едем', 'Что важно знать'] as const) {
 			test(`«${name}» is as high as what it holds, down to 12 px over the bottom`, async ({ page }) => {
-				await open(page, name);
+				await openModal(page, name);
 
 				expect(await fromItsEnd(page, name, window.height)).toBeLessThanOrEqual(1);
 			});
 		}
 
 		test('«Откуда едем» grows down as the cities found come, its top where it was', async ({ page }) => {
-			await open(page, 'Откуда едем');
+			await openModal(page, 'Откуда едем');
 			const before = await sheetPlace(page, 'Откуда едем');
 
 			await sheetPanel(page, 'Откуда едем').getByRole('searchbox', { name: 'Найти город' }).fill('Б');
@@ -133,15 +115,15 @@ for (const window of WIDE_WINDOWS) {
 			// Halfway between the window's left edge and the modal's, halfway down.
 			const beside = { x: (window.width - MODAL_WIDTH) / 4, y: window.height / 2 };
 
-			await open(page, 'Гражданство');
+			await openModal(page, 'Гражданство');
 			await page.mouse.click(beside.x, beside.y);
 			await expect(sheet).toHaveCount(0);
 
-			await open(page, 'Гражданство');
+			await openModal(page, 'Гражданство');
 			await page.keyboard.press('Escape');
 			await expect(sheet).toHaveCount(0);
 
-			await open(page, 'Гражданство');
+			await openModal(page, 'Гражданство');
 			await sheet.getByRole('button', { name: 'Закрыть' }).click();
 			await expect(sheet).toHaveCount(0);
 		});
