@@ -950,3 +950,129 @@ a {
 .found-row {
 	padding: 10px 2px;
 }
+
+/* ---------- PROTOTYPE of #98, throwaway (src/prototype/sheet-variant.ts) ---------- */
+
+/* The sheets as modals on a wide screen, by `data-sheet-variant` on <html>. The media query is the wide screen of #96;
+   under it every variant keeps the bottom sheet above, and the same <dialog> turns from one to the other as the
+   window crosses it. Variant C's place comes from src/prototype/anchor.ts in the --pop-* variables. */
+.sheet-dialog .sheet {
+	--pop-top: auto;
+	--pop-bottom: auto;
+	--pop-left: 0;
+	--pop-width: 400px;
+	--pop-max: 100%;
+	--pop-nose: 50%;
+	--modal-top: max(var(--edge-top), 10vh);
+}
+
+.sheet-nose {
+	display: none;
+}
+
+/* stylelint-disable-next-line media-feature-range-notation -- Safari 15.4, which the screen supports, has no range syntax */
+@media (min-width: 720px) and (min-height: 500px) {
+	.sheet {
+		border-radius: var(--radius);
+		max-height: none;
+	}
+
+	/* B: a panel at the right edge from top to bottom, as the screen's floating panels stand; a light scrim, so the
+	   phrase and the ring stay readable as each change asks for its ring. */
+	:root[data-sheet-variant='B'] .sheet {
+		inset: var(--edge-top) var(--edge-right) var(--edge-bottom) auto;
+		width: min(400px, 100% - var(--edge-left) - var(--edge-right));
+	}
+
+	:root[data-sheet-variant='B'] .scrim {
+		background: rgb(0 0 0 / 12%);
+	}
+
+	/* C: at the word that opened it, below it or above it, with a nose pointing at it; no scrim dims the screen. */
+	:root[data-sheet-variant='C'] .scrim {
+		background: none;
+	}
+
+	:root[data-sheet-variant='C'] .sheet {
+		border: 1px solid var(--line);
+	}
+
+	/* A: by the centre, its top at a tenth of the window, so a list that grows as one types grows down; the long lists
+	   keep one height whatever the filter leaves. Also C when no word opened it (a city tapped on the map). */
+	:root[data-sheet-variant='A'] .sheet,
+	:root[data-sheet-variant='C'] .sheet:not(.anchored) {
+		inset: var(--modal-top) auto auto 50%;
+		width: min(480px, 100% - var(--edge-left) - var(--edge-right));
+		max-height: calc(100% - var(--modal-top) - var(--edge-bottom));
+		transform: translateX(-50%);
+	}
+
+	:root[data-sheet-variant='A'] .sheet.tall,
+	:root[data-sheet-variant='C'] .sheet.tall:not(.anchored) {
+		height: min(640px, 100% - var(--modal-top) - var(--edge-bottom));
+	}
+
+	:root[data-sheet-variant='C'] .sheet.anchored {
+		inset: var(--pop-top) auto var(--pop-bottom) var(--pop-left);
+		width: var(--pop-width);
+		max-height: var(--pop-max);
+	}
+
+	:root[data-sheet-variant='C'] .sheet.anchored.tall {
+		height: min(560px, var(--pop-max));
+	}
+
+	:root[data-sheet-variant='C'] .sheet.anchored .sheet-nose {
+		display: block;
+		position: absolute;
+		left: var(--pop-nose);
+		width: 14px;
+		height: 14px;
+		background: var(--surface);
+		border: 1px solid var(--line);
+		transform: translateX(-50%) rotate(45deg);
+	}
+
+	:root[data-sheet-variant='C'] .sheet.below .sheet-nose {
+		top: -8px;
+		border-right: 0;
+		border-bottom: 0;
+	}
+
+	:root[data-sheet-variant='C'] .sheet.above .sheet-nose {
+		bottom: -8px;
+		border-left: 0;
+		border-top: 0;
+	}
+}
+
+/* The bar that switches the variant: plainly not part of the screen. */
+.proto-switcher {
+	position: fixed;
+	left: var(--edge-left);
+	bottom: calc(var(--edge-bottom) + 180px);
+	z-index: 60;
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	padding: 4px;
+	border-radius: 999px;
+	background: #111;
+	color: #fff;
+	font-size: 13px;
+	font-weight: 600;
+	box-shadow: 0 4px 16px rgb(0 0 0 / 35%);
+}
+
+.proto-switcher span {
+	padding: 0 6px;
+	white-space: nowrap;
+}
+
+.proto-switcher button {
+	width: 30px;
+	height: 30px;
+	border-radius: 999px;
+	background: #333;
+	color: #fff;
+}

@@ -6,6 +6,7 @@ import type { ReactElement } from 'react';
 import { SourcesOnOpen } from './attribution.tsx';
 import { Carousel } from './carousel.tsx';
 import { PinBar } from './pin-bar.tsx';
+import { VariantSwitcher } from '../prototype/switcher.tsx';
 import { ScreenMap } from './screen-map.tsx';
 import { ScreenPhrase } from './screen-phrase.tsx';
 import { ScreenSheets } from './screen-sheets.tsx';
@@ -29,6 +30,7 @@ export function Screen(): ReactElement {
 			</div>
 			{starts.pinning ? <PinBar onCancel={starts.cancelPinning} onStart={starts.startHere} /> : <Carousel screen={screen} />}
 			<ScreenSheets screen={screen} />
+			<VariantSwitcher />
 		</div>
 	);
 }
