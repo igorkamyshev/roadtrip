@@ -34,11 +34,11 @@ A merge to `main` deploys both Workers through Cloudflare Workers Builds, and th
 
 ## Review
 
-Reviewing a branch or merging a ticket's work, the review step of `mattpocock-skills:implement` included: `mattpocock-skills:code-review`, which checks the whole diff, tests too, against `CODING_STANDARDS.md` and the ticket.
+Reviewing a branch or merging a ticket's work, the review step of `mattpocock-skills:implement` included: `mattpocock-skills:code-review`, which checks the whole diff, tests too, against `CODING_STANDARDS.md` and the ticket, and the PR's description, when there is one, against the diff.
 
 ## A cloud session's branch
 
-A cloud session pushes to the one branch it was given, for every PR it opens, and may not force-push: that is how it is set up. Once a PR of it is merged, start the next one from `main` on the same branch, then merge the branch's old tip into it, which `main` holds already, so the push is a fast-forward: `git checkout -B <branch> origin/main`, `git merge origin/<branch>`, and take `main`'s side of any conflict.
+A cloud session pushes to the branch it was given, and may not force-push: that is how it is set up. A PR merges with a merge commit, which keeps its commits in `main`. Once a PR of it is merged, start the next one from `main` on the same branch, with the branch's old tip merged in, so the push is a fast-forward: `git checkout -B <branch> origin/main`, `git merge -s ours origin/<branch>`. A stack of PRs, each built on the one below: `docs/agents/stacked-prs.md`.
 
 ## Subagents
 

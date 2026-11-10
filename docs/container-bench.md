@@ -123,7 +123,7 @@
 - **Размер.** В первом прогоне, до правки контура, кольцо 3–4 дня из Стамбула весило 5,18 МБ JSON и было из 16 311 полигонов, из Праги 2–3 дня — 3,6 МБ. На ячейках крупнее 1 км 1 км земли у дороги не доходил до соседней ячейки: дорога наискосок через ячейки рассыпалась на полигоны в одну ячейку, а упрощение до 500 м, меньше ячейки, оставляло каждую ступеньку. Теперь земля у дороги — не меньше ячейки, контур упрощается до ячейки (`engine/src/contour.ts`). Кольца на ячейках по 500 м — все часы из центра Европы — не изменились: круги 0–12 ч в обоих прогонах одинаковые.
 - **Вид.** Большие кольца грубее: в густой сети дорог — сплошная земля, в редкой (Россия, Скандинавия, Сахара) — кружево дорог шириной в ячейку. Тикет это допускает.
 
-Прогоны: [1](https://github.com/igorkamyshev/roadtrip/actions/runs/42682886126) (до правки контура), [2](https://github.com/igorkamyshev/roadtrip/actions/runs/42684152393). Кода замера в репозитории больше нет: workflow `.github/workflows/day-rings-bench.yml` и скрипт `.github/day-rings-bench/measure.sh` лежат в коммите [`57d111c`](https://github.com/igorkamyshev/roadtrip/tree/57d111c). Чтобы повторить, верните их оттуда (`git checkout 57d111c -- .github/workflows/day-rings-bench.yml .github/day-rings-bench .github/day-rings-bench.json`), поправьте в workflow ветку и запустите его руками (`workflow_dispatch`, с ветки по умолчанию) или пушем с правкой `.github/day-rings-bench.json`. Он ничего не разворачивает: берёт текущий набор данных из R2 с секретами репозитория, собирает образ и спрашивает его в Docker на раннере. Ответы движка — в артефакте `day-rings` прогона, 7 дней.
+Прогоны: [1](https://github.com/igorkamyshev/roadtrip/actions/runs/42682886126) (до правки контура), [2](https://github.com/igorkamyshev/roadtrip/actions/runs/42684152393). Повторить его — workflow `world-rings` с `mode=container` (`data/AGENTS.md`, «Rings on real roads»): те же замеры, строка на ответ в сводке прогона. Разовый workflow этого замера лежит в коммите [`57d111c`](https://github.com/igorkamyshev/roadtrip/tree/57d111c).
 
 ## Кружево колец дней
 
@@ -143,7 +143,7 @@
 | Стамбул, 3–4 дня   | 128 / 1492 / 885         | 82 / 97 / 341   | 63 / 12 / 235 | 63 / 3 / 219  |
 | Мадрид, 4–5 дней   | 144 / 1004 / 772         | 43 / 39 / 263   | 38 / 3 / 200  | 33 / 1 / 193  |
 
-Прогон: [1](https://github.com/igorkamyshev/roadtrip/actions/runs/42698620954). Кода прогона в репозитории больше нет: workflow `.github/workflows/lace-bench.yml` и скрипт `.github/lace-bench/rings.sh` лежат в коммите [`16ba8c8`](https://github.com/igorkamyshev/roadtrip/tree/16ba8c8). Скрипт подставляет каждый вариант `SMALL_PLOT_GROWTH` в `engine/src/contour.ts` и считает кольца командой `ring` на графе из R2, без Docker; варианты — в `.github/lace-bench.json`. Чтобы повторить, верните их оттуда, поправьте в workflow ветку и запустите его руками или пушем с правкой `.github/lace-bench.json`. GeoJSON колец — в артефакте `lace-rings`, 7 дней; картинки — `pnpm --filter data render`.
+Прогон: [1](https://github.com/igorkamyshev/roadtrip/actions/runs/42698620954). Повторить его — workflow `world-rings` в режиме `ring`, на коде с каждым вариантом `SMALL_PLOT_GROWTH`; картинки — `pnpm --filter data render`. Разовый workflow этого прогона лежит в коммите [`16ba8c8`](https://github.com/igorkamyshev/roadtrip/tree/16ba8c8).
 
 ## Что создано на аккаунте и как удалено
 

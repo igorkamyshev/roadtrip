@@ -1,0 +1,60 @@
+name: World rings
+
+# Rings on the world graph, the current dataset from R2, from the code of the branch it runs on (data/AGENTS.md, «Rings
+# on real roads»): as GeoJSON in the artifact `world-rings`, and in mode `container` timed in the Container's image under
+# standard-2's limits, a row per answer in the run's summary (docs/container-bench.md). It deploys nothing. Run by hand:
+#   gh workflow run world-rings.yml --ref <branch> -f rings='Frankfurt 50.1109 8.6821 36 48' -f mode=container
+on:
+  workflow_dispatch:
+    inputs:
+      rings:
+        description: 'Rings, `<name> <lat> <lon> <from hours> <to hours>` separated by `;`'
+        default: 'Frankfurt 50.1109 8.6821 0 12; Belgrade 44.8176 20.4573 24 36; Moscow 55.7558 37.6173 12 24; Istanbul 41.0082 28.9784 36 48; Madrid 40.4168 -3.7038 48 60'
+      closed:
+        description: Closed countries, alpha-3, comma-separated; those closed for everyone are closed anyway
+        default: ''
+      mode:
+        description: "`ring` computes on the runner; `container` times the Container under standard-2's limits"
+        type: choice
+        options: [ring, container]
+        default: ring
+
+concurrency:
+  group: world-rings-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  rings:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: The current dataset from R2
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: pnpm --filter data fetch-dataset
+      - name: Rings
+        env:
+          RINGS: ${{ inputs.rings }}
+          CLOSED: ${{ inputs.closed }}
+          MODE: ${{ inputs.mode }}
+          OUT: ${{ runner.temp }}/rings
+        run: .github/world-rings/run.sh "$MODE"
+      - if: always() && inputs.mode == 'container'
+        run: docker logs engine 2>&1 | tail -20
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: world-rings
+          path: ${{ runner.temp }}/rings
+          retention-days: 7
