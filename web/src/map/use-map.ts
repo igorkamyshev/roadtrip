@@ -72,7 +72,10 @@ async function addOutlines(map: MapLibre, removed: () => boolean): Promise<void>
 	}
 }
 
-/** Tells `onCity` of a tap on a city's dot or name; without it, as in the pin mode, a tap picks nothing. */
+/**
+ * Tells `onCity` of a tap on a city's dot or name, and shows a pointer over one; without it, as in the pin mode, a tap
+ * picks nothing and the cursor is the map's grab everywhere.
+ */
 export function useCityTaps(map: MapLibre | undefined, onCity: ((id: number) => void) | undefined): void {
 	const tap = useEffectEvent((event: MapMouseEvent) => {
 		const id = map === undefined || onCity === undefined ? undefined : cityAt(map, event.point, TAP_RADIUS);
@@ -90,6 +93,39 @@ export function useCityTaps(map: MapLibre | undefined, onCity: ((id: number) => 
 			map?.off('click', onClick);
 		};
 	}, [map]);
+	usePointerOverCities(map, onCity !== undefined);
+}
+
+/**
+ * MapLibre's own class of the canvas's container for a pointer (its popups' `trackPointer`): its stylesheet gives the
+ * container `cursor: pointer` with it, and still `grabbing` while the map is dragged.
+ */
+const POINTER = 'maplibregl-track-pointer';
+
+/**
+ * The cursor over a city's dot or name, where a tap would pick it (the same hit test and radius), is a pointer (#105);
+ * elsewhere, and everywhere while a tap picks nothing (`picking` off, as in the pin mode), the map's own grab.
+ */
+function usePointerOverCities(map: MapLibre | undefined, picking: boolean): void {
+	useEffect(() => {
+		if (map === undefined || !picking) {
+			return;
+		}
+		const container = map.getCanvasContainer();
+		const onMove = (event: MapMouseEvent): void => {
+			container.classList.toggle(POINTER, cityAt(map, event.point, TAP_RADIUS) !== undefined);
+		};
+		const onOut = (): void => {
+			container.classList.remove(POINTER);
+		};
+		map.on('mousemove', onMove);
+		map.on('mouseout', onOut);
+		return () => {
+			map.off('mousemove', onMove);
+			map.off('mouseout', onOut);
+			onOut();
+		};
+	}, [map, picking]);
 }
 
 /** What the overlay shows (overlay.ts). */

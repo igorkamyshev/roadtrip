@@ -31,6 +31,9 @@
 	--err-bg: #fde7e4;
 	--ok: #1d6f47;
 	--shadow: 0 2px 10px rgb(16 30 26 / 14%), 0 1px 2px rgb(16 30 26 / 10%);
+
+	/* The veil over the ground of what is under the mouse (#105, below): a little darker, whatever the ground. */
+	--hover: rgb(0 0 0 / 6%);
 	--font: 'Golos Text', system-ui, -apple-system, 'Segoe UI', 'Roboto', sans-serif;
 	--display: 'Unbounded', 'Golos Text', system-ui, sans-serif;
 
@@ -80,6 +83,7 @@
 		--err-bg: #3b1915;
 		--ok: #6fd3a0;
 		--shadow: 0 2px 14px rgb(0 0 0 / 55%);
+		--hover: rgb(0 0 0 / 25%);
 
 		color-scheme: dark;
 	}
@@ -844,6 +848,7 @@ a {
 	width: 26px;
 	height: 26px;
 	vertical-align: -6px;
+	border-radius: 50%;
 	color: var(--muted);
 }
 
@@ -1139,7 +1144,8 @@ a {
 	padding: 0;
 }
 
-/* «Маршрут» of a city card: muted small text; its padding makes a finger's tap of 40 px without taking the room. */
+/* «Маршрут» of a city card: muted small text, underlined with dots like the phrase's words; its padding makes a
+   finger's tap of 40 px without taking the room. */
 .c-card .c-route {
 	display: inline-block;
 	padding: 12px;
@@ -1147,6 +1153,8 @@ a {
 	font-size: 13px;
 	line-height: 16px;
 	color: var(--muted);
+	/* stylelint-disable-next-line plugin/no-unsupported-browser-features -- the line's style alone is in Chrome 57, Safari 12.1 and Firefox 36 (MDN); caniuse's «partial» is the rest of «text-decoration styling». */
+	text-decoration-style: dotted;
 	text-underline-offset: 2px;
 }
 
@@ -1204,4 +1212,34 @@ a {
 
 .found-row {
 	padding: 10px 2px;
+}
+
+/* ---------- hover, with a mouse (#105) ---------- */
+
+/* With a mouse, at any width, what a click does something on answers the mouse over it, and only that: buttons, rows,
+   cells and the cards one can click get a little darker ground, a veil over whatever ground they have, in either
+   theme; the phrase's words and «Маршрут» a solid underline for the dotted one. Only the colour changes: nothing
+   moves or grows, and no outline (the chosen card has the blue one). The first card, which a click does nothing on,
+   does not answer, its buttons do. Without a mouse nothing answers: a touch screen's tap would leave it on. */
+@media (--mouse) {
+	.btn:hover,
+	.ico-btn:hover,
+	.c-info:hover,
+	.c-card.clickable:hover,
+	.c-arrows button:not(:disabled):hover,
+	.sl-cell:hover,
+	.sl-tab:hover,
+	.pick-item:hover,
+	.row:hover {
+		background-image: linear-gradient(var(--hover), var(--hover));
+	}
+
+	.tok:not(.static):hover {
+		border-bottom-style: solid;
+	}
+
+	.c-card .c-route:hover {
+		/* stylelint-disable-next-line plugin/no-unsupported-browser-features -- as at rest (.c-card .c-route): the line's style alone is in every browser of the list. */
+		text-decoration-style: solid;
+	}
 }

@@ -1,8 +1,7 @@
 // The origin (spec #20 «Экран»: phrase, pin; stories 1, 3, 4, 6): geolocation on the first visit, the screen without
 // it, the pin mode, and the marker where the person put it.
-import type { Locator, Page } from '@playwright/test';
 import { allowGeolocation, expect, squareRing, test } from './fixtures.ts';
-import { boxOf, dragMap, expectRingCard, firstCard, mapCenter, phrase, ringOnMap, slider, startOnMap } from './screen.ts';
+import { boxOf, dragMap, expectRingCard, firstCard, mapCenter, phrase, ringOnMap, slider, startOnMap, theMap } from './screen.ts';
 
 const BELGRADE = { lat: 44.8176, lon: 20.4573 };
 /** The pin mode's hint with a mouse, which moves the map either way (#107), and without one. */
@@ -147,9 +146,6 @@ for (const [pointer, hint] of [
 		});
 	});
 }
-
-/** The map's canvas, as a screen reader names it (MapLibre's locale, `Map.Title`). */
-const theMap = (page: Page): Locator => page.getByRole('region', { name: 'Карта' });
 
 test('the map is named «Карта» to a screen reader', async ({ page }) => {
 	await page.goto('/');

@@ -77,6 +77,9 @@ export async function reopen(page: Page, ringApi: RingApi, path: string): Promis
 /** The phrase over the map: «Из точки [Белград], до 1 часа в пути. … ⓘ». */
 export const phrase = (page: Page): Locator => page.getByTestId('phrase');
 
+/** The map's canvas, as a screen reader names it (MapLibre's locale, `Map.Title`). */
+export const theMap = (page: Page): Locator => page.getByRole('region', { name: 'Карта' });
+
 /** Turns the pin mode on, from Belgrade, the origin's word in the phrase: «Откуда едем» and «Указать на карте». */
 export async function startPinning(page: Page): Promise<void> {
 	await phrase(page).getByRole('button', { name: 'Белград' }).click();
