@@ -11,12 +11,12 @@ export const CAROUSEL_CITIES = 12;
 
 export function Carousel({ screen }: { readonly screen: ScreenModel }): ReactElement {
 	const { state, shown, card, starts, chosen, openSheet } = screen;
-	const { carousel, onCarouselScroll } = chosen;
+	const { carousel, onCarouselScroll, onCarouselFocus } = chosen;
 	const { origin } = state;
 	const access = shown.answer?.access;
 	const cities = shown.shownCities;
 	return (
-		<div className="c-car" data-testid="carousel" ref={carousel} onScroll={onCarouselScroll}>
+		<div className="c-car" data-testid="carousel" ref={carousel} onScroll={onCarouselScroll} onFocus={onCarouselFocus}>
 			<FirstCard
 				state={card}
 				actions={{

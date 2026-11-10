@@ -9,7 +9,10 @@ import { allowGeolocation, expect, serveCities, squareRing, test, visaRules } fr
 import {
 	boxOf,
 	carousel,
+	chosenCard,
 	citiesOnMap,
+	cityCard,
+	cityCards,
 	distanceFromTheMiddle,
 	dragMap,
 	expectRingCard,
@@ -49,9 +52,6 @@ const WITH_SCHENGEN_VISA: Access = {
 	ROU: { mode: 'held_visa', visa: 'SCHENGEN' },
 	HRV: { mode: 'held_visa', visa: 'SCHENGEN' },
 };
-
-/** The cards of the carousel's cities, in order. */
-const cityCards = (page: Page) => page.getByTestId('city-card');
 
 /** The ring 2–3 h as a band from 1° to 3° around Belgrade, with these entry modes. */
 function ringAroundBelgrade(access: Access) {
@@ -338,15 +338,10 @@ test.describe("the origin's city", () => {
 
 /** The cards of the carousel, as the person scrolls it until the card is the current one, at its left edge. */
 async function scrollTo(page: Page, name: string): Promise<void> {
-	await cityCards(page)
-		.filter({ has: page.getByRole('heading', { name, exact: true }) })
-		.evaluate((card) => {
-			card.scrollIntoView({ inline: 'start', block: 'nearest' });
-		});
+	await cityCard(page, name).evaluate((element) => {
+		element.scrollIntoView({ inline: 'start', block: 'nearest' });
+	});
 }
-
-/** The card of the chosen city: the carousel marks it current. */
-const chosenCard = (page: Page) => cityCards(page).and(page.locator('[aria-current="true"]'));
 
 /**
  * Opens the list of all by «и ещё», at the carousel's end. Scrolling to it is a stop of the carousel, which chooses
@@ -364,8 +359,8 @@ async function openTheList(page: Page): Promise<void> {
  */
 async function tapCard(page: Page, name: string): Promise<void> {
 	const [cardBox, headingBox, carouselBox, sliderBox] = await Promise.all([
-		boxOf(card(page, name)),
-		boxOf(card(page, name).getByRole('heading')),
+		boxOf(cityCard(page, name)),
+		boxOf(cityCard(page, name).getByRole('heading')),
 		boxOf(carousel(page)),
 		boxOf(slider(page)),
 	]);
@@ -419,7 +414,7 @@ test.describe('the carousel and the map', () => {
 	// The card after the current one peeks out between it and the slider (#77), then fades out before the slider.
 	test('tapping the card that peeks out chooses its city, and the map goes to it at the same zoom', async ({ page }) => {
 		const zoom = await mapZoom(page);
-		await expect(card(page, 'Будапешт')).not.toBeInViewport({ ratio: 0.9 });
+		await expect(cityCard(page, 'Будапешт')).not.toBeInViewport({ ratio: 0.9 });
 
 		await tapCard(page, 'Будапешт');
 
@@ -571,9 +566,6 @@ test.describe('the carousel and the map', () => {
 	});
 });
 
-/** The card of the city whose name is in its heading. */
-const card = (page: Page, name: string) => cityCards(page).filter({ has: page.getByRole('heading', { name, exact: true }) });
-
 test.describe('a city card', () => {
 	test('says the name, the local name, the country and the population, and leads to Google Maps from the origin', async ({
 		page,
@@ -582,7 +574,7 @@ test.describe('a city card', () => {
 		ringApi.respond(() => ringAroundBelgrade(WITH_SCHENGEN_VISA));
 		await page.goto(LINK);
 
-		const budapest = card(page, 'Будапешт');
+		const budapest = cityCard(page, 'Будапешт');
 		await expect
 			.poll(() => read(budapest))
 			.toBe('Будапешт Budapest · Венгрия · 1,7 млн по визе Шенгена Российские номера не пустят Маршрут');
@@ -604,16 +596,16 @@ test.describe('a city card', () => {
 		}
 		expect((await route.boundingBox())?.height).toBeGreaterThanOrEqual(40);
 		// The start country; a city of 250 000 people is «250 тыс.».
-		expect(await read(card(page, 'Ниш'))).toBe('Ниш Niš · Сербия · 250 тыс. страна старта Маршрут');
+		expect(await read(cityCard(page, 'Ниш'))).toBe('Ниш Niš · Сербия · 250 тыс. страна старта Маршрут');
 		// Without a visa, no mark.
-		expect(await read(card(page, 'Сараево'))).toBe('Сараево Sarajevo · Босния и Герцеговина · 697 тыс. Маршрут');
+		expect(await read(cityCard(page, 'Сараево'))).toBe('Сараево Sarajevo · Босния и Герцеговина · 697 тыс. Маршрут');
 	});
 
 	test('of a city without a Russian name says its local name alone', async ({ page, ringApi }) => {
 		ringApi.respond(() => ringAroundBelgrade(RUSSIAN));
 		await page.goto(LINK);
 
-		expect(await read(card(page, 'Lukavac'))).toBe('Lukavac Босния и Герцеговина · 45 тыс. Маршрут');
+		expect(await read(cityCard(page, 'Lukavac'))).toBe('Lukavac Босния и Герцеговина · 45 тыс. Маршрут');
 	});
 
 	test('marks the entry mode: an e-visa, a visa on arrival, a held visa of a country', async ({ page, ringApi }) => {
@@ -628,9 +620,9 @@ test.describe('a city card', () => {
 		);
 		await page.goto(LINK);
 
-		await expect(card(page, 'Сараево')).toContainText('оформить заранее');
-		await expect(card(page, 'Подгорица')).toContainText('виза на границе');
-		await expect(card(page, 'Будапешт')).toContainText('по визе: Великобритания');
+		await expect(cityCard(page, 'Сараево')).toContainText('оформить заранее');
+		await expect(cityCard(page, 'Подгорица')).toContainText('виза на границе');
+		await expect(cityCard(page, 'Будапешт')).toContainText('по визе: Великобритания');
 	});
 
 	test('names the held visa chosen in «Мои визы» that opens its country, as the phrase does', async ({ page, ringApi }) => {
@@ -642,8 +634,8 @@ test.describe('a city card', () => {
 			return ringAroundBelgrade({ ...RUSSIAN, BIH: byVisa('USA'), MNE: byVisa('USA'), HUN: byVisa('SCHENGEN') });
 		});
 		await page.goto(`${LINK}&cit=IND`);
-		await expect(card(page, 'Ниш')).toContainText('страна старта');
-		await expect(card(page, 'Сараево')).toHaveCount(0);
+		await expect(cityCard(page, 'Ниш')).toContainText('страна старта');
+		await expect(cityCard(page, 'Сараево')).toHaveCount(0);
 
 		const visasSheet = page.getByRole('dialog', { name: 'Мои визы' });
 		await phrase(page).getByRole('button', { name: 'нет' }).click();
@@ -651,22 +643,22 @@ test.describe('a city card', () => {
 		await visasSheet.getByRole('button', { name: 'Закрыть' }).click();
 
 		await expect.poll(() => ringApi.calls.at(-1)?.visas).toBe('USA');
-		await expect(card(page, 'Сараево')).toContainText('по визе: США');
-		await expect(card(page, 'Подгорица')).toContainText('по визе: США');
-		await expect(card(page, 'Будапешт')).toHaveCount(0);
+		await expect(cityCard(page, 'Сараево')).toContainText('по визе: США');
+		await expect(cityCard(page, 'Подгорица')).toContainText('по визе: США');
+		await expect(cityCard(page, 'Будапешт')).toHaveCount(0);
 
 		// The link carries both visas: Hungary's cities come by Schengen's.
 		await page.goto(`${LINK}&cit=IND&visas=SCHENGEN,USA`);
 		await expect(phrase(page)).toContainText('мои визы: Шенген, США');
-		await expect(card(page, 'Будапешт')).toContainText('по визе Шенгена');
-		await expect(card(page, 'Сараево')).toContainText('по визе: США');
+		await expect(cityCard(page, 'Будапешт')).toContainText('по визе Шенгена');
+		await expect(cityCard(page, 'Сараево')).toContainText('по визе: США');
 	});
 
 	test('warns of Russian plates in the EU only when a citizenship is Russian', async ({ page, ringApi }) => {
 		ringApi.respond(() => ringAroundBelgrade({ ...WITH_SCHENGEN_VISA, HUN: { mode: 'visa_free', citizenship: 'SRB' } }));
 		await page.goto(`${LINK}&cit=SRB`);
 
-		await expect(card(page, 'Будапешт')).toBeVisible();
+		await expect(cityCard(page, 'Будапешт')).toBeVisible();
 		await expect(cityCards(page).filter({ hasText: 'Российские номера не пустят' })).toHaveCount(0);
 
 		await page.goto(`${LINK}&cit=RUS,SRB`);

@@ -97,6 +97,16 @@ export const carousel = (page: Page): Locator => page.getByTestId('carousel');
 /** «и ещё K / Все города →», the carousel's last card when the ring has more cities than cards. */
 export const moreCard = (page: Page): Locator => carousel(page).getByRole('button', { name: /и ещё/u });
 
+/** The cards of the carousel's cities, in order. */
+export const cityCards = (page: Page): Locator => page.getByTestId('city-card');
+
+/** The card of the city whose name is in its heading. */
+export const cityCard = (page: Page, name: string): Locator =>
+	cityCards(page).filter({ has: page.getByRole('heading', { name, exact: true }) });
+
+/** The card of the chosen city: the carousel marks it current. */
+export const chosenCard = (page: Page): Locator => cityCards(page).and(page.locator('[aria-current="true"]'));
+
 /**
  * The carousel's cards wholly in the window, by name for `expectApart`: the first card, the city cards and «и ещё»
  * that the row shows whole where it stands now.
