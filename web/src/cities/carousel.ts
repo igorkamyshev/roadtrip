@@ -7,31 +7,54 @@ import { useEffect, useLayoutEffect, useRef, type RefObject } from 'react';
 /** How long the carousel stays still before its stop counts: a swipe scrolls in many steps, then snaps. */
 const STOP_AFTER_MS = 140;
 
+/** The carousel's stops: its scroll handler, and a way to let the scroll a change of its layout makes stop unheard. */
+export interface CarouselStops {
+	/** Any scroll of the carousel: `onStop` is called once it stops. */
+	readonly onScroll: () => void;
+	/**
+	 * The layout is changing under the carousel, which may scroll it to snap anew: the stop of that scroll, or of
+	 * none if it does not come, calls no `onStop`.
+	 */
+	readonly skipLayoutStop: () => void;
+}
+
 /**
- * A scroll handler for the carousel that calls `onStop` once it stops, with the city of the current card, or undefined
- * for another card (the first one, «и ещё»).
+ * The carousel's stops: `onStop` is called once it stops, with the city of the current card, or undefined for another
+ * card (the first one, «и ещё»).
  */
-export function useCarouselStops(carousel: RefObject<HTMLElement | null>, onStop: (city: number | undefined) => void): () => void {
+export function useCarouselStops(carousel: RefObject<HTMLElement | null>, onStop: (city: number | undefined) => void): CarouselStops {
 	// The latest handler, for the stop that comes after a render.
 	const latest = useRef(onStop);
 	useLayoutEffect(() => {
 		latest.current = onStop;
 	});
 	const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
+	// Whether the stop to come is the layout's own.
+	const layouts = useRef(false);
 	useEffect(
 		() => () => {
 			clearTimeout(timer.current);
 		},
 		[],
 	);
-	return () => {
+	const onScroll = (): void => {
 		clearTimeout(timer.current);
 		timer.current = setTimeout(() => {
 			const element = carousel.current;
-			if (element !== null) {
+			const skipped = layouts.current;
+			layouts.current = false;
+			if (element !== null && !skipped) {
 				latest.current(currentCity(element));
 			}
 		}, STOP_AFTER_MS);
+	};
+	return {
+		onScroll,
+		// The scroll a layout makes comes within a frame, well before the stop's wait is over: the wait starts now.
+		skipLayoutStop: () => {
+			layouts.current = true;
+			onScroll();
+		},
 	};
 }
 

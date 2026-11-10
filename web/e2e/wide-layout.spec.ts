@@ -249,25 +249,28 @@ test.describe('on 720×500, mouse', () => {
 	}
 });
 
-test.describe('on 719×500, mouse', () => {
-	test.use(onWindow({ width: 719, height: 500, pointer: 'mouse', layout: 'narrow' }));
+// A step under the threshold in width and in height, with a mouse: the narrow screen with the arrows.
+for (const window of WINDOWS.filter(({ layout, pointer }) => layout === 'narrow' && pointer === 'mouse')) {
+	test.describe(`on ${windowName(window)}`, () => {
+		test.use(onWindow(window));
 
-	test("with the longest phrase, the carousel's arrows stand over the cards 12 px from the left, 8 px over them, apart from the phrase, the slider and the card at the left edge", async ({
-		page,
-	}) => {
-		await open(page, LONGEST, '11–12 ч');
+		test("with the longest phrase, the carousel's arrows stand over the cards 12 px from the left, 8 px over them, apart from the phrase, the slider and the card at the left edge", async ({
+			page,
+		}) => {
+			await open(page, LONGEST, '11–12 ч');
 
-		const [plate, card] = await Promise.all([boxOf(carouselArrows(page)), boxOf(firstCard(page))]);
-		expect(fromEdges(page, plate).left).toBeCloseTo(EDGE, 0);
-		expect(card.y - (plate.y + plate.height)).toBeCloseTo(BETWEEN, 0);
-		await expectApart(page, {
-			phrase: phrase(page),
-			slider: slider(page),
-			arrows: carouselArrows(page),
-			'card at the left edge': firstCard(page),
+			const [plate, card] = await Promise.all([boxOf(carouselArrows(page)), boxOf(firstCard(page))]);
+			expect(fromEdges(page, plate).left).toBeCloseTo(EDGE, 0);
+			expect(card.y - (plate.y + plate.height)).toBeCloseTo(BETWEEN, 0);
+			await expectApart(page, {
+				phrase: phrase(page),
+				slider: slider(page),
+				arrows: carouselArrows(page),
+				'card at the left edge': firstCard(page),
+			});
 		});
 	});
-});
+}
 
 for (const window of WINDOWS.filter(({ pointer }) => pointer === 'touch')) {
 	test.describe(`on ${windowName(window)}`, () => {

@@ -260,7 +260,57 @@ test.describe('a window that turns narrow', () => {
 		await expect(chosenCard(page).getByRole('heading')).toHaveText('Ниш');
 		expect(await mapCenter(page)).toEqual(center);
 	});
+
+	test('with no city chosen, chooses none, and the map stays', async ({ page }) => {
+		await open(page);
+		await carousel(page).evaluate((element) => {
+			element.scrollLeft = 600;
+		});
+		await settle(page);
+		const center = await mapCenter(page);
+
+		await narrowTo390(page);
+
+		await settle(page);
+		await expect(chosenCard(page)).toHaveCount(0);
+		expect((await labelsOnMap(page)).chosen).toEqual([]);
+		expect(await mapCenter(page)).toEqual(center);
+	});
+
+	test('with a city chosen that has no card, keeps it chosen, marks no card, and the map stays', async ({ page }) => {
+		await open(page);
+		// Reşiţa has no card: tapped on the map, it is chosen, and the list of all opens.
+		await tapMap(page, placeOf('Решица'));
+		await page.keyboard.press('Escape');
+		await expect(page.getByRole('dialog')).toHaveCount(0);
+		await carousel(page).evaluate((element) => {
+			element.scrollLeft = 600;
+		});
+		await settle(page);
+		expect((await labelsOnMap(page)).chosen).toEqual(['Решица']);
+		const center = await mapCenter(page);
+
+		await narrowTo390(page);
+
+		await settle(page);
+		await expect(chosenCard(page)).toHaveCount(0);
+		expect((await labelsOnMap(page)).chosen).toEqual(['Решица']);
+		expect(await mapCenter(page)).toEqual(center);
+	});
 });
+
+/**
+ * Turns the window narrow, a phone's 390×844, and waits until the carousel has its narrow layout: a card at its left
+ * edge, where it snaps.
+ */
+async function narrowTo390(page: Page): Promise<void> {
+	await page.setViewportSize({ width: 390, height: 844 });
+	await expect
+		.poll(async () =>
+			(await cityCards(page).evaluateAll((cards) => cards.map((card) => Math.round(card.getBoundingClientRect().x)))).includes(EDGE),
+		)
+		.toBe(true);
+}
 
 /** An element's outline, or its pseudo-element's, as the browser computes it. */
 async function outlineOf(element: Locator, pseudo?: '::after') {

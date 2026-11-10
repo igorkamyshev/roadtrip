@@ -369,6 +369,24 @@ async function tapCard(page: Page, name: string): Promise<void> {
 	await page.mouse.click((left + right) / 2, headingBox.y + headingBox.height / 2);
 }
 
+/**
+ * A sideways swipe of a trackpad on the current card, too short to pass it: the carousel moves 40 px and snaps back to
+ * the same card, as after a finger's. The browser's own gesture, which scrolls and snaps as a person's does; a
+ * finger's needs a touch screen, which this phone has not.
+ */
+async function swipeShort(page: Page): Promise<void> {
+	const card = await boxOf(chosenCard(page));
+	const session = await page.context().newCDPSession(page);
+	await session.send('Input.synthesizeScrollGesture', {
+		x: Math.round(card.x + card.width / 2),
+		y: Math.round(card.y + card.height / 2),
+		xDistance: -40,
+		gestureSourceType: 'mouse',
+		preventFling: true,
+	});
+	await session.detach();
+}
+
 /** How far the place is from the middle of the map once the camera went to it: past its easing, by the page's clock. */
 async function wentTo(page: Page, at: { readonly lat: number; readonly lon: number }): Promise<number> {
 	await page.clock.fastForward(EASING_PAST_MS);
@@ -437,6 +455,19 @@ test.describe('the carousel and the map', () => {
 
 		expect(await wentTo(page, NIS)).toBeLessThan(25);
 		expect(await mapZoom(page)).toBeCloseTo(zoom);
+		await expect(chosenCard(page).getByRole('heading')).toHaveText('Ниш');
+	});
+
+	test("a swipe that stops at the chosen city's card again brings the map back to it", async ({ page }) => {
+		await scrollTo(page, 'Ниш');
+		await expect(chosenCard(page).getByRole('heading')).toHaveText('Ниш');
+		expect(await wentTo(page, NIS)).toBeLessThan(25);
+		await dragMap(page, -150, -100);
+		expect(await distanceFromTheMiddle(page, NIS)).toBeGreaterThan(100);
+
+		await swipeShort(page);
+
+		expect(await wentTo(page, NIS)).toBeLessThan(25);
 		await expect(chosenCard(page).getByRole('heading')).toHaveText('Ниш');
 	});
 

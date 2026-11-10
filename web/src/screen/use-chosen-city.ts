@@ -6,8 +6,9 @@
 // left edge, is the chosen city: a stop chooses, and a card tapped, or a city tapped on the map or picked, is scrolled
 // there for its stop to choose it. On the wide screen the row only scrolls, whatever scrolls it, and its stop chooses
 // nothing: a card pressed, a city tapped or picked is chosen and the map goes to it at once, and the row moves only to
-// show its card whole. A window that turns narrow puts the chosen city's card at the left edge at once.
-import { type FocusEvent, useEffect, useLayoutEffect, useRef, useState, type RefObject } from 'react';
+// show its card whole. A window that turns narrow puts the chosen city's card at the left edge at once, and chooses
+// nothing.
+import { type FocusEvent, useEffect, useEffectEvent, useLayoutEffect, useRef, useState, type RefObject } from 'react';
 import { alignCard, isCurrentCard, scrollToCard, showCard, showFocusedCard, useCarouselStops } from '../cities/carousel.ts';
 import type { City } from '../cities/cities.ts';
 import type { MapHandle } from '../map/camera.ts';
@@ -63,15 +64,24 @@ export function useChosenCity(shown: ShownRing, map: RefObject<MapHandle | null>
 	}, [requestId]);
 
 	const wide = useMedia('wide');
-	useRealignOnNarrowing(carousel, wide, city);
-	const onCarouselScroll = useCarouselStops(carousel, (id) => {
-		// A stop at the chosen city's card, as after the window turned narrow, leaves the map where it is.
-		if (!wide && id !== city) {
+	// On the narrow screen any stop chooses, the chosen city's card's too: it brings back the map led away from it.
+	const stops = useCarouselStops(carousel, (id) => {
+		if (!wide) {
 			choose(id);
 			const stopped = cityOf(id);
 			if (stopped !== undefined) {
 				map.current?.goTo(stopped);
 			}
+		}
+	});
+	// A window that turns narrow puts the chosen city's card at the carousel's left edge at once, where the narrow
+	// screen's chosen card stands; the map stays. Without a chosen city or its card the carousel stays where it was, and
+	// a window that turns wide leaves everything as it is. The narrow layout snaps the carousel anew, and the stop of
+	// that, which would choose, chooses nothing: the city chosen stays, and the map with it.
+	useOnNarrowing(wide, () => {
+		stops.skipLayoutStop();
+		if (city !== undefined) {
+			alignCard(carousel.current, city);
 		}
 	});
 
@@ -83,7 +93,7 @@ export function useChosenCity(shown: ShownRing, map: RefObject<MapHandle | null>
 	return {
 		city,
 		carousel,
-		onCarouselScroll,
+		onCarouselScroll: stops.onScroll,
 		onCarouselFocus: (event) => {
 			if (wide) {
 				showFocusedCard(carousel.current, event.target);
@@ -162,20 +172,14 @@ function choosingOnWide({ carousel, map, choose, cityOf, openList }: Screen): Ch
 	};
 }
 
-/**
- * A window that turns narrow puts the chosen city's card at the carousel's left edge at once, where the narrow screen's
- * chosen card stands; the map stays. Without a chosen city or its card the carousel stays where it was, and a window
- * that turns wide leaves everything as it is.
- */
-function useRealignOnNarrowing(carousel: RefObject<HTMLDivElement | null>, wide: boolean, city: number | undefined): void {
-	// The latest choice, for the turn of the window that comes after it.
-	const latest = useRef(city);
+/** Calls `onNarrowing`, with the state at the time, when the window turns narrow, before it paints so. */
+function useOnNarrowing(wide: boolean, onNarrowing: () => void): void {
+	const narrowing = useEffectEvent(onNarrowing);
+	const wasWide = useRef(wide);
 	useLayoutEffect(() => {
-		latest.current = city;
-	});
-	useLayoutEffect(() => {
-		if (!wide && latest.current !== undefined) {
-			alignCard(carousel.current, latest.current);
+		if (wasWide.current && !wide) {
+			narrowing();
 		}
-	}, [carousel, wide]);
+		wasWide.current = wide;
+	}, [wide]);
 }
