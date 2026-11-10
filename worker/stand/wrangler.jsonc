@@ -1,0 +1,16 @@
+{
+	"$schema": "../node_modules/wrangler/config-schema.json",
+	// The prototype stand (#100, worker/README.md «The prototype stand»): not the Worker roadtrip, whose config is
+	// ../wrangler.jsonc. Deployed only on request, by its own Workers Builds trigger, from the branch named then.
+	"name": "roadtrip-stand",
+	"main": "index.ts",
+	"compatibility_date": "2026-10-01",
+	// Its one address, https://roadtrip-stand.kamyshev.workers.dev: the last branch deployed is the one it shows.
+	"workers_dev": true,
+	"preview_urls": false,
+	// The client of the deployed branch, built by `pnpm --filter web build` before `wrangler deploy`.
+	"assets": { "directory": "../../web/dist" },
+	"observability": {
+		"enabled": true,
+	},
+}
