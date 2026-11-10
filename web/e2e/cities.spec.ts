@@ -349,13 +349,26 @@ async function scrollTo(page: Page, name: string): Promise<void> {
 const chosenCard = (page: Page) => cityCards(page).and(page.locator('[aria-current="true"]'));
 
 /**
- * Opens the list of all by «и ещё», at the carousel's end. Scrolling to it is a stop of the carousel, which chooses
- * the city in its middle 140 ms later: the page's clock runs past that before the test picks a city, as a person's
- * fingers would.
+ * Opens the list of all by «и ещё», at the carousel's end, as a person would: scrolls the carousel there, lets it stop,
+ * then taps «и ещё». The stop chooses the card at the left edge 140 ms after the carousel's last `scroll` event, which
+ * the browser sends with its next frame, not at once: the test waits for the scroll's `scrollend`, after that event,
+ * and only then runs the page's clock past the stop. Otherwise, on a slow machine, the event could come after the
+ * clock moved, and its stop would undo the city the test picks next (#115).
  */
 async function openTheList(page: Page): Promise<void> {
-	await page.getByRole('button', { name: /и ещё/u }).click();
+	await carousel(page).evaluate(async (element) => {
+		const end = element.scrollWidth - element.clientWidth;
+		// Already there, it would not scroll, and no `scrollend` would come.
+		if (element.scrollLeft < end - 1) {
+			const ended = new Promise((resolve) => {
+				element.addEventListener('scrollend', resolve, { once: true });
+			});
+			element.scrollTo({ left: end });
+			await ended;
+		}
+	});
 	await page.clock.fastForward(1000);
+	await page.getByRole('button', { name: /и ещё/u }).click();
 }
 
 /**
@@ -542,9 +555,10 @@ test.describe('the carousel and the map', () => {
 
 		await expect(page.getByRole('dialog')).toHaveCount(0);
 		await expect.poll(() => labelsOnMap(page)).toMatchObject({ chosen: ['Осиек'] });
-		expect((await labelsOnMap(page)).labels).toContain('Осиек');
 		expect(await wentTo(page, { lat: 45.551, lon: 18.694 })).toBeLessThan(25);
 		expect(await mapZoom(page)).toBeGreaterThanOrEqual(8);
+		// Past the camera's easing and every timer of the screen, the city is still the chosen one, and named.
+		expect(await labelsOnMap(page)).toMatchObject({ chosen: ['Осиек'], labels: expect.arrayContaining(['Осиек']) });
 		await expect(chosenCard(page)).toHaveCount(0);
 	});
 
