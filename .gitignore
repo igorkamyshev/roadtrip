@@ -3,3 +3,6 @@ node_modules
 .claude/worktrees/
 # fallow's cache
 .fallow/
+
+# Throwaway probes of the screen tests (web/README.md, «Tests»): never committed, never linted
+web/e2e/probes/

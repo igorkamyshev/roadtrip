@@ -22,3 +22,8 @@ if ! sha256sum --check --status "$hashes" 2>/dev/null; then
 	pnpm install --frozen-lockfile >&2
 	sha256sum .claude/hooks/session-start.sh pnpm-lock.yaml .nvmrc package.json > "$hashes"
 fi
+
+# The clone's origin/main may be days behind main, and a fetch that also names the
+# session's branch fails while that branch is not on GitHub yet: fetch main alone,
+# so a branch started from origin/main starts from main.
+git fetch --quiet origin main >&2 || echo "session-start: git fetch origin main failed, origin/main may be stale" >&2
