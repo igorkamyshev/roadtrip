@@ -75,12 +75,12 @@ export const firstCard = (page: Page): Locator => page.getByTestId('first-card')
  * The data's sources under the phrase (src/screen/attribution.tsx): shown for 5 s once the screen opens, then hidden in
  * their place.
  */
-export const sources = (page: Page): Locator => page.locator('.c-top > p', { hasText: 'Источники данных' });
+export const sources = (page: Page): Locator => page.getByTestId('sources');
 
 export const slider = (page: Page): Locator => page.getByRole('slider', { name: 'Время в пути' });
 
 /** The carousel at the bottom of the screen: the first card, the city cards, «и ещё». */
-export const carousel = (page: Page): Locator => page.locator('.c-car');
+export const carousel = (page: Page): Locator => page.getByTestId('carousel');
 
 /** Where an element is on the screen, its box in CSS pixels; it must be there. */
 export async function boxOf(element: Locator): Promise<{ x: number; y: number; width: number; height: number }> {
@@ -111,7 +111,7 @@ export const sliderHour = (page: Page, hours: number): Locator => slider(page).l
 export const sliderCells = (page: Page): Locator => slider(page).locator('[data-hours]');
 
 /** The slider's panel of cells, and its tab of the other unit: «дни ↑» over the hours, «часы ↓» under the days. */
-export const sliderPanel = (page: Page): Locator => slider(page).locator('.sl-panel');
+export const sliderPanel = (page: Page): Locator => slider(page).getByTestId('slider-panel');
 export const sliderTab = (page: Page): Locator => slider(page).locator('[data-tab]');
 
 /** The middle of the slider's cell of `hours`. */
@@ -259,7 +259,7 @@ export async function tapMap(page: Page, at: { readonly lat: number; readonly lo
 		return map !== undefined && map.loaded() && !map.isMoving();
 	});
 	const { x, y } = offTheMap(await page.evaluate(([lat, lon]) => window.mapForTests?.project([lon, lat]), [at.lat, at.lon]));
-	const box = await page.locator('.map-canvas').boundingBox();
+	const box = await page.getByTestId('map').boundingBox();
 	await page.mouse.click((box?.x ?? 0) + x, (box?.y ?? 0) + y);
 }
 
@@ -270,7 +270,7 @@ export async function tapMap(page: Page, at: { readonly lat: number; readonly lo
 export async function distanceFromTheMiddle(page: Page, at: { readonly lat: number; readonly lon: number }): Promise<number> {
 	await mapAtRest(page);
 	const [phraseBox, carouselBox, sliderBox, canvasBox] = await Promise.all(
-		[phrase(page), carousel(page), page.locator('.c-vs'), page.locator('.map-canvas')].map(async (element) => boxOf(element)),
+		[phrase(page), carousel(page), page.getByTestId('slider-column'), page.getByTestId('map')].map(async (element) => boxOf(element)),
 	);
 	const { x, y } = offTheMap(await page.evaluate(([lat, lon]) => window.mapForTests?.project([lon, lat]), [at.lat, at.lon]));
 	const middle = { x: (canvasBox.x + sliderBox.x) / 2, y: (phraseBox.y + phraseBox.height + carouselBox.y) / 2 };

@@ -3,7 +3,7 @@ import type { ReactElement } from 'react';
 
 export function PinBar({ onCancel, onStart }: { readonly onCancel: () => void; readonly onStart: () => void }): ReactElement {
 	return (
-		<div className="c-pickbar">
+		<div className="c-pickbar" data-testid="pin-bar">
 			<span>Двигайте карту, чтобы поставить точку под булавку</span>
 			<div>
 				<button type="button" className="btn" onClick={onCancel}>

@@ -50,7 +50,7 @@ const LOWEST_SLIDER = 120;
 type Box = Awaited<ReturnType<typeof boxOf>>;
 
 /** The line under the phrase that dates old visa rules, «визовые правила от <дата>». */
-const rulesDate = (page: Page): Locator => phrase(page).locator('.c-rules-date');
+const rulesDate = (page: Page): Locator => phrase(page).getByTestId('rules-date');
 
 /** Whether two boxes share any area: touching edges do not. */
 function overlap(a: Box, b: Box): boolean {
@@ -150,9 +150,9 @@ for (const { lowestHour, ...viewport } of PHONES) {
 			await expectApart(page, {
 				phrase: phrase(page),
 				sources: sources(page),
-				'pin bar': page.locator('.c-pickbar'),
+				'pin bar': page.getByTestId('pin-bar'),
 			});
-			expect(fromEdges(page, await boxOf(page.locator('.c-pickbar')))).toMatchObject({ right: EDGE, bottom: EDGE, left: EDGE });
+			expect(fromEdges(page, await boxOf(page.getByTestId('pin-bar')))).toMatchObject({ right: EDGE, bottom: EDGE, left: EDGE });
 		});
 
 		for (const [settings, path] of [

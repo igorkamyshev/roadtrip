@@ -73,7 +73,7 @@ test('the client keeps its map off window: it only announces it, and these tests
 	await page.route(/^(?!http:\/\/localhost[:/])/u, (route) => route.abort('blockedbyclient'));
 	await page.goto('/');
 
-	await expect(page.locator('.maplibregl-canvas')).toBeVisible();
+	await expect(page.getByRole('region', { name: 'Map' })).toBeVisible();
 	expect(await page.evaluate(() => Object.keys(window).filter((key) => key.toLowerCase().includes('roadtrip')))).toEqual([]);
 	await context.close();
 });
