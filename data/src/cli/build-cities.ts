@@ -12,12 +12,12 @@
 import { appendFileSync, writeFileSync } from 'node:fs';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { parseArgs } from 'node:util';
-import { brotliCompressSync } from 'node:zlib';
 import { encodeCities } from '../cities-file.ts';
 import { cityPartsMarkdown, missingRussianNamesMarkdown } from '../build-report.ts';
 import { buildCities } from '../cities.ts';
+import { readRussianNames } from '../russian-names.ts';
 import { wikidataRussianLabels } from '../wikidata.ts';
-import { fileLines, log, readRussianNames, seconds, userPath, withLocalFile } from './input.ts';
+import { fileLines, log, seconds, sizes, userPath, withLocalFile } from './input.ts';
 import { loadGraph } from './load-graph.ts';
 
 const DUMP = 'https://download.geonames.org/export/dump';
@@ -86,7 +86,7 @@ log(
 if (report.withoutZone.length > 0) {
 	log(`left out, outside every polygon and in a country that is no zone: ${report.withoutZone.join('; ')}`);
 }
-log(`wrote ${out}: ${(json.length / 1e6).toFixed(2)} MB, ${(brotliCompressSync(json).length / 1e6).toFixed(2)} MB in brotli`);
+log(`wrote ${out}: ${sizes(json)}`);
 if (values.report !== undefined) {
 	// After the graph's part, which build-graph writes first.
 	appendFileSync(userPath(values.report), `\n${cityPartsMarkdown(report)}\n${missingRussianNamesMarkdown(report)}`);

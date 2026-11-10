@@ -5,11 +5,10 @@
 //   pnpm --filter data build-graph <extract.osm.pbf | URL> <out.graph> [--outlines <zones.json>] [--report <report.md>]
 import { writeFileSync } from 'node:fs';
 import { parseArgs } from 'node:util';
-import { brotliCompressSync } from 'node:zlib';
 import { encodeGraph } from 'engine/graph';
 import { reportMarkdown } from '../build-report.ts';
 import { zoneOutlines } from '../outlines.ts';
-import { log, seconds, userPath, withLocalFile } from './input.ts';
+import { log, seconds, sizes, userPath, withLocalFile } from './input.ts';
 import { loadGraph } from './load-graph.ts';
 
 const { values, positionals } = parseArgs({
@@ -31,10 +30,7 @@ if (values.outlines !== undefined && report !== undefined) {
 	const started = performance.now();
 	const json = JSON.stringify(zoneOutlines(graph, report.parts));
 	writeFileSync(userPath(values.outlines), json);
-	log(
-		`wrote ${values.outlines} in ${seconds(started)}: ${(json.length / 1e6).toFixed(2)} MB, ` +
-			`${(brotliCompressSync(json).length / 1e6).toFixed(2)} MB in brotli`,
-	);
+	log(`wrote ${values.outlines} in ${seconds(started)}: ${sizes(json)}`);
 }
 
 if (values.report !== undefined && report !== undefined) {

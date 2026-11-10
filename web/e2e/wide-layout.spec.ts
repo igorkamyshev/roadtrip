@@ -36,6 +36,7 @@ import {
 	expectApart,
 	expectRingCard,
 	firstCard,
+	FROM_BELGRADE,
 	fromEdges,
 	labelsOnMap,
 	MODAL_WIDTH,
@@ -494,7 +495,7 @@ test.describe('on 768×1024, touch', () => {
 
 	test('the short phrase «Из точки Белград, 5–6 часов в пути. Гражданство РФ, мои визы: нет ⓘ» is one line', async ({ page, ringApi }) => {
 		rulesFrom(ringApi, new Date(CLOCK_START).toISOString());
-		await openHeld(page, '/#/?p=44.81760,20.45730&h=6&cit=RUS', '5–6 ч');
+		await openHeld(page, `${FROM_BELGRADE}&h=6&cit=RUS`, '5–6 ч');
 		await expect(phrase(page)).toContainText('Из точки Белград, 5–6 часов в пути. Гражданство РФ, мои визы: нет');
 
 		const [first, last] = await Promise.all([

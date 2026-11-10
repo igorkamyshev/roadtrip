@@ -6,10 +6,9 @@
  */
 export { borderTable } from './border-table.ts';
 export { borderTableProblems, visaExemptionsProblems } from './check.ts';
-// The client imports the countries, the passports, the EU and the held visas by their own paths (`rules/countries`,
-// `rules/passports`, `rules/eu`, `rules/held-visas`), without the border table.
+// The client imports the countries, the passports and the held visas by their own paths (`rules/countries`,
+// `rules/passports`, `rules/held-visas`), without the border table.
 export { COUNTRIES } from './countries.ts';
-export { EU } from './eu.ts';
 export { SHERPA_PASSPORTS } from './passports.ts';
 export { SCHENGEN_AREA } from './schengen.ts';
 export { actingExemptions, EXEMPTION_VISAS, HELD_VISAS, SCHENGEN, utcDate, VISA_EXEMPTIONS } from './held-visas.ts';

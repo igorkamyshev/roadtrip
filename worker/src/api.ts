@@ -99,7 +99,7 @@ export interface CountryAccess {
 	readonly citizenship?: string;
 	/**
 	 * The held visa that gives it: `SCHENGEN` or an alpha-3. For `held_visa` always, and for an `evisa` that a row of
-	 * the visa exemptions' table gives. A city's label says it: «по визе Шенгена», «по визе: <страна>».
+	 * the visa exemptions' table gives. The client does not show it (#73).
 	 */
 	readonly visa?: string;
 	/** Closed for everyone, whatever the citizenships and visas (#13): such a country is always `closed`. */

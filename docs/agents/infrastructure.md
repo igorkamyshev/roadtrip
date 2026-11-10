@@ -14,12 +14,7 @@ Nothing is deployed by hand ([spec #20](../specs/20.md) «Набор данны�
 
 `roadtrip-stand` is the prototype stand (`worker/README.md`, «The prototype stand»): its trigger, «Deploy on request», deploys no push, only the branch named in a call that starts it. Start it with its own trigger, never `roadtrip`'s: a call to `roadtrip`'s with a prototype's branch puts that branch on production («Run a build again»).
 
-`roadtrip`'s `deploy` (`worker/package.json`) runs four steps:
-
-1. `pnpm --filter data fetch-dataset` (`data/src/cli/fetch-dataset.ts`): reads the pointer `current.json` in the R2 bucket `roadtrip-datasets` (`data/AGENTS.md`, «The world build»), downloads the files of its version through Cloudflare's API, checks each one's size and SHA-256 against the pointer and only then puts them in place: `graph.graph` and `dataset.json` in `engine/dataset/` for the Container's image, `zones.json` and `cities.json` in `web/public/data/` for the client's static assets. A file that does not match fails the deploy.
-2. `pnpm --filter data russian-names` (`data/src/cli/russian-names.ts`): puts the Russian names of the table `data/russian-names.tsv` in the cities file `fetch-dataset` placed (`data/AGENTS.md`, «Cities file»). A bad table fails the deploy, the line named in the log, the file untouched; it fails the world build's `build-cities` too.
-3. `pnpm --filter web build`: the client, with its source maps uploaded to PostHog when the build has the key (`web/README.md`, «Source maps»).
-4. `wrangler deploy`: builds the Container's image (`engine/Dockerfile`: Node runs the engine's TypeScript sources as they are, nothing minified), pushes it to Cloudflare's registry, uploads the Worker with the client and starts the Container's rollout.
+`roadtrip`'s `deploy` script and its steps, from the dataset in R2 to the Container's rollout: `worker/README.md`, «Deploy».
 
 The monthly world build (`.github/workflows/dataset.yml`) starts the same build once it moves the pointer, with the same request as below, and waits for the outcome (`.github/dataset/deploy.sh`, «Deploy the dataset»): a new dataset goes live with `main`'s code. It calls the API with the repository's secrets `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`, not the build token. A trial run deploys nothing.
 

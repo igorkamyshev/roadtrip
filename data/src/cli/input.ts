@@ -1,23 +1,11 @@
 import { spawn } from 'node:child_process';
-import { createReadStream, createWriteStream, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { createReadStream, createWriteStream, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, join, resolve } from 'node:path';
 import { createInterface } from 'node:readline';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
-import { parseRussianNames } from '../russian-names.ts';
-
-/** The table of Russian names the repository ships (src/russian-names.ts). */
-const RUSSIAN_NAMES_TABLE = join(import.meta.dirname, '../../russian-names.tsv');
-
-/** The table of Russian names at `path`, checked: an error naming the file and the line for a bad one. */
-export function readRussianNames(path = RUSSIAN_NAMES_TABLE): Map<number, string> {
-	try {
-		return parseRussianNames(readFileSync(path, 'utf8'));
-	} catch (error) {
-		throw new Error(`${path}, ${error instanceof Error ? error.message : String(error)}`, { cause: error });
-	}
-}
+import { brotliCompressSync } from 'node:zlib';
 
 /**
  * A path as the person typed it: `pnpm --filter data <command>` runs in data/, so a relative path is taken from
@@ -110,6 +98,15 @@ async function localCopy(pathOrUrl: string): Promise<{ path: string; remove: () 
 
 export function log(line: string): void {
 	process.stderr.write(`${line}\n`);
+}
+
+/** The size of a file the screen downloads, as it is and in brotli, as the Worker serves it: `1.83 MB, 0.60 MB in brotli` for the world's cities file. */
+export function sizes(text: string): string {
+	return `${megabytes(Buffer.byteLength(text))} MB, ${megabytes(brotliCompressSync(text).length)} MB in brotli`;
+}
+
+function megabytes(bytes: number): string {
+	return (bytes / 1e6).toFixed(2);
 }
 
 export function seconds(started: number): string {

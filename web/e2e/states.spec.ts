@@ -1,9 +1,9 @@
 // The first card by state (spec #20 «Экран», «Первая карточка, по состояниям»; stories 7, 9, 21, 47, 48): the
 // engine's outcomes without a ring, the WAF's block and failures, with the spec's texts and buttons.
 import type { RingResponse } from 'worker/api';
-import { allowGeolocation, BELGRADE, expect, FROM_BELGRADE, squareRing, test, visaRules } from './fixtures.ts';
+import { allowGeolocation, BELGRADE, expect, squareRing, test, visaRules } from './fixtures.ts';
 import type { RingReply } from './ring-api.ts';
-import { expectRingCard, firstCard, holdTheClock, ringOnMap, runUntil } from './screen.ts';
+import { expectRingCard, firstCard, FROM_BELGRADE, holdTheClock, ringOnMap, runUntil } from './screen.ts';
 
 /** A link to Belgrade with N = 5. */
 const LINK = `${FROM_BELGRADE}&h=5`;

@@ -1,26 +1,23 @@
 // The carousel's cards after the first one (spec #20 «Экран», «Карусель», «Карточка города»): a card per city, made
-// for any point of interest, and the last card «и ещё K / Все города →». Time to the city is not on it (#19). And
-// what a city says in a row of a list: the search's and the list of all.
+// for any point of interest, and the last card «и ещё K / Все города →». Time to the city is not on it (#19), nor
+// its local name, its entry mode or Russian plates (#73). And what a city says in a row of a list: the search's and
+// the list of all.
 import type { ReactElement } from 'react';
-import type { Access } from 'worker/api';
-import { countryName } from '../screen/countries.ts';
+import { countryFlag, countryName } from '../screen/countries.ts';
 import type { LatLon } from '../state/point.ts';
 import type { City } from './cities.ts';
-import { entryMark, platesBanned, populationText, routeUrl } from './copy.ts';
+import { populationLine, routeUrl } from './copy.ts';
 
 export interface CityCardProps {
 	readonly city: City;
 	readonly origin: LatLon;
-	/** The entry modes of the answer shown. */
-	readonly access: Access;
-	readonly citizenships: readonly string[];
 	/** The chosen city: its card is marked where it stands, its label larger on the map. */
 	readonly chosen: boolean;
 	/** A tap anywhere on the card but «Маршрут». */
 	readonly onTap: () => void;
 }
 
-export function CityCard({ city, origin, access, citizenships, chosen, onTap }: CityCardProps): ReactElement {
+export function CityCard({ city, origin, chosen, onTap }: CityCardProps): ReactElement {
 	return (
 		<div
 			className={chosen ? 'c-card clickable chosen' : 'c-card clickable'}
@@ -28,17 +25,19 @@ export function CityCard({ city, origin, access, citizenships, chosen, onTap }: 
 			data-city={city.id}
 			aria-current={chosen ? 'true' : undefined}
 		>
-			<h3>
-				{/* Its tap area covers the card, and the keyboard reaches it: a card with a link in it is no button. */}
-				<button type="button" className="c-card-tap" onClick={onTap}>
-					{city.name}
-				</button>
-			</h3>
-			<div className="muted small" data-testid="city-facts">
-				{cityFacts(city)}
+			{/* The name and right after it, on its line, the flag; outside the heading, whose name is the city's. */}
+			<div className="c-card-title">
+				<h3>
+					{/* Its tap area covers the card, and the keyboard reaches it: a card with a link in it is no button. */}
+					<button type="button" className="c-card-tap" onClick={onTap}>
+						{city.name}
+					</button>
+				</h3>{' '}
+				<CountryFlag zone={city.zone} />
 			</div>
-			<EntryMark city={city} access={access} />
-			{platesBanned(city, citizenships) ? <div className="small plates">Российские номера не пустят</div> : null}
+			<div className="muted small" data-testid="city-facts">
+				{populationLine(city.population)}
+			</div>
 			<div className="acts">
 				{/* A quiet link, not the card's brightest thing (#75). */}
 				<a className="c-route" href={routeUrl(origin, city)} target="_blank" rel="noopener noreferrer">
@@ -49,31 +48,27 @@ export function CityCard({ city, origin, access, citizenships, chosen, onTap }: 
 	);
 }
 
-/** «Budapest · Венгрия · 1,7 млн»: the local name when it is not the name shown, the country, the population. */
-function cityFacts(city: City): string {
-	return [city.local, countryName(city.zone), populationText(city.population)].filter((part) => part !== undefined).join(' · ');
+/** The flag of the city's country, named for a screen reader and in a tooltip. */
+function CountryFlag({ zone }: { readonly zone: string }): ReactElement {
+	const country = countryName(zone);
+	return (
+		// oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- an emoji is text, not an image file: a span named as an image is how a screen reader reads it by name
+		<span role="img" aria-label={country} title={country}>
+			{countryFlag(zone)}
+		</span>
+	);
 }
 
-/** A city in a row of a list: its name, the local one next to it, and under them its country and population. */
+/** A city in a row of a list: its name with its flag, and under them its population. */
 export function CityRowText({ city }: { readonly city: City }): ReactElement {
 	return (
 		<span className="row-main">
 			<span className="row-name" data-testid="row-name">
 				{city.name}
-			</span>
-			{city.local === undefined ? null : <span className="row-alt"> {city.local}</span>}
-			<span className="row-sub">{cityFacts({ ...city, local: undefined })}</span>
+			</span>{' '}
+			<CountryFlag zone={city.zone} />
+			<span className="row-sub">{populationLine(city.population)}</span>
 		</span>
-	);
-}
-
-/** The badge of the city's entry mode, or nothing for a country without a visa. */
-export function EntryMark({ city, access }: { readonly city: City; readonly access: Access }): ReactElement | null {
-	const mark = entryMark(access[city.zone]);
-	return mark === undefined ? null : (
-		<div>
-			<span className={`badge b-${mark.kind}`}>{mark.text}</span>
-		</div>
 	);
 }
 

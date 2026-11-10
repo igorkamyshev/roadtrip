@@ -23,7 +23,7 @@ export interface CitiesSources {
 	readonly alternateNames: AsyncIterable<string>;
 	/** Wikidata's Russian labels by GeoNames id (P1566), asked for the cities GeoNames has no Russian name of. */
 	readonly wikidataLabels: (ids: readonly number[]) => Promise<ReadonlyMap<number, string>>;
-	/** The table of Russian names (`parseRussianNames`), which the deploy puts in: the file leaves it out, the report counts the cities it lacks. */
+	/** The table of Russian names (`readRussianNames`), which the deploy puts in: the file leaves it out, the report counts the cities it lacks. */
 	readonly russianNames: ReadonlyMap<number, string>;
 	/** The graph whose zone polygons give each city its zone. */
 	readonly graph: Pick<Graph, 'zones' | 'zoneRings'>;

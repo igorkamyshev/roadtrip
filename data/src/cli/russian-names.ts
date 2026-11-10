@@ -9,8 +9,8 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { parseArgs } from 'node:util';
 import { parseCitiesFile } from '../cities-file.ts';
-import { withRussianNames } from '../russian-names.ts';
-import { log, readRussianNames, userPath } from './input.ts';
+import { readRussianNames, withRussianNames } from '../russian-names.ts';
+import { log, userPath } from './input.ts';
 
 const ROOT = join(import.meta.dirname, '../../..');
 
