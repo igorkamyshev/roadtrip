@@ -950,3 +950,316 @@ a {
 .found-row {
 	padding: 10px 2px;
 }
+
+/* ---------- PROTOTYPE, never merged (#97): the wide screen's layout and the slider's three variants, wide-slider.prototype.tsx. */
+
+/* The wide screen: a grid over the map, the phrase and the sources on top, the middle, the carousel at the bottom. */
+.w {
+	position: absolute;
+	inset: 0;
+	z-index: 11;
+	display: grid;
+	grid-template-rows: auto minmax(0, 1fr) auto;
+	pointer-events: none;
+}
+
+.w > * > * {
+	pointer-events: auto;
+}
+
+.w-top {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: var(--between);
+	padding: var(--edge-top) var(--edge-right) 0 var(--edge-left);
+}
+
+.w-mid {
+	display: flex;
+	justify-content: flex-end;
+	min-height: 0;
+	padding: var(--between) var(--edge-right) var(--between) var(--edge-left);
+}
+
+.w-bottom {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: var(--between);
+	min-width: 0;
+}
+
+/* The carousel runs the whole width: no slider beside it. */
+.w .c-car {
+	--beside-slider: var(--edge-right);
+	--fade: none;
+
+	position: static;
+	width: 100%;
+	box-sizing: border-box;
+}
+
+.w .c-pickbar {
+	position: static;
+	align-self: stretch;
+	margin: 0 var(--edge-right) var(--edge-bottom) var(--edge-left);
+}
+
+/* ---------- the slider ---------- */
+
+.ws {
+	display: flex;
+	gap: var(--between);
+	user-select: none;
+	/* stylelint-disable-next-line property-no-vendor-prefix -- Safari reads only the prefixed one (caniuse «user-select-none»). */
+	-webkit-user-select: none;
+}
+
+.ws-track {
+	display: flex;
+	gap: 10px;
+	padding: 6px;
+	box-sizing: border-box;
+	background: var(--surface);
+	border-radius: var(--radius);
+	box-shadow: var(--shadow);
+	touch-action: none;
+	cursor: pointer;
+}
+
+.ws-track:focus-visible {
+	outline: 2px solid var(--ring);
+	outline-offset: 2px;
+}
+
+.ws-group {
+	display: flex;
+	gap: 2px;
+	min-width: 0;
+	min-height: 0;
+}
+
+/* «часы», «дни»: the group's caption. */
+.ws-group i {
+	display: grid;
+	place-items: center;
+	padding: 0 4px;
+	font-style: normal;
+	font-size: 11px;
+	font-weight: 600;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+	color: var(--muted);
+}
+
+.ws-cell {
+	display: grid;
+	place-items: center;
+	border-radius: var(--radius-inner);
+	font-size: 14px;
+	color: var(--muted);
+	font-variant-numeric: tabular-nums;
+	transition: background 120ms ease-out;
+}
+
+.ws-cell:hover {
+	background: color-mix(in srgb, var(--ring) 10%, transparent);
+}
+
+.ws-cell[data-day] {
+	font-size: 17px;
+	background: color-mix(in srgb, var(--ring) 7%, transparent);
+}
+
+.ws-cell[data-cached] {
+	background: color-mix(in srgb, var(--ok) 12%, transparent);
+}
+
+.ws-cell.on {
+	background: var(--ring);
+	box-shadow: 0 1px 4px color-mix(in srgb, var(--ring) 40%, transparent);
+}
+
+.ws-cell .ws-num {
+	font-weight: 400;
+	white-space: nowrap;
+}
+
+.ws-cell.on .ws-num {
+	display: flex;
+	align-items: baseline;
+	gap: 2px;
+	color: #fff;
+	font-weight: 700;
+	font-size: 13px;
+}
+
+.ws-cell.on .ws-num small {
+	font-size: 10px;
+	font-weight: 600;
+}
+
+@media (prefers-color-scheme: dark) {
+	:root:not([data-theme='light']) .ws-cell.on .ws-num,
+	:root:not([data-theme='light']) .ws-units button.on {
+		color: #0b1630;
+	}
+}
+
+/* A: a row of all 16 under the phrase, up to 900 px and never wider than the screen; a day 1.4 hours wide. */
+.ws-a {
+	align-self: stretch;
+	max-width: 900px;
+}
+
+.ws-a .ws-track {
+	flex: 1;
+	min-width: 0;
+}
+
+.ws-a .ws-group[data-unit='hours'] {
+	flex: 12 1 0;
+}
+
+.ws-a .ws-group[data-unit='days'] {
+	flex: 5.6 1 0;
+}
+
+.ws-a .ws-cell {
+	flex: 1 1 0;
+	min-width: 0;
+	height: 40px;
+}
+
+/* B: a column of all 16 at the right edge, from under the phrase down to the bottom, up to 720 px, 1 at the bottom,
+   64 wide; the carousel ends --between before it. */
+.w-b {
+	grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.w-b .w-top {
+	grid-column: 1 / -1;
+}
+
+.w-b .w-mid {
+	grid-column: 2;
+	grid-row: 2 / 4;
+	align-items: flex-end;
+	padding: var(--between) var(--edge-right) var(--edge-bottom) 0;
+}
+
+.w-b .w-bottom {
+	grid-column: 1;
+	grid-row: 3;
+}
+
+.w-b .c-car {
+	padding-right: var(--between);
+}
+
+.ws-b {
+	height: 100%;
+	max-height: 720px;
+}
+
+.ws-b .ws-track {
+	flex-direction: column-reverse;
+	width: 64px;
+	height: 100%;
+}
+
+.ws-b .ws-group {
+	flex-direction: column-reverse;
+	flex: 12 1 0;
+}
+
+.ws-b .ws-group[data-unit='days'] {
+	flex: 6 1 0;
+}
+
+.ws-b .ws-group i {
+	padding: 2px 0;
+}
+
+.ws-b .ws-cell {
+	flex: 1 1 0;
+	min-height: 0;
+}
+
+/* C: a row over the carousel's first cards, one unit at a time, «часы | дни» before it; the row as wide as the
+   twelve hours, a day three hours wide. */
+.ws-c {
+	margin-left: var(--edge-left);
+	align-items: stretch;
+}
+
+.ws-c .ws-track {
+	width: min(560px, 100vw - var(--edge-left) - var(--edge-right) - 120px);
+}
+
+.ws-c .ws-group {
+	flex: 1;
+}
+
+.ws-c .ws-cell {
+	flex: 1 1 0;
+	height: 40px;
+}
+
+.ws-units {
+	display: flex;
+	padding: 6px;
+	gap: 2px;
+	background: var(--surface);
+	border-radius: var(--radius);
+	box-shadow: var(--shadow);
+}
+
+.ws-units button {
+	border: 0;
+	padding: 0 12px;
+	border-radius: var(--radius-inner);
+	background: none;
+	font: inherit;
+	font-size: 14px;
+	font-weight: 600;
+	color: var(--ring);
+	cursor: pointer;
+}
+
+.ws-units button.on {
+	background: var(--ring);
+	color: #fff;
+}
+
+/* ---------- the switcher: not the design ---------- */
+
+.proto-bar {
+	position: fixed;
+	left: 12px;
+	top: 50%;
+	z-index: 100;
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	padding: 4px;
+	border-radius: 999px;
+	background: #111;
+	color: #ff0;
+	font:
+		600 13px/1 system-ui,
+		sans-serif;
+	box-shadow: 0 2px 12px rgb(0 0 0 / 40%);
+}
+
+.proto-bar button {
+	width: 28px;
+	height: 28px;
+	border: 0;
+	border-radius: 50%;
+	background: #333;
+	color: #ff0;
+	font-size: 18px;
+	cursor: pointer;
+}
