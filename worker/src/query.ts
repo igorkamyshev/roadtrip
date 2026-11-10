@@ -24,7 +24,7 @@ export function parseRingQuery(params: URLSearchParams): RingQuery | { readonly 
 	const bounds = scaleRing(single('from'), single('to'));
 	if (bounds === undefined) {
 		return {
-			problem: `from and to are the ring's bounds in whole hours: N − 1 and N for N from 1 to ${HOURS_PER_DAY * MAX_DAYS}, or 12·(D − 1) and 12·D for a day D from 2 to ${MAX_DAYS}`,
+			problem: `from and to are the ring's bounds in whole hours: N − 1 and N for N from 1 to ${HOURS_PER_DAY * MAX_DAYS}, or ${HOURS_PER_DAY}·(D − 1) and ${HOURS_PER_DAY}·D for a day D from 2 to ${MAX_DAYS}`,
 		};
 	}
 	const citizenships = codes(single('cit'), (code) => PASSPORTS.has(code));

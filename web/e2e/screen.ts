@@ -242,7 +242,7 @@ export async function expectRingCard(page: Page, hours: string): Promise<void> {
 }
 
 /**
- * The slider's cell of `hours`, its ring's upper bound: N, or 12·D for day D; it reads N or D, or the span («6–7»,
+ * The slider's cell of `hours`, its ring's upper bound: N, or 8·D for day D; it reads N or D, or the span («6–7»,
  * «2–3 дня») when it is the one chosen.
  */
 export const sliderHour = (page: Page, hours: number): Locator => slider(page).locator(`[data-hours="${hours}"]`);
@@ -478,8 +478,8 @@ export async function holdTheClock(page: Page): Promise<void> {
 	await page.clock.pauseAt(CLOCK_START + 60_000);
 }
 
-/** Opens `path` on the held clock and waits for its ring of `hours`: by default that of 12 h, as the phrase's links have. */
-export async function openHeld(page: Page, path: string, hours = '11–12 ч'): Promise<void> {
+/** Opens `path` on the held clock and waits for its ring of `hours`: by default that of 8 h, as the phrase's links have. */
+export async function openHeld(page: Page, path: string, hours = '7–8 ч'): Promise<void> {
 	await holdTheClock(page);
 	await page.goto(path);
 	await expectRingCard(page, hours);

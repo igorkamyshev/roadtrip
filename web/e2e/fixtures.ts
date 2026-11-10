@@ -90,22 +90,22 @@ export const NIS = { lat: 43.325, lon: 21.903 };
 
 /**
  * Links to Belgrade's ring (`FROM_BELGRADE` of e2e/screen.ts): of 1–2 h, of 2–3 h, and for a citizen of Russia of
- * 2–3 h and of 11–12 h, the last hour before the days.
+ * 2–3 h and of 7–8 h, the last hour before the days.
  */
 export const LINK_2_HOURS = `${FROM_BELGRADE}&h=2`;
 export const LINK_3_HOURS = `${FROM_BELGRADE}&h=3`;
 export const LINK_3_HOURS_RUS = `${FROM_BELGRADE}&h=3&cit=RUS`;
-export const LINK_12_HOURS_RUS = `${FROM_BELGRADE}&h=12&cit=RUS`;
+export const LINK_8_HOURS_RUS = `${FROM_BELGRADE}&h=8&cit=RUS`;
 
 /**
- * The longest phrase and the shortest: Belgrade at 12 h and at 4–5 days, with four citizenships and four visas, or one
- * citizenship and no visas. In days the slider has its tab «часы ↓» or «← часы» (#83). The shortest is the link of 12 h
+ * The longest phrase and the shortest: Belgrade at 8 h and at 6–7 days, with four citizenships and four visas, or one
+ * citizenship and no visas. In days the slider has its tab «часы ↓» or «← часы» (#83). The shortest is the link of 8 h
  * for a citizen of Russia, one link for the phrase's tests and the days'.
  */
-export const LONGEST = `${FROM_BELGRADE}&h=12&cit=BIH,MNE,RUS,SRB&visas=CAN,GBR,SCHENGEN,USA`;
-export const SHORTEST = LINK_12_HOURS_RUS;
-export const LONGEST_IN_DAYS = `${FROM_BELGRADE}&d=5&cit=BIH,MNE,RUS,SRB&visas=CAN,GBR,SCHENGEN,USA`;
-export const SHORTEST_IN_DAYS = `${FROM_BELGRADE}&d=5&cit=RUS`;
+export const LONGEST = `${FROM_BELGRADE}&h=8&cit=BIH,MNE,RUS,SRB&visas=CAN,GBR,SCHENGEN,USA`;
+export const SHORTEST = LINK_8_HOURS_RUS;
+export const LONGEST_IN_DAYS = `${FROM_BELGRADE}&d=7&cit=BIH,MNE,RUS,SRB&visas=CAN,GBR,SCHENGEN,USA`;
+export const SHORTEST_IN_DAYS = `${FROM_BELGRADE}&d=7&cit=RUS`;
 
 /** Visa rules three days older than the held clock (`holdTheClock` of e2e/screen.ts): «визовые правила от 6 ноября». */
 export const OLD_RULES = '2026-11-06T12:00:00Z';

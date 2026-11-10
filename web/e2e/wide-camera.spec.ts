@@ -85,7 +85,7 @@ for (const window of WIDE_WINDOWS) {
 			// The clock held, then run past the map's flight but not the sources' 5 s.
 			await holdTheClock(page);
 			await page.goto(LONGEST);
-			await expectRingCard(page, '11–12 ч');
+			await expectRingCard(page, '7–8 ч');
 			await runUntilMapAtRest(page);
 			await expect(sources(page)).toBeVisible();
 
@@ -101,7 +101,7 @@ for (const window of WIDE_WINDOWS) {
 		test('a city chosen by a click on its card comes to the middle of the free area', async ({ page }) => {
 			await holdTheClock(page);
 			await page.goto(LONGEST);
-			await expectRingCard(page, '11–12 ч');
+			await expectRingCard(page, '7–8 ч');
 			await runUntilMapAtRest(page);
 			// Past the sources' 5 s: the plate is as low as it stays.
 			await page.clock.runFor(SOURCES_PAST_MS);
@@ -121,7 +121,7 @@ for (const window of WIDE_WINDOWS) {
 			ringApi.respond((call) => ({ ...(call.visas?.includes('USA') === true ? RING : NARROWER), ...visaRules(OPEN_AROUND_SERBIA) }));
 			await holdTheClock(page);
 			await page.goto(LONGEST);
-			await expectRingCard(page, '11–12 ч');
+			await expectRingCard(page, '7–8 ч');
 			await runUntilMapAtRest(page);
 			await page.clock.runFor(SOURCES_PAST_MS);
 			await expect(sources(page)).toHaveCount(0);

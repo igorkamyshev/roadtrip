@@ -93,8 +93,8 @@ for (const { lowestHour, ...viewport } of PHONES) {
 		});
 
 		for (const [unit, path, ring] of [
-			['hours', LONGEST, '11–12 ч'],
-			['days', LONGEST_IN_DAYS, '4–5 дней'],
+			['hours', LONGEST, '7–8 ч'],
+			['days', LONGEST_IN_DAYS, '6–7 дней'],
 		]) {
 			test(`in ${unit}, the slider's tab and panel are apart from the phrase and the current card, and on the screen`, async ({ page }) => {
 				await openHeld(page, path, ring);

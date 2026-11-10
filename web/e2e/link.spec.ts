@@ -74,7 +74,7 @@ const invalidLinks: readonly { link: string; becomes: string }[] = [
 	{ link: '/#/?p=abc&h=99', becomes: '#/?p=44.81760,20.45730&h=1&cit=RUS' },
 	{ link: '/#/?p=91.00000,20.00000&h=0', becomes: '#/?p=44.81760,20.45730&h=1&cit=RUS' },
 	{ link: '/#/?p=44.81760,181&h=2.5', becomes: '#/?p=44.81760,20.45730&h=1&cit=RUS' },
-	{ link: `/#/?p=${SARAJEVO_IN_LINK}&h=13`, becomes: `#/?p=${SARAJEVO_IN_LINK}&h=1&cit=RUS` },
+	{ link: `/#/?p=${SARAJEVO_IN_LINK}&h=9`, becomes: `#/?p=${SARAJEVO_IN_LINK}&h=1&cit=RUS` },
 	{ link: '/#/?p=43.8563,18.4131&h=03', becomes: `#/?p=${SARAJEVO_IN_LINK}&h=3&cit=RUS` },
 ];
 

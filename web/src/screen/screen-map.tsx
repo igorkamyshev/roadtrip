@@ -10,7 +10,7 @@ import type { ScreenModel } from './use-screen.ts';
 
 const MapView = lazy(async () => ({ default: (await import('../map/map-view.tsx')).MapView }));
 
-/** The ring's cities the map dots, the biggest: a 12-hour ring holds thousands. */
+/** The ring's cities the map dots, the biggest: an 8-hour ring holds thousands. */
 const MAP_CITIES = 250;
 
 /** The map under the screen; `freeArea` is the part of it no panel covers on the wide screen (screen.tsx). */

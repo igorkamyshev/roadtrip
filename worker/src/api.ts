@@ -14,16 +14,17 @@ export const PRODUCTION_HOST = 'roadtrip.kamyshev.me';
 export const RING_PATH = '/api/ring';
 
 /** The slider's hours: the rings of 1…MAX_HOURS hours (spec #20 «Экран», «Ползунок»). */
-export const MAX_HOURS = 12;
+export const MAX_HOURS = 8;
 
 /** A day is this many hours of travel in a row, without nights or borders closed at night (GLOSSARY «День»). */
-export const HOURS_PER_DAY = 12;
+export const HOURS_PER_DAY = 8;
 
 /**
- * The slider's last day: its days are 2…MAX_DAYS, after the hours (#82). The largest D ≤ 5 whose warm ring from the
- * centre of Europe takes at most 10 s under standard-2's limits, by the bench in docs/container-bench.md.
+ * The slider's last day: its days are 2…MAX_DAYS, after the hours (#82). Day 7 ends at 56 h (#140), within the bench
+ * of docs/container-bench.md, where the warm rings up to 60 h from the centre of Europe took at most 10 s under
+ * standard-2's limits.
  */
-export const MAX_DAYS = 5;
+export const MAX_DAYS = 7;
 
 /** A ring's bounds in hours of travel: it holds the places reached in (lowerHours, upperHours]. */
 export interface RingBounds {
@@ -33,7 +34,7 @@ export interface RingBounds {
 
 /**
  * The slider's cells from the bottom, each by its upper bound in hours, which names it alone: the hours 1…MAX_HOURS,
- * then the days 2…MAX_DAYS as 24, 36, … (day 1 is none, its hours are).
+ * then the days 2…MAX_DAYS as 16, 24, … (day 1 is none, its hours are).
  */
 export const SLIDER_CELLS: readonly number[] = [
 	...Array.from({ length: MAX_HOURS }, (_, at) => at + 1),
@@ -41,7 +42,7 @@ export const SLIDER_CELLS: readonly number[] = [
 ];
 
 /**
- * The ring of the slider's cell with this upper bound: N hours is (N − 1, N], day D is (12·(D − 1), 12·D]
+ * The ring of the slider's cell with this upper bound: N hours is (N − 1, N], day D is (8·(D − 1), 8·D]
  * (GLOSSARY «Кольцо»).
  */
 export function cellRing(upperHours: number): RingBounds {
@@ -50,7 +51,7 @@ export function cellRing(upperHours: number): RingBounds {
 
 /**
  * Whether `GET /api/ring` takes these bounds: a ring of one hour, (N − 1, N] for N from 1 to the last day's end,
- * 12·MAX_DAYS, or a day's, (12·(D − 1), 12·D] for D from 2 to MAX_DAYS (#82). The slider asks for its cells only.
+ * 8·MAX_DAYS, or a day's, (8·(D − 1), 8·D] for D from 2 to MAX_DAYS (#82, #140). The slider asks for its cells only.
  */
 export function isScaleRing({ lowerHours, upperHours }: RingBounds): boolean {
 	if (!Number.isInteger(upperHours) || upperHours < 1 || upperHours > HOURS_PER_DAY * MAX_DAYS) {
@@ -68,12 +69,12 @@ export function isScaleRing({ lowerHours, upperHours }: RingBounds): boolean {
  * - `lat`, `lon`: the origin in degrees, as the person set it (the Worker rounds it for the calculation and the
  *   cache);
  * - `from`, `to`: the ring's bounds in hours (`isScaleRing`): the ring of N hours is `from=N−1&to=N`, N from 1 to
- *   12·MAX_DAYS, the ring of day D is `from=12·(D−1)&to=12·D`, D from 2 to MAX_DAYS;
+ *   8·MAX_DAYS, the ring of day D is `from=8·(D−1)&to=8·D`, D from 2 to MAX_DAYS;
  * - `cit`: the citizenships, at least one, each one of Sherpa's passports (rules' `SHERPA_PASSPORTS`);
  * - `visas`: the held visas, `SCHENGEN` and the codes of the countries outside Schengen (rules' `HELD_VISAS`: those
  *   of `COUNTRIES`, alpha-3, `RKS`, `NX`); may be empty or left out.
  *
- * For example `/api/ring?lat=44.8125&lon=20.4612&from=2&to=3&cit=RUS,SRB&visas=SCHENGEN`, or `from=12&to=24` for
+ * For example `/api/ring?lat=44.8125&lon=20.4612&from=2&to=3&cit=RUS,SRB&visas=SCHENGEN`, or `from=8&to=16` for
  * day 2.
  */
 export interface RingQuery extends RingBounds {
