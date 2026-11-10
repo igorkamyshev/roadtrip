@@ -181,6 +181,26 @@ async function firstCardPlace(page: Page): Promise<{ left: number; bottom: numbe
 	return { left: Math.round(left), bottom: Math.round(bottom), width: Math.round(box.width) };
 }
 
+/** Turns the pin mode on from the phrase, «Откуда едем» and «Указать на карте». */
+async function startPinning(page: Page): Promise<void> {
+	await phrase(page).getByRole('button', { name: 'Белград' }).click();
+	await page.getByRole('dialog', { name: 'Откуда едем' }).getByRole('button', { name: 'Указать на карте' }).click();
+}
+
+/** The boxes of the pin's panel, its hint and its buttons. */
+async function pinPanel(page: Page): Promise<{ panel: Box; hint: Box; cancel: Box; start: Box }> {
+	const panel = page.getByTestId('pin-bar');
+	const [box, hint, cancel, start] = await Promise.all(
+		[
+			panel,
+			panel.getByText(/^Двигайте карту/u),
+			panel.getByRole('button', { name: 'Отмена' }),
+			panel.getByRole('button', { name: 'Старт здесь' }),
+		].map(async (element) => boxOf(element)),
+	);
+	return { panel: box, hint, cancel, start };
+}
+
 for (const window of WIDE_WINDOWS) {
 	test.describe(`on ${windowName(window)}`, () => {
 		test.use(onWindow(window));
@@ -213,6 +233,47 @@ for (const window of WIDE_WINDOWS) {
 
 			expect(withRing).toMatchObject({ left: EDGE, bottom: EDGE });
 			expect({ noOrigin, calculating, failure }).toEqual({ noOrigin: withRing, calculating: withRing, failure: withRing });
+		});
+
+		// At the threshold's corner the mouse's hint, «Отмена» and «Старт здесь» are wider than the window: the buttons
+		// go under the hint. Everywhere wider they fit in its line (#107).
+		const underTheHint = window.width === 720;
+
+		test(`in the pin mode, with the longest phrase, the pin's panel stands 12 px from the left and the bottom, apart from the phrase, the buttons ${underTheHint ? 'under the hint' : 'in its line'}`, async ({
+			page,
+		}) => {
+			await open(page, LONGEST, '11–12 ч');
+			await startPinning(page);
+
+			await expectApart(page, { phrase: phrase(page), 'pin panel': page.getByTestId('pin-bar') });
+			const { panel, hint, cancel, start } = await pinPanel(page);
+			const edges = fromEdges(page, panel);
+			expect(edges.left).toBeCloseTo(EDGE, 0);
+			expect(edges.bottom).toBeCloseTo(EDGE, 0);
+			expect(edges.right).toBeGreaterThanOrEqual(EDGE - 0.5);
+			expect(cancel.x + cancel.width).toBeLessThanOrEqual(start.x);
+			expect(cancel.y >= hint.y + hint.height, 'the buttons under the hint').toBe(underTheHint);
+		});
+	});
+}
+
+for (const window of WIDE_WINDOWS.filter(({ width }) => width > 720)) {
+	test.describe(`on ${windowName(window)}`, () => {
+		test.use(onWindow(window));
+
+		test("in the pin mode the pin's panel is one line with its padding round it, as wide as the hint and right after it the buttons", async ({
+			page,
+		}) => {
+			await open(page, LONGEST, '11–12 ч');
+			await startPinning(page);
+
+			const { panel, hint, cancel, start } = await pinPanel(page);
+			const padding = cancel.y - panel.y;
+			expect(cancel.x).toBeGreaterThanOrEqual(hint.x + hint.width);
+			expect(hint.y + hint.height / 2).toBeCloseTo(cancel.y + cancel.height / 2, 0);
+			expect(panel.y + panel.height - (cancel.y + cancel.height)).toBeCloseTo(padding, 0);
+			expect(hint.x - panel.x).toBeCloseTo(padding, 0);
+			expect(panel.x + panel.width - (start.x + start.width)).toBeCloseTo(padding, 0);
 		});
 	});
 }

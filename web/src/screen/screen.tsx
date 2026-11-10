@@ -24,6 +24,8 @@ export function Screen(): ReactElement {
 	return (
 		<div className="screen">
 			<ScreenMap screen={screen} />
+			{/* Right after the map: Tab goes from its canvas to the panel's buttons (#107). */}
+			{starts.pinning ? <PinBar onCancel={starts.cancelPinning} onStart={starts.startHere} /> : null}
 			<div className="c-top">
 				<ScreenPhrase screen={screen} sources={wide ? sources : null} />
 				{wide ? null : sources}
@@ -33,7 +35,7 @@ export function Screen(): ReactElement {
 					</div>
 				) : null}
 			</div>
-			{starts.pinning ? <PinBar onCancel={starts.cancelPinning} onStart={starts.startHere} /> : <Carousel screen={screen} />}
+			{starts.pinning ? null : <Carousel screen={screen} />}
 			<ScreenSheets screen={screen} />
 		</div>
 	);

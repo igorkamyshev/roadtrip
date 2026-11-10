@@ -51,7 +51,7 @@ test('«На карте» of a card without a ring turns the pin mode on', async
 
 	await firstCard(page).getByRole('button', { name: 'На карте' }).click();
 
-	await expect(page.getByText('Двигайте карту, чтобы поставить точку под булавку')).toBeVisible();
+	await expect(page.getByText('Двигайте карту мышью или стрелками, чтобы поставить точку под булавку')).toBeVisible();
 });
 
 const failures: readonly { failure: string; reply: RingReply; state: string; texts: readonly string[] }[] = [

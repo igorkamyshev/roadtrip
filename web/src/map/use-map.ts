@@ -43,7 +43,14 @@ export function useMapLibre(container: RefObject<HTMLDivElement | null>, origin:
  * once removed; the zone outlines follow, for the hatching. Returns what removes it.
  */
 function createMap(element: HTMLElement, origin: LatLon | undefined, onLoad: (map?: MapLibre) => void): () => void {
-	const map = new MapLibre({ container: element, style: basemapStyle(), ...openingView(origin), attributionControl: false });
+	const map = new MapLibre({
+		container: element,
+		style: basemapStyle(),
+		...openingView(origin),
+		attributionControl: false,
+		// The canvas's name to a screen reader (#107), in the screen's language.
+		locale: { 'Map.Title': 'Карта' },
+	});
 	let removed = false;
 	map.once('load', () => {
 		addOverlay(map);

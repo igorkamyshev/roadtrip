@@ -1112,6 +1112,21 @@ a {
 	justify-content: flex-end;
 }
 
+/* On the wide screen the pin's panel stands where the carousel's first card does, at the left and bottom edges (#107),
+   as wide as what it holds: one line, the hint and right after it the buttons. At the threshold, where the window is
+   narrower than that, the buttons go under the hint. */
+@media (--wide) {
+	.c-pickbar {
+		right: auto;
+		box-sizing: border-box;
+		max-width: calc(100% - var(--edge-left) - var(--edge-right));
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 10px 12px;
+	}
+}
+
 @media (prefers-reduced-motion: reduce) {
 	*,
 	*::before,
