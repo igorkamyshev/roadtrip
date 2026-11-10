@@ -950,3 +950,332 @@ a {
 .found-row {
 	padding: 10px 2px;
 }
+
+/* ---------- PROTOTYPE, never merged (#103): the phrase and the sources on the wide screen, wide-phrase.prototype.tsx. */
+
+/* The wide screen's frame, from #97's prototype: a grid over the map, the phrase on top, the slider's row and the
+   carousel at the bottom. */
+.w {
+	position: absolute;
+	inset: 0;
+	z-index: 11;
+	display: grid;
+	grid-template-rows: auto minmax(0, 1fr) auto;
+	pointer-events: none;
+}
+
+.w > * > * {
+	pointer-events: auto;
+}
+
+.w-top {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	padding: var(--edge-top) var(--edge-right) 0 var(--edge-left);
+}
+
+.w-bottom {
+	display: flex;
+	flex-direction: column;
+	align-items: stretch;
+	gap: var(--between);
+	min-width: 0;
+}
+
+.w .c-car {
+	--beside-slider: var(--edge-right);
+	--fade: none;
+
+	position: static;
+	width: 100%;
+	box-sizing: border-box;
+}
+
+.w .c-pickbar {
+	position: static;
+	align-self: stretch;
+	margin: 0 var(--edge-right) var(--edge-bottom) var(--edge-left);
+}
+
+/* The slider's row: the slider at the left edge; in B the sources at the right one. */
+.pv-row {
+	display: flex;
+	align-items: flex-end;
+	gap: var(--between);
+	padding: 0 var(--edge-right) 0 var(--edge-left);
+	pointer-events: none;
+}
+
+.pv-row > * {
+	pointer-events: auto;
+}
+
+/* Every variant: the comma after a token stays on its line; the phrase is as wide as its text. */
+.pv .c-glue {
+	white-space: nowrap;
+}
+
+.pv .c-glue .tok {
+	white-space: normal;
+}
+
+.pv-card {
+	display: flex;
+	flex-direction: column;
+	gap: var(--between);
+	box-sizing: border-box;
+	max-width: 100%;
+}
+
+.pv .c-phrase {
+	align-self: stretch;
+}
+
+/* A source and its licence never break inside. */
+.pv .c-sources a {
+	white-space: nowrap;
+}
+
+/* B and C: the lines fill the panel, so it never has an empty strip at the right. */
+.pv-b .c-phrase p,
+.pv-c .c-phrase p {
+	text-wrap: pretty;
+}
+
+/* The sources never make the phrase wider: they wrap to its width. */
+.pv-card .c-sources {
+	contain: inline-size;
+	text-wrap: pretty;
+}
+
+/* A: at the top left, up to 520 px, each sentence on its own line; the sources under it, as wide as it. */
+.pv-a .pv-card {
+	max-width: min(520px, 100%);
+}
+
+.pv-a .c-settings::before {
+	content: '\A';
+	white-space: pre;
+}
+
+.pv-a .c-phrase p {
+	text-wrap: wrap;
+}
+
+/* B: centred at the top, up to 760 px, one paragraph; the sources in the bottom right corner on the slider's row, or
+   over it at the right when the row has no room. */
+.pv-b .w-top {
+	align-items: center;
+}
+
+.pv-b .pv-card {
+	max-width: min(760px, 100%);
+}
+
+.pv-b .c-phrase {
+	text-align: center;
+}
+
+.pv-b .pv-row {
+	flex-wrap: wrap-reverse;
+}
+
+.pv-b .pv-row .c-sources {
+	flex: 0 1 420px;
+	min-width: 260px;
+	margin: 0 0 0 auto;
+	text-align: right;
+	text-wrap: pretty;
+	transition: opacity 400ms ease-out;
+}
+
+.pv-b .pv-row .c-sources.gone {
+	visibility: visible;
+	opacity: 0;
+	pointer-events: none;
+}
+
+/* C: at the top left, up to 720 px; the sources in the same panel under a line; when they go, the panel shrinks. */
+.pv-c .pv-card {
+	max-width: min(720px, 100%);
+	gap: 0;
+	background: var(--surface);
+	border-radius: var(--radius);
+	box-shadow: var(--shadow);
+}
+
+.pv-c .c-phrase {
+	background: none;
+	box-shadow: none;
+}
+
+.pv-c .pv-card .c-sources {
+	margin: 0 14px;
+	padding: 6px 0 10px;
+	border-top: 1px solid var(--line);
+	border-radius: 0;
+	background: none;
+	box-shadow: none;
+}
+
+.pv-c .pv-card .c-sources.gone {
+	display: none;
+}
+
+/* ---------- the slider: #97's variant C ---------- */
+
+.ws {
+	display: flex;
+	gap: var(--between);
+	user-select: none;
+	/* stylelint-disable-next-line property-no-vendor-prefix -- Safari reads only the prefixed one (caniuse «user-select-none»). */
+	-webkit-user-select: none;
+}
+
+.ws-track {
+	display: flex;
+	gap: 10px;
+	padding: 6px;
+	box-sizing: border-box;
+	background: var(--surface);
+	border-radius: var(--radius);
+	box-shadow: var(--shadow);
+	touch-action: none;
+	cursor: pointer;
+}
+
+.ws-track:focus-visible {
+	outline: 2px solid var(--ring);
+	outline-offset: 2px;
+}
+
+.ws-group {
+	display: flex;
+	gap: 2px;
+	min-width: 0;
+	min-height: 0;
+}
+
+.ws-cell {
+	display: grid;
+	place-items: center;
+	border-radius: var(--radius-inner);
+	font-size: 14px;
+	color: var(--muted);
+	font-variant-numeric: tabular-nums;
+	transition: background 120ms ease-out;
+}
+
+.ws-cell:hover {
+	background: color-mix(in srgb, var(--ring) 10%, transparent);
+}
+
+.ws-cell[data-day] {
+	font-size: 17px;
+	background: color-mix(in srgb, var(--ring) 7%, transparent);
+}
+
+.ws-cell[data-cached] {
+	background: color-mix(in srgb, var(--ok) 12%, transparent);
+}
+
+.ws-cell.on {
+	background: var(--ring);
+	box-shadow: 0 1px 4px color-mix(in srgb, var(--ring) 40%, transparent);
+}
+
+.ws-cell .ws-num {
+	font-weight: 400;
+	white-space: nowrap;
+}
+
+.ws-cell.on .ws-num {
+	display: flex;
+	align-items: baseline;
+	gap: 2px;
+	color: #fff;
+	font-weight: 700;
+	font-size: 13px;
+}
+
+.ws-cell.on .ws-num small {
+	font-size: 10px;
+	font-weight: 600;
+}
+
+@media (prefers-color-scheme: dark) {
+	:root:not([data-theme='light']) .ws-cell.on .ws-num,
+	:root:not([data-theme='light']) .ws-tab.on {
+		color: #0b1630;
+	}
+}
+
+.ws-c {
+	flex: none;
+	align-items: stretch;
+}
+
+.ws-c .ws-track {
+	width: min(560px, 100vw - var(--edge-left) - var(--edge-right) - 120px);
+}
+
+.ws-c .ws-group {
+	flex: 1;
+}
+
+.ws-c .ws-cell {
+	flex: 1 1 0;
+	height: 40px;
+}
+
+.ws-tab {
+	flex: none;
+	padding: 0 16px;
+	border: 0;
+	border-radius: var(--radius);
+	background: var(--surface);
+	box-shadow: var(--shadow);
+	font: inherit;
+	font-size: 14px;
+	font-weight: 600;
+	color: var(--ring);
+	white-space: nowrap;
+	cursor: pointer;
+}
+
+.ws-tab.on {
+	background: var(--ring);
+	color: #fff;
+}
+
+/* ---------- the switcher: not the design ---------- */
+
+.proto-bar {
+	position: fixed;
+	left: 12px;
+	top: 50%;
+	z-index: 100;
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	padding: 4px;
+	border-radius: 999px;
+	background: #111;
+	color: #ff0;
+	font:
+		600 13px/1 system-ui,
+		sans-serif;
+	box-shadow: 0 2px 12px rgb(0 0 0 / 40%);
+}
+
+.proto-bar button {
+	width: 28px;
+	height: 28px;
+	border: 0;
+	border-radius: 50%;
+	background: #333;
+	color: #ff0;
+	font-size: 18px;
+	cursor: pointer;
+}

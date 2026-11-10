@@ -11,9 +11,14 @@ import { ScreenPhrase } from './screen-phrase.tsx';
 import { ScreenSheets } from './screen-sheets.tsx';
 import { Slider } from './slider.tsx';
 import { useScreen } from './use-screen.ts';
+import { useWide, WideScreen } from './wide-phrase.prototype.tsx';
 
 export function Screen(): ReactElement {
 	const screen = useScreen();
+	const wide = useWide();
+	if (wide) {
+		return <WideScreen screen={screen} />;
+	}
 	const { state, shown, starts } = screen;
 	return (
 		<div className="screen">

@@ -23,16 +23,20 @@ export function ScreenPhrase({ screen }: { readonly screen: ScreenModel }): Reac
 				openSheet('info');
 			}}
 			settings={
-				<>
+				// PROTOTYPE (#103): c-settings and c-glue are hooks for the wide screen's variants (styles.css' end).
+				<span className="c-settings">
 					Гражданство{' '}
-					<PhraseToken
-						onClick={() => {
-							openSheet('citizenships');
-						}}
-					>
-						{citizenshipsLabel(state.citizenships)}
-					</PhraseToken>
-					, мои визы:{' '}
+					<span className="c-glue">
+						<PhraseToken
+							onClick={() => {
+								openSheet('citizenships');
+							}}
+						>
+							{citizenshipsLabel(state.citizenships)}
+						</PhraseToken>
+						,
+					</span>{' '}
+					<span className="c-glue">мои визы:</span>{' '}
 					<PhraseToken
 						onClick={() => {
 							openSheet('visas');
@@ -40,7 +44,7 @@ export function ScreenPhrase({ screen }: { readonly screen: ScreenModel }): Reac
 					>
 						{visasLabel(state.visas)}
 					</PhraseToken>
-				</>
+				</span>
 			}
 			footer={<VisaRulesDate loadedAt={shown.answer?.visaRulesLoadedAt} />}
 		/>
