@@ -2,7 +2,7 @@
 // data's sources of the first 5 s and their place, the slider at its right edge under them (one column, .c-top), the
 // carousel at the bottom (the pin's bar in the pin mode), and the sheets. On the wide screen the same elements, laid
 // out by styles.css: the phrase a plate with the sources in it, the slider a row over the carousel's cards. Its state and what changes it are use-screen.ts's.
-import type { ReactElement } from 'react';
+import { useCallback, useRef, type ReactElement } from 'react';
 import { useMedia } from '../use-media.ts';
 import { SourcesOnOpen, useSourcesOnOpen } from './attribution.tsx';
 import { Carousel } from './carousel.tsx';
@@ -21,9 +21,14 @@ export function Screen(): ReactElement {
 	const wide = useMedia('wide');
 	const sourcesShown = useSourcesOnOpen();
 	const sources = <SourcesOnOpen shown={sourcesShown} keepPlace={!wide} />;
+	// The part of the wide screen no panel covers, the grid's own (styles.css, .c-free), where the camera puts a new ring
+	// and a chosen city, read when it moves (#108); none on the narrow screen, whose room is the camera's.
+	const free = useRef<HTMLDivElement>(null);
+	const freeArea = useCallback(() => free.current?.getBoundingClientRect(), []);
 	return (
 		<div className="screen">
-			<ScreenMap screen={screen} />
+			<ScreenMap screen={screen} freeArea={freeArea} />
+			{wide ? <div ref={free} className="c-free" aria-hidden="true" /> : null}
 			<div className="c-top">
 				<ScreenPhrase screen={screen} sources={wide ? sources : null} />
 				{wide ? null : sources}

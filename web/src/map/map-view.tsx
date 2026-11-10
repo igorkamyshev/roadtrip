@@ -5,7 +5,7 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import { useEffect, useImperativeHandle, useRef, type ReactElement, type Ref } from 'react';
 import { DropPin } from '../screen/icons.tsx';
 import type { LatLon } from '../state/point.ts';
-import { mapHandle, useCamera, type MapHandle } from './camera.ts';
+import { mapHandle, useCamera, type FreeArea, type MapHandle } from './camera.ts';
 import type { MapCity, RingGeometry } from './overlay.ts';
 import { useCityTaps, useMapLibre, useOverlay } from './use-map.ts';
 
@@ -31,16 +31,18 @@ export interface MapViewProps {
 	readonly cities: readonly MapCity[];
 	/** A tap on a city's dot or name. */
 	readonly onCity: (id: number) => void;
+	/** The part of the screen no panel covers on the wide screen, which the camera reads when it moves; one function for good. */
+	readonly freeArea: FreeArea;
 	readonly ref?: Ref<MapHandle>;
 }
 
-export function MapView({ origin, ring, striped, fit, pinning, closed, cities, onCity, ref }: MapViewProps): ReactElement {
+export function MapView({ origin, ring, striped, fit, pinning, closed, cities, onCity, freeArea, ref }: MapViewProps): ReactElement {
 	const container = useRef<HTMLDivElement>(null);
 	const map = useMapLibre(container, origin);
-	useImperativeHandle(ref, () => mapHandle(map, origin), [map, origin]);
+	useImperativeHandle(ref, () => mapHandle(map, origin, freeArea), [map, origin, freeArea]);
 	useCityTaps(map, pinning ? undefined : onCity);
 	useOverlay(map, { origin, ring, striped, closed, cities });
-	useCamera(map, { origin, ring, fit });
+	useCamera(map, { origin, ring, fit, freeArea });
 
 	// Last: the effects above have shown the screen's state on the loaded map by now (MAP_EVENT).
 	useEffect(() => {

@@ -364,6 +364,14 @@ export async function distanceFromTheMiddle(page: Page, at: { readonly lat: numb
 	return Math.hypot(canvasBox.x + x - middle.x, canvasBox.y + y - middle.y);
 }
 
+/** Where the map shows the point (lat, lon) on the screen, in CSS pixels from the window's top left corner. */
+export async function whereOnScreen(page: Page, at: { readonly lat: number; readonly lon: number }): Promise<{ x: number; y: number }> {
+	await mapIsUp(page);
+	const { x, y } = offTheMap(await page.evaluate(([lat, lon]) => window.mapForTests?.project([lon, lat]), [at.lat, at.lon]));
+	const canvas = await boxOf(page.getByTestId('map'));
+	return { x: canvas.x + x, y: canvas.y + y };
+}
+
 /** The map's visible bounds, [west, south, east, north], once the camera has stopped. */
 export async function mapBounds(page: Page): Promise<[number, number, number, number]> {
 	await mapAtRest(page);
