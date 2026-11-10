@@ -125,6 +125,17 @@ describe('the lint hook', () => {
 		expect(told).toContain('src/a.ts');
 	});
 
+	it('says nothing of a file git ignores, edited or written by a shell command, as a throwaway probe', () => {
+		writeFileSync(join(checkout, '.gitignore'), 'node_modules\nprobes/\n');
+		mkdirSync(join(checkout, 'probes'));
+		hook(shellCommand);
+		const edited = join(checkout, 'probes/edited.ts');
+		writeFileSync(edited, BAD);
+		hook({ tool_name: 'Write', tool_input: { file_path: edited } });
+		writeFileSync(join(checkout, 'probes/written.ts'), BAD);
+		expect(hook(shellCommand)).toEqual({ status: 0, told: '' });
+	});
+
 	it('says nothing after a shell command that changed no source file', () => {
 		hook(shellCommand);
 		writeFileSync(join(checkout, 'src/a.ts'), BAD);

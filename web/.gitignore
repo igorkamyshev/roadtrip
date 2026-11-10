@@ -3,3 +3,5 @@ test-results
 playwright-report
 # The dataset's zone outlines for `vite dev` and local builds: data's build-graph --outlines writes them here.
 public/data
+# Throwaway probes of the screen tests (README.md, «Tests»): never committed, and the lint hook skips them.
+e2e/probes/

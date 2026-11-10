@@ -72,3 +72,12 @@ jobs:
       # installs the one @playwright/test asks for.
       - run: pnpm --filter web exec playwright install --with-deps chromium
       - run: pnpm e2e
+      # A failed run keeps the screen tests' reports (web/README.md, «Tests»): failures.md and each failed test's
+      # error-context.md with the page's aria snapshot, which the log alone cuts.
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-results
+          path: web/test-results/
+          if-no-files-found: ignore
+          retention-days: 7

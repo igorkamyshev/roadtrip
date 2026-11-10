@@ -16,6 +16,9 @@
 // is later than a stamp the hook touches on every run (`claude-hook-stamp` in the
 // git dir). The first run in a checkout only sets the stamp.
 //
+// A file git ignores is not linted, edited or written by a shell command: it is never
+// committed, as the screen tests' throwaway probes (`web/e2e/probes/`, web/README.md).
+//
 // Oxlint runs from the root of the checkout that holds the file, so an agent in
 // a git worktree inside this one is checked with its own config and install. A
 // checkout without that install (a cloud session starts without node_modules)
@@ -90,10 +93,15 @@ function touchStamp(root: string): number | undefined {
 	return before;
 }
 
-/** Notes a source `file` that `agent` edited, to lint once it moves on. */
+/** Whether git ignores `file` in the checkout at `root`. */
+function ignored(root: string, file: string): boolean {
+	return git(root, ['check-ignore', '--quiet', file]) !== undefined;
+}
+
+/** Notes a source `file` that `agent` edited, to lint once it moves on, unless git ignores it. */
 function noteEdit(root: string, agent: string, file: string): void {
 	const note = gitPath(root, `claude-hook-edited-${agent}`);
-	if (note !== undefined && SOURCE.test(file)) {
+	if (note !== undefined && SOURCE.test(file) && !ignored(root, file)) {
 		appendFileSync(note, `${file}\n`);
 	}
 }
