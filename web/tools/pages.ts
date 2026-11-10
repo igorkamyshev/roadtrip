@@ -7,6 +7,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Readable } from 'node:stream';
 import { type BrowserContext, chromium, type Page } from '@playwright/test';
+import { keepMapForTests } from '../e2e/screen.ts';
 import type { Theme } from './compare-page.ts';
 
 /** What a shot's page is opened at. */
@@ -27,22 +28,14 @@ export interface Pages {
 /** As the screen tests: a Russian reader. */
 const LOCALE = 'ru-RU';
 
-/** Keeps the map the client announces as the fixtures do (e2e/fixtures.ts), so `mapAtRest` can wait for its camera. */
-async function keepMap(target: Page | BrowserContext): Promise<void> {
-	await target.addInitScript(() => {
-		window.addEventListener('roadtrip:map', (event) => {
-			window.mapForTests = event.detail;
-		});
-	});
-}
-
 /** Every shot in one headless Chromium, a page each, at deviceScaleFactor 2. */
 export async function headlessPages(): Promise<Pages> {
 	const browser = await chromium.launch();
 	return {
 		open: async ({ width, height, theme }) => {
 			const page = await browser.newPage({ viewport: { width, height }, deviceScaleFactor: 2, colorScheme: theme, locale: LOCALE });
-			await keepMap(page);
+			// So that `mapAtRest` can wait for the map's camera.
+			await keepMapForTests(page);
 			return page;
 		},
 		shoot: async (page, file) => {
@@ -102,7 +95,7 @@ async function openWindow(
 		colorScheme: theme,
 		locale: LOCALE,
 	});
-	await keepMap(context);
+	await keepMapForTests(context);
 	return {
 		context,
 		close: async () => {
@@ -113,11 +106,15 @@ async function openWindow(
 }
 
 /**
- * Every shot in Chromium's window on a display of `width`×`height`: a window for each theme, one tab in it, the page
- * of each shot loaded there in turn. The window is at least about 500 px wide, so a phone's viewport sits at its left.
+ * Every shot in Chromium's window, a window for each theme, one tab in it, the page of each shot loaded there in turn,
+ * on a display with room for the largest of `viewports` and the window's tabs and toolbar. The window is at least about
+ * 500 px wide, so a phone's viewport sits at its left, with a blank strip to its right and a thinner one under it.
  */
-export async function windowPages(width: number, height: number): Promise<Pages> {
-	const display = await startDisplay(width, height);
+export async function windowPages(viewports: readonly { readonly width: number; readonly height: number }[]): Promise<Pages> {
+	const display = await startDisplay(
+		Math.max(1280, ...viewports.map(({ width }) => width + 100)),
+		Math.max(...viewports.map(({ height }) => height)) + 300,
+	);
 	const windows = new Map<Theme, Promise<Awaited<ReturnType<typeof openWindow>>>>();
 	return {
 		open: async (size) => {
@@ -134,7 +131,8 @@ export async function windowPages(width: number, height: number): Promise<Pages>
 			const [outerWidth, outerHeight] = await page.evaluate(() => [window.outerWidth, window.outerHeight]);
 			execFileSync('import', ['-display', display.name, '-window', 'root', '-crop', `${outerWidth}x${outerHeight}+0+0`, '+repage', file]);
 		},
-		// The tab stays for the next shot: a new one would open a window of its own, not at the screen's top left.
+		// Nothing to let go: the tab stays for the next shot, as a new one would open a window of its own, not at the
+		// screen's top left.
 		release: async () => {},
 		close: async () => {
 			await Promise.all([...windows.values()].map(async (opening) => (await opening).close()));

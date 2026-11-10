@@ -193,10 +193,18 @@ test("the tab shows the mark, its origin red in the light scheme and in the dark
 	// The browser's bars around the screen, in each scheme.
 	expect(head.themeColor).toEqual({ '(prefers-color-scheme: light)': light.bg, '(prefers-color-scheme: dark)': dark.bg });
 
+	// Drawn 64×64, its viewBox: the ring's line passes through (32, 7), the origin's dot is in the middle.
 	const svg = hrefIn(head, { rel: 'icon', type: 'image/svg+xml' });
-	expect((await readImage(page, svg, { points: [[32, 32]], drawn: 64 })).colors).toEqual([light.start]);
+	const ringAndDot = {
+		points: [
+			[32, 7],
+			[32, 32],
+		] as const,
+		drawn: 64,
+	};
+	expect((await readImage(page, svg, ringAndDot)).colors).toEqual([light.ring, light.start]);
 	await page.emulateMedia({ colorScheme: 'dark' });
-	expect((await readImage(page, svg, { points: [[32, 32]], drawn: 64 })).colors).toEqual([dark.start]);
+	expect((await readImage(page, svg, ringAndDot)).colors).toEqual([dark.ring, dark.start]);
 
 	// For the browsers without SVG icons, 32 px. The page cannot fetch a path that ends in favicon.ico under
 	// Playwright's routes, so the test does.

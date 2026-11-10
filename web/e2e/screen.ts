@@ -2,10 +2,22 @@
 // through the MapLibre map the client announces once it shows the screen's state, which the fixtures keep as
 // `window.mapForTests` (e2e/fixtures.ts). Each reading of the map waits for it. And the screen opened anew, `reopen`,
 // once it has asked for its ring.
-import { expect, type Locator, type Page } from '@playwright/test';
+import { type BrowserContext, expect, type Locator, type Page } from '@playwright/test';
 import type { Feature, GeoJSON, Geometry } from 'geojson';
 import type { StyleSpecification } from 'maplibre-gl';
 import type { RingApi } from './ring-api.ts';
+
+/**
+ * Keeps the map the client announces (`MAP_EVENT` of src/map/map-view.tsx) as `window.mapForTests`, for the readings
+ * below: on every page of a test's context (e2e/fixtures.ts), and on the pages `shots` waits on (tools/pages.ts).
+ */
+export async function keepMapForTests(target: Page | BrowserContext): Promise<void> {
+	await target.addInitScript(() => {
+		window.addEventListener('roadtrip:map', (event) => {
+			window.mapForTests = event.detail;
+		});
+	});
+}
 
 /** What the tests use of MapLibre's `Map`, without importing MapLibre into Node. */
 interface MapForTests {

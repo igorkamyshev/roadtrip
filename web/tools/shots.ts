@@ -84,15 +84,17 @@ async function shoot({ out, wait, card, pages }: Run, { side, shot }: { readonly
 	// The camera moves over a new ring and to the chosen city: «before» and «after» are shot where it stops.
 	await mapAtRest(page);
 	await page.waitForTimeout(wait);
-	const files = [join(out, `${side.prefix}${shot.name}.png`)];
-	await pages.shoot(page, files[0] ?? '');
+	const screenFile = join(out, `${side.prefix}${shot.name}.png`);
+	const files = [screenFile];
+	await pages.shoot(page, screenFile);
 	const box = await cardShown?.boundingBox();
 	if (box !== undefined && box !== null) {
-		files.push(join(out, `${side.prefix}${shot.name}-card.png`));
+		const cardFile = join(out, `${side.prefix}${shot.name}-card.png`);
+		files.push(cardFile);
 		// The chosen card's outline is outside its box.
 		const margin = 4;
 		await page.screenshot({
-			path: files[1],
+			path: cardFile,
 			clip: { x: box.x - margin, y: box.y - margin, width: box.width + 2 * margin, height: box.height + 2 * margin },
 		});
 	}
@@ -195,13 +197,7 @@ try {
 					await after.close();
 					throw error;
 				});
-	// For `--window`, a screen with room for the widest viewport and the window's tabs and toolbar.
-	const pages = values.window
-		? await windowPages(
-				Math.max(1280, ...viewports.map(([width]) => width + 100)),
-				Math.max(...viewports.map(([, height]) => height)) + 300,
-			)
-		: await headlessPages();
+	const pages = values.window ? await windowPages(viewports.map(([width, height]) => ({ width, height }))) : await headlessPages();
 	try {
 		const sides: Side[] =
 			old === undefined
