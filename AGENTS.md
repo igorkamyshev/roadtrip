@@ -34,7 +34,7 @@ A merge to `main` deploys both Workers through Cloudflare Workers Builds, and th
 
 ## Review
 
-Reviewing a branch or merging a ticket's work, the review step of `mattpocock-skills:implement` included: `mattpocock-skills:code-review`, which checks the whole diff, tests too, against `CODING_STANDARDS.md` and the ticket, and the PR's description, when there is one, against the diff.
+Reviewing a branch or merging a ticket's work, the review step of `mattpocock-skills:implement` included: `mattpocock-skills:code-review`, which checks the whole diff, tests too, against `CODING_STANDARDS.md` and the ticket, and the PR's description, when there is one, against the diff. A PR opened after that review gets its description checked before the merge: every claim in it, «Merge Danger» included, is one the diff, the code or a run shows.
 
 ## A cloud session's branch
 

@@ -52,7 +52,7 @@ export function MapView({ origin, ring, striped, fit, pinning, closed, cities, o
 	return (
 		<div className="map">
 			{/* A tap on the map changes only the canvas, never the page: PostHog would take every tap for a dead click. */}
-			<div ref={container} className="map-canvas ph-no-deadclick ph-no-rageclick" />
+			<div ref={container} className="map-canvas ph-no-deadclick ph-no-rageclick" data-testid="map" />
 			{pinning ? (
 				<div className="crosshair">
 					<DropPin />

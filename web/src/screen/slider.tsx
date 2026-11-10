@@ -91,7 +91,7 @@ function Panel({
 	const count = cells.length;
 	const chosen = cells.indexOf(shown);
 	return (
-		<div className="sl-panel">
+		<div className="sl-panel" data-testid="slider-panel">
 			<div className="sl-cells" ref={column} style={{ gridTemplateRows: `repeat(${count}, 1fr)` }}>
 				{/* The blue block under the chosen cell: in the bottom one, raised by a cell and a gap for each below. */}
 				{chosen === -1 ? null : (

@@ -899,6 +899,17 @@ a {
 	margin-top: auto;
 }
 
+/* «Маршрут» of a city card: muted small text; its padding makes a finger's tap of 40 px without taking the room. */
+.c-card .c-route {
+	display: inline-block;
+	padding: 12px;
+	margin: -12px;
+	font-size: 13px;
+	line-height: 16px;
+	color: var(--muted);
+	text-underline-offset: 2px;
+}
+
 .c-pickbar {
 	position: absolute;
 	left: var(--edge-left);

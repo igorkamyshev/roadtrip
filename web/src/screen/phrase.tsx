@@ -67,7 +67,11 @@ export function VisaRulesDate({ loadedAt }: { readonly loadedAt: string | undefi
 	}
 	const sameYear = new Date(loaded).getFullYear() === new Date(now).getFullYear();
 	const date = new Intl.DateTimeFormat('ru', { day: 'numeric', month: 'long', ...(sameYear ? {} : { year: 'numeric' }) }).format(loaded);
-	return <p className="c-rules-date">визовые правила от {date}</p>;
+	return (
+		<p className="c-rules-date" data-testid="rules-date">
+			визовые правила от {date}
+		</p>
+	);
 }
 
 /** A word in brackets: opens its sheet. `wanted` makes it blink red, as «выберите» without an origin. */

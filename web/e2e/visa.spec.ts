@@ -33,7 +33,7 @@ test.describe('the citizenships', () => {
 		await phrase(page).getByRole('button', { name: 'РФ' }).click();
 
 		await expect(sheet(page)).toContainText('Можно несколько: для каждой страны берём самый удобный вариант въезда.');
-		const first = sheet(page).locator('.pick-item').first();
+		const first = sheet(page).getByTestId('pick-item').first();
 		await expect(first).toHaveText('Россия по умолчанию');
 		await expect(first).toHaveAttribute('aria-pressed', 'true');
 
@@ -63,9 +63,9 @@ test.describe('the citizenships', () => {
 		await page.goto(LINK);
 		await phrase(page).getByRole('button', { name: 'РФ' }).click();
 		const filter = sheet(page).getByRole('searchbox', { name: 'Найти гражданство' });
-		const names = () => sheet(page).locator('.pick-item').allInnerTexts();
+		const names = () => sheet(page).getByTestId('pick-item').allInnerTexts();
 
-		await expect(sheet(page).locator('.pick-item')).toHaveCount(199);
+		await expect(sheet(page).getByTestId('pick-item')).toHaveCount(199);
 		await filter.fill('корея');
 		// North Korea's passport is not Sherpa's.
 		expect(await names()).toEqual(['Республика Корея']);
@@ -78,7 +78,7 @@ test.describe('the citizenships', () => {
 		// Neither the spec nor the prototype has a line for an empty filter.
 		await expect(sheet(page)).not.toContainText('нет в списке');
 		await filter.fill('');
-		await expect(sheet(page).locator('.pick-item')).toHaveCount(199);
+		await expect(sheet(page).getByTestId('pick-item')).toHaveCount(199);
 	});
 
 	test('in a link open with it, sorted, and are saved', async ({ page, ringApi }) => {

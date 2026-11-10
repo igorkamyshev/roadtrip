@@ -19,6 +19,7 @@ import {
 	mapZoom,
 	phrase,
 	slider,
+	sliderHour,
 	tapMap,
 } from './screen.ts';
 
@@ -99,7 +100,7 @@ test.describe('the first card', () => {
 		await page.goto('/#/?p=35.20000,33.40000&h=2');
 
 		await expect.poll(() => read(firstCard(page))).toBe('В кольце 1–2 ч 2 города в 1 стране Листайте → самые крупные');
-		await expect(cityCards(page).locator('.muted')).toHaveText([
+		await expect(cityCards(page).getByTestId('city-facts')).toHaveText([
 			'Famagusta · Северный Кипр · 43 тыс.',
 			'Kyrenia · Северный Кипр · 27 тыс.',
 		]);
@@ -120,7 +121,7 @@ test.describe('the first card', () => {
 			}));
 			await page.goto(`/#/?p=45.50000,33.50000&h=${'CRIMEA' in crimea ? 2 : 3}&cit=SRB`);
 
-			await expect(cityCards(page).locator('h3')).toHaveText(['Херсон']);
+			await expect(cityCards(page).getByRole('heading')).toHaveText(['Херсон']);
 		}
 	});
 });
@@ -132,7 +133,7 @@ test.describe('the carousel', () => {
 
 		// 16 cities from 1° to 3°, all but Pristina's Kosovo open: the 12 biggest, then 4 more.
 		await expect.poll(() => read(firstCard(page))).toBe('В кольце 2–3 ч 16 городов в 6 странах Листайте → самые крупные');
-		await expect(cityCards(page).locator('h3')).toHaveText([
+		await expect(cityCards(page).getByRole('heading')).toHaveText([
 			'Будапешт',
 			'Сараево',
 			'Ниш',
@@ -212,7 +213,7 @@ test.describe('the list of all cities', () => {
 		expect(await rows(page).count()).toBeLessThan(50);
 
 		await allCities(page)
-			.locator('.sheet-body')
+			.getByTestId('sheet-body')
 			.evaluate((body) => {
 				body.scrollTop = body.scrollHeight;
 			});
@@ -243,7 +244,7 @@ test.describe("the origin's city", () => {
 
 		await expect(phrase(page)).toContainText('Из точки Белград, до 1 часа в пути.');
 		expect(await read(firstCard(page))).toBe('В кольце до 1 ч 24 города в 6 странах Листайте → самые крупные');
-		await expect(cityCards(page).locator('h3')).toHaveText([
+		await expect(cityCards(page).getByRole('heading')).toHaveText([
 			'Будапешт',
 			'Сараево',
 			'Тимишоара',
@@ -277,7 +278,7 @@ test.describe("the origin's city", () => {
 		await expectRingCard(page, 'до 1 ч');
 
 		await expect(phrase(page)).toContainText('Из точки Белград, до 1 часа в пути.');
-		await expect(cityCards(page).locator('h3')).toHaveText(['Панчево']);
+		await expect(cityCards(page).getByRole('heading')).toHaveText(['Панчево']);
 	});
 
 	test('is no city of the ring at 2 hours either, when the band holds it', async ({ page, ringApi }) => {
@@ -286,7 +287,7 @@ test.describe("the origin's city", () => {
 		await page.goto('/#/?p=44.84580,20.40116&h=2');
 		await expectRingCard(page, '1–2 ч');
 
-		await expect(cityCards(page).locator('h3')).toHaveText(['Панчево']);
+		await expect(cityCards(page).getByRole('heading')).toHaveText(['Панчево']);
 	});
 
 	test('is none near Belgrade outside the limits of every city: Belgrade is in the ring, and the phrase says «на карте»', async ({
@@ -300,7 +301,7 @@ test.describe("the origin's city", () => {
 		await expectRingCard(page, 'до 1 ч');
 
 		await expect(phrase(page)).toContainText('Из точки на карте, до 1 часа в пути.');
-		await expect(cityCards(page).locator('h3')).toHaveText(['Белград', 'Панчево', 'Смедерево']);
+		await expect(cityCards(page).getByRole('heading')).toHaveText(['Белград', 'Панчево', 'Смедерево']);
 	});
 
 	test('is the nearest of two whose limits hold the origin: the other stays in the ring', async ({ page, ringApi }) => {
@@ -315,7 +316,7 @@ test.describe("the origin's city", () => {
 		await expectRingCard(page, 'до 1 ч');
 
 		await expect(phrase(page)).toContainText('Из точки Второй, до 1 часа в пути.');
-		await expect(cityCards(page).locator('h3')).toHaveText(['Первый']);
+		await expect(cityCards(page).getByRole('heading')).toHaveText(['Первый']);
 	});
 
 	test('is the city of the search, which the ring leaves out', async ({ page, ringApi }) => {
@@ -331,7 +332,7 @@ test.describe("the origin's city", () => {
 			.click();
 
 		await expect(phrase(page)).toContainText('Из точки Белград, до 1 часа в пути.');
-		await expect(cityCards(page).locator('h3')).toHaveText(['Панчево', 'Смедерево']);
+		await expect(cityCards(page).getByRole('heading')).toHaveText(['Панчево', 'Смедерево']);
 	});
 });
 
@@ -403,7 +404,7 @@ test.describe('the carousel and the map', () => {
 	test('scrolling to a card chooses its city: the card and the label are marked, and the map goes to it', async ({ page }) => {
 		await scrollTo(page, 'Ниш');
 
-		await expect(chosenCard(page).locator('h3')).toHaveText('Ниш');
+		await expect(chosenCard(page).getByRole('heading')).toHaveText('Ниш');
 		await expect.poll(async () => (await labelsOnMap(page)).chosen).toEqual(['Ниш']);
 		expect(await wentTo(page, NIS)).toBeLessThan(25);
 
@@ -422,7 +423,7 @@ test.describe('the carousel and the map', () => {
 
 		await tapCard(page, 'Будапешт');
 
-		await expect(chosenCard(page).locator('h3')).toHaveText('Будапешт');
+		await expect(chosenCard(page).getByRole('heading')).toHaveText('Будапешт');
 		await expect(chosenCard(page)).toBeInViewport({ ratio: 0.9 });
 		await expect.poll(async () => (await labelsOnMap(page)).chosen).toEqual(['Будапешт']);
 		expect(await wentTo(page, BUDAPEST)).toBeLessThan(25);
@@ -431,7 +432,7 @@ test.describe('the carousel and the map', () => {
 
 	test("tapping the chosen city's card brings the map back to it, at the same zoom", async ({ page }) => {
 		await scrollTo(page, 'Ниш');
-		await expect(chosenCard(page).locator('h3')).toHaveText('Ниш');
+		await expect(chosenCard(page).getByRole('heading')).toHaveText('Ниш');
 		expect(await wentTo(page, NIS)).toBeLessThan(25);
 		await dragMap(page, -150, -100);
 		const zoom = await mapZoom(page);
@@ -441,12 +442,12 @@ test.describe('the carousel and the map', () => {
 
 		expect(await wentTo(page, NIS)).toBeLessThan(25);
 		expect(await mapZoom(page)).toBeCloseTo(zoom);
-		await expect(chosenCard(page).locator('h3')).toHaveText('Ниш');
+		await expect(chosenCard(page).getByRole('heading')).toHaveText('Ниш');
 	});
 
 	test('tapping the current card chooses its city when another city is chosen, and the map goes to it', async ({ page }) => {
 		await scrollTo(page, 'Ниш');
-		await expect(chosenCard(page).locator('h3')).toHaveText('Ниш');
+		await expect(chosenCard(page).getByRole('heading')).toHaveText('Ниш');
 		// Reşiţa, the 13th, has no card: the list of all opens at it, and the carousel stays at Niš.
 		await tapMap(page, { lat: 45.301, lon: 21.889 });
 		await page.keyboard.press('Escape');
@@ -455,13 +456,13 @@ test.describe('the carousel and the map', () => {
 
 		await tapCard(page, 'Ниш');
 
-		await expect(chosenCard(page).locator('h3')).toHaveText('Ниш');
+		await expect(chosenCard(page).getByRole('heading')).toHaveText('Ниш');
 		await expect.poll(async () => (await labelsOnMap(page)).chosen).toEqual(['Ниш']);
 		expect(await wentTo(page, NIS)).toBeLessThan(25);
 	});
 
 	test('a tap on the slider over a card under it changes N and chooses no card', async ({ page }) => {
-		const hourBox = await boxOf(slider(page).locator('[data-hours="1"]'));
+		const hourBox = await boxOf(sliderHour(page, 1));
 		const tap = { x: hourBox.x + hourBox.width / 2, y: hourBox.y + hourBox.height / 2 };
 		const under = await cityCards(page).evaluateAll(
 			(cards, at) =>
@@ -482,7 +483,7 @@ test.describe('the carousel and the map', () => {
 
 	test('tapping «Маршрут» of a card opens the route, as before', async ({ page, network }) => {
 		await scrollTo(page, 'Ниш');
-		await expect(chosenCard(page).locator('h3')).toHaveText('Ниш');
+		await expect(chosenCard(page).getByRole('heading')).toHaveText('Ниш');
 
 		const route = page.waitForEvent('popup');
 		await chosenCard(page).getByRole('link', { name: 'Маршрут' }).click();
@@ -494,10 +495,33 @@ test.describe('the carousel and the map', () => {
 			.toContain('https://www.google.com/maps/dir/?api=1&origin=44.81760%2C20.45730&destination=43.325%2C21.903&travelmode=driving');
 	});
 
+	test('tapping «Маршрут» of the next card, not the chosen one, opens the route and leaves the carousel where it was', async ({
+		page,
+		network,
+	}) => {
+		await scrollTo(page, 'Ниш');
+		await expect(chosenCard(page).getByRole('heading')).toHaveText('Ниш');
+		const names = await cityCards(page).getByRole('heading').allInnerTexts();
+		const next = cityCards(page)
+			.nth(names.indexOf('Ниш') + 1)
+			.getByRole('link', { name: 'Маршрут' });
+		const href = await next.getAttribute('href');
+		// Where the link is in the next card's part left in view: a click by locator would scroll the carousel to it.
+		const link = await boxOf(next);
+
+		const route = page.waitForEvent('popup');
+		await page.mouse.click(link.x + 16, link.y + link.height / 2);
+
+		await route;
+		await expect.poll(() => network.blocked).toContain(href);
+		await page.clock.fastForward(1000);
+		await expect(chosenCard(page).getByRole('heading')).toHaveText('Ниш');
+	});
+
 	test('tapping a city of the carousel on the map scrolls the carousel to its card', async ({ page }) => {
 		await tapMap(page, NIS);
 
-		await expect(chosenCard(page).locator('h3')).toHaveText('Ниш');
+		await expect(chosenCard(page).getByRole('heading')).toHaveText('Ниш');
 		await expect(chosenCard(page)).toBeInViewport({ ratio: 0.9 });
 		await expect.poll(async () => (await labelsOnMap(page)).chosen).toEqual(['Ниш']);
 	});
@@ -529,14 +553,14 @@ test.describe('the carousel and the map', () => {
 
 		await page.getByRole('dialog').getByTestId('city-row').filter({ hasText: 'Тузла' }).click();
 
-		await expect(chosenCard(page).locator('h3')).toHaveText('Тузла');
+		await expect(chosenCard(page).getByRole('heading')).toHaveText('Тузла');
 		await expect(chosenCard(page)).toBeInViewport({ ratio: 0.9 });
 		expect(await wentTo(page, { lat: 44.538, lon: 18.667 })).toBeLessThan(25);
 	});
 
 	test('a new ring chooses no city and shows the carousel from its start', async ({ page }) => {
 		await scrollTo(page, 'Суботица');
-		await expect(chosenCard(page).locator('h3')).toHaveText('Суботица');
+		await expect(chosenCard(page).getByRole('heading')).toHaveText('Суботица');
 
 		await slider(page).press('ArrowDown');
 
@@ -562,11 +586,23 @@ test.describe('a city card', () => {
 		await expect
 			.poll(() => read(budapest))
 			.toBe('Будапешт Budapest · Венгрия · 1,7 млн по визе Шенгена Российские номера не пустят Маршрут');
-		await expect(budapest.getByRole('link', { name: 'Маршрут' })).toHaveAttribute(
+		const route = budapest.getByRole('link', { name: 'Маршрут' });
+		await expect(route).toHaveAttribute(
 			'href',
 			'https://www.google.com/maps/dir/?api=1&origin=44.81760%2C20.45730&destination=47.498%2C19.04&travelmode=driving',
 		);
-		await expect(budapest.getByRole('link', { name: 'Маршрут' })).toHaveAttribute('target', '_blank');
+		await expect(route).toHaveAttribute('target', '_blank');
+		// A quiet link, not a button (#75): no button's look, no icon, the color and size of the card's facts, and still
+		// a finger's tap.
+		await expect(route).not.toHaveClass(/\bbtn\b/u);
+		await expect(route).toHaveJSProperty('childElementCount', 0);
+		const facts = budapest.getByText('Budapest · Венгрия · 1,7 млн');
+		for (const property of ['color', 'font-size', 'background-color'] as const) {
+			expect(await route.evaluate((link, name) => getComputedStyle(link).getPropertyValue(name), property), property).toBe(
+				await facts.evaluate((line, name) => getComputedStyle(line).getPropertyValue(name), property),
+			);
+		}
+		expect((await route.boundingBox())?.height).toBeGreaterThanOrEqual(40);
 		// The start country; a city of 250 000 people is «250 тыс.».
 		expect(await read(card(page, 'Ниш'))).toBe('Ниш Niš · Сербия · 250 тыс. страна старта Маршрут');
 		// Without a visa, no mark.
@@ -611,7 +647,7 @@ test.describe('a city card', () => {
 
 		const visasSheet = page.getByRole('dialog', { name: 'Мои визы' });
 		await phrase(page).getByRole('button', { name: 'нет' }).click();
-		await visasSheet.locator('.pick-item').filter({ hasText: /^США/u }).click();
+		await visasSheet.getByTestId('pick-item').filter({ hasText: /^США/u }).click();
 		await visasSheet.getByRole('button', { name: 'Закрыть' }).click();
 
 		await expect.poll(() => ringApi.calls.at(-1)?.visas).toBe('USA');
@@ -636,7 +672,7 @@ test.describe('a city card', () => {
 		await page.goto(`${LINK}&cit=RUS,SRB`);
 
 		// Hungary, Romania and Croatia are in the EU; Serbia, Bosnia and Herzegovina and Montenegro are not.
-		await expect(cityCards(page).filter({ hasText: 'Российские номера не пустят' }).locator('h3')).toHaveText([
+		await expect(cityCards(page).filter({ hasText: 'Российские номера не пустят' }).getByRole('heading')).toHaveText([
 			'Будапешт',
 			'Дебрецен',
 			'Арад',

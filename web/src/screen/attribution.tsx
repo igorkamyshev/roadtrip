@@ -37,7 +37,7 @@ export function SourcesOnOpen(): ReactElement {
 		};
 	}, []);
 	return (
-		<p className={shown ? 'c-sources' : 'c-sources gone'}>
+		<p className={shown ? 'c-sources' : 'c-sources gone'} data-testid="sources">
 			<DataSources />
 		</p>
 	);

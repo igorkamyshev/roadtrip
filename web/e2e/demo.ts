@@ -36,10 +36,14 @@ function worker(request: IncomingMessage, response: ServerResponse, next: () => 
 	}
 }
 
-/** Serves the built client with the doubles on `port`, else the preview server's (vite.config.ts). */
-export async function startDemo(port: number | undefined): Promise<PreviewServer> {
+/**
+ * Serves the built client with the doubles on `port`, else the preview server's (vite.config.ts): this checkout's
+ * `dist/`, or `dist`, another build of it (`shots --compare`, e2e/shots.ts).
+ */
+export async function startDemo(port: number | undefined, dist?: string): Promise<PreviewServer> {
 	return preview({
 		root: import.meta.dirname + '/..',
+		build: dist === undefined ? undefined : { outDir: dist },
 		preview: { port, host: true },
 		plugins: [
 			{

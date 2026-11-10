@@ -16,11 +16,43 @@ const START_RED_DARK = '#ff6a52';
 /** The light scheme's `--bg`, the link's picture's background. */
 const BACKGROUND = '#eef1ef';
 
-/** The `href` of the head's link `selector`; the test fails without the link. */
-async function hrefOf(page: Page, selector: string): Promise<string> {
-	const href = await page.locator(`link${selector}`).getAttribute('href');
-	expect(href, `a link${selector}`).not.toBeNull();
-	return href ?? '';
+/** The head's metadata: each `meta` by its `name` or `property`, and each `link` by its `rel`, `type` and `sizes`. */
+interface Head {
+	readonly meta: Readonly<Record<string, string>>;
+	readonly links: readonly { readonly rel: string; readonly href: string; readonly type: string; readonly sizes: string }[];
+}
+
+/**
+ * The page's head, read at once: it has no roles or text on the screen for a locator to find, so the test reads it as
+ * a browser or a messenger does.
+ */
+async function headOf(page: Page): Promise<Head> {
+	return page.evaluate(() => ({
+		meta: Object.fromEntries(
+			Array.from(document.head.querySelectorAll('meta')).map((meta) => [
+				meta.name === '' ? (meta.getAttribute('property') ?? '') : meta.name,
+				meta.content,
+			]),
+		),
+		links: Array.from(document.head.querySelectorAll('link')).map((link) => ({
+			rel: link.rel,
+			href: link.getAttribute('href') ?? '',
+			type: link.type,
+			sizes: link.sizes.value,
+		})),
+	}));
+}
+
+/** The `href` of the head's one link of `rel`, and of `type` and `sizes` when given; the test fails without it. */
+function hrefIn(head: Head, wanted: { readonly rel: string; readonly type?: string; readonly sizes?: string }): string {
+	const matching = head.links.filter(
+		(link) =>
+			link.rel === wanted.rel &&
+			(wanted.type === undefined || link.type === wanted.type) &&
+			(wanted.sizes === undefined || link.sizes === wanted.sizes),
+	);
+	expect(matching, `one link ${JSON.stringify(wanted)}`).toHaveLength(1);
+	return matching[0]?.href ?? '';
 }
 
 /**
@@ -73,26 +105,29 @@ test('the page is Роадтрип, and its description names visas, closed coun
 	await page.goto('/');
 
 	await expect(page).toHaveTitle('Роадтрип | Куда поехать на машине');
-	await expect(page.locator('meta[name="apple-mobile-web-app-title"]')).toHaveAttribute('content', 'Роадтрип');
-	await expect(page.locator('meta[name="description"]')).toHaveAttribute('content', DESCRIPTION);
-	await expect(page.locator('meta[property="og:description"]')).toHaveAttribute('content', DESCRIPTION);
+	expect((await headOf(page)).meta).toMatchObject({
+		'apple-mobile-web-app-title': 'Роадтрип',
+		description: DESCRIPTION,
+		'og:description': DESCRIPTION,
+	});
 });
 
 test('a phone puts the mark on a blue square on its home screen, under the name Роадтрип', async ({ page, request }) => {
 	await page.goto('/');
+	const head = await headOf(page);
 
 	const icons = [
 		{ src: '/icon-192.png', sizes: '192x192', type: 'image/png' },
 		{ src: '/icon-512.png', sizes: '512x512', type: 'image/png' },
 		{ src: '/icon-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
 	];
-	const manifest = await request.get(await hrefOf(page, '[rel="manifest"]'));
+	const manifest = await request.get(hrefIn(head, { rel: 'manifest' }));
 	expect(manifest.status()).toBe(200);
 	// Only the icon and its name: no app of its own on the home screen (#70, out of scope), so `display` is `browser`.
 	expect(await manifest.json()).toMatchObject({ name: 'Роадтрип', short_name: 'Роадтрип', display: 'browser', icons });
 
 	const homeIcons = [
-		{ src: await hrefOf(page, '[rel="apple-touch-icon"]'), side: 180 },
+		{ src: hrefIn(head, { rel: 'apple-touch-icon' }), side: 180 },
 		...icons.map(({ src, sizes }) => ({ src, side: Number(sizes.split('x')[0]) })),
 	];
 	for (const { src, side } of homeIcons) {
@@ -114,15 +149,16 @@ test('a phone puts the mark on a blue square on its home screen, under the name 
 
 test('the tab shows the mark, its origin red in the light scheme and in the dark one', async ({ page, request }) => {
 	await page.goto('/');
+	const head = await headOf(page);
 
-	const svg = await hrefOf(page, '[rel="icon"][type="image/svg+xml"]');
+	const svg = hrefIn(head, { rel: 'icon', type: 'image/svg+xml' });
 	expect((await readImage(page, svg, { points: [[32, 32]], drawn: 64 })).colors).toEqual([START_RED]);
 	await page.emulateMedia({ colorScheme: 'dark' });
 	expect((await readImage(page, svg, { points: [[32, 32]], drawn: 64 })).colors).toEqual([START_RED_DARK]);
 
 	// For the browsers without SVG icons, 32 px. The page cannot fetch a path that ends in favicon.ico under
 	// Playwright's routes, so the test does.
-	const ico = await request.get(await hrefOf(page, '[rel="icon"][sizes="32x32"]'));
+	const ico = await request.get(hrefIn(head, { rel: 'icon', sizes: '32x32' }));
 	expect(ico.status()).toBe(200);
 	const data = `data:image/x-icon;base64,${(await ico.body()).toString('base64')}`;
 	expect(await readImage(page, data, { points: [[16, 16]] })).toMatchObject({ width: 32, height: 32, colors: [START_RED] });
@@ -131,8 +167,10 @@ test('the tab shows the mark, its origin red in the light scheme and in the dark
 test("a link to the site shows a picture of 1200×630 with the mark on the screen's background", async ({ page }) => {
 	await openInProduction(page);
 
-	await expect(page.locator('meta[property="og:image"]')).toHaveAttribute('content', `${PRODUCTION}/og.png`);
-	await expect(page.locator('meta[name="twitter:card"]')).toHaveAttribute('content', 'summary_large_image');
+	expect((await headOf(page)).meta).toMatchObject({
+		'og:image': `${PRODUCTION}/og.png`,
+		'twitter:card': 'summary_large_image',
+	});
 	expect(await readImage(page, `${PRODUCTION}/og.png`, { points: [[0, 0]], find: START_RED })).toEqual({
 		width: 1200,
 		height: 630,

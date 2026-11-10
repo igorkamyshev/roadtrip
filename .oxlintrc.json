@@ -175,7 +175,7 @@
 			}
 		},
 		{
-			// The screen tests: Playwright's recommended rules and two more (ADR 0002, «Фронтенд»); not vitest's, which
+			// The screen tests: Playwright's recommended rules and three more (ADR 0002, «Фронтенд»); not vitest's, which
 			// would take Playwright's `test` and `expect` for its own.
 			"files": ["web/e2e/**"],
 			"plugins": ["eslint", "typescript", "unicorn", "oxc", "import", "promise", "node"],
@@ -220,8 +220,11 @@
 				"playwright/valid-expect-in-promise": "error",
 				"playwright/valid-test-tags": "error",
 				"playwright/valid-title": "error",
-				// And two more: a count is checked by the locator, which retries; a locator by role or label, as a person finds it.
+				// And three more: a count is checked by the locator, which retries; a locator by role or label, as a person finds it;
+				// and never by a class or tag of the screen's styles (#75), only by role, text, test id or the state the screen
+				// sets in an attribute: the chosen card, the slider's cells.
 				"playwright/prefer-native-locators": "error",
+				"playwright/no-raw-locators": ["error", { "allowed": ["[aria-current=\"true\"]", "[data-hours]", "[data-tab]", "[data-cached]"] }],
 				// A fixture that uses no other fixture takes `{}`, as Playwright asks (the preset turns it off too).
 				"eslint/no-empty-pattern": "off"
 			}

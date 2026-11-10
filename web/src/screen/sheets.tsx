@@ -50,7 +50,7 @@ export function Sheet({ title, onClose, children, bodyRef, initialFocus }: Sheet
 						<CloseIcon />
 					</button>
 				</div>
-				<div className="sheet-body" ref={bodyRef}>
+				<div className="sheet-body" data-testid="sheet-body" ref={bodyRef}>
 					{children}
 				</div>
 			</div>
@@ -186,14 +186,24 @@ function PickItem({
 	readonly onToggle: () => void;
 }): ReactElement {
 	return (
-		<button type="button" className={chosen ? 'pick-item on' : 'pick-item'} aria-pressed={chosen} onClick={onToggle}>
+		<button
+			type="button"
+			className={chosen ? 'pick-item on' : 'pick-item'}
+			data-testid="pick-item"
+			aria-pressed={chosen}
+			onClick={onToggle}
+		>
 			<span className="pick-box">{chosen ? <CheckIcon /> : null}</span>
 			<span className="row-main">
-				<span className="pick-name">{name}</span>
+				<span className="pick-name" data-testid="pick-name">
+					{name}
+				</span>
 				{sub === undefined ? null : (
 					<>
 						{' '}
-						<span className="pick-sub">{sub}</span>
+						<span className="pick-sub" data-testid="pick-sub">
+							{sub}
+						</span>
 					</>
 				)}
 			</span>
