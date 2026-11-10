@@ -25,7 +25,7 @@ export type RingResultSource = 'memory' | RingSource;
 
 export interface RingResult extends Place {
 	readonly outcome: RingResultOutcome;
-	/** The ring's upper bound in hours: N, or 16 for day 2 (#83, #140), which names the slider's cell alone. */
+	/** The ring's upper bound in hours: N, or worker/api's HOURS_PER_DAY·D for day D (#83), which names the slider's cell alone. */
 	readonly hours: number;
 	/** Sorted alpha-3. */
 	readonly citizenships: readonly string[];

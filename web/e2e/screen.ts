@@ -242,12 +242,12 @@ export async function expectRingCard(page: Page, hours: string): Promise<void> {
 }
 
 /**
- * The slider's cell of `hours`, its ring's upper bound: N, or 8·D for day D; it reads N or D, or the span («6–7»,
+ * The slider's cell of `hours`, its ring's upper bound: N, or HOURS_PER_DAY·D for day D; it reads N or D, or the span («6–7»,
  * «2–3 дня») when it is the one chosen.
  */
 export const sliderHour = (page: Page, hours: number): Locator => slider(page).locator(`[data-hours="${hours}"]`);
 
-/** The slider's cells in the unit it shows: the eight hours, or the days (#83). */
+/** The slider's cells in the unit it shows: the hours, or the days (#83). */
 export const sliderCells = (page: Page): Locator => slider(page).locator('[data-hours]');
 
 /**
@@ -478,8 +478,8 @@ export async function holdTheClock(page: Page): Promise<void> {
 	await page.clock.pauseAt(CLOCK_START + 60_000);
 }
 
-/** Opens `path` on the held clock and waits for its ring of `hours`: by default that of 8 h, as the phrase's links have. */
-export async function openHeld(page: Page, path: string, hours = '7–8 ч'): Promise<void> {
+/** Opens `path` on the held clock and waits for its ring of `hours`: by default `LAST_HOUR_RING`, as the phrase's links have. */
+export async function openHeld(page: Page, path: string, hours = LAST_HOUR_RING): Promise<void> {
 	await holdTheClock(page);
 	await page.goto(path);
 	await expectRingCard(page, hours);
@@ -525,6 +525,14 @@ export async function runUntilMapAtRest(page: Page): Promise<void> {
  * builds on it too.
  */
 export const FROM_BELGRADE = '/#/?p=44.81760,20.45730';
+
+/**
+ * The rings of the phrase's links in e2e/fixtures.ts as the card and the slider read them: the slider's last hour
+ * (`LONGEST`, `SHORTEST`) and its last day (`LONGEST_IN_DAYS`, `SHORTEST_IN_DAYS`). Here for `openHeld`, like
+ * `FROM_BELGRADE`; a new scale changes them in one place (#140).
+ */
+export const LAST_HOUR_RING = '7–8 ч';
+export const LAST_DAY_RING = '6–7 дней';
 
 /**
  * Opens the ring of the carousel's tests (`carouselRing` of e2e/fixtures.ts), 2–3 h around Belgrade, on the held

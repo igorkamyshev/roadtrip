@@ -15,8 +15,8 @@ export interface RingServed {
 	/** The engine's outcome, `visa_rules_missing`, or `error`: the Container failed (502), or a 400 or 405. */
 	readonly outcome: RingOutcome['outcome'] | 'visa_rules_missing' | 'error';
 	/**
-	 * The ring's upper bound in hours: N of an hour, 16 for day 2 (#82, #140), which names the slider's cell alone; absent
-	 * for a 400 or 405.
+	 * The ring's upper bound in hours: N of an hour, HOURS_PER_DAY·D of day D (#82), which names the slider's cell
+	 * alone; absent for a 400 or 405.
 	 */
 	readonly hours?: number;
 	/** From the request to the answer. */

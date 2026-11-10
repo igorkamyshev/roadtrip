@@ -522,7 +522,7 @@ a {
 
 /* ---------- slider ---------- */
 
-/* The slider in .c-vs: the panel of one unit's cells, the hours' eight or a cell a day, the first at the bottom, and
+/* The slider in .c-vs: the panel of one unit's cells, a cell an hour or a cell a day, the first at the bottom, and
    the tab of the other unit, «дни ↑» over the hours' panel or «часы ↓» under the days' (#83). The chosen cell is the
    blue block under it, which moves from cell to cell; a cell whose ring is in memory is light green. Not the
    prototype's track and thumb. */
@@ -548,7 +548,7 @@ a {
 	box-shadow: var(--shadow);
 }
 
-/* Its cells, eight hours or the days, as many as the slider gives it, in the column the first at the bottom (the
+/* Its cells, the hours or the days, as many as the slider gives it, in the column the first at the bottom (the
    slider puts the last first). */
 .sl-cells {
 	--gap: 2px;

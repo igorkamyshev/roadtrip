@@ -36,8 +36,8 @@ export function workerDataVersion(datasetVersion: string): Promise<string> {
 
 /**
  * The key of the calculation's ring: `ring:<data version>:<lat>,<lon>:<lower>-<upper>:<SHA-256 of the closed
- * countries, sorted, once each, joined by commas, hex>`, the ring's bounds in hours. The rings 8–16 and 15–16 share
- * the upper bound, not the key. The hash keeps the key within KV's 512 bytes, whatever the number of closed
+ * countries, sorted, once each, joined by commas, hex>`, the ring's bounds in hours. The ring of day 2 and that of its
+ * last hour share the upper bound, not the key. The hash keeps the key within KV's 512 bytes, whatever the number of closed
  * countries; the order and repeats of the set given do not change it.
  */
 export async function ringKey(version: string, calculation: CalculationRequest): Promise<string> {

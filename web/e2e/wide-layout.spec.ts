@@ -26,7 +26,6 @@ import {
 import type { RingApi } from './ring-api.ts';
 import {
 	BETWEEN,
-	type Box,
 	boxOf,
 	cardsInView,
 	carousel,
@@ -39,6 +38,8 @@ import {
 	FROM_BELGRADE,
 	fromEdges,
 	labelsOnMap,
+	LAST_DAY_RING,
+	LAST_HOUR_RING,
 	MODAL_WIDTH,
 	moreCard,
 	openHeld,
@@ -53,6 +54,7 @@ import {
 	sources,
 	startPinning,
 	tapMap,
+	type Box,
 } from './screen.ts';
 import { onWindow, WIDE_WINDOWS, windowName, WINDOWS } from './windows.ts';
 
@@ -115,10 +117,10 @@ for (const window of ROW_WINDOWS) {
 		test.use(onWindow(window));
 
 		for (const [unit, phraseOf, path, ring] of [
-			['hours', 'the longest phrase', LONGEST, '7–8 ч'],
-			['hours', 'the shortest phrase', SHORTEST, '7–8 ч'],
-			['days', 'the longest phrase', LONGEST_IN_DAYS, '6–7 дней'],
-			['days', 'the shortest phrase', SHORTEST_IN_DAYS, '6–7 дней'],
+			['hours', 'the longest phrase', LONGEST, LAST_HOUR_RING],
+			['hours', 'the shortest phrase', SHORTEST, LAST_HOUR_RING],
+			['days', 'the longest phrase', LONGEST_IN_DAYS, LAST_DAY_RING],
+			['days', 'the shortest phrase', SHORTEST_IN_DAYS, LAST_DAY_RING],
 		] as const) {
 			/** The tab and the cells as they stand from left to right: «дни →» right of the hours, «← часы» left of the days. */
 			const leftToRight = <T>(tab: T, cells: T): [T, T] => (unit === 'days' ? [tab, cells] : [cells, tab]);
@@ -182,8 +184,8 @@ for (const window of ROW_WINDOWS.filter(({ pointer }) => pointer === 'mouse')) {
 		test.use(onWindow(window));
 
 		for (const [unit, path, ring] of [
-			['hours', LONGEST, '7–8 ч'],
-			['days', LONGEST_IN_DAYS, '6–7 дней'],
+			['hours', LONGEST, LAST_HOUR_RING],
+			['days', LONGEST_IN_DAYS, LAST_DAY_RING],
 		] as const) {
 			test(`in ${unit}, the carousel's arrows stand in the slider's row 12 px from the right, level with it and at least 8 px from it, and the row keeps its 560 px`, async ({
 				page,
@@ -220,8 +222,8 @@ test.describe('on 720×500, mouse', () => {
 
 	// The row about 500 px, an hour's cell about 59 px, a day's about 80 px (#97, #140: 8 hours, 6 days).
 	for (const [unit, path, ring, cellWidth] of [
-		['hours', LONGEST, '7–8 ч', 59],
-		['days', LONGEST_IN_DAYS, '6–7 дней', 80],
+		['hours', LONGEST, LAST_HOUR_RING, 59],
+		['days', LONGEST_IN_DAYS, LAST_DAY_RING, 80],
 	] as const) {
 		test(`in ${unit}, the slider's row narrows to about 500 px for the carousel's arrows, at least 8 px from them, apart and on the screen`, async ({
 			page,
@@ -255,7 +257,7 @@ for (const window of WINDOWS.filter(({ layout, pointer }) => layout === 'narrow'
 		test("with the longest phrase, the carousel's arrows stand over the cards 12 px from the left, 8 px over them, apart from the phrase, the slider and the card at the left edge", async ({
 			page,
 		}) => {
-			await open(page, LONGEST, '7–8 ч');
+			await open(page, LONGEST, LAST_HOUR_RING);
 
 			const [plate, card] = await Promise.all([boxOf(carouselArrows(page)), boxOf(firstCard(page))]);
 			expect(fromEdges(page, plate).left).toBeCloseTo(EDGE, 0);
@@ -346,7 +348,7 @@ for (const window of WIDE_WINDOWS) {
 		test(`in the pin mode, with the longest phrase, the pin's panel stands 12 px from the left and the bottom, apart from the phrase, the buttons ${underTheHint ? 'under the hint' : 'in its line'}`, async ({
 			page,
 		}) => {
-			await open(page, LONGEST, '7–8 ч');
+			await open(page, LONGEST, LAST_HOUR_RING);
 			await startPinning(page);
 
 			await expectApart(page, { phrase: phrase(page), 'pin panel': page.getByTestId('pin-bar') });
@@ -368,7 +370,7 @@ for (const window of WIDE_WINDOWS.filter(({ width }) => width > 720)) {
 		test("in the pin mode the pin's panel is one line with its padding round it, as wide as the hint and right after it the buttons", async ({
 			page,
 		}) => {
-			await open(page, LONGEST, '7–8 ч');
+			await open(page, LONGEST, LAST_HOUR_RING);
 			await startPinning(page);
 
 			const { panel, hint, cancel, start } = await pinPanel(page);
