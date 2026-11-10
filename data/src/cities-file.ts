@@ -15,7 +15,8 @@ export const CITIES_PATH = '/data/cities.json';
  * A city, as a row (in the file, `id` is the difference from the row before's: `CitiesFile`):
  *
  * - `id`: GeoNames' id (`geonameid`);
- * - `ru`: the Russian name, from GeoNames, else Wikidata's Russian label by P1566; empty when neither has one;
+ * - `ru`: the Russian name: the table of Russian names' (data/russian-names.tsv), else GeoNames', else Wikidata's
+ *   Russian label by P1566; empty when none has one. The deploy puts the table's in: the file in R2 has the others';
  * - `local`: GeoNames' `name`, usually the name in Latin letters («Belgrade»);
  * - `lat`, `lon`: degrees, to 0.001° (about 100 m);
  * - `population`: GeoNames' `population`;

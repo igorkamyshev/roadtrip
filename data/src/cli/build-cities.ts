@@ -1,7 +1,7 @@
 // Builds the cities file (spec #20 «Набор данных», «Файл городов»): GeoNames' cities from 15 000 people but the parts of a
 // city, with their Russian names (GeoNames, else Wikidata) and their zones by the polygons of a graph, as JSON (a
 // static asset of the Worker, `/data/cities.json`). It prints what it did to stderr, and with --report adds the parts
-// of a city to the build report (Markdown).
+// of a city and the cities without a Russian name that data/russian-names.tsv lacks to the build report (Markdown).
 //
 //   pnpm --filter data build-cities <graph file | extract | URL> <out.json>
 //     [--cities <cities1000.zip | .txt | URL>] [--names <alternateNamesV2.zip | .txt | URL>,…]
@@ -14,10 +14,10 @@ import { setTimeout as sleep } from 'node:timers/promises';
 import { parseArgs } from 'node:util';
 import { brotliCompressSync } from 'node:zlib';
 import { encodeCities } from '../cities-file.ts';
-import { cityPartsMarkdown } from '../build-report.ts';
+import { cityPartsMarkdown, missingRussianNamesMarkdown } from '../build-report.ts';
 import { buildCities } from '../cities.ts';
 import { wikidataRussianLabels } from '../wikidata.ts';
-import { fileLines, log, seconds, userPath, withLocalFile } from './input.ts';
+import { fileLines, log, readRussianNames, seconds, userPath, withLocalFile } from './input.ts';
 import { loadGraph } from './load-graph.ts';
 
 const DUMP = 'https://download.geonames.org/export/dump';
@@ -58,6 +58,8 @@ const { cities, report } = await buildCities({
 				log(`Wikidata: asking for the Russian labels of ${ids.length} cities`);
 				return wikidataRussianLabels(ids, { fetch, sleep, log });
 			},
+	// The deploy puts the table's names in (src/cli/russian-names.ts); the file keeps GeoNames' and Wikidata's.
+	russianNames: readRussianNames(),
 	graph,
 });
 const json = JSON.stringify(encodeCities(cities));
@@ -68,6 +70,11 @@ log(
 );
 log(
 	`Russian names: ${report.russianFromGeoNames} from GeoNames, ${report.russianFromWikidata} from Wikidata, ${report.withoutRussian} without`,
+);
+log(
+	`without a Russian name and not in the table of Russian names: ${report.missingRussianNames.count}; the biggest: ${report.missingRussianNames.biggest
+		.map(({ id, name }) => `${id} ${name}`)
+		.join('; ')}`,
 );
 log(`zones: ${report.zoneByPolygon} by the graph's polygons, ${report.zoneByCountry} outside every polygon by their GeoNames country`);
 log(
@@ -81,8 +88,8 @@ if (report.withoutZone.length > 0) {
 log(`wrote ${out}: ${(json.length / 1e6).toFixed(2)} MB, ${(brotliCompressSync(json).length / 1e6).toFixed(2)} MB in brotli`);
 if (values.report !== undefined) {
 	// After the graph's part, which build-graph writes first.
-	appendFileSync(userPath(values.report), `\n${cityPartsMarkdown(report)}`);
-	log(`added the parts of a city to ${values.report}`);
+	appendFileSync(userPath(values.report), `\n${cityPartsMarkdown(report)}\n${missingRussianNamesMarkdown(report)}`);
+	log(`added the parts of a city and the cities the table of Russian names lacks to ${values.report}`);
 }
 
 /** The lines of cities1000 of the countries asked for (its 9th column), or all of them. */

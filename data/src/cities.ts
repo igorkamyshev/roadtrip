@@ -6,6 +6,7 @@ import { METERS_PER_DEGREE } from 'engine/geo';
 import { type Graph, ZoneLocator } from 'engine/graph';
 import { COUNTRIES } from 'rules/countries';
 import { biggestFirst, cityAround, type CityRow, limitsKm } from './cities-file.ts';
+import { type MissingRussianNames, missingRussianNames } from './russian-names.ts';
 
 const MIN_POPULATION = 15_000;
 
@@ -22,6 +23,8 @@ export interface CitiesSources {
 	readonly alternateNames: AsyncIterable<string>;
 	/** Wikidata's Russian labels by GeoNames id (P1566), asked for the cities GeoNames has no Russian name of. */
 	readonly wikidataLabels: (ids: readonly number[]) => Promise<ReadonlyMap<number, string>>;
+	/** The table of Russian names (`parseRussianNames`), which the deploy puts in: the file leaves it out, the report counts the cities it lacks. */
+	readonly russianNames: ReadonlyMap<number, string>;
 	/** The graph whose zone polygons give each city its zone. */
 	readonly graph: Pick<Graph, 'zones' | 'zoneRings'>;
 }
@@ -35,8 +38,10 @@ export interface CitiesReport {
 	readonly russianFromGeoNames: number;
 	/** The cities whose Russian name is Wikidata's label. */
 	readonly russianFromWikidata: number;
-	/** The cities without a Russian name: the screen shows the local one. */
+	/** The cities without a Russian name: the screen shows the local one, unless the table of Russian names has it. */
 	readonly withoutRussian: number;
+	/** The cities without a Russian name that the table of Russian names lacks: the ones to add to it. */
+	readonly missingRussianNames: MissingRussianNames;
 	/** The cities whose zone is the polygon they are in. */
 	readonly zoneByPolygon: number;
 	/** The cities outside every polygon, in their GeoNames country. */
@@ -113,6 +118,7 @@ export async function buildCities(sources: CitiesSources): Promise<{ cities: Cit
 			russianFromGeoNames: geonames.size,
 			russianFromWikidata: rows.length - geonames.size - withoutRussian,
 			withoutRussian,
+			missingRussianNames: missingRussianNames(rows, sources.russianNames),
 			zoneByPolygon,
 			zoneByCountry: rows.length - zoneByPolygon,
 			withoutZone,
