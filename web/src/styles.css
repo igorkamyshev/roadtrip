@@ -1032,6 +1032,16 @@ a {
 	line-height: 1.2;
 }
 
+/* The city's name and its flag on one line: the flag after the name's last word, however the name wraps (#73). */
+.c-card-title {
+	font-size: 19px;
+	line-height: 1.2;
+}
+
+.c-card-title h3 {
+	display: inline;
+}
+
 /* A city card's tap: the name's button, whose area covers the card; «Маршрут» stays over it. */
 .c-card-tap {
 	all: unset;

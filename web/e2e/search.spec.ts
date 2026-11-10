@@ -44,7 +44,7 @@ test.describe('the search', () => {
 		await page.goto('/');
 		await search(page, 'выберите', 'SZEG');
 
-		await expect(found(page)).toHaveText(['Сегед 🇭🇺 · 161 тыс.'], { useInnerText: true });
+		await expect(found(page)).toHaveText(['Сегед 🇭🇺 161 тыс.'], { useInnerText: true });
 	});
 
 	test('takes ё for е and е for ё', async ({ page }) => {

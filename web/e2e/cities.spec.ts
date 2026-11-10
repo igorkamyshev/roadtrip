@@ -106,8 +106,10 @@ test.describe('the first card', () => {
 
 		await expect.poll(() => read(firstCard(page))).toBe('В кольце 1–2 ч 2 города в 1 стране Листайте → самые крупные');
 		// Northern Cyprus has no flag of its own.
-		await expect(cityCards(page).getByTestId('city-facts')).toHaveText(['⛳ · 43 тыс.', '⛳ · 27 тыс.']);
-		await expect(cityCard(page, 'Фамагуста').getByRole('img', { name: 'Северный Кипр' })).toHaveAttribute('title', 'Северный Кипр');
+		await expect(cityCards(page).getByTestId('city-facts')).toHaveText(['43 тыс.', '27 тыс.']);
+		const flag = cityCard(page, 'Фамагуста').getByRole('img', { name: 'Северный Кипр' });
+		await expect(flag).toHaveText('⛳');
+		await expect(flag).toHaveAttribute('title', 'Северный Кипр');
 	});
 
 	test('leaves out the cities of a closed territory', async ({ page, ringApi }) => {
@@ -183,11 +185,11 @@ test.describe('the list of all cities', () => {
 
 		await expect(rows(page)).toHaveCount(16);
 		expect(await Promise.all((await rows(page).all()).slice(0, 3).map((row) => read(row)))).toEqual([
-			'Будапешт 🇭🇺 · 1,7 млн',
-			'Сараево 🇧🇦 · 697 тыс.',
-			'Ниш 🇷🇸 · 250 тыс.',
+			'Будапешт 🇭🇺 1,7 млн',
+			'Сараево 🇧🇦 697 тыс.',
+			'Ниш 🇷🇸 250 тыс.',
 		]);
-		expect(await read(rows(page).last())).toBe('Lukavac 🇧🇦 · 45 тыс.');
+		expect(await read(rows(page).last())).toBe('Lukavac 🇧🇦 45 тыс.');
 		await expect(rows(page).first().getByRole('img', { name: 'Венгрия' })).toHaveAttribute('title', 'Венгрия');
 
 		await allCities(page).getByRole('button', { name: 'Закрыть' }).click();
@@ -274,8 +276,8 @@ test.describe("the origin's city", () => {
 		// Belgrade, the second biggest, would be the second row.
 		await expect(rows(page).first()).toBeVisible();
 		expect(await Promise.all((await rows(page).all()).slice(0, 2).map((row) => read(row)))).toEqual([
-			'Будапешт 🇭🇺 · 1,7 млн',
-			'Сараево 🇧🇦 · 697 тыс.',
+			'Будапешт 🇭🇺 1,7 млн',
+			'Сараево 🇧🇦 697 тыс.',
 		]);
 	});
 
@@ -628,10 +630,15 @@ test.describe('a city card', () => {
 		// A city of 250 000 people is «250 тыс.».
 		await expect
 			.poll(() => readCards(page, ['Будапешт', 'Ниш', 'Сараево']))
-			.toEqual(['Будапешт 🇭🇺 · 1,7 млн Маршрут', 'Ниш 🇷🇸 · 250 тыс. Маршрут', 'Сараево 🇧🇦 · 697 тыс. Маршрут']);
+			.toEqual(['Будапешт 🇭🇺 1,7 млн Маршрут', 'Ниш 🇷🇸 250 тыс. Маршрут', 'Сараево 🇧🇦 697 тыс. Маршрут']);
 		const budapest = cityCard(page, 'Будапешт');
-		// The flag says its country to a screen reader, and as a tooltip.
-		await expect(budapest.getByRole('img', { name: 'Венгрия' })).toHaveAttribute('title', 'Венгрия');
+		// The flag says its country to a screen reader, and as a tooltip; it stands on the name's line, right after it.
+		const flag = budapest.getByRole('img', { name: 'Венгрия' });
+		await expect(flag).toHaveAttribute('title', 'Венгрия');
+		const nameBox = await boxOf(budapest.getByRole('heading'));
+		const flagBox = await boxOf(flag);
+		expect(Math.abs(flagBox.y + flagBox.height / 2 - (nameBox.y + nameBox.height / 2))).toBeLessThan(nameBox.height / 2);
+		expect(flagBox.x).toBeGreaterThanOrEqual(nameBox.x + nameBox.width);
 		const route = budapest.getByRole('link', { name: 'Маршрут' });
 		await expect(route).toHaveAttribute(
 			'href',
@@ -658,14 +665,14 @@ test.describe('a city card', () => {
 
 		// The text as it stands, its spaces unchanged: «toHaveText» and `read` take a no-break space for a space.
 		const facts = await cityCards(page).getByTestId('city-facts').allTextContents();
-		expect(facts.slice(0, 2)).toEqual(['🇭🇺 · 1,7 млн', '🇧🇦 · 697 тыс.']);
+		expect(facts.slice(0, 2)).toEqual(['1,7 млн', '697 тыс.']);
 	});
 
 	test('of a city without a Russian name says its Latin name', async ({ page, ringApi }) => {
 		ringApi.respond(() => ringAroundBelgrade(RUSSIAN));
 		await page.goto(LINK);
 
-		expect(await read(cityCard(page, 'Lukavac'))).toBe('Lukavac 🇧🇦 · 45 тыс. Маршрут');
+		expect(await read(cityCard(page, 'Lukavac'))).toBe('Lukavac 🇧🇦 45 тыс. Маршрут');
 	});
 
 	test('of Kosovo shows ⛳ for a flag, and names Kosovo', async ({ page, ringApi }) => {
@@ -674,7 +681,7 @@ test.describe('a city card', () => {
 		await page.goto(LINK);
 
 		const pristina = cityCard(page, 'Приштина');
-		await expect.poll(() => read(pristina)).toBe('Приштина ⛳ · 550 тыс. Маршрут');
+		await expect.poll(() => read(pristina)).toBe('Приштина ⛳ 550 тыс. Маршрут');
 		await expect(pristina.getByRole('img', { name: 'Косово' })).toHaveAttribute('title', 'Косово');
 	});
 
@@ -692,12 +699,7 @@ test.describe('a city card', () => {
 
 		await expect
 			.poll(() => readCards(page, ['Сараево', 'Подгорица', 'Будапешт', 'Ниш']))
-			.toEqual([
-				'Сараево 🇧🇦 · 697 тыс. Маршрут',
-				'Подгорица 🇲🇪 · 237 тыс. Маршрут',
-				'Будапешт 🇭🇺 · 1,7 млн Маршрут',
-				'Ниш 🇷🇸 · 250 тыс. Маршрут',
-			]);
+			.toEqual(['Сараево 🇧🇦 697 тыс. Маршрут', 'Подгорица 🇲🇪 237 тыс. Маршрут', 'Будапешт 🇭🇺 1,7 млн Маршрут', 'Ниш 🇷🇸 250 тыс. Маршрут']);
 	});
 
 	test('a held visa chosen in «Мои визы» brings the cities of the countries it opens', async ({ page, ringApi }) => {
@@ -734,7 +736,7 @@ test.describe('a city card', () => {
 		await page.goto(`${LINK}&cit=RUS,SRB`);
 
 		// Hungary is in the EU.
-		await expect.poll(() => read(cityCard(page, 'Будапешт'))).toBe('Будапешт 🇭🇺 · 1,7 млн Маршрут');
+		await expect.poll(() => read(cityCard(page, 'Будапешт'))).toBe('Будапешт 🇭🇺 1,7 млн Маршрут');
 		await expect(cityCards(page).filter({ hasText: /номер/u })).toHaveCount(0);
 	});
 });

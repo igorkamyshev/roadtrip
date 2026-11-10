@@ -25,14 +25,18 @@ export function CityCard({ city, origin, chosen, onTap }: CityCardProps): ReactE
 			data-city={city.id}
 			aria-current={chosen ? 'true' : undefined}
 		>
-			<h3>
-				{/* Its tap area covers the card, and the keyboard reaches it: a card with a link in it is no button. */}
-				<button type="button" className="c-card-tap" onClick={onTap}>
-					{city.name}
-				</button>
-			</h3>
+			{/* The name and right after it, on its line, the flag; outside the heading, whose name is the city's. */}
+			<div className="c-card-title">
+				<h3>
+					{/* Its tap area covers the card, and the keyboard reaches it: a card with a link in it is no button. */}
+					<button type="button" className="c-card-tap" onClick={onTap}>
+						{city.name}
+					</button>
+				</h3>{' '}
+				<CountryFlag zone={city.zone} />
+			</div>
 			<div className="muted small" data-testid="city-facts">
-				<CityFacts city={city} />
+				{populationText(city.population)}
 			</div>
 			<div className="acts">
 				{/* A quiet link, not the card's brightest thing (#75). */}
@@ -44,30 +48,26 @@ export function CityCard({ city, origin, chosen, onTap }: CityCardProps): ReactE
 	);
 }
 
-/** «🇭🇺 · 1,7 млн»: the country's flag, named for a screen reader and in a tooltip, and the population. */
-function CityFacts({ city }: { readonly city: City }): ReactElement {
-	const country = countryName(city.zone);
+/** The flag of the city's country, named for a screen reader and in a tooltip. */
+function CountryFlag({ zone }: { readonly zone: string }): ReactElement {
+	const country = countryName(zone);
 	return (
-		<>
-			{/* oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- an emoji is text, not an image file: a span named as an image is how a screen reader reads it by name */}
-			<span role="img" aria-label={country} title={country}>
-				{countryFlag(city.zone)}
-			</span>
-			{` · ${populationText(city.population)}`}
-		</>
+		// oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- an emoji is text, not an image file: a span named as an image is how a screen reader reads it by name
+		<span role="img" aria-label={country} title={country}>
+			{countryFlag(zone)}
+		</span>
 	);
 }
 
-/** A city in a row of a list: its name, and under it its flag and population. */
+/** A city in a row of a list: its name with its flag, and under them its population. */
 export function CityRowText({ city }: { readonly city: City }): ReactElement {
 	return (
 		<span className="row-main">
 			<span className="row-name" data-testid="row-name">
 				{city.name}
-			</span>
-			<span className="row-sub">
-				<CityFacts city={city} />
-			</span>
+			</span>{' '}
+			<CountryFlag zone={city.zone} />
+			<span className="row-sub">{populationText(city.population)}</span>
 		</span>
 	);
 }
