@@ -117,7 +117,7 @@ test.describe('the sheet «Откуда едем»', () => {
 		await startSheet(page).getByRole('button', { name: 'Указать на карте' }).click();
 
 		await expect(startSheet(page)).toHaveCount(0);
-		await expect(page.getByText('Двигайте карту, чтобы поставить точку под булавку')).toBeVisible();
+		await expect(page.getByText('Двигайте карту мышью или стрелками, чтобы поставить точку под булавку')).toBeVisible();
 	});
 
 	test('«Где я» says under the buttons when the browser gives no position', async ({ page }) => {

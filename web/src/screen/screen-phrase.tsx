@@ -7,7 +7,7 @@ import { Phrase, PhraseToken, VisaRulesDate } from './phrase.tsx';
 import type { ScreenModel } from './use-screen.ts';
 
 export function ScreenPhrase({ screen }: { readonly screen: ScreenModel }): ReactElement {
-	const { state, shown, card, openSheet } = screen;
+	const { state, shown, card, starts, openSheet } = screen;
 	const { start } = state;
 	const { cities } = shown;
 	const label = useMemo(() => startLabel(start, cities), [start, cities]);
@@ -19,6 +19,7 @@ export function ScreenPhrase({ screen }: { readonly screen: ScreenModel }): Reac
 			onStart={() => {
 				openSheet('start');
 			}}
+			startRef={starts.startSlot}
 			onInfo={() => {
 				openSheet('info');
 			}}
