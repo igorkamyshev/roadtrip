@@ -95,7 +95,7 @@ Then the site itself: `https://roadtrip.kamyshev.me/` (the client), `/data/citie
 A trigger points at an existing Worker, so create the Worker first. Through the Cloudflare API:
 
 1. `PUT /accounts/{account_id}/workers/scripts/<name>` with a placeholder module (`export default { fetch() { return new Response() } }`, as multipart form data). Its result holds the Worker's `tag`.
-2. `POST /accounts/{account_id}/builds/triggers` with `external_script_id` = that tag, `repo_connection_uuid` `6bdf9023-7ce9-4c78-a568-35a017431662` (`igorkamyshev/roadtrip`, made with `PUT /accounts/{account_id}/builds/repos/connections`), `build_token_uuid` above, and the settings above.
+2. `POST /accounts/{account_id}/builds/triggers` with `external_script_id` = that tag, `repo_connection_uuid` `6bdf9023-7ce9-4c78-a568-35a017431662` (`igorkamyshev/roadtrip`, made with `PUT /accounts/{account_id}/builds/repos/connections`), `build_token_uuid` above, and the settings above. `branch_includes` is never empty (the API answers 12002 «Invalid request body»): a trigger that no push starts names a branch nobody pushes, as the stand's `stand-deploys-only-on-request` (`worker/README.md`, «The prototype stand»).
 3. Build variables, if it needs any: below.
 4. `POST /accounts/{account_id}/builds/triggers/<trigger_uuid>/builds` with `{ "branch": "main" }` to deploy the real code, then read `GET /accounts/{account_id}/builds/builds/<build_uuid>` until `status` is `stopped` and check `build_outcome`.
 
@@ -107,6 +107,28 @@ A Worker that others name (in `tail_consumers`, a service binding) is deployed b
 - **A Worker's secret** (`wrangler secret put` or `PUT /accounts/{account_id}/workers/scripts/<name>/secrets`) survives every deploy. It lives only in Cloudflare, so its Worker's README names it: `roadtrip`'s `SHERPA_API_KEY`, which the Owner sets. Never ask for its value or put it in the repository.
 - **Public values** go in `vars` in `wrangler.jsonc`: the PostHog project token, the basemap's archive key.
 - A var and a secret are both bindings and cannot share a name: before moving a secret into `vars`, delete the secret, then deploy.
+
+## Rate limit
+
+The zone `kamyshev.me` (`705a9c6557385f573cc59d162699992e`, Free plan) has one rule in its phase `http_ratelimit`: «roadtrip: 20 requests to /api/ring per 10 s per IP», counted per `ip.src` and `cf.colo.id`, blocking for 10 s with 429. `GET /zones/<zone>/rulesets/phases/http_ratelimit/entrypoint` reads it.
+
+From a cloud session it cannot be seen hitting: the session's requests leave from changing addresses (160.79.106.x), and 85 of them in a few seconds were all answered. A Worker's requests to the zone come from one address, `2a06:98c0:3600::103`, so test through the stand (`worker/README.md`, «The prototype stand»): 60 requests in 5 s got 19 rings and 41 answers 429. Who the zone saw, by address (sampled; the zone has no access to the firewall's events):
+
+```js
+async () => {
+	const query = `query($zone: String!, $since: Time!) { viewer { zones(filter: {zoneTag: $zone}) {
+		httpRequestsAdaptiveGroups(limit: 30, filter: {datetime_geq: $since, clientRequestHTTPHost: "roadtrip.kamyshev.me", clientRequestPath: "/api/ring"}) {
+			count dimensions { edgeResponseStatus clientIP coloCode }
+		}
+	} } }`;
+	const since = new Date(Date.now() - 20 * 60 * 1000).toISOString();
+	return cloudflare.request({
+		method: 'POST',
+		path: '/graphql',
+		body: { query, variables: { zone: '705a9c6557385f573cc59d162699992e', since } },
+	});
+};
+```
 
 ## Logs
 
