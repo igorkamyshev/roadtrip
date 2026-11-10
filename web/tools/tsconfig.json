@@ -1,0 +1,6 @@
+{
+	// The tools that drive the built client in Chromium (the demo, its shots and videos, the mark's files): Node, plus
+	// the DOM for code that runs in the page, as the screen tests (e2e/tsconfig.json), whose fixtures the demo serves.
+	"extends": "../e2e/tsconfig.json",
+	"include": ["./**/*.ts"]
+}

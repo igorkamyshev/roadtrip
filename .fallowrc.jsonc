@@ -80,6 +80,7 @@
 			{ "name": "worker-test", "patterns": ["worker/src/**/*.test.ts", "worker/test/**"] },
 			{ "name": "worker", "patterns": ["worker/**"] },
 			{ "name": "web-e2e", "patterns": ["web/e2e/**"] },
+			{ "name": "web-tools", "patterns": ["web/tools/**"] },
 			{
 				"name": "web-config",
 				"patterns": [
@@ -111,6 +112,8 @@
 			// The screen reads the engine's types through the ring API's (worker/api), never its code.
 			{ "from": "web", "allow": ["data", "rules", "worker"], "allowTypeOnly": ["engine"] },
 			{ "from": "web-e2e", "allow": ["web", "data", "rules", "worker"], "allowTypeOnly": ["engine"] },
+			// The tools that drive the built client (web/README.md, «Demo», «Mark»): the demo serves the screen tests' doubles.
+			{ "from": "web-tools", "allow": ["web-e2e", "web", "data", "rules", "worker"], "allowTypeOnly": ["engine"] },
 			{ "from": "web-config", "allow": ["web-e2e"] },
 			{ "from": "lint", "allow": [] },
 			{ "from": "scripts", "allow": [] },

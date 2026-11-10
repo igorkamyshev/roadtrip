@@ -1,6 +1,8 @@
 // The page's head (#70): Роадтрип's name and description, its mark as the tab's icon and on a phone's home screen, and
 // the picture a messenger shows for a link. The icons are images, so these tests read their pixels: a corner for the
-// square under the mark, the middle for the origin's red dot.
+// square under the mark, the middle for the origin's red dot. The colours they expect are the screen's palette, read
+// from the page (#70: «из палитры экрана»): a change of the palette fails here until `pnpm --filter web icons` has
+// written the mark's files anew and `theme-color` and the manifest follow it.
 import type { Page } from '@playwright/test';
 import { expect, openInProduction, PRODUCTION, test } from './fixtures.ts';
 
@@ -8,17 +10,37 @@ import { expect, openInProduction, PRODUCTION, test } from './fixtures.ts';
 const DESCRIPTION =
 	'Роадтрип показывает на карте, куда доехать на машине за N часов или дней с учётом виз и ВНЖ, закрытых стран и территорий, пунктов пропуска и времени на границе';
 
-/** The light scheme's `--ring`, the square of the home screen's icon. */
-const RING_BLUE = '#1b5fd6';
-/** `--start` of the light scheme and of the dark one, the origin's dot in the middle of the mark. */
-const START_RED = '#e2412c';
-const START_RED_DARK = '#ff6a52';
-/** The light scheme's `--bg`, the link's picture's background. */
-const BACKGROUND = '#eef1ef';
+/** The tokens of the palette the mark is drawn in: the screen's background, the ring's blue, the origin's red. */
+interface Palette {
+	readonly bg: string;
+	readonly ring: string;
+	readonly start: string;
+}
 
-/** The head's metadata: each `meta` by its `name` or `property`, and each `link` by its `rel`, `type` and `sizes`. */
+/** The palette of the scheme the page is in, from its `:root` (src/styles.css). */
+async function paletteOf(page: Page): Promise<Palette> {
+	return page.evaluate(() => {
+		const style = getComputedStyle(document.documentElement);
+		const token = (name: string): string => style.getPropertyValue(name).trim().toLowerCase();
+		return { bg: token('--bg'), ring: token('--ring'), start: token('--start') };
+	});
+}
+
+/** The palettes of the light scheme and the dark one; the page is left in the light one. */
+async function palettesOf(page: Page): Promise<{ readonly light: Palette; readonly dark: Palette }> {
+	await page.emulateMedia({ colorScheme: 'dark' });
+	const dark = await paletteOf(page);
+	await page.emulateMedia({ colorScheme: 'light' });
+	return { light: await paletteOf(page), dark };
+}
+
+/**
+ * The head's metadata: each `meta` by its `name` or `property`, `theme-color` by its `media`, and each `link` by its
+ * `rel`, `type` and `sizes`.
+ */
 interface Head {
 	readonly meta: Readonly<Record<string, string>>;
+	readonly themeColor: Readonly<Record<string, string>>;
 	readonly links: readonly { readonly rel: string; readonly href: string; readonly type: string; readonly sizes: string }[];
 }
 
@@ -33,6 +55,11 @@ async function headOf(page: Page): Promise<Head> {
 				meta.name === '' ? (meta.getAttribute('property') ?? '') : meta.name,
 				meta.content,
 			]),
+		),
+		themeColor: Object.fromEntries(
+			Array.from(document.head.querySelectorAll('meta'))
+				.filter((meta) => meta.name === 'theme-color')
+				.map((meta) => [meta.media, meta.content]),
 		),
 		links: Array.from(document.head.querySelectorAll('link')).map((link) => ({
 			rel: link.rel,
@@ -115,6 +142,7 @@ test('the page is Роадтрип, and its description names visas, closed coun
 test('a phone puts the mark on a blue square on its home screen, under the name Роадтрип', async ({ page, request }) => {
 	await page.goto('/');
 	const head = await headOf(page);
+	const { light } = await palettesOf(page);
 
 	const icons = [
 		{ src: '/icon-192.png', sizes: '192x192', type: 'image/png' },
@@ -124,7 +152,14 @@ test('a phone puts the mark on a blue square on its home screen, under the name 
 	const manifest = await request.get(hrefIn(head, { rel: 'manifest' }));
 	expect(manifest.status()).toBe(200);
 	// Only the icon and its name: no app of its own on the home screen (#70, out of scope), so `display` is `browser`.
-	expect(await manifest.json()).toMatchObject({ name: 'Роадтрип', short_name: 'Роадтрип', display: 'browser', icons });
+	expect(await manifest.json()).toMatchObject({
+		name: 'Роадтрип',
+		short_name: 'Роадтрип',
+		display: 'browser',
+		theme_color: light.bg,
+		background_color: light.bg,
+		icons,
+	});
 
 	const homeIcons = [
 		{ src: hrefIn(head, { rel: 'apple-touch-icon' }), side: 180 },
@@ -142,39 +177,47 @@ test('a phone puts the mark on a blue square on its home screen, under the name 
 		).toMatchObject({
 			width: side,
 			height: side,
-			colors: [RING_BLUE, START_RED],
+			colors: [light.ring, light.start],
 		});
 	}
 });
 
-test('the tab shows the mark, its origin red in the light scheme and in the dark one', async ({ page, request }) => {
+test("the tab shows the mark, its origin red in the light scheme and in the dark one, on the screen's background", async ({
+	page,
+	request,
+}) => {
 	await page.goto('/');
 	const head = await headOf(page);
+	const { light, dark } = await palettesOf(page);
+
+	// The browser's bars around the screen, in each scheme.
+	expect(head.themeColor).toEqual({ '(prefers-color-scheme: light)': light.bg, '(prefers-color-scheme: dark)': dark.bg });
 
 	const svg = hrefIn(head, { rel: 'icon', type: 'image/svg+xml' });
-	expect((await readImage(page, svg, { points: [[32, 32]], drawn: 64 })).colors).toEqual([START_RED]);
+	expect((await readImage(page, svg, { points: [[32, 32]], drawn: 64 })).colors).toEqual([light.start]);
 	await page.emulateMedia({ colorScheme: 'dark' });
-	expect((await readImage(page, svg, { points: [[32, 32]], drawn: 64 })).colors).toEqual([START_RED_DARK]);
+	expect((await readImage(page, svg, { points: [[32, 32]], drawn: 64 })).colors).toEqual([dark.start]);
 
 	// For the browsers without SVG icons, 32 px. The page cannot fetch a path that ends in favicon.ico under
 	// Playwright's routes, so the test does.
 	const ico = await request.get(hrefIn(head, { rel: 'icon', sizes: '32x32' }));
 	expect(ico.status()).toBe(200);
 	const data = `data:image/x-icon;base64,${(await ico.body()).toString('base64')}`;
-	expect(await readImage(page, data, { points: [[16, 16]] })).toMatchObject({ width: 32, height: 32, colors: [START_RED] });
+	expect(await readImage(page, data, { points: [[16, 16]] })).toMatchObject({ width: 32, height: 32, colors: [light.start] });
 });
 
 test("a link to the site shows a picture of 1200×630 with the mark on the screen's background", async ({ page }) => {
 	await openInProduction(page);
+	const { light } = await palettesOf(page);
 
 	expect((await headOf(page)).meta).toMatchObject({
 		'og:image': `${PRODUCTION}/og.png`,
 		'twitter:card': 'summary_large_image',
 	});
-	expect(await readImage(page, `${PRODUCTION}/og.png`, { points: [[0, 0]], find: START_RED })).toEqual({
+	expect(await readImage(page, `${PRODUCTION}/og.png`, { points: [[0, 0]], find: light.start })).toEqual({
 		width: 1200,
 		height: 630,
-		colors: [BACKGROUND],
+		colors: [light.bg],
 		found: true,
 	});
 });
