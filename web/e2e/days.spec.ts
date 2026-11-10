@@ -3,7 +3,7 @@
 // (#140). The slider shows one unit at a time and folds the other into a tab, «дни ↑» over the hours' panel or «часы ↓»
 // under the days'; it turns to the other unit only once that is committed. The link says `d=D` for a day.
 import type { Locator, Page } from '@playwright/test';
-import { allowGeolocation, BELGRADE, expect, LINK_8_HOURS_RUS, squareRing, test, visaRules } from './fixtures.ts';
+import { allowGeolocation, BELGRADE, expect, LINK_LAST_HOUR_RUS, squareRing, test, visaRules } from './fixtures.ts';
 import {
 	boxOf,
 	dottedHours,
@@ -41,7 +41,7 @@ test.beforeEach(async ({ context, ringApi }) => {
 });
 
 test('in hours the slider has eight cells and «дни ↑» over them; a key up from 8 h asks for day 2, 8–16 h', async ({ page, ringApi }) => {
-	await page.goto(LINK_8_HOURS_RUS);
+	await page.goto(LINK_LAST_HOUR_RUS);
 	await expectRingCard(page, '7–8 ч');
 	await expect(sliderCells(page)).toHaveCount(8);
 	await expect(sliderTab(page)).toHaveText('дни ↑');
@@ -85,7 +85,7 @@ test('a tap on «часы ↓» chooses 8 h, and a tap on «дни ↑» day 2',
 });
 
 test('a drag from an hour onto «дни ↑» chooses day 2 when let go, and the column stays in hours until then', async ({ page, ringApi }) => {
-	await page.goto(LINK_8_HOURS_RUS);
+	await page.goto(LINK_LAST_HOUR_RUS);
 	await expectRingCard(page, '7–8 ч');
 	const [from, tab] = await Promise.all([boxOf(sliderHour(page, 6)), boxOf(sliderTab(page))]);
 
@@ -121,7 +121,7 @@ test('a tap on the panel over the cell of 8 h, short of the tab, chooses 8 h', a
 });
 
 test('the tab is as wide as the panel, and a tap just past it, over the map, takes it too', async ({ page }) => {
-	await page.goto(LINK_8_HOURS_RUS);
+	await page.goto(LINK_LAST_HOUR_RUS);
 	await expectRingCard(page, '7–8 ч');
 	const [tab, panel] = await Promise.all([boxOf(sliderTab(page)), boxOf(sliderPanel(page))]);
 	expect(tab.width).toBeCloseTo(panel.width, 0);
@@ -165,7 +165,7 @@ test('the link d=7, the last day, asks for the ring of 48–56 h', async ({ page
 for (const [what, search] of [
 	['both h and d', 'h=5&d=3'],
 	['a day after the last, 7', 'd=8'],
-	['an hour of the 12 h before #140, past the last, 8', 'h=10'],
+	['an hour past the last, 8, as old links have (#140)', 'h=10'],
 	['day 1, which the hours are', 'd=1'],
 ]) {
 	test(`a link with ${what} opens 1 h`, async ({ page, ringApi }) => {
@@ -226,7 +226,7 @@ test.describe('on the wide screen', () => {
 		page,
 		ringApi,
 	}) => {
-		await page.goto(LINK_8_HOURS_RUS);
+		await page.goto(LINK_LAST_HOUR_RUS);
 		await expectRingCard(page, '7–8 ч');
 		await expect(sliderCells(page)).toHaveCount(8);
 		await expect(sliderTab(page)).toHaveText('дни →');
@@ -279,7 +279,7 @@ test.describe('on the wide screen', () => {
 		page,
 		ringApi,
 	}) => {
-		await page.goto(LINK_8_HOURS_RUS);
+		await page.goto(LINK_LAST_HOUR_RUS);
 		await expectRingCard(page, '7–8 ч');
 		expect(await tabRightOfCells(page)).toBe(true);
 
