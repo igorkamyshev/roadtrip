@@ -9,6 +9,7 @@
 	},
 	"scripts": {
 		"deploy": "pnpm --filter data fetch-dataset && pnpm --filter web build && wrangler deploy",
+		"deploy:stand": "pnpm --filter web build && wrangler deploy stand/index.ts --config stand/wrangler.jsonc",
 		"dev": "wrangler dev",
 		"test": "vitest run",
 		"typecheck": "tsc --noEmit -p tsconfig.worker.json && tsc --noEmit -p tsconfig.test.json",
