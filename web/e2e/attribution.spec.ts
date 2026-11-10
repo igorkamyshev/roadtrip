@@ -1,14 +1,10 @@
 // The map's attribution (spec #20 «Экран», «Карта»): the data's sources live behind ⓘ «Что важно знать», and show under
 // the phrase for 5 s once the screen opens, as OpenStreetMap's attribution guidelines want them seen.
 import { expect, test } from './fixtures.ts';
-import { phrase, sources } from './screen.ts';
-
-/** Where the page's clock stands, held, while the screen opens. */
-const START = Date.parse('2026-11-09T12:00:00Z');
+import { holdTheClock, phrase, sources } from './screen.ts';
 
 test('the sources show under the phrase when the screen opens, then only behind ⓘ', async ({ page }) => {
-	await page.clock.install({ time: START });
-	await page.clock.pauseAt(START + 1000);
+	await holdTheClock(page);
 	await page.goto('/');
 
 	const osm = sources(page).getByRole('link', { name: 'OpenStreetMap' });

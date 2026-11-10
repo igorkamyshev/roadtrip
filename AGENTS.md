@@ -17,7 +17,7 @@ Read a package's `AGENTS.md` before working in it:
 
 `web` is the client, the one screen, built into the Worker's static assets. Its `README.md` says where the state, the ring requests, the map's layers, the phrase's slots and the events to PostHog are, how the source maps are uploaded, how the screen tests run (`pnpm e2e`, Playwright), and how to show the screen without the Worker (`pnpm --filter web demo`, a video of it).
 
-`lint` holds roadtrip's own lint rules (an Oxlint JS plugin, `lint/plugin.ts`, each rule in `lint/rules/` with its tests), the checks of the project that fallow cannot express, fallow's policy pack, and the Claude Code hook that lints an agent's edits.
+`lint` holds roadtrip's own lint rules (an Oxlint JS plugin, `lint/plugin.ts`, each rule in `lint/rules/` with its tests, the screen tests' held clock among them), the checks of the project that fallow cannot express (the screen tests' helpers, each in one place, among them), fallow's policy pack, and the Claude Code hook that lints an agent's edits.
 
 ## Checks
 

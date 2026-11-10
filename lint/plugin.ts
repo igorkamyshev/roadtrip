@@ -1,5 +1,6 @@
 // roadtrip's own lint rules, loaded by Oxlint as a JS plugin (`jsPlugins` in .oxlintrc.json).
 // Each rule turns a line of CODING_STANDARDS.md or ADR 0002 into a check.
+import { clockThroughScreen } from './rules/clock-through-screen.ts';
 import { disableNeedsReason } from './rules/disable-needs-reason.ts';
 import { jsonThroughEngine } from './rules/json-through-engine.ts';
 import { noCaptureException } from './rules/no-capture-exception.ts';
@@ -12,6 +13,7 @@ import { timeThroughDeps } from './rules/time-through-deps.ts';
 export default {
 	meta: { name: 'roadtrip' },
 	rules: {
+		'clock-through-screen': clockThroughScreen,
 		'disable-needs-reason': disableNeedsReason,
 		'json-through-engine': jsonThroughEngine,
 		'no-capture-exception': noCaptureException,

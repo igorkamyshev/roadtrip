@@ -1,4 +1,6 @@
 {
 	"wide": "(min-width: 720px) and (min-height: 500px)",
-	"mouse": "(hover: hover) and (pointer: fine)"
+	"mouse": "(hover: hover) and (pointer: fine)",
+	"dark": "(prefers-color-scheme: dark)",
+	"reduced-motion": "(prefers-reduced-motion: reduce)"
 }

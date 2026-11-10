@@ -30,6 +30,9 @@ export const WINDOWS: readonly TestWindow[] = [
 	{ width: 1920, height: 1080, pointer: 'mouse', layout: 'wide' },
 ];
 
+/** The desktop of the tickets' checks, a row of the table. */
+export const DESKTOP: TestWindow = { width: 1440, height: 900, pointer: 'mouse', layout: 'wide' };
+
 /** The windows of the wide layout. */
 export const WIDE_WINDOWS = WINDOWS.filter((window) => window.layout === 'wide');
 

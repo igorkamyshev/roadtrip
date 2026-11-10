@@ -13,6 +13,7 @@ import type { FeatureCollection, GeoJSON } from 'geojson';
 import type { ExpressionSpecification, FilterSpecification, GeoJSONSource, Map as MapLibre } from 'maplibre-gl';
 import type { RingAnswer } from 'worker/api';
 import type { LatLon } from '../state/point.ts';
+import { matchesMedia } from '../media.ts';
 
 export type RingGeometry = Extract<RingAnswer, { outcome: 'ring' }>['ring'];
 
@@ -232,7 +233,7 @@ function isFeatureCollection(value: unknown): value is FeatureCollection {
 
 /** Runs the stripes until the returned function stops them. Still stripes for those who reduce motion. */
 export function runStripes(map: MapLibre): () => void {
-	if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
+	if (matchesMedia('reduced-motion')) {
 		return () => {};
 	}
 	let frame = 0;
