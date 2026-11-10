@@ -25,7 +25,7 @@ Every finding of Oxlint, Stylelint, fallow and our own rules in `lint/` is an er
 
 - Fix the code until the checks pass: `pnpm format`, `pnpm lint`.
 - A rule that is wrong for one line is disabled on that line, by name, with the reason: `// oxlint-disable-next-line <rule> -- <why>`, in CSS `/* stylelint-disable-next-line <rule> -- <why> */`.
-- The rule set (`.oxlintrc.json`, `stylelint.config.mjs`, `.fallowrc.jsonc`, `lint/`) is the Owner's call: propose a change with its reason instead of making it.
+- The rule set (`.oxlintrc.json`, `stylelint.config.mjs`, `.fallowrc.jsonc`, `lint/`) is the Owner's call: propose a change with its reason instead of making it. A new package is one: fallow wants a zone for its files in `.fallowrc.jsonc`'s `boundaries`.
 - Before a refactor, `pnpm health` shows where complexity and churn pile up.
 
 ## Deploy and services
