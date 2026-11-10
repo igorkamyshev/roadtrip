@@ -1,9 +1,8 @@
 // The origin (spec #20 «Экран»: phrase, pin; stories 1, 3, 4, 6): geolocation on the first visit, the screen without
 // it, the pin mode, and the marker where the person put it.
-import { allowGeolocation, expect, squareRing, test } from './fixtures.ts';
+import { allowGeolocation, BELGRADE, expect, squareRing, test } from './fixtures.ts';
 import { boxOf, dragMap, expectRingCard, firstCard, mapCenter, phrase, ringOnMap, slider, startOnMap, theMap } from './screen.ts';
 
-const BELGRADE = { lat: 44.8176, lon: 20.4573 };
 /** The pin mode's hint with a mouse, which moves the map either way (#107), and without one. */
 const MOUSE_HINT = 'Двигайте карту мышью или стрелками, чтобы поставить точку под булавку';
 const TOUCH_HINT = 'Двигайте карту, чтобы поставить точку под булавку';

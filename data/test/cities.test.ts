@@ -65,6 +65,7 @@ function build(places: readonly Place[], names: readonly AlternateName[] = [], w
 		cities: lines(places.map((place) => cityLine(place))),
 		alternateNames: lines(names.map((name) => nameLine(name))),
 		wikidataLabels,
+		russianNames: new Map(),
 		graph: zones,
 	});
 }

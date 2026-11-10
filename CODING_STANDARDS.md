@@ -11,7 +11,7 @@ Rules a reviewer checks by judgement: when a ticket's work is merged, and when a
 - An e2e test waits for a state (the ring card's `data-state`), not for copy; only a test about the copy checks the copy.
 - What belongs to one state of the screen is checked in one reading (one `expect.poll` or one call of a reading of `e2e/screen.ts`, over all its values): a reading after a poll sees a later moment (#115).
 - A failing test is fixed, not deleted or skipped.
-- A new test of a seam fails on the code before the change, or on a wrong way of doing it that the PR names: one that passes on both checks nothing.
+- A new test of a seam fails on the code before the change, or on a wrong way of doing it that the PR names: one that passes on both checks nothing. A guard of what stays as it was (the narrow screen, touch) passes before the change too, so it names the wrong way it catches, in its title or a comment (a hover outside `@media (--mouse)`), and the PR names it.
 
 ## Product
 

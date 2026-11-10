@@ -5,11 +5,11 @@
 // screen keeps its fixed room (e2e/cities.spec.ts, e2e/ring.spec.ts). Read by the panels' boxes and the map's own
 // projection of the ring and the city, never by pixels.
 import type { Page } from '@playwright/test';
-import type { Access } from 'worker/api';
-import { expect, squareRing, test, visaRules } from './fixtures.ts';
+import { BELGRADE, BUDAPEST, expect, LONGEST, OPEN_AROUND_SERBIA, squareRing, test, visaRules } from './fixtures.ts';
 import {
 	boxOf,
 	cityCard,
+	EDGE,
 	expectRingCard,
 	holdTheClock,
 	labelsOnMap,
@@ -25,26 +25,11 @@ import {
 } from './screen.ts';
 import { onWindow, WIDE_WINDOWS, windowName } from './windows.ts';
 
-const BELGRADE = { lat: 44.8176, lon: 20.4573 };
-/** The biggest city of the fixtures in the ring, the first card after the ring's. */
-const BUDAPEST = { lat: 47.498, lon: 19.04 };
-/** Belgrade at 12 h with four citizenships and four visas: the longest phrase, the highest plate. */
-const LONGEST = '/#/?p=44.81760,20.45730&h=12&cit=BIH,MNE,RUS,SRB&visas=CAN,GBR,SCHENGEN,USA';
-const OPEN: Access = {
-	SRB: { mode: 'start' },
-	BIH: { mode: 'visa_free', citizenship: 'RUS' },
-	MNE: { mode: 'visa_free', citizenship: 'RUS' },
-	HUN: { mode: 'visa_free', citizenship: 'RUS' },
-	ROU: { mode: 'visa_free', citizenship: 'RUS' },
-	HRV: { mode: 'visa_free', citizenship: 'RUS' },
-};
 /** The ring of every answer: a band from 1° to 3° around Belgrade. */
 const RING = squareRing(BELGRADE.lat, BELGRADE.lon, [1, 3]);
 /** Another ring: a band from 0.5° to 1.5°. */
 const NARROWER = squareRing(BELGRADE.lat, BELGRADE.lon, [0.5, 1.5]);
 
-/** The gap between the free area and the panels and edges around it (#85). */
-const EDGE = 12;
 /** A projected point may land this far off, in CSS pixels. */
 const PIXEL = 1;
 /** Longer than the data's sources stay in the phrase's plate once the screen opens. */
@@ -87,7 +72,7 @@ async function view(page: Page): Promise<unknown> {
 }
 
 test.beforeEach(({ ringApi }) => {
-	ringApi.respond(() => ({ ...RING, ...visaRules(OPEN) }));
+	ringApi.respond(() => ({ ...RING, ...visaRules(OPEN_AROUND_SERBIA) }));
 });
 
 for (const window of WIDE_WINDOWS) {
@@ -133,7 +118,7 @@ for (const window of WIDE_WINDOWS) {
 
 		test('a ring that comes while a modal is open shows whole in the free area once it closes', async ({ page, ringApi }) => {
 			// Without the US visa the ring is a narrower band: the camera comes closer.
-			ringApi.respond((call) => ({ ...(call.visas?.includes('USA') === true ? RING : NARROWER), ...visaRules(OPEN) }));
+			ringApi.respond((call) => ({ ...(call.visas?.includes('USA') === true ? RING : NARROWER), ...visaRules(OPEN_AROUND_SERBIA) }));
 			await holdTheClock(page);
 			await page.goto(LONGEST);
 			await expectRingCard(page, '11–12 ч');

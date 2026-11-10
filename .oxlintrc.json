@@ -226,8 +226,15 @@
 				"playwright/prefer-native-locators": "error",
 				"playwright/no-raw-locators": ["error", { "allowed": ["[aria-current=\"true\"]", "[data-hours]", "[data-tab]", "[data-cached]"] }],
 				// A fixture that uses no other fixture takes `{}`, as Playwright asks (the preset turns it off too).
-				"eslint/no-empty-pattern": "off"
+				"eslint/no-empty-pattern": "off",
+				// The page's clock is held by holdTheClock of e2e/screen.ts (CODING_STANDARDS.md, Tests).
+				"roadtrip/clock-through-screen": "error"
 			}
+		},
+		{
+			// Where the screen's tests hold the page's clock.
+			"files": ["web/e2e/screen.ts"],
+			"rules": { "roadtrip/clock-through-screen": "off" }
 		}
 	]
 }

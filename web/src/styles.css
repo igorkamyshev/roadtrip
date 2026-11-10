@@ -52,7 +52,7 @@
 	--beside-slider: calc(var(--edge-right) + var(--slider-width) + var(--between));
 }
 
-@media (prefers-color-scheme: dark) {
+@media (--dark) {
 	:root:not([data-theme='light']) {
 		--bg: #0f1413;
 		--surface: #19201f;
@@ -187,7 +187,7 @@ a {
 	color: #fff;
 }
 
-@media (prefers-color-scheme: dark) {
+@media (--dark) {
 	:root:not([data-theme='light']) .btn.primary {
 		color: #0b1630;
 	}
@@ -642,7 +642,7 @@ a {
 }
 
 /* On the dark theme's lighter blue, the dark text of .btn.primary. */
-@media (prefers-color-scheme: dark) {
+@media (--dark) {
 	:root:not([data-theme='light']) .sl-cell.on b,
 	:root:not([data-theme='light']) .sl-tab.on {
 		color: #0b1630;
@@ -1160,7 +1160,7 @@ a {
 	}
 }
 
-@media (prefers-reduced-motion: reduce) {
+@media (--reduced-motion) {
 	*,
 	*::before,
 	*::after {

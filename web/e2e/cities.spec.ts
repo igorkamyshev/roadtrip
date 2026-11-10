@@ -5,7 +5,7 @@
 // what decides whether `squareRing` holds them.
 import type { Locator, Page } from '@playwright/test';
 import type { Access } from 'worker/api';
-import { allowGeolocation, expect, serveCities, squareRing, test, visaRules } from './fixtures.ts';
+import { allowGeolocation, BELGRADE, BUDAPEST, expect, LINK_3_HOURS, NIS, serveCities, squareRing, test, visaRules } from './fixtures.ts';
 import {
 	boxOf,
 	carousel,
@@ -25,11 +25,6 @@ import {
 	sliderHour,
 	tapMap,
 } from './screen.ts';
-
-const BELGRADE = { lat: 44.8176, lon: 20.4573 };
-const LINK = '/#/?p=44.81760,20.45730&h=3';
-const BUDAPEST = { lat: 47.498, lon: 19.04 };
-const NIS = { lat: 43.325, lon: 21.903 };
 
 /** Longer than any easing of the map's camera: MapLibre's `easeTo` takes 500 ms. */
 const EASING_PAST_MS = 2000;
@@ -75,7 +70,7 @@ test.beforeEach(async ({ context }) => {
 test.describe('the first card', () => {
 	test('counts the cities in the ring whose countries are open, and their countries', async ({ page, ringApi }) => {
 		ringApi.respond(() => ringAroundBelgrade(RUSSIAN));
-		await page.goto(LINK);
+		await page.goto(LINK_3_HOURS);
 
 		// From 1° to 3°, in Serbia, Bosnia and Herzegovina and Montenegro: Sarajevo 2.1°, Niš 1.5°, Podgorica 2.4°,
 		// Tuzla 1.8°, Mostar 2.6°, Subotica 1.3°, Lukavac 1.9°. Not Belgrade, 0.01°, in the ring's hole, nor
@@ -86,7 +81,7 @@ test.describe('the first card', () => {
 	test('says «Городов в кольце нет» for a ring without cities of 15 000 people', async ({ page, ringApi }) => {
 		// From 0.02° to 0.1°: Belgrade, 0.01°, is in the hole, Pančevo, 0.18°, outside.
 		ringApi.respond(() => ({ ...squareRing(BELGRADE.lat, BELGRADE.lon, [0.02, 0.1]), ...visaRules(RUSSIAN) }));
-		await page.goto(LINK);
+		await page.goto(LINK_3_HOURS);
 
 		await expect.poll(() => read(firstCard(page))).toBe('Городов в кольце нет Показываем города больше 15 000 жителей.');
 		await expect(cityCards(page)).toHaveCount(0);
@@ -135,7 +130,7 @@ test.describe('the first card', () => {
 test.describe('the carousel', () => {
 	test('shows the 12 biggest cities after the first card, and «и ещё K» opens the list of all', async ({ page, ringApi }) => {
 		ringApi.respond(() => ringAroundBelgrade(WITH_SCHENGEN_VISA));
-		await page.goto(LINK);
+		await page.goto(LINK_3_HOURS);
 
 		// 16 cities from 1° to 3°, all but Pristina's Kosovo open: the 12 biggest, then 4 more.
 		await expect.poll(() => read(firstCard(page))).toBe('В кольце 2–3 ч 16 городов в 6 странах Листайте → самые крупные');
@@ -163,7 +158,7 @@ test.describe('the carousel', () => {
 
 	test('has no «и ещё» card for 12 cities or fewer', async ({ page, ringApi }) => {
 		ringApi.respond(() => ringAroundBelgrade(RUSSIAN));
-		await page.goto(LINK);
+		await page.goto(LINK_3_HOURS);
 
 		await expect(cityCards(page)).toHaveCount(7);
 		await expect(page.getByRole('button', { name: /и ещё/u })).toHaveCount(0);
@@ -180,7 +175,7 @@ test.describe('the list of all cities', () => {
 		ringApi,
 	}) => {
 		ringApi.respond(() => ringAroundBelgrade(WITH_SCHENGEN_VISA));
-		await page.goto(LINK);
+		await page.goto(LINK_3_HOURS);
 		await page.getByRole('button', { name: /и ещё/u }).click();
 
 		await expect(rows(page)).toHaveCount(16);
@@ -215,7 +210,7 @@ test.describe('the list of all cities', () => {
 			),
 		);
 		ringApi.respond(() => ringAroundBelgrade(RUSSIAN));
-		await page.goto(LINK);
+		await page.goto(LINK_3_HOURS);
 		await expect.poll(() => read(firstCard(page))).toContain('3000 городов в 1 стране');
 		await page.getByRole('button', { name: /и ещё/u }).click();
 
@@ -418,9 +413,10 @@ async function wentTo(page: Page, at: { readonly lat: number; readonly lon: numb
 test.describe('the carousel and the map', () => {
 	test.beforeEach(async ({ page, ringApi }) => {
 		// The page's clock, which the map's easing runs by: a test moves it past the easing, whatever the machine's load.
+		// oxlint-disable-next-line roadtrip/clock-through-screen -- a running clock: the tests wait on the page while it loads, scrolls and snaps, and jump the clock only past the map's easing and the carousel's stop
 		await page.clock.install();
 		ringApi.respond(() => ringAroundBelgrade(WITH_SCHENGEN_VISA));
-		await page.goto(LINK);
+		await page.goto(LINK_3_HOURS);
 		await expect(cityCards(page)).toHaveCount(12);
 		// The map is a chunk of its own: the carousel moves it once it is up and has fit the ring.
 		await mapAtRest(page);
@@ -623,7 +619,7 @@ test.describe('the carousel and the map', () => {
 test.describe('a city card', () => {
 	test("says the name, the country's flag and the population, and leads to Google Maps from the origin", async ({ page, ringApi }) => {
 		ringApi.respond(() => ringAroundBelgrade(WITH_SCHENGEN_VISA));
-		await page.goto(LINK);
+		await page.goto(LINK_3_HOURS);
 
 		// Nothing more for a Russian citizenship with a Schengen visa: no local name, no mark of the entry mode, no line on
 		// Russian plates.
@@ -660,7 +656,7 @@ test.describe('a city card', () => {
 
 	test('keeps the population whole: a no-break space before «млн» and «тыс.»', async ({ page, ringApi }) => {
 		ringApi.respond(() => ringAroundBelgrade(WITH_SCHENGEN_VISA));
-		await page.goto(LINK);
+		await page.goto(LINK_3_HOURS);
 		await expect(cityCards(page)).toHaveCount(12);
 
 		// The text as it stands, its spaces unchanged: «toHaveText» and `read` take a no-break space for a space.
@@ -670,7 +666,7 @@ test.describe('a city card', () => {
 
 	test('of a city without a Russian name says its Latin name', async ({ page, ringApi }) => {
 		ringApi.respond(() => ringAroundBelgrade(RUSSIAN));
-		await page.goto(LINK);
+		await page.goto(LINK_3_HOURS);
 
 		expect(await read(cityCard(page, 'Lukavac'))).toBe('Lukavac 🇧🇦 Население: 45 тыс. Маршрут');
 	});
@@ -678,7 +674,7 @@ test.describe('a city card', () => {
 	test('of Kosovo shows ⛳ for a flag, and names Kosovo', async ({ page, ringApi }) => {
 		// Kosovo's code XK has no flag in Unicode.
 		ringApi.respond(() => ringAroundBelgrade({ ...RUSSIAN, RKS: { mode: 'visa_free', citizenship: 'RUS' } }));
-		await page.goto(LINK);
+		await page.goto(LINK_3_HOURS);
 
 		const pristina = cityCard(page, 'Приштина');
 		await expect.poll(() => read(pristina)).toBe('Приштина ⛳ Население: 550 тыс. Маршрут');
@@ -695,7 +691,7 @@ test.describe('a city card', () => {
 				HUN: { mode: 'held_visa', visa: 'GBR' },
 			}),
 		);
-		await page.goto(LINK);
+		await page.goto(LINK_3_HOURS);
 
 		await expect
 			.poll(() => readCards(page, ['Сараево', 'Подгорица', 'Будапешт', 'Ниш']))
@@ -715,7 +711,7 @@ test.describe('a city card', () => {
 			const byVisa = (visa: string) => (visas.includes(visa) ? ({ mode: 'held_visa', visa } as const) : ({ mode: 'closed' } as const));
 			return ringAroundBelgrade({ ...RUSSIAN, BIH: byVisa('USA'), MNE: byVisa('USA'), HUN: byVisa('SCHENGEN') });
 		});
-		await page.goto(`${LINK}&cit=IND`);
+		await page.goto(`${LINK_3_HOURS}&cit=IND`);
 		await expect(cityCard(page, 'Ниш')).toBeVisible();
 		await expect(cityCard(page, 'Сараево')).toHaveCount(0);
 
@@ -730,7 +726,7 @@ test.describe('a city card', () => {
 		await expect(cityCard(page, 'Будапешт')).toHaveCount(0);
 
 		// The link carries both visas: Hungary's cities come by Schengen's.
-		await page.goto(`${LINK}&cit=IND&visas=SCHENGEN,USA`);
+		await page.goto(`${LINK_3_HOURS}&cit=IND&visas=SCHENGEN,USA`);
 		await expect(phrase(page)).toContainText('мои визы: Шенген, США');
 		await expect(cityCard(page, 'Будапешт')).toBeVisible();
 		await expect(cityCard(page, 'Сараево')).toBeVisible();
@@ -738,7 +734,7 @@ test.describe('a city card', () => {
 
 	test('says nothing of Russian plates in the EU, with a Russian citizenship too', async ({ page, ringApi }) => {
 		ringApi.respond(() => ringAroundBelgrade({ ...WITH_SCHENGEN_VISA, HUN: { mode: 'visa_free', citizenship: 'SRB' } }));
-		await page.goto(`${LINK}&cit=RUS,SRB`);
+		await page.goto(`${LINK_3_HOURS}&cit=RUS,SRB`);
 
 		// Hungary is in the EU.
 		await expect.poll(() => read(cityCard(page, 'Будапешт'))).toBe('Будапешт 🇭🇺 Население: 1,7 млн Маршрут');

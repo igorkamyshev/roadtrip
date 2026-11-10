@@ -6,21 +6,41 @@
 // the top left, with the date of old visa rules and the first 5 s' data's sources in it (#103). Read by the elements'
 // boxes, never by pixels.
 import type { Page } from '@playwright/test';
-import type { Access } from 'worker/api';
-import { CITIES, expect, serveCities, squareRing, test, visaRules } from './fixtures.ts';
+import {
+	BELGRADE,
+	CITIES,
+	expect,
+	LINK_3_HOURS_RUS,
+	LONGEST,
+	LONGEST_IN_DAYS,
+	NIS,
+	OLD_RULES,
+	OPEN_AROUND_SERBIA,
+	serveCities,
+	SHORTEST,
+	SHORTEST_IN_DAYS,
+	squareRing,
+	test,
+	visaRules,
+} from './fixtures.ts';
 import type { RingApi } from './ring-api.ts';
 import {
+	BETWEEN,
 	type Box,
 	boxOf,
 	cardsInView,
 	carousel,
 	carouselArrows,
+	CLOCK_START,
+	EDGE,
 	expectApart,
 	expectRingCard,
 	firstCard,
 	fromEdges,
 	labelsOnMap,
+	MODAL_WIDTH,
 	moreCard,
+	openHeld,
 	phrase,
 	rulesDate,
 	sheetPanel,
@@ -35,30 +55,6 @@ import {
 } from './screen.ts';
 import { onWindow, WIDE_WINDOWS, windowName, WINDOWS } from './windows.ts';
 
-const BELGRADE = { lat: 44.8176, lon: 20.4573 };
-const NIS = { lat: 43.325, lon: 21.903 };
-/** Belgrade at 2–3 h: with every country around open, 16 cities of the fixtures in its band. */
-const LINK = '/#/?p=44.81760,20.45730&h=3&cit=RUS';
-/** Belgrade at 12 h and at 4–5 days, with four citizenships and four visas, or one citizenship and no visas. */
-const LONGEST = '/#/?p=44.81760,20.45730&h=12&cit=BIH,MNE,RUS,SRB&visas=CAN,GBR,SCHENGEN,USA';
-const SHORTEST = '/#/?p=44.81760,20.45730&h=12&cit=RUS';
-const LONGEST_IN_DAYS = '/#/?p=44.81760,20.45730&d=5&cit=BIH,MNE,RUS,SRB&visas=CAN,GBR,SCHENGEN,USA';
-const SHORTEST_IN_DAYS = '/#/?p=44.81760,20.45730&d=5&cit=RUS';
-const OPEN: Access = {
-	SRB: { mode: 'start' },
-	BIH: { mode: 'visa_free', citizenship: 'RUS' },
-	MNE: { mode: 'visa_free', citizenship: 'RUS' },
-	HUN: { mode: 'visa_free', citizenship: 'RUS' },
-	ROU: { mode: 'visa_free', citizenship: 'RUS' },
-	HRV: { mode: 'visa_free', citizenship: 'RUS' },
-};
-
-/** A modal is this wide, in the middle of the window (#98). */
-const MODAL_WIDTH = 480;
-/** Every floating panel stands this far from the screen's edges (#85); a modal's top no closer. */
-const EDGE = 12;
-/** The gap between neighbouring panels (#85): the slider's row over the carousel's cards. */
-const BETWEEN = 8;
 /** The slider's row of cells on the wide screen, in hours and in days, and its cells' height (#97). */
 const SLIDER_ROW = 560;
 const SLIDER_CELL_HEIGHT = 40;
@@ -70,11 +66,11 @@ const SLIDER_CELL_HEIGHT = 40;
 const ROW_WINDOWS = WIDE_WINDOWS.filter((window) => window.width > 720);
 
 test.beforeEach(({ ringApi }) => {
-	ringApi.respond(() => ({ ...squareRing(BELGRADE.lat, BELGRADE.lon, [1, 3]), ...visaRules(OPEN) }));
+	ringApi.respond(() => ({ ...squareRing(BELGRADE.lat, BELGRADE.lon, [1, 3]), ...visaRules(OPEN_AROUND_SERBIA) }));
 });
 
 /** Opens `path` and waits for its ring. */
-async function open(page: Page, path = LINK, ring = '2–3 ч'): Promise<void> {
+async function open(page: Page, path = LINK_3_HOURS_RUS, ring = '2–3 ч'): Promise<void> {
 	await page.goto(path);
 	await expectRingCard(page, ring);
 }
@@ -323,7 +319,7 @@ for (const window of WIDE_WINDOWS) {
 			const noOrigin = await firstCardPlace(page);
 			await expectApart(page, { phrase: phrase(page), 'first card': firstCard(page) });
 
-			await page.goto(LINK);
+			await page.goto(LINK_3_HOURS_RUS);
 			await expect(firstCard(page)).toHaveAttribute('data-state', 'calculating');
 			const calculating = await firstCardPlace(page);
 			await expectApart(page, { phrase: phrase(page), 'slider row': slider(page), 'first card': firstCard(page) });
@@ -333,7 +329,7 @@ for (const window of WIDE_WINDOWS) {
 			const failure = await firstCardPlace(page);
 			await expectApart(page, { phrase: phrase(page), 'slider row': slider(page), 'first card': firstCard(page) });
 
-			ringApi.respond(() => ({ ...squareRing(BELGRADE.lat, BELGRADE.lon, [1, 3]), ...visaRules(OPEN) }));
+			ringApi.respond(() => ({ ...squareRing(BELGRADE.lat, BELGRADE.lon, [1, 3]), ...visaRules(OPEN_AROUND_SERBIA) }));
 			await firstCard(page).getByRole('button', { name: 'Повторить' }).click();
 			await expectRingCard(page, '2–3 ч');
 			const withRing = await firstCardPlace(page);
@@ -385,24 +381,13 @@ for (const window of WIDE_WINDOWS.filter(({ width }) => width > 720)) {
 	});
 }
 
-/** Where the page's clock stands, held, while the screen opens: the data's sources stay in the phrase's plate. */
-const START = Date.parse('2026-11-09T12:00:00Z');
-/** Visa rules three days old: «визовые правила от 6 ноября» in the phrase's plate. */
-const OLD_RULES = '2026-11-06T12:00:00Z';
 /** The phrase's plate is at most this wide (#103). */
 const WIDEST_PHRASE = 720;
 
 /** Answers every ring with visa rules from Sherpa at `loadedAt`. */
 const rulesFrom = (ringApi: RingApi, loadedAt: string): void => {
-	ringApi.respond(() => ({ ...squareRing(BELGRADE.lat, BELGRADE.lon, [1, 3]), ...visaRules(OPEN, loadedAt) }));
+	ringApi.respond(() => ({ ...squareRing(BELGRADE.lat, BELGRADE.lon, [1, 3]), ...visaRules(OPEN_AROUND_SERBIA, loadedAt) }));
 };
-
-/** Opens `path` with the clock held 1 s after the load, and waits for its ring. */
-async function openHeld(page: Page, path: string, ring = '11–12 ч'): Promise<void> {
-	await page.clock.install({ time: START });
-	await page.clock.pauseAt(START + 1000);
-	await open(page, path, ring);
-}
 
 /** Whether `inner` lies wholly in `outer`. */
 const within = (inner: Box, outer: Box): boolean =>
@@ -508,7 +493,7 @@ test.describe('on 768×1024, touch', () => {
 	test.use(onWindow({ width: 768, height: 1024, pointer: 'touch', layout: 'wide' }));
 
 	test('the short phrase «Из точки Белград, 5–6 часов в пути. Гражданство РФ, мои визы: нет ⓘ» is one line', async ({ page, ringApi }) => {
-		rulesFrom(ringApi, new Date(START).toISOString());
+		rulesFrom(ringApi, new Date(CLOCK_START).toISOString());
 		await openHeld(page, '/#/?p=44.81760,20.45730&h=6&cit=RUS', '5–6 ч');
 		await expect(phrase(page)).toContainText('Из точки Белград, 5–6 часов в пути. Гражданство РФ, мои визы: нет');
 

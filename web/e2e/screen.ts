@@ -212,6 +212,19 @@ export async function expectApart(page: Page, panels: Record<string, Locator>): 
 	expect(onOneAnother, 'panels on one another').toEqual([]);
 }
 
+/**
+ * Every floating panel stands this far from the screen's edges (#85), a modal's top and bottom no closer; the narrow
+ * screen's current card this far in; the wide screen's row keeps its cards this far from either edge, where it fades
+ * out (#104); and the camera's free area keeps this far from the panels and the edges around it.
+ */
+export const EDGE = 12;
+
+/** The gap between neighbouring panels, and between two cards of the carousel (#85). */
+export const BETWEEN = 8;
+
+/** A modal is this wide, in the middle of the window (#98). */
+export const MODAL_WIDTH = 480;
+
 /** How far the box stands from each edge of the screen. */
 export function fromEdges(page: Page, box: Box): { top: number; right: number; bottom: number; left: number } {
 	const { width, height } = page.viewportSize() ?? { width: 0, height: 0 };
@@ -451,16 +464,25 @@ export async function mapAtRest(page: Page): Promise<void> {
 	});
 }
 
-/** Where a test's held clock stands while the screen opens. */
-const START = Date.parse('2026-11-09T12:00:00Z');
+/** Where the page's clock starts in a test that holds it. */
+export const CLOCK_START = Date.parse('2026-11-09T12:00:00Z');
 
 /**
- * Holds the page's clock 1 s after the load: none of its timers and frames runs but as the test runs the clock, so a
- * busy machine changes nothing. The data's sources stay under the phrase for its first 5 s.
+ * Holds the page's clock before the page loads: none of its timers and frames runs but as the test runs the clock, so
+ * a busy machine changes nothing. It stops a minute after `CLOCK_START`, which a busy machine cannot have passed
+ * between the two calls. The data's sources stay under the phrase for the page's first 5 s; `page.clock.resume()` lets
+ * the clock go on, as posthog-js needs to send.
  */
 export async function holdTheClock(page: Page): Promise<void> {
-	await page.clock.install({ time: START });
-	await page.clock.pauseAt(START + 1000);
+	await page.clock.install({ time: CLOCK_START });
+	await page.clock.pauseAt(CLOCK_START + 60_000);
+}
+
+/** Opens `path` on the held clock and waits for its ring of `hours`: by default that of 12 h, as the phrase's links have. */
+export async function openHeld(page: Page, path: string, hours = '11–12 ч'): Promise<void> {
+	await holdTheClock(page);
+	await page.goto(path);
+	await expectRingCard(page, hours);
 }
 
 /**

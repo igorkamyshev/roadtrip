@@ -8,7 +8,7 @@
 		"./api": "./src/api.ts"
 	},
 	"scripts": {
-		"deploy": "pnpm --filter data fetch-dataset && pnpm --filter web build && wrangler deploy",
+		"deploy": "pnpm --filter data fetch-dataset && pnpm --filter data russian-names && pnpm --filter web build && wrangler deploy",
 		"deploy:stand": "pnpm --filter web build && wrangler deploy stand/index.ts --config stand/wrangler.jsonc",
 		"dev": "wrangler dev",
 		"test": "vitest run",

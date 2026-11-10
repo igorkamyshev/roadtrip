@@ -7,7 +7,7 @@
 Read a package's `AGENTS.md` before working in it:
 
 - `engine/AGENTS.md`: the ring engine, keeping it portable, when to bump the engine version and record its fingerprint, where its tests live; the engine server of the Container and its image.
-- `data/AGENTS.md`: the graph builder, the zone outlines, the cities file, the `ring` and `build-cities` commands, rings on real roads and their pictures (`region`, `render`), the fixtures; the monthly world build (`.github/workflows/dataset.yml`) and the dataset in R2 with its pointer `current.json`.
+- `data/AGENTS.md`: the graph builder, the zone outlines, the cities file and the table of Russian names, the `ring`, `build-cities` and `russian-names` commands, rings on real roads and their pictures (`region`, `render`), the fixtures; the monthly world build (`.github/workflows/dataset.yml`) and the dataset in R2 with its pointer `current.json`.
 
 `rules` holds the tables edited by hand: the border table, the visa exemptions' table (`VISA_EXEMPTIONS`), the Schengen area, the countries as zones (`COUNTRIES`) and Sherpa's 199 passports (`SHERPA_PASSPORTS`); it has no `AGENTS.md` yet.
 
@@ -17,7 +17,7 @@ Read a package's `AGENTS.md` before working in it:
 
 `web` is the client, the one screen, built into the Worker's static assets. Its `README.md` says where the state, the ring requests, the map's layers, the phrase's slots and the events to PostHog are, how the source maps are uploaded, how the screen tests run (`pnpm e2e`, Playwright), and how to show the screen without the Worker (`pnpm --filter web demo`, a video of it).
 
-`lint` holds roadtrip's own lint rules (an Oxlint JS plugin, `lint/plugin.ts`, each rule in `lint/rules/` with its tests), the checks of the project that fallow cannot express, fallow's policy pack, and the Claude Code hook that lints an agent's edits.
+`lint` holds roadtrip's own lint rules (an Oxlint JS plugin, `lint/plugin.ts`, each rule in `lint/rules/` with its tests, the screen tests' held clock among them), the checks of the project that fallow cannot express (the screen tests' helpers, each in one place, among them), fallow's policy pack, and the Claude Code hook that lints an agent's edits.
 
 ## Checks
 

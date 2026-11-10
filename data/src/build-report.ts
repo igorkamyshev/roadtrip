@@ -87,3 +87,13 @@ export function cityPartsMarkdown({ cityParts, biggestCityParts }: CitiesReport)
 	lines.push('');
 	return lines.join('\n');
 }
+
+/**
+ * The cities without a Russian name that the table of Russian names lacks, which the screen shows in their local
+ * names: the cities to add to the table (data/AGENTS.md, «Cities file»).
+ */
+export function missingRussianNamesMarkdown({ missingRussianNames: { count: missing, biggest } }: CitiesReport): string {
+	const line = `Городов без русского названия, которых нет в таблице \`data/russian-names.tsv\`: ${missing.toLocaleString('ru-RU')}.`;
+	const examples = biggest.map(({ id, name }) => `${name} (${id})`).join(', ');
+	return ['## Русские названия', '', biggest.length > 0 ? `${line} Самые большие: ${examples}.` : line, ''].join('\n');
+}
