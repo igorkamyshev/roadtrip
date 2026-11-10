@@ -136,12 +136,16 @@ const cardsOf = (carousel: HTMLElement): HTMLElement[] =>
 /** How far the carousel's cards stand in from its left edge: where the first one stands before any scroll. */
 const insetOf = (carousel: HTMLElement): number => cardsOf(carousel).at(0)?.offsetLeft ?? 0;
 
-/** The carousel's scroll offset that puts `card` at its left edge, where a card snaps on the narrow screen. */
-const atLeftEdge = (carousel: HTMLElement, card: HTMLElement): number => card.offsetLeft - insetOf(carousel);
-
 /** The carousel's scroll offset, kept between its start and its end. */
 export const withinRow = (carousel: HTMLElement, left: number): number =>
 	Math.min(Math.max(0, left), carousel.scrollWidth - carousel.clientWidth);
+
+/**
+ * The carousel's scroll offset that puts `card` at its left edge, where a card snaps on the narrow screen, or as near
+ * as the row's end lets it: a step of the arrows to that card, or the narrow screen's step to a focused card.
+ */
+export const leftEdgeTarget = (carousel: HTMLElement, card: HTMLElement): number =>
+	withinRow(carousel, card.offsetLeft - insetOf(carousel));
 
 /**
  * Where a step of the arrows takes the carousel scrolled to `from` on the wide screen (#99): the part of the row in
@@ -156,7 +160,7 @@ export function pageTarget(carousel: HTMLElement, from: number, direction: Direc
 	const right = from + carousel.clientWidth - Number.parseFloat(getComputedStyle(carousel).paddingRight);
 	if (direction === 1) {
 		const next = cards.find((card) => card.offsetLeft + card.offsetWidth > right + 0.5);
-		return next === undefined ? undefined : withinRow(carousel, atLeftEdge(carousel, next));
+		return next === undefined ? undefined : leftEdgeTarget(carousel, next);
 	}
 	const before = cards.findLast((card) => card.offsetLeft < left - 0.5);
 	return before === undefined ? undefined : withinRow(carousel, before.offsetLeft + before.offsetWidth - (right - from));
@@ -173,7 +177,7 @@ export function cardTarget(carousel: HTMLElement, from: number, direction: Direc
 	const distances = cards.map((card) => Math.abs(card.offsetLeft - start));
 	const index = distances.indexOf(Math.min(...distances)) + direction;
 	const next = index < 0 ? undefined : cards.at(index);
-	return next === undefined ? undefined : withinRow(carousel, atLeftEdge(carousel, next));
+	return next === undefined ? undefined : leftEdgeTarget(carousel, next);
 }
 
 /**
@@ -200,6 +204,3 @@ export function neighbourToFocus(
 	}
 	return undefined;
 }
-
-/** The carousel's scroll offset that puts `card` at its left edge: the narrow screen's step to a focused card. */
-export const leftEdgeOf = (carousel: HTMLElement, card: HTMLElement): number => withinRow(carousel, atLeftEdge(carousel, card));

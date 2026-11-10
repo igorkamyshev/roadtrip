@@ -4,8 +4,8 @@
 // narrow one both go a card at a time. They only scroll the carousel: its stop chooses on the narrow screen and nothing
 // on the wide one (use-chosen-city.ts). Without a mouse there is none of it: the plate, the wheel and the keys are the
 // browser's.
-import { type ReactElement, type ReactNode, type RefObject, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { cardTarget, type Direction, leftEdgeOf, neighbourToFocus, pageTarget, withinRow } from '../cities/carousel.ts';
+import { type ReactElement, type ReactNode, type RefObject, useEffect, useEffectEvent, useRef, useState } from 'react';
+import { cardTarget, type Direction, leftEdgeTarget, neighbourToFocus, pageTarget, withinRow } from '../cities/carousel.ts';
 import { useMedia } from '../use-media.ts';
 import { BackIcon, ForwardIcon } from './icons.tsx';
 
@@ -61,7 +61,7 @@ export function useCarouselArrows(carousel: RefObject<HTMLDivElement | null>): C
 		// comes to the left edge, for the stop there to choose it.
 		neighbour.target.focus({ preventScroll: true });
 		if (!wide) {
-			aim.to(leftEdgeOf(element, neighbour.card));
+			aim.to(leftEdgeTarget(element, neighbour.card));
 		}
 		return true;
 	};
@@ -221,10 +221,8 @@ interface OnRow {
  * trackpad and a pinch (the wheel with Ctrl) stay the browser's, as do the keys with a modifier.
  */
 function useMouseOnRow(carousel: RefObject<HTMLDivElement | null>, on: boolean, onRow: OnRow): void {
-	const latest = useRef(onRow);
-	useLayoutEffect(() => {
-		latest.current = onRow;
-	});
+	const wheel = useEffectEvent(onRow.wheel);
+	const key = useEffectEvent(onRow.key);
 	useEffect(() => {
 		const element = carousel.current;
 		if (!on || element === null) {
@@ -235,7 +233,7 @@ function useMouseOnRow(carousel: RefObject<HTMLDivElement | null>, on: boolean, 
 				return;
 			}
 			event.preventDefault();
-			latest.current.wheel(element, event);
+			wheel(element, event);
 		};
 		const onKey = (event: KeyboardEvent): void => {
 			const direction = KEYS.get(event.key);
@@ -249,7 +247,7 @@ function useMouseOnRow(carousel: RefObject<HTMLDivElement | null>, on: boolean, 
 			) {
 				return;
 			}
-			if (latest.current.key(element, event.target, direction)) {
+			if (key(element, event.target, direction)) {
 				event.preventDefault();
 			}
 		};
