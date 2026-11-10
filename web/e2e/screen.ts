@@ -520,11 +520,18 @@ export async function runUntilMapAtRest(page: Page): Promise<void> {
 }
 
 /**
+ * A link to Belgrade, `BELGRADE` of e2e/fixtures.ts as the link writes it, for a test to add its hours or days,
+ * citizenships and visas. It is here, not in e2e/fixtures.ts, which imports this module, so that `openTheCarousel`
+ * builds on it too.
+ */
+export const FROM_BELGRADE = '/#/?p=44.81760,20.45730';
+
+/**
  * Opens the ring of the carousel's tests (`carouselRing` of e2e/fixtures.ts), 2–3 h around Belgrade, on the held
  * clock: its 12 city cards, the map up and come to rest on it.
  */
 export async function openTheCarousel(page: Page): Promise<void> {
-	await page.goto('/#/?p=44.81760,20.45730&h=3');
+	await page.goto(`${FROM_BELGRADE}&h=3`);
 	await runUntil(page, async () => (await cityCards(page).count()) === 12, 'the 12 city cards');
 	await runUntilMapAtRest(page);
 }

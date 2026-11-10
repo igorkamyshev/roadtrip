@@ -17,6 +17,7 @@ import {
 	dragMap,
 	expectRingCard,
 	firstCard,
+	FROM_BELGRADE,
 	labelsOnMap,
 	mapAtRest,
 	mapZoom,
@@ -234,7 +235,7 @@ test.describe("the origin's city", () => {
 		// The origin is 1.6 km from Belgrade, within its limits of 10 km. From 0° to 3°, all of `CITIES` but Pristina,
 		// in Kosovo, closed for everyone, and Belgrade: 24 cities in 6 countries.
 		ringApi.respond(aroundTheOrigin(3, WITH_SCHENGEN_VISA));
-		await page.goto('/#/?p=44.81760,20.45730&h=1');
+		await page.goto(`${FROM_BELGRADE}&h=1`);
 		await expectRingCard(page, 'до 1 ч');
 
 		await expect(phrase(page)).toContainText('Из точки Белград, до 1 часа в пути.');
