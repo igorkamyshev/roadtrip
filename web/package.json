@@ -11,6 +11,7 @@
 		"demo": "vite build && node e2e/demo-cli.ts",
 		"record": "vite build && node e2e/record.ts",
 		"shots": "vite build && node e2e/shots.ts",
+		"icons": "node e2e/icons.ts",
 		"e2e": "playwright test",
 		"typecheck": "tsc --noEmit && tsc --noEmit -p e2e"
 	},

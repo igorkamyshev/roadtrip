@@ -42,7 +42,9 @@ One line per file, so that two changes of the screen seldom touch the same line.
     - `originCity`: the origin's city of GLOSSARY «Город точки старта», the city whose limits hold the origin, the nearest of several, none outside them all, by `cityAround` of `data/cities-file`, the builder's limits.
   - The origin's city (#45) is no city of the ring at any N: no card, no label on the map, no row of the list of all, and the first card, `cities_count` and `countries_count` leave it out.
     - The phrase names it for geolocation, a link and the saved state, and says «на карте» outside the limits of every city, as for the pin; `start_city` of the events stays the nearest city. The parts of a city (Zemun in Belgrade) are not in the cities file at all (`data/AGENTS.md`, «Cities file»).
+- `index.html`: the page's head (#70): the name Роадтрип and the description, the icons, the manifest, `theme-color` of each scheme, and Open Graph and Twitter for a link's preview (below, «Mark»).
 - `public/basemap/`: Protomaps' fonts and sprites, served as they are (below, «Basemap»).
+- `public/favicon.svg`, `favicon.ico`, `apple-touch-icon.png`, `icon-192.png`, `icon-512.png`, `icon-maskable-512.png`, `og.png`: the mark and what is made of it, all written by `e2e/icons.ts`; `manifest.webmanifest` by hand (below, «Mark»).
 - `src/screen/`:
   - `screen.tsx`: lays the screen out: `screen-map.tsx` (the map view, a chunk of its own, and the cities it shows), `screen-phrase.tsx` and the slider in one column (`.c-top`, below), `carousel.tsx` (the first card, the city cards, «и ещё») under the slider or `pin-bar.tsx` in the pin mode, and `screen-sheets.tsx` (the sheet open).
   - `use-screen.ts`: the screen's state and what changes it (`useScreen`, the `ScreenModel` the parts take): the link's state, then the hooks below, and the sheet open.
@@ -64,7 +66,7 @@ One line per file, so that two changes of the screen seldom touch the same line.
   - The tokens of the layout (#85): every floating panel stands `--edge` (12 px) from the screen's nearest edges past the safe area (`--edge-top` …), `--between` (8 px) from the panel next to it; the floating panels and plates have corners of `--radius` (18 px), what is nested in them, the slider's cells and the buttons, `--radius-inner` (12 px). A new panel takes them, not numbers of its own.
   - `.c-top` holds the phrase, the data's sources (`SourcesOnOpen`, `src/screen/attribution.tsx`) and the slider, from the top edge down to the bottom one, over the carousel (#47, #85). The sources are as wide as the phrase and show for 5 s once the screen opens; then they hide in their place, which stays, so the slider under them never moves and they never cover it (#77). The slider is up to 450 px high at the bottom of the column; a longer phrase moves its top down, 8 px under the sources' place at the closest, and never makes it lower than 120 px.
   - `.c-car` runs the whole width under the slider: its current card stands at the left edge (`scroll-snap-align: start`), up to 280 px wide, and leaves `--peek` (64 px) of the next one out before the panel, so it shows that the cards scroll; a mask fades the next one out before the panel. Room after the last card (`::after`) lets it too come to the left edge.
-- `e2e/`: the screen's tests (below, «Tests») and `demo.ts`, the screen without the Worker, which `demo-cli.ts` serves, `record.ts` films and `shots.ts` shoots (below, «Demo»).
+- `e2e/`: the screen's tests (below, «Tests»), `icons.ts`, which writes the mark's files (below, «Mark»), and `demo.ts`, the screen without the Worker, which `demo-cli.ts` serves, `record.ts` films and `shots.ts` shoots (below, «Demo»).
 
 ## For the next tickets
 
@@ -99,6 +101,17 @@ With both, the plugin writes a chunk id into each JS file, uploads the maps unde
 ## Older browsers
 
 The screen runs where MapLibre 6 runs: Safari 15.4, Chrome 93, Firefox 92 and newer (`browserslist` in `package.json`, which `vite.config.ts` reads and Stylelint checks the CSS against; MapLibre's worker calls `.at()` and `Object.hasOwn`). The build lowers the syntax to them, and `older-browsers.ts` gives them what the client calls and they lack: `@vitejs/plugin-legacy` makes the polyfills (core-js, by what the bundle uses) a chunk of their own, and the page loads its entry through a small loader that takes that chunk first only in a browser without `toSorted`, `Object.groupBy` or `Promise.withResolvers`. So the client may call what `tsconfig.json`'s lib (es2024) has, and a newer browser downloads no polyfill: the first paint's budget is its (`bundle-budget.ts`). `e2e/older-browsers.spec.ts` checks both: Chromium without those methods loads the polyfills and shows the screen, and as it is asks for none.
+
+## Mark
+
+Роадтрип's mark (#70) is the ring as on the map: an uneven closed outline in `--ring` filled with `--ring-fill`, and the origin's red dot (`--start`) in its middle, no word. Its geometry and colours are in `e2e/icons.ts`, and nowhere else: change them there and run `pnpm --filter web icons`, which writes every file of the mark in `public/` anew, the same bytes on the same Chromium, and commit them all.
+
+- The tab: `favicon.svg` takes the dark scheme's colours by itself (`prefers-color-scheme` inside the SVG); `favicon.ico` (16 and 32 px, light) is for the browsers without SVG icons and for whoever asks for `/favicon.ico`.
+- The home screen: the mark in white on a square of `--ring` with no corners of its own, which the system rounds: `apple-touch-icon.png` (180) for iOS, and for Android the manifest's `icon-192.png`, `icon-512.png` and `icon-maskable-512.png`, whose mark stays in the circle every mask leaves. Under it, «Роадтрип»: `apple-mobile-web-app-title` and the manifest's `short_name`.
+- The manifest is there only for Android's icon and name: `display: browser`, no service worker, nothing offline.
+- A link's preview: `og.png`, 1200×630, the mark, «Роадтрип» in `--display` and «Куда поехать на машине» on `--bg`; `og:image` is its full URL on the production host.
+
+`e2e/head.spec.ts` checks the head and that each file comes and shows the mark. A page under Playwright's routes cannot fetch a path that ends in `favicon.ico`, so that test fetches the ICO itself.
 
 ## Basemap
 
