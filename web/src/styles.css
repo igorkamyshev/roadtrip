@@ -122,10 +122,14 @@ a {
 	color: var(--ring);
 }
 
+/* A grid at any width: on the narrow screen everything in it stands out of the flow, on the wide one the grid lays out
+   the panels (below, `.screen` under `@media (--wide)`). The same display either side of the threshold, so that a
+   window crossing it does not rebuild the layout of what the screen holds, an open sheet and its scroll among it. */
 .screen {
 	position: relative;
 	height: 100%;
 	overflow: hidden;
+	display: grid;
 }
 
 /* ---------- map ---------- */
@@ -572,14 +576,16 @@ a {
 	box-shadow: var(--shadow);
 }
 
-/* Its rows, one a cell, are set by the slider: twelve hours or the days. */
+/* Its cells, twelve hours or the days, as many as the slider gives it, in the column the first at the bottom (the
+   slider puts the last first). */
 .sl-cells {
 	--gap: 2px;
 
 	position: relative;
 	isolation: isolate;
 	height: 100%;
-	display: grid;
+	display: flex;
+	flex-direction: column;
 	gap: var(--gap);
 }
 
@@ -614,8 +620,10 @@ a {
 }
 
 .sl-cell {
+	flex: 1 1 0;
 	display: grid;
 	place-items: center;
+	min-width: 0;
 	min-height: 0;
 	border-radius: var(--radius-inner);
 	font-size: 13px;
@@ -669,15 +677,60 @@ a {
 	}
 }
 
+/* The blue block: a cell's size in the first cell, moved by a cell and a gap for each before the chosen one; the slider
+   gives it --cells and --chosen. */
 .sl-chosen {
+	--cells: 1;
+	--chosen: 0;
+
 	position: absolute;
 	left: 0;
 	right: 0;
 	bottom: 0;
+	height: calc((100% - (var(--cells) - 1) * var(--gap)) / var(--cells));
+	transform: translateY(calc(-1 * var(--chosen) * (100% + var(--gap))));
 	border-radius: var(--radius-inner);
 	background: var(--ring);
 	box-shadow: 0 1px 4px color-mix(in srgb, var(--ring) 40%, transparent);
 	transition: transform 150ms ease-out;
+}
+
+/* On the wide screen the slider is a row (#97): the cells 560 px long and 40 px high in either unit, the first at the
+   left; the tab as high as the panel, «дни →» right of the hours, «← часы» left of the days, which moves them right
+   by its width. A tap --reach past the tab's ends takes it too. */
+@media (--wide) {
+	.sl {
+		flex-direction: row-reverse;
+		justify-content: flex-end;
+		height: auto;
+	}
+
+	.sl-panel {
+		flex: none;
+		width: 560px;
+	}
+
+	.sl-cells {
+		flex-direction: row-reverse;
+		height: 40px;
+	}
+
+	.sl-tab {
+		height: auto;
+		padding: 0 14px;
+	}
+
+	.sl-tab::before {
+		inset: 0 calc(-1 * var(--reach));
+	}
+
+	.sl-chosen {
+		top: 0;
+		right: auto;
+		width: calc((100% - (var(--cells) - 1) * var(--gap)) / var(--cells));
+		height: auto;
+		transform: translateX(calc(var(--chosen) * (100% + var(--gap))));
+	}
 }
 
 /* ---------- variant C: phrase + carousel ---------- */
@@ -801,6 +854,52 @@ a {
 	width: var(--slider-width);
 }
 
+/* On the wide screen the screen is a grid (#97, #104): at the top the phrase and the data's sources, at the bottom the
+   carousel the whole width, and over its cards the slider's row at the left edge, --between over them (the carousel's
+   top padding). The row has a place for the carousel's arrows at the right edge, `arrows`, empty until they come
+   (#99). .c-top gives up its column, and its children are the grid's; the map, the pin's bar and the sheets stand
+   over it as on the narrow screen. */
+@media (--wide) {
+	.screen {
+		grid-template:
+			'.     .       .       .    ' var(--edge-top)
+			'.     phrase  phrase  .    ' auto
+			'.     sources sources .    ' auto
+			'.     .       .       .    ' minmax(0, 1fr)
+			'.     slider  arrows  .    ' auto
+			'cards cards   cards   cards' auto
+			/ var(--edge-left) minmax(0, 1fr) auto var(--edge-right);
+	}
+
+	.c-top {
+		/* stylelint-disable-next-line plugin/no-unsupported-browser-features -- caniuse's «partial» is the accessibility of an element with a role of its own (a button, a table) under display: contents; .c-top is a bare div. */
+		display: contents;
+	}
+
+	.c-phrase {
+		grid-area: phrase;
+		z-index: 11;
+	}
+
+	.c-sources {
+		grid-area: sources;
+		position: relative;
+		z-index: 11;
+		margin-top: var(--between);
+	}
+
+	.c-vs {
+		grid-area: slider;
+		justify-self: start;
+		position: relative;
+		z-index: 11;
+		width: auto;
+		min-height: 0;
+		max-height: none;
+		margin-top: 0;
+	}
+}
+
 /* The carousel, the whole width of the screen under the slider (#85): the current card at the left edge, up to
    280 px wide, and --peek of the next one out, between the current card and the slider's panel, so it shows that the
    cards scroll; the next one fades out in the last 12 px before the panel, so none shows under it. */
@@ -842,6 +941,23 @@ a {
 	content: '';
 	flex: none;
 	width: max(0px, 100% - min(var(--card-max), 100% - var(--peek)) - var(--between));
+}
+
+/* On the wide screen the carousel is a row the whole width under the slider's row, --between under it (#104): its
+   cards stand between the edges at rest and fade out in the 12 px of either edge, the last, «и ещё K», at the right
+   one with no room after it, so when all fit the row does not scroll. No peek, no fading before the slider. */
+@media (--wide) {
+	.c-car {
+		--fade: linear-gradient(to right, transparent, #000 var(--edge-left), #000 calc(100% - var(--edge-right)), transparent);
+
+		grid-area: cards;
+		position: relative;
+		padding: var(--between) var(--edge-right) var(--edge-bottom) var(--edge-left);
+	}
+
+	.c-car::after {
+		content: none;
+	}
 }
 
 .c-card {

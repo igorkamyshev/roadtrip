@@ -94,6 +94,30 @@ export const slider = (page: Page): Locator => page.getByRole('slider', { name: 
 /** The carousel at the bottom of the screen: the first card, the city cards, «и ещё». */
 export const carousel = (page: Page): Locator => page.getByTestId('carousel');
 
+/** «и ещё K / Все города →», the carousel's last card when the ring has more cities than cards. */
+export const moreCard = (page: Page): Locator => carousel(page).getByRole('button', { name: /и ещё/u });
+
+/**
+ * The carousel's cards wholly in the window, by name for `expectApart`: the first card, the city cards and «и ещё»
+ * that the row shows whole where it stands now.
+ */
+export async function cardsInView(page: Page): Promise<Record<string, Locator>> {
+	const { width } = page.viewportSize() ?? { width: 0 };
+	const cities = page.getByTestId('city-card');
+	const cards: [string, Locator][] = [
+		['first card', firstCard(page)],
+		...Array.from({ length: await cities.count() }, (_, i): [string, Locator] => [`city card ${i + 1}`, cities.nth(i)]),
+		['«и ещё»', moreCard(page)],
+	];
+	const boxes = await Promise.all(cards.map(async ([, card]) => ((await card.count()) === 0 ? null : card.boundingBox())));
+	return Object.fromEntries(
+		cards.filter((_, i) => {
+			const box = boxes[i];
+			return box !== null && box.x >= 0 && box.x + box.width <= width;
+		}),
+	);
+}
+
 /**
  * The open sheet of this title, the panel itself: a sheet from the bottom on the narrow screen, a modal in the middle
  * on the wide one. Its dialog fills the screen with the scrim.
@@ -125,6 +149,32 @@ export async function boxOf(element: Locator): Promise<{ x: number; y: number; w
 	return box;
 }
 
+/** A box on the screen in CSS pixels, as `boxOf` reads it. */
+export type Box = Awaited<ReturnType<typeof boxOf>>;
+
+/** Whether two boxes share any area: touching edges do not. */
+export function overlap(a: Box, b: Box): boolean {
+	return a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
+}
+
+/** Each box inside the screen, and no two of them on one another. */
+export async function expectApart(page: Page, panels: Record<string, Locator>): Promise<void> {
+	const { width, height } = page.viewportSize() ?? { width: 0, height: 0 };
+	const boxes = await Promise.all(Object.entries(panels).map(async ([name, element]) => ({ name, at: await boxOf(element) })));
+	const off = boxes
+		.filter(({ at }) => at.x < 0 || at.y < 0 || at.x + at.width > width || at.y + at.height > height)
+		.map(({ name }) => name);
+	expect(off, 'panels off the screen').toEqual([]);
+	const onOneAnother = boxes.flatMap((a, i) => boxes.slice(i + 1).flatMap((b) => (overlap(a.at, b.at) ? [`${a.name} and ${b.name}`] : [])));
+	expect(onOneAnother, 'panels on one another').toEqual([]);
+}
+
+/** How far the box stands from each edge of the screen. */
+export function fromEdges(page: Page, box: Box): { top: number; right: number; bottom: number; left: number } {
+	const { width, height } = page.viewportSize() ?? { width: 0, height: 0 };
+	return { top: box.y, right: width - box.x - box.width, bottom: height - box.y - box.height, left: box.x };
+}
+
 /**
  * Waits for the answer of a ring of `hours` («2–3 ч»): the slider at those hours and the first card a ring's, with
  * its cities, before the cities file comes or without any (`ring`, `no_cities`). Its copy is not read: the tests of
@@ -144,7 +194,10 @@ export const sliderHour = (page: Page, hours: number): Locator => slider(page).l
 /** The slider's cells in the unit it shows: the twelve hours, or the days (#83). */
 export const sliderCells = (page: Page): Locator => slider(page).locator('[data-hours]');
 
-/** The slider's panel of cells, and its tab of the other unit: «дни ↑» over the hours, «часы ↓» under the days. */
+/**
+ * The slider's panel of cells, and its tab of the other unit: «дни ↑» over the hours and «часы ↓» under the days in the
+ * column of the narrow screen, «дни →» right of them and «← часы» left of them in the row of the wide one.
+ */
 export const sliderPanel = (page: Page): Locator => slider(page).getByTestId('slider-panel');
 export const sliderTab = (page: Page): Locator => slider(page).locator('[data-tab]');
 

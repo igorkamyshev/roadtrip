@@ -1,14 +1,24 @@
-// The vertical slider (spec #20 «Экран», «Ползунок»; #83): the hours 1–12, then the days 2…MAX_DAYS, at the right edge
-// of the map. The column is in one unit at a time, the other folded into a tab: in hours a column of twelve cells,
-// 1 at the bottom, with «дни ↑» over it; in days a cell a day, 2 at the bottom, with «часы ↓» under it. A cell is a
-// ring, N − 1 to N h or D − 1 to D days, and the chosen one is blue. While the slider is dragged the cell under the
-// pointer, or the tab, is chosen on the screen only; the new cell is committed when it is let go (a key commits at
-// once), so a drag asks for one ring, not one per cell it passed, and a tap on a cell or the tab chooses it. The column
-// turns to the other unit only once that is committed, never under the finger. The cells whose rings are in memory are
-// light green. Here the screen departs from the prototype's track and thumb.
+// The slider (spec #20 «Экран», «Ползунок»; #83, #97): the hours 1–12, then the days 2…MAX_DAYS. On the narrow screen a
+// column at the right edge of the map, on the wide one a row at the bottom left over the carousel (styles.css). It is
+// in one unit at a time, the other folded into a tab: in hours twelve cells, 1 at the bottom or the left, with «дни ↑»
+// over them or «дни →» right of them; in days a cell a day, 2 at the bottom or the left, with «часы ↓» under them or
+// «← часы» left of them. A cell is a ring, N − 1 to N h or D − 1 to D days, and the chosen one is blue. While the
+// slider is dragged the cell under the pointer, or the tab, is chosen on the screen only; the new cell is committed
+// when it is let go (a key commits at once), so a drag asks for one ring, not one per cell it passed, and a tap on a
+// cell or the tab chooses it. The slider turns to the other unit only once that is committed, never under the finger.
+// The cells whose rings are in memory are light green. Here the screen departs from the prototype's track and thumb.
 import { useRef, useState, type KeyboardEvent, type PointerEvent, type ReactElement, type RefObject } from 'react';
 import { HOURS_PER_DAY, MAX_HOURS, SLIDER_CELLS } from 'worker/api';
+import { useMedia } from '../use-media.ts';
 import { daysWord, hoursShort, hoursSpan, isDay } from './copy.ts';
+
+declare module 'react' {
+	interface CSSProperties {
+		/** The blue block's place among the cells (`.sl-chosen` in styles.css): how many, and the chosen one's from 0. */
+		'--cells'?: number;
+		'--chosen'?: number;
+	}
+}
 
 export interface SliderProps {
 	/** The chosen cell by its upper bound in hours (worker/api's `SLIDER_CELLS`). */
@@ -19,23 +29,30 @@ export interface SliderProps {
 
 const KEYS: Readonly<Partial<Record<string, number>>> = { ArrowUp: 1, ArrowRight: 1, ArrowDown: -1, ArrowLeft: -1 };
 
-/** A unit of the column: its cells from the bottom, and its tab, which chooses the other unit's nearest cell. */
+/**
+ * A unit of the slider: its cells from the first, and its tab, which chooses the other unit's nearest cell, labelled
+ * for the column of the narrow screen and the row of the wide one.
+ */
 interface Unit {
 	readonly cells: readonly number[];
-	readonly tab: { readonly hours: number; readonly label: string };
+	readonly tab: { readonly hours: number; readonly column: string; readonly row: string };
 }
 
 const HOURS: Unit = {
 	cells: SLIDER_CELLS.filter((hours) => !isDay(hours)),
-	tab: { hours: SLIDER_CELLS[MAX_HOURS], label: 'дни ↑' },
+	tab: { hours: SLIDER_CELLS[MAX_HOURS], column: 'дни ↑', row: 'дни →' },
 };
-const DAYS: Unit = { cells: SLIDER_CELLS.filter((hours) => isDay(hours)), tab: { hours: MAX_HOURS, label: 'часы ↓' } };
+const DAYS: Unit = {
+	cells: SLIDER_CELLS.filter((hours) => isDay(hours)),
+	tab: { hours: MAX_HOURS, column: 'часы ↓', row: '← часы' },
+};
 
 export function Slider({ value, onCommit, cached }: SliderProps): ReactElement {
 	const inDays = isDay(value);
 	const unit = inDays ? DAYS : HOURS;
+	const row = useMedia('wide');
 	const column = useRef<HTMLDivElement>(null);
-	const { live, handlers } = useDrag({ column, unit, inDays }, value, onCommit);
+	const { live, handlers } = useDrag({ column, unit, inDays, row }, value, onCommit);
 	const shown = live ?? value;
 	const onKeyDown = (event: KeyboardEvent): void => {
 		const step = KEYS[event.key];
@@ -50,7 +67,7 @@ export function Slider({ value, onCommit, cached }: SliderProps): ReactElement {
 	};
 	const tab = (
 		<span className={shown === unit.tab.hours ? 'sl-tab on' : 'sl-tab'} data-tab={unit.tab.hours}>
-			{unit.tab.label}
+			{row ? unit.tab.row : unit.tab.column}
 		</span>
 	);
 
@@ -61,7 +78,7 @@ export function Slider({ value, onCommit, cached }: SliderProps): ReactElement {
 			role="slider"
 			tabIndex={0}
 			aria-label="Время в пути"
-			aria-orientation="vertical"
+			aria-orientation={row ? 'horizontal' : 'vertical'}
 			aria-valuemin={SLIDER_CELLS[0]}
 			aria-valuemax={SLIDER_CELLS.at(-1)}
 			aria-valuenow={shown}
@@ -76,7 +93,10 @@ export function Slider({ value, onCommit, cached }: SliderProps): ReactElement {
 	);
 }
 
-/** The panel of the unit's cells, from the bottom, the chosen one on the blue block. */
+/**
+ * The panel of the unit's cells, the first at the bottom of the column or the left of the row (styles.css), the chosen
+ * one on the blue block.
+ */
 function Panel({
 	column,
 	cells,
@@ -92,17 +112,9 @@ function Panel({
 	const chosen = cells.indexOf(shown);
 	return (
 		<div className="sl-panel" data-testid="slider-panel">
-			<div className="sl-cells" ref={column} style={{ gridTemplateRows: `repeat(${count}, 1fr)` }}>
-				{/* The blue block under the chosen cell: in the bottom one, raised by a cell and a gap for each below. */}
-				{chosen === -1 ? null : (
-					<div
-						className="sl-chosen"
-						style={{
-							height: `calc((100% - ${count - 1} * var(--gap)) / ${count})`,
-							transform: `translateY(calc(${-chosen} * (100% + var(--gap))))`,
-						}}
-					/>
-				)}
+			<div className="sl-cells" ref={column}>
+				{/* The blue block under the chosen cell: in the first one, moved by a cell and a gap for each before it. */}
+				{chosen === -1 ? null : <div className="sl-chosen" style={{ '--cells': count, '--chosen': chosen }} />}
 				{cells.toReversed().map((hours) => (
 					<span
 						key={hours}
@@ -155,11 +167,38 @@ interface Held {
 }
 
 /**
- * A drag along the column: the cell under the pointer is chosen, or the tab past the panel's edge on the tab's side
- * (the panel's padding is its end cell's), and committed when the pointer is let go.
+ * Where the pointer is along the slider: how far along the cells from the first one's outer edge, as a share of their
+ * length, and whether it is past the panel's edge on the tab's side: over the column's top or right of the row in
+ * hours, under the column's bottom or left of the row in days.
+ */
+function pointerAlong(
+	pointer: { readonly clientX: number; readonly clientY: number },
+	{ cells, panel }: { readonly cells: DOMRect; readonly panel: DOMRect },
+	{ inDays, row }: { readonly inDays: boolean; readonly row: boolean },
+): { share: number; pastTab: boolean } {
+	if (row) {
+		return {
+			share: (pointer.clientX - cells.left) / cells.width,
+			pastTab: inDays ? pointer.clientX < panel.left : pointer.clientX > panel.right,
+		};
+	}
+	return {
+		share: (cells.bottom - pointer.clientY) / cells.height,
+		pastTab: inDays ? pointer.clientY > panel.bottom : pointer.clientY < panel.top,
+	};
+}
+
+/**
+ * A drag along the column or the row: the cell under the pointer is chosen, or the tab past the panel's edge on the
+ * tab's side (the panel's padding is its end cell's), and committed when the pointer is let go.
  */
 function useDrag(
-	{ column, unit, inDays }: { readonly column: RefObject<HTMLDivElement | null>; readonly unit: Unit; readonly inDays: boolean },
+	{
+		column,
+		unit,
+		inDays,
+		row,
+	}: { readonly column: RefObject<HTMLDivElement | null>; readonly unit: Unit; readonly inDays: boolean; readonly row: boolean },
 	value: number,
 	onCommit: (hours: number) => void,
 ): Drag {
@@ -170,18 +209,18 @@ function useDrag(
 	}
 	const dragging = held !== undefined && held.letGoAt === undefined;
 	const hoursAt = (event: PointerEvent): number => {
-		const box = column.current?.getBoundingClientRect();
+		const cells = column.current?.getBoundingClientRect();
 		const panel = column.current?.parentElement?.getBoundingClientRect();
-		if (box === undefined || panel === undefined || box.height === 0) {
+		if (cells === undefined || panel === undefined || cells.height === 0 || cells.width === 0) {
 			return value;
 		}
-		if (inDays ? event.clientY > panel.bottom : event.clientY < panel.top) {
+		const { share, pastTab } = pointerAlong(event, { cells, panel }, { inDays, row });
+		if (pastTab) {
 			return unit.tab.hours;
 		}
-		// The column's cells from the bottom, the gaps split between them; past its other end, the end cell.
-		const { cells } = unit;
-		const index = Math.floor(((box.bottom - event.clientY) / box.height) * cells.length);
-		return cells[Math.min(cells.length - 1, Math.max(0, index))];
+		// The cells from the first, the gaps split between them; past the other end, the end cell.
+		const index = Math.floor(share * unit.cells.length);
+		return unit.cells[Math.min(unit.cells.length - 1, Math.max(0, index))];
 	};
 	const handlers = {
 		onPointerDown: (event: PointerEvent<HTMLDivElement>) => {

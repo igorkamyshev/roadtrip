@@ -6,7 +6,20 @@
 // the elements' boxes, never by pixels.
 import type { Locator, Page } from '@playwright/test';
 import { expect, squareRing, test, visaRules } from './fixtures.ts';
-import { boxOf, expectRingCard, firstCard, phrase, slider, sliderHour, sliderPanel, sliderTab, sources } from './screen.ts';
+import {
+	boxOf,
+	expectApart,
+	expectRingCard,
+	firstCard,
+	fromEdges,
+	overlap,
+	phrase,
+	slider,
+	sliderHour,
+	sliderPanel,
+	sliderTab,
+	sources,
+} from './screen.ts';
 
 /** Where the page's clock stands, held, while the screen opens: the sources stay under the phrase. */
 const START = Date.parse('2026-11-09T12:00:00Z');
@@ -47,27 +60,8 @@ const UNDER_THE_PHRASE = 8;
 /** The slider is never lower than this, to be taken by a finger (#47). */
 const LOWEST_SLIDER = 120;
 
-type Box = Awaited<ReturnType<typeof boxOf>>;
-
 /** The line under the phrase that dates old visa rules, «визовые правила от <дата>». */
 const rulesDate = (page: Page): Locator => phrase(page).getByTestId('rules-date');
-
-/** Whether two boxes share any area: touching edges do not. */
-function overlap(a: Box, b: Box): boolean {
-	return a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
-}
-
-/** Each box inside the screen, and no two of them on one another. */
-async function expectApart(page: Page, panels: Record<string, Locator>): Promise<void> {
-	const { width, height } = page.viewportSize() ?? { width: 0, height: 0 };
-	const boxes = await Promise.all(Object.entries(panels).map(async ([name, element]) => ({ name, at: await boxOf(element) })));
-	const off = boxes
-		.filter(({ at }) => at.x < 0 || at.y < 0 || at.x + at.width > width || at.y + at.height > height)
-		.map(({ name }) => name);
-	expect(off, 'panels off the screen').toEqual([]);
-	const onOneAnother = boxes.flatMap((a, i) => boxes.slice(i + 1).flatMap((b) => (overlap(a.at, b.at) ? [`${a.name} and ${b.name}`] : [])));
-	expect(onOneAnother, 'panels on one another').toEqual([]);
-}
 
 /** Opens `path` with the clock held 1 s after the load, and waits for the ring of 12 h, or of the days it names. */
 async function open(page: Page, path: string, ring = '11–12 ч'): Promise<void> {
@@ -80,12 +74,6 @@ async function open(page: Page, path: string, ring = '11–12 ч'): Promise<void
 test.beforeEach(({ ringApi }) => {
 	ringApi.respond((call) => ({ ...squareRing(Number(call.lat), Number(call.lon), [0.05, 0.5]), ...visaRules(undefined, OLD_RULES) }));
 });
-
-/** How far the box stands from each edge of the screen. */
-function fromEdges(page: Page, box: Box): { top: number; right: number; bottom: number; left: number } {
-	const { width, height } = page.viewportSize() ?? { width: 0, height: 0 };
-	return { top: box.y, right: width - box.x - box.width, bottom: height - box.y - box.height, left: box.x };
-}
 
 for (const { lowestHour, ...viewport } of PHONES) {
 	test.describe(`on ${viewport.width}×${viewport.height}`, () => {
