@@ -1,0 +1,4 @@
+{
+	"wide": "(min-width: 720px) and (min-height: 500px)",
+	"mouse": "(hover: hover) and (pointer: fine)"
+}

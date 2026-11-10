@@ -1,5 +1,6 @@
 /* The screen's look, ported from the prototype's variant C (branch claude/you-mshpw6, prototypes/screen/). One
-   full-screen map with everything over it; the same screen on a desktop. */
+   full-screen map with everything over it, laid out for the narrow screen first and over it for the wide one
+   (`@media (--wide)`, src/media.json). */
 :root {
 	--bg: #eef1ef;
 	--surface: #fff;
@@ -331,6 +332,31 @@ a {
 	display: flex;
 	flex-direction: column;
 	box-shadow: var(--shadow);
+}
+
+/* On the wide screen a sheet is a modal in the middle (#98): 480 px, or the window less --edge on each side; its top
+   10 % down the window but no higher than --edge-top, and it grows down to --edge-bottom over the bottom at most. A
+   steady one (a list with a filter, src/screen/sheets.tsx) keeps one height, 640 px or down to that limit, and its
+   body scrolls; the others are as high as what they hold. The same <dialog>: a window that crosses the threshold
+   changes its look and closes nothing. */
+@media (--wide) {
+	.sheet {
+		--modal-top: max(10%, var(--edge-top));
+
+		inset: var(--modal-top) 0 auto;
+		width: min(480px, 100% - var(--edge-left) - var(--edge-right));
+		max-height: calc(100% - var(--modal-top) - var(--edge-bottom));
+		margin-inline: auto;
+		border-radius: var(--radius);
+	}
+
+	.sheet.steady {
+		height: min(640px, 100% - var(--modal-top) - var(--edge-bottom));
+	}
+
+	.sheet.steady .sheet-body {
+		flex: 1;
+	}
 }
 
 .sheet-head {

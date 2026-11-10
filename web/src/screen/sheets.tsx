@@ -18,13 +18,18 @@ export interface SheetProps {
 	readonly bodyRef?: Ref<HTMLDivElement>;
 	/** What has the focus when the sheet opens; by default the browser's choice, «Закрыть». */
 	readonly initialFocus?: RefObject<HTMLElement | null>;
+	/**
+	 * As a modal of the wide screen, it keeps one height whatever it holds (#98): a list with a filter, which would
+	 * jump as the filter changes. Else it is as high as what it holds.
+	 */
+	readonly steady?: boolean;
 }
 
 /**
  * A sheet: a native `<dialog>` opened modal, so the browser keeps the focus inside it, makes the screen under it inert
  * and closes it on Esc. The dialog fills the screen (styles.css, `.sheet-dialog`) and holds the scrim and the sheet.
  */
-export function Sheet({ title, onClose, children, bodyRef, initialFocus }: SheetProps): ReactElement {
+export function Sheet({ title, onClose, children, bodyRef, initialFocus, steady = false }: SheetProps): ReactElement {
 	const dialog = useRef<HTMLDialogElement>(null);
 	// Before the effects of what is inside: the virtual list of all cities measures the open sheet.
 	useLayoutEffect(() => {
@@ -43,7 +48,7 @@ export function Sheet({ title, onClose, children, bodyRef, initialFocus }: Sheet
 		<dialog ref={dialog} className="sheet-dialog" aria-label={title} onClose={onClose}>
 			{/* oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- the scrim is for a pointer: a keyboard closes the sheet with Esc or «Закрыть» */}
 			<div className="scrim" onClick={close} />
-			<div className="sheet">
+			<div className={steady ? 'sheet steady' : 'sheet'} data-testid="sheet">
 				<div className="sheet-head">
 					<h3>{title}</h3>
 					<button type="button" className="ico-btn" onClick={close} aria-label="Закрыть">
@@ -82,7 +87,7 @@ export function CitizenshipSheet({ citizenships, onChange, onClose }: Citizenshi
 		}
 	};
 	return (
-		<Sheet title="Гражданство" onClose={onClose}>
+		<Sheet title="Гражданство" onClose={onClose} steady>
 			<p className="muted small sheet-note">Можно несколько: для каждой страны берём самый удобный вариант въезда.</p>
 			<label className="search-in">
 				<SearchIcon />
@@ -149,7 +154,7 @@ export function VisasSheet({ visas, citizenships, onChange, onClose }: VisasShee
 		/>
 	);
 	return (
-		<Sheet title="Мои визы" onClose={onClose}>
+		<Sheet title="Мои визы" onClose={onClose} steady>
 			<p className="muted small sheet-note">Визы и ВНЖ, которые у вас уже есть.</p>
 			<PickSection title="Шенген и визы, которые открывают другие страны">
 				{EXEMPTION_VISAS.map((visa) => item(visa, opensText(visa, opensByRows(visa, today, citizenships))))}

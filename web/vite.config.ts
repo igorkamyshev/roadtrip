@@ -6,6 +6,7 @@ import { defineConfig, type PluginOption } from 'vite';
 import { bundleBudget } from './bundle-budget.ts';
 import { olderBrowsers } from './older-browsers.ts';
 import packageJson from './package.json' with { type: 'json' };
+import media from './src/media.json' with { type: 'json' };
 
 /**
  * What the first paint may load, the entry chunk and the chunks it imports statically, in KB gzipped: 136 KB on
@@ -48,8 +49,41 @@ function sourceMaps(env: NodeJS.ProcessEnv): PluginOption {
 	});
 }
 
+/**
+ * The screen's media queries by name (spec #20 «Экран», #96): the CSS writes `@media (--wide)` or `@media (--mouse)`,
+ * custom media as Media Queries 5 has them, and the build puts in each the query of that name from src/media.json,
+ * where the JS reads them too (`matchMedia(media.wide)`). So each is written in one place. A name it does not know
+ * fails the build, and so does one under `not`, after `or` or in a list, where the query put in its place would read
+ * differently: the CSS writes the narrow screen first and the wide one over it.
+ */
+function customMedia(queries: Readonly<Partial<Record<string, string>>>) {
+	return {
+		postcssPlugin: 'roadtrip-custom-media',
+		AtRule: {
+			media(rule: { params: string }): void {
+				if (!rule.params.includes('(--')) {
+					return;
+				}
+				if (/\bnot\b|\bor\b|,/u.test(rule.params)) {
+					throw new Error(`@media ${rule.params}: a custom media only stands alone or with \`and\``);
+				}
+				rule.params = rule.params.replaceAll(/\(--([\w-]+)\)/gu, (_, name: string) => {
+					const query = queries[name];
+					if (query === undefined) {
+						throw new Error(`@media ${rule.params}: no query --${name} in src/media.json`);
+					}
+					return query;
+				});
+			},
+		},
+	};
+}
+
 export default defineConfig({
 	plugins: [react(), olderBrowsers(BROWSERS), sourceMaps(process.env), bundleBudget(FIRST_PAINT_BUDGET_KB)],
+	css: {
+		postcss: { plugins: [customMedia(media)] },
+	},
 	server: {
 		// `pnpm dev` of the worker (wrangler dev) answers the ring.
 		proxy: { '/api': 'http://localhost:8787' },

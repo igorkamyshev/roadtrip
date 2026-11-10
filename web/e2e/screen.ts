@@ -94,6 +94,28 @@ export const slider = (page: Page): Locator => page.getByRole('slider', { name: 
 /** The carousel at the bottom of the screen: the first card, the city cards, «и ещё». */
 export const carousel = (page: Page): Locator => page.getByTestId('carousel');
 
+/**
+ * The open sheet of this title, the panel itself: a sheet from the bottom on the narrow screen, a modal in the middle
+ * on the wide one. Its dialog fills the screen with the scrim.
+ */
+export const sheetPanel = (page: Page, title: string | RegExp): Locator => page.getByRole('dialog', { name: title }).getByTestId('sheet');
+
+/** Where the open sheet of this title stands, to the pixel: its left edge, width, middle across, top, height and bottom. */
+export async function sheetPlace(
+	page: Page,
+	title: string | RegExp,
+): Promise<{ left: number; width: number; middle: number; top: number; height: number; bottom: number }> {
+	const box = await boxOf(sheetPanel(page, title));
+	return {
+		left: Math.round(box.x),
+		width: Math.round(box.width),
+		middle: Math.round(box.x + box.width / 2),
+		top: Math.round(box.y),
+		height: Math.round(box.height),
+		bottom: Math.round(box.y + box.height),
+	};
+}
+
 /** Where an element is on the screen, its box in CSS pixels; it must be there. */
 export async function boxOf(element: Locator): Promise<{ x: number; y: number; width: number; height: number }> {
 	const box = await element.boundingBox();
