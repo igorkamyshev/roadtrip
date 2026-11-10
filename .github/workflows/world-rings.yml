@@ -2,9 +2,14 @@ name: World rings
 
 # Rings on the world graph, the current dataset from R2, from the code of the branch it runs on (data/AGENTS.md, «Rings
 # on real roads»): as GeoJSON in the artifact `world-rings`, and in mode `container` timed in the Container's image under
-# standard-2's limits, a row per answer in the run's summary (docs/container-bench.md). It deploys nothing. Run by hand:
+# standard-2's limits, a row per answer in the run's summary (docs/container-bench.md). It deploys nothing. It runs on
+# a push to a branch that changes .github/world-rings.json, which says the rings, as a cloud session starts it (it may
+# not dispatch a workflow), or by hand:
 #   gh workflow run world-rings.yml --ref <branch> -f rings='Frankfurt 50.1109 8.6821 36 48' -f mode=container
 on:
+  push:
+    branches-ignore: [main]
+    paths: [.github/world-rings.json]
   workflow_dispatch:
     inputs:
       rings:
@@ -45,13 +50,23 @@ jobs:
         run: pnpm --filter data fetch-dataset
       - name: Rings
         env:
-          RINGS: ${{ inputs.rings }}
-          CLOSED: ${{ inputs.closed }}
-          MODE: ${{ inputs.mode }}
+          INPUT_RINGS: ${{ inputs.rings }}
+          INPUT_CLOSED: ${{ inputs.closed }}
+          INPUT_MODE: ${{ inputs.mode }}
           OUT: ${{ runner.temp }}/rings
-        run: .github/world-rings/run.sh "$MODE"
-      - if: always() && inputs.mode == 'container'
-        run: docker logs engine 2>&1 | tail -20
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = workflow_dispatch ]; then
+            export RINGS=$INPUT_RINGS CLOSED=$INPUT_CLOSED
+            mode=$INPUT_MODE
+          else
+            RINGS=$(jq -r '.rings' .github/world-rings.json)
+            CLOSED=$(jq -r '.closed // ""' .github/world-rings.json)
+            export RINGS CLOSED
+            mode=$(jq -r '.mode // "ring"' .github/world-rings.json)
+          fi
+          .github/world-rings/run.sh "$mode"
+      - if: always()
+        run: docker logs engine 2>&1 | tail -20 || true
       - uses: actions/upload-artifact@v4
         if: always()
         with:

@@ -27,4 +27,4 @@ Once every PR is green, from the top down, each with a merge commit (`merge_meth
 2. Each next PR into the branch below it. A PR whose base just moved reads «not mergeable» for a few seconds while GitHub recomputes it: read it again, then merge.
 3. The bottom PR into `main`. `main` moves once, and the deploy runs once for the whole stack.
 
-Then delete the lower branches (`git push origin --delete <branch>-<N>`) and start the session's branch again from `main` (`AGENTS.md`, «A cloud session's branch»).
+Then start the session's branch again from `main` (`AGENTS.md`, «A cloud session's branch»). The lower branches stay for the Owner to delete: a cloud session may not delete a branch.
