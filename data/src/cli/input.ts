@@ -100,7 +100,7 @@ export function log(line: string): void {
 	process.stderr.write(`${line}\n`);
 }
 
-/** The size of a file the screen downloads, as it is and in brotli, as the Worker serves it: `0.58 MB, 0.12 MB in brotli`. */
+/** The size of a file the screen downloads, as it is and in brotli, as the Worker serves it: `1.83 MB, 0.60 MB in brotli` for the world's cities file. */
 export function sizes(text: string): string {
 	return `${megabytes(Buffer.byteLength(text))} MB, ${megabytes(brotliCompressSync(text).length)} MB in brotli`;
 }
