@@ -2,7 +2,8 @@
 // window at least 720 × 500, the narrow one on the rest, whatever the pointer, on each window of the table
 // (e2e/windows.ts); and a window that crosses the threshold, which changes the look at once and closes or resets
 // nothing. On the wide screen the slider is a row at the bottom left, over the carousel's cards, and the carousel runs
-// the whole width. Read by the elements' boxes, never by pixels.
+// the whole width; the first card stands where it does with a ring in every state (#106). Read by the elements'
+// boxes, never by pixels.
 import type { Page } from '@playwright/test';
 import type { Access } from 'worker/api';
 import { CITIES, expect, serveCities, squareRing, test, visaRules } from './fixtures.ts';
@@ -165,6 +166,49 @@ for (const window of ROW_WINDOWS) {
 
 			expect(fromEdges(page, await boxOf(firstCard(page))).left).toBeCloseTo(EDGE, 0);
 			expect(await carousel(page).evaluate((element) => element.scrollWidth - element.clientWidth)).toBe(0);
+		});
+	});
+}
+
+/** Where the first card stands, to the pixel: how far from the left and the bottom edges, and how wide. */
+async function firstCardPlace(page: Page): Promise<{ left: number; bottom: number; width: number }> {
+	const box = await boxOf(firstCard(page));
+	const { left, bottom } = fromEdges(page, box);
+	return { left: Math.round(left), bottom: Math.round(bottom), width: Math.round(box.width) };
+}
+
+for (const window of WIDE_WINDOWS) {
+	test.describe(`on ${windowName(window)}`, () => {
+		test.use(onWindow(window));
+
+		test('the first card stands where it does with a ring, as wide, in «Откуда едем?», while calculating and on a failure, apart from the phrase and the slider', async ({
+			page,
+			ringApi,
+		}) => {
+			ringApi.hold();
+			await page.goto('/');
+			await expect(firstCard(page)).toHaveAttribute('data-state', 'no_origin');
+			await expect(slider(page)).toHaveCount(0);
+			const noOrigin = await firstCardPlace(page);
+			await expectApart(page, { phrase: phrase(page), 'first card': firstCard(page) });
+
+			await page.goto(LINK);
+			await expect(firstCard(page)).toHaveAttribute('data-state', 'calculating');
+			const calculating = await firstCardPlace(page);
+			await expectApart(page, { phrase: phrase(page), 'slider row': slider(page), 'first card': firstCard(page) });
+
+			await ringApi.answer({ status: 502 });
+			await expect(firstCard(page)).toHaveAttribute('data-state', 'error');
+			const failure = await firstCardPlace(page);
+			await expectApart(page, { phrase: phrase(page), 'slider row': slider(page), 'first card': firstCard(page) });
+
+			ringApi.respond(() => ({ ...squareRing(BELGRADE.lat, BELGRADE.lon, [1, 3]), ...visaRules(OPEN) }));
+			await firstCard(page).getByRole('button', { name: 'Повторить' }).click();
+			await expectRingCard(page, '2–3 ч');
+			const withRing = await firstCardPlace(page);
+
+			expect(withRing).toMatchObject({ left: EDGE, bottom: EDGE });
+			expect({ noOrigin, calculating, failure }).toEqual({ noOrigin: withRing, calculating: withRing, failure: withRing });
 		});
 	});
 }
