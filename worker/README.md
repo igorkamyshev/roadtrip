@@ -151,7 +151,7 @@ A second Worker, `roadtrip-stand`, at `https://roadtrip-stand.kamyshev.workers.d
 - It serves the branch's `web/dist` as its static assets. Every path without a file reaches its Worker, which asks `https://roadtrip.kamyshev.me` for the same path: `/api/ring`, `/tiles/…`, and `/data/…`, which the stand's build does not have (no `fetch-dataset`). The rings, the basemap, the zone outlines and the cities file are production's.
 - It asks production by its public address, so the zone's WAF rate limit on `/api/ring` applies. Production sees every request from the stand as one client, Cloudflare's address `2a06:98c0:3600::103`: the stand's visitors share one limit of 20 requests in 10 s (`docs/agents/infrastructure.md`, «Rate limit»). A sweep of the whole slider is up to 16 rings (`SLIDER_CELLS`).
 - The browser sends no events of its own off `PRODUCTION_HOST`, nor the `X-POSTHOG-*` ids. The rings it asks for are still `ring served` events of this Worker, with `distinct_id` `server`: trying a prototype adds to production's ring counts.
-- One branch at a time: the last one deployed is the one it shows. Which one that is: the latest build of the stand's Worker (`docs/agents/infrastructure.md`, «Check a deploy», with its tag), `build_trigger_metadata.branch`.
+- One branch at a time: the last one deployed is the one it shows. A session that deploys its prototype replaces whatever another session had there. Which one that is: the latest build of the stand's Worker (`docs/agents/infrastructure.md`, «Check a deploy», with its tag), `build_trigger_metadata.branch`.
 
 ### Deploy a branch
 
@@ -170,8 +170,8 @@ async () => {
 
 The branch must have `stand/` (every branch from `main` since #100). The build takes under a minute (the first, 2026-11-10: 43 s); follow it as in «Check a deploy». A deploy turns the address on (`workers_dev: true`).
 
-### Switch it off
+### Keep it on, or switch it off
 
-Once the Owner has chosen, switch the address off: `POST /accounts/{account_id}/workers/scripts/roadtrip-stand/subdomain` with `{ "enabled": false }`. The Worker and its trigger stay, and the next deploy turns the address on again.
+The stand stays on after the Owner has chosen a prototype, so the next prototypes deploy onto it (#98). Switch the address off only when the Owner asks for it: `POST /accounts/{account_id}/workers/scripts/roadtrip-stand/subdomain` with `{ "enabled": false }`. The Worker and its trigger stay, and the next deploy turns the address on again.
 
 To remove the stand for good: `DELETE /accounts/{account_id}/builds/triggers/4dfad845-37e3-45bf-880a-5e5c48b80c24`, then `DELETE /accounts/{account_id}/workers/scripts/roadtrip-stand`; in the repository `stand/`, the `deploy:stand` script, `stand/**/*.ts` and the stand in the comment of `tsconfig.worker.json`, this section, the stand's row and paragraph in `docs/agents/infrastructure.md` (and «All three triggers» there back to «Both»), and the stand in the `worker` line of the root `AGENTS.md`.
