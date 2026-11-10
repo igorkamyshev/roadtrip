@@ -3,7 +3,7 @@
 // unit at a time and folds the other into a tab, «дни ↑» over the hours' panel or «часы ↓» under the days'; it turns
 // to the other unit only once that is committed. The link says `d=D` for a day.
 import type { Locator, Page } from '@playwright/test';
-import { allowGeolocation, BELGRADE, expect, squareRing, test, visaRules } from './fixtures.ts';
+import { allowGeolocation, BELGRADE, expect, SHORTEST, squareRing, test, visaRules } from './fixtures.ts';
 import {
 	boxOf,
 	dottedHours,
@@ -17,8 +17,6 @@ import {
 	sliderPanel,
 	sliderTab,
 } from './screen.ts';
-
-const AT_12_HOURS = '/#/?p=44.81760,20.45730&h=12&cit=RUS';
 
 /** A ring per request: a band from its lower to its upper bound in tenths of a degree around the origin. */
 const bandFor = (call: { lat: string; lon: string; from: number; hours: number }) =>
@@ -45,7 +43,7 @@ test('in hours the slider has twelve cells and «дни ↑» over them; a key u
 	page,
 	ringApi,
 }) => {
-	await page.goto(AT_12_HOURS);
+	await page.goto(SHORTEST);
 	await expectRingCard(page, '11–12 ч');
 	await expect(sliderCells(page)).toHaveCount(12);
 	await expect(sliderTab(page)).toHaveText('дни ↑');
@@ -89,7 +87,7 @@ test('a tap on «часы ↓» chooses 12 h, and a tap on «дни ↑» day 2'
 });
 
 test('a drag from an hour onto «дни ↑» chooses day 2 when let go, and the column stays in hours until then', async ({ page, ringApi }) => {
-	await page.goto(AT_12_HOURS);
+	await page.goto(SHORTEST);
 	await expectRingCard(page, '11–12 ч');
 	const [from, tab] = await Promise.all([boxOf(sliderHour(page, 10)), boxOf(sliderTab(page))]);
 
@@ -125,7 +123,7 @@ test('a tap on the panel over the cell of 12 h, short of the tab, chooses 12 h',
 });
 
 test('the tab is as wide as the panel, and a tap just past it, over the map, takes it too', async ({ page }) => {
-	await page.goto(AT_12_HOURS);
+	await page.goto(SHORTEST);
 	await expectRingCard(page, '11–12 ч');
 	const [tab, panel] = await Promise.all([boxOf(sliderTab(page)), boxOf(sliderPanel(page))]);
 	expect(tab.width).toBeCloseTo(panel.width, 0);
@@ -222,7 +220,7 @@ test.describe('on the wide screen', () => {
 		page,
 		ringApi,
 	}) => {
-		await page.goto(AT_12_HOURS);
+		await page.goto(SHORTEST);
 		await expectRingCard(page, '11–12 ч');
 		await expect(sliderCells(page)).toHaveCount(12);
 		await expect(sliderTab(page)).toHaveText('дни →');
@@ -275,7 +273,7 @@ test.describe('on the wide screen', () => {
 		page,
 		ringApi,
 	}) => {
-		await page.goto(AT_12_HOURS);
+		await page.goto(SHORTEST);
 		await expectRingCard(page, '11–12 ч');
 		expect(await tabRightOfCells(page)).toBe(true);
 

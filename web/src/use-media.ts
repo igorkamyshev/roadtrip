@@ -22,15 +22,16 @@ function mediaStore(name: MediaName): MediaStore {
 	};
 }
 
-/** One store a query, so that a component subscribes once, not at every render. */
-const STORES = new Map<MediaName, MediaStore>();
+/** One store a query of src/media.json, so that a component subscribes once, not at every render. */
+const STORES: Readonly<Record<MediaName, MediaStore>> = {
+	wide: mediaStore('wide'),
+	mouse: mediaStore('mouse'),
+	dark: mediaStore('dark'),
+	'reduced-motion': mediaStore('reduced-motion'),
+};
 
 /** Whether the window answers the query of this name now; the component renders again when that changes. */
 export function useMedia(name: MediaName): boolean {
-	let store = STORES.get(name);
-	if (store === undefined) {
-		store = mediaStore(name);
-		STORES.set(name, store);
-	}
+	const store = STORES[name];
 	return useSyncExternalStore(store.subscribe, store.matches);
 }

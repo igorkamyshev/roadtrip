@@ -9,6 +9,7 @@ import {
 	BELGRADE,
 	expect,
 	failGeolocation,
+	FROM_BELGRADE,
 	LINK_3_HOURS_RUS,
 	openInProduction,
 	POSTHOG_PROXY,
@@ -326,7 +327,7 @@ test.describe('ring result', () => {
 		posthog,
 	}) => {
 		await holdTheClock(page);
-		await openInProduction(page, '/#/?p=44.81760,20.45730&h=3&cit=RUS,SRB&visas=GEO,SCHENGEN');
+		await openInProduction(page, `${FROM_BELGRADE}&h=3&cit=RUS,SRB&visas=GEO,SCHENGEN`);
 		await ringApi.waitForCalls(1);
 		await page.clock.runFor(1000);
 		await ringApi.answer(belgradeRing());
@@ -354,7 +355,7 @@ test.describe('ring result', () => {
 	test('tells a ring of days by its upper bound in hours: 24 for day 2', async ({ page, ringApi, posthog }) => {
 		ringApi.respond(() => belgradeRing());
 
-		await openInProduction(page, '/#/?p=44.81760,20.45730&d=2&cit=RUS');
+		await openInProduction(page, `${FROM_BELGRADE}&d=2&cit=RUS`);
 
 		await expect.poll(() => posthog.named('ring result'), SENT).toEqual([expect.objectContaining({ outcome: 'ring', hours: 24 })]);
 	});

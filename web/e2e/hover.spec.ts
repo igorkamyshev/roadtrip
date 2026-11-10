@@ -15,9 +15,8 @@ const NARROW_WITH_A_MOUSE: TestWindow = { width: 390, height: 844, pointer: 'mou
 
 /** The ticket's windows: a desktop and a narrow window with a mouse; a phone and a tablet upright without one. */
 const HOVER_WINDOWS: readonly TestWindow[] = [
-	...WINDOWS.filter(
-		({ width, height }) => (width === 1440 && height === 900) || (width === 390 && height === 844) || (width === 768 && height === 1024),
-	),
+	DESKTOP,
+	...WINDOWS.filter(({ width, height }) => (width === 390 && height === 844) || (width === 768 && height === 1024)),
 	NARROW_WITH_A_MOUSE,
 ];
 const WITH_A_MOUSE = HOVER_WINDOWS.filter((window) => window.pointer === 'mouse');

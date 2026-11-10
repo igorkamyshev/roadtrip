@@ -1,7 +1,7 @@
 // N and the ring (spec #20 «Экран»: slider, map, the old ring while calculating; «Состояние, ссылка и память
 // браузера»: TanStack Query; stories 10–15, 22): a ring is asked for when the slider is let go, rings in memory
 // come back without a request, and a calculation keeps the old ring of the same origin, striped.
-import { allowGeolocation, BELGRADE, expect, squareRing, test } from './fixtures.ts';
+import { allowGeolocation, BELGRADE, expect, ringOfHours, squareRing, test } from './fixtures.ts';
 import {
 	dottedHours,
 	dragMap,
@@ -19,10 +19,6 @@ import {
 } from './screen.ts';
 
 const BELGRADE_CALL = { lat: '44.81760', lon: '20.45730' };
-
-/** A ring per N: a band from N − 1 to N tenths of a degree around the origin. */
-const ringOfHours = (call: { lat: string; lon: string; hours: number }) =>
-	squareRing(Number(call.lat), Number(call.lon), [(call.hours - 1) / 10, call.hours / 10]);
 
 test.beforeEach(async ({ context }) => {
 	await allowGeolocation(context, BELGRADE);

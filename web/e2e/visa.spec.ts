@@ -2,12 +2,12 @@
 // «визовые правила от», the card `visa_rules_missing`; «Состояние, ссылка и память браузера»; stories on
 // citizenships): what the person sees and what the screen asks the API.
 import type { Page } from '@playwright/test';
-import { allowGeolocation, BELGRADE, expect, LINK_2_HOURS, squareRing, test, visaRules, ZONE_OUTLINES } from './fixtures.ts';
+import { allowGeolocation, BELGRADE, expect, LINK_2_HOURS, ringOfHours, squareRing, test, visaRules, ZONE_OUTLINES } from './fixtures.ts';
 import { dottedHours, expectRingCard, firstCard, hatchedZones, outlinesOnMap, phrase, reopen, ringOnMap, slider } from './screen.ts';
 
 test.beforeEach(async ({ context, ringApi }) => {
 	await allowGeolocation(context, BELGRADE);
-	ringApi.respond((call) => squareRing(Number(call.lat), Number(call.lon), [(call.hours - 1) / 10, call.hours / 10]));
+	ringApi.respond(ringOfHours);
 });
 
 const sheet = (page: Page) => page.getByRole('dialog', { name: 'Гражданство' });
@@ -184,9 +184,7 @@ test.describe('the visa rules', () => {
 
 	test('missing are not kept: those hours get no mark, and asking for them again asks the Worker again', async ({ page, ringApi }) => {
 		ringApi.respond((call) =>
-			call.cit === 'RUS,SRB' && call.hours === 2
-				? { outcome: 'visa_rules_missing', missingCitizenship: 'SRB' }
-				: squareRing(Number(call.lat), Number(call.lon), [(call.hours - 1) / 10, call.hours / 10]),
+			call.cit === 'RUS,SRB' && call.hours === 2 ? { outcome: 'visa_rules_missing', missingCitizenship: 'SRB' } : ringOfHours(call),
 		);
 		await page.goto(`${LINK_2_HOURS}&cit=RUS,SRB`);
 		await expect(firstCard(page)).toContainText('Не удалось загрузить визовые правила для гражданства Сербия.');
