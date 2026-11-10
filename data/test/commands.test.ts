@@ -234,7 +234,10 @@ describe('the russian-names command', () => {
 		rmSync(directory, { recursive: true });
 	});
 
-	/** A cities file as R2 holds it: Marondera's Russian name broken, Nogoyá's missing, Belgrade's GeoNames'. */
+	/**
+	 * A cities file as R2 holds it: Marondera's Russian name broken, Nogoyá's missing, Belgrade's GeoNames'. Indented,
+	 * so that a command that rewrites it at all changes its bytes.
+	 */
 	const fetchedCities = (name: string) => {
 		const path = join(directory, name);
 		writeFileSync(
@@ -245,6 +248,8 @@ describe('the russian-names command', () => {
 					[886_990, 'Маронdera', 'Marondera', -18.185, 31.552, 61_998, 'ZWE'],
 					[3_430_415, '', 'Nogoyá', -32.393, -59.79, 20_442, 'ARG'],
 				]),
+				undefined,
+				'\t',
 			),
 		);
 		return path;

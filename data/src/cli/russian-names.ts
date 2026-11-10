@@ -21,8 +21,8 @@ const table = values.names === undefined ? undefined : userPath(values.names);
 
 // Read first: a bad table fails before the file is touched.
 const names = readRussianNames(table);
-const { file, named, absent } = withRussianNames(parseCitiesFile(JSON.parse(readFileSync(citiesPath, 'utf8'))), names);
+const { file, named, notInFile } = withRussianNames(parseCitiesFile(JSON.parse(readFileSync(citiesPath, 'utf8'))), names);
 writeFileSync(citiesPath, JSON.stringify(file));
 log(
-	`Russian names of ${table ?? 'the shipped table'} in ${citiesPath}: ${named} cities named; ids of the table not in the file: ${absent}`,
+	`Russian names of ${table ?? 'the shipped table'} in ${citiesPath}: ${named} cities named; ids of the table not in the file: ${notInFile}`,
 );

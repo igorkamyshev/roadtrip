@@ -71,10 +71,11 @@ log(
 log(
 	`Russian names: ${report.russianFromGeoNames} from GeoNames, ${report.russianFromWikidata} from Wikidata, ${report.withoutRussian} without`,
 );
+const { missingRussianNames } = report;
 log(
-	`without a Russian name and not in the table of Russian names: ${report.missingRussianNames.count}; the biggest: ${report.missingRussianNames.biggest
-		.map(({ id, name }) => `${id} ${name}`)
-		.join('; ')}`,
+	`without a Russian name and not in the table of Russian names: ${missingRussianNames.count}${missingRussianNames.biggest
+		.map(({ id, name }, index) => `${index === 0 ? '; the biggest: ' : '; '}${id} ${name}`)
+		.join('')}`,
 );
 log(`zones: ${report.zoneByPolygon} by the graph's polygons, ${report.zoneByCountry} outside every polygon by their GeoNames country`);
 log(
