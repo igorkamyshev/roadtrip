@@ -19,6 +19,8 @@ Infer the repo from `git remote -v`; `gh` does this automatically when run insid
 
 In Claude Code cloud sessions, where `gh` is limited to search, do the same operations with the GitHub MCP tools (`mcp__github__*`) against `igorkamyshev/roadtrip`.
 
+The GitHub MCP drops a tag in angle brackets from a title: «…и новый `<head>`» was left «…и новый » (#94). In an issue's or a PR's title, name the tag in words («новые title и описание»); in a body, inside backticks, it stays.
+
 File issues only into the user's own repo. Never file into `mattpocock/skills` (the repo these skills come from) unless the user owns it. In a fork, `gh` can default to the upstream parent, so before the first `gh issue create` of a session, check the target with `gh repo view --json nameWithOwner` and confirm it with the user if it is not their repo.
 
 ## Pull requests as a triage surface

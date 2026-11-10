@@ -8,12 +8,12 @@
 		"dev": "vite",
 		"build": "vite build",
 		"preview": "vite preview",
-		"demo": "vite build && node e2e/demo-cli.ts",
-		"record": "vite build && node e2e/record.ts",
-		"shots": "vite build && node e2e/shots.ts",
-		"icons": "node e2e/icons.ts",
+		"demo": "vite build && node tools/demo-cli.ts",
+		"record": "vite build && node tools/record.ts",
+		"shots": "vite build && node tools/shots.ts",
+		"icons": "node tools/icons.ts",
 		"e2e": "playwright test",
-		"typecheck": "tsc --noEmit && tsc --noEmit -p e2e"
+		"typecheck": "tsc --noEmit && tsc --noEmit -p e2e && tsc --noEmit -p tools"
 	},
 	"dependencies": {
 		"@fontsource/golos-text": "^5.3.0",

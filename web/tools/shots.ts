@@ -1,5 +1,5 @@
 // `pnpm --filter web shots <out-dir> [<link>…] [--viewport <W>x<H>,…] [--theme light|dark|both] [--wait <ms>]
-// [--card <city>] [--compare <ref> [--title <title>]]`: PNGs of the screen without the Worker (e2e/demo.ts), for a PR's
+// [--card <city>] [--compare <ref> [--title <title>]] [--window]`: PNGs of the screen without the Worker (tools/demo.ts), for a PR's
 // «Evidence» or a look at a layout (web/README.md, «Demo»). It builds the client, serves it with the doubles, and in
 // Chromium opens each link (the part from `/#/`; by default Belgrade at 6 h, a ring with cities) on each viewport in
 // each theme, at deviceScaleFactor 2, and shoots it once the first card is no longer calculating, the map's camera has
@@ -10,17 +10,22 @@
 // would, and also shoots the card alone, to `…-<theme>-card.png`; a ring without that card fails. `--compare <ref>`
 // also builds the client of git ref `<ref>` (`origin/main`) in a worktree of its own, removed at the end, serves it with
 // this checkout's doubles and shoots it the same way: its files are `before-…`, this checkout's `after-…`, and
-// `index.html` (e2e/compare-page.ts) puts them side by side, titled `--title`, for a private artifact.
+// `index.html` (tools/compare-page.ts) puts them side by side, titled `--title`, for a private artifact.
+//
+// `--window` shoots the browser's whole window instead, its tab (title and icon) and address bar included, at one pixel
+// per CSS pixel: Chromium runs with a window on a display of its own (Xvfb), in its dark look for the dark theme, and
+// ImageMagick's `import` captures the screen. A window is at least about 500 px wide, so a phone's viewport sits at its
+// left. Xvfb and ImageMagick are on a cloud session's machine; elsewhere, install them.
 import { execFileSync, spawnSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
-import { setTimeout as sleep } from 'node:timers/promises';
 import { parseArgs } from 'node:util';
-import { type Browser, chromium, expect, type Locator, type Page } from '@playwright/test';
+import { expect, type Locator, type Page } from '@playwright/test';
 import { comparePage, type Shot, type Theme } from './compare-page.ts';
 import { startDemo } from './demo.ts';
-import { mapAtRest } from './screen.ts';
+import { mapAtRest } from '../e2e/screen.ts';
+import { headlessPages, type Pages, windowPages } from './pages.ts';
 
 /** Belgrade at 6 h: the demo's ring with cities (at 3 h it has none). */
 const DEFAULT_LINK = '/#/?p=44.81760,20.45730&h=6&cit=RUS';
@@ -39,6 +44,8 @@ interface Run {
 	readonly wait: number;
 	/** The city of `--card`. */
 	readonly card: string | undefined;
+	/** Where each shot's page opens and is shot: headless, or in a window (`--window`). */
+	readonly pages: Pages;
 }
 
 /** The themes of `--theme`; undefined for anything else. */
@@ -67,22 +74,8 @@ async function chooseCard(page: Page, city: string, path: string): Promise<Locat
 }
 
 /** Opens the shot's link on `side` on its viewport and theme, waits for the ring (and the card), `wait` ms more, and writes the PNGs. */
-async function shoot(
-	browser: Browser,
-	{ out, wait, card }: Run,
-	{ side, shot }: { readonly side: Side; readonly shot: Shot },
-): Promise<string[]> {
-	const page = await browser.newPage({
-		viewport: { width: shot.width, height: shot.height },
-		deviceScaleFactor: 2,
-		colorScheme: shot.theme,
-	});
-	// The map the client announces, kept as the fixtures keep it (e2e/fixtures.ts), to wait for its camera.
-	await page.addInitScript(() => {
-		window.addEventListener('roadtrip:map', (event) => {
-			window.mapForTests = event.detail;
-		});
-	});
+async function shoot({ out, wait, card, pages }: Run, { side, shot }: { readonly side: Side; readonly shot: Shot }): Promise<string[]> {
+	const page = await pages.open(shot);
 	await page.goto(new URL(shot.path, side.base).href);
 	const firstCard = page.getByTestId('first-card');
 	await firstCard.waitFor({ timeout: READY_TIMEOUT_MS });
@@ -90,32 +83,30 @@ async function shoot(
 	const cardShown = card === undefined ? undefined : await chooseCard(page, card, shot.path);
 	// The camera moves over a new ring and to the chosen city: «before» and «after» are shot where it stops.
 	await mapAtRest(page);
-	await sleep(wait);
-	const files = [join(out, `${side.prefix}${shot.name}.png`)];
-	await page.screenshot({ path: files[0] });
+	await page.waitForTimeout(wait);
+	const screenFile = join(out, `${side.prefix}${shot.name}.png`);
+	const files = [screenFile];
+	await pages.shoot(page, screenFile);
 	const box = await cardShown?.boundingBox();
 	if (box !== undefined && box !== null) {
-		files.push(join(out, `${side.prefix}${shot.name}-card.png`));
+		const cardFile = join(out, `${side.prefix}${shot.name}-card.png`);
+		files.push(cardFile);
 		// The chosen card's outline is outside its box.
 		const margin = 4;
 		await page.screenshot({
-			path: files[1],
+			path: cardFile,
 			clip: { x: box.x - margin, y: box.y - margin, width: box.width + 2 * margin, height: box.height + 2 * margin },
 		});
 	}
-	await page.close();
+	await pages.release(page);
 	return files;
 }
 
 /** Shoots each shot on each side, «before» first, and lists the files on stdout. */
-async function shootAll(
-	browser: Browser,
-	run: Run,
-	{ sides, shots }: { readonly sides: readonly Side[]; readonly shots: readonly Shot[] },
-): Promise<void> {
+async function shootAll(run: Run, { sides, shots }: { readonly sides: readonly Side[]; readonly shots: readonly Shot[] }): Promise<void> {
 	for (const shot of shots) {
 		for (const side of sides) {
-			const files = await shoot(browser, run, { side, shot });
+			const files = await shoot(run, { side, shot });
 			process.stdout.write(files.map((file) => `${file}\n`).join(''));
 		}
 	}
@@ -166,6 +157,7 @@ const { values, positionals } = parseArgs({
 		card: { type: 'string' },
 		compare: { type: 'string' },
 		title: { type: 'string', default: 'Скриншоты до и после' },
+		window: { type: 'boolean', default: false },
 	},
 });
 const [outDir = '', ...linksGiven] = positionals;
@@ -180,7 +172,7 @@ if (
 	!viewports.every((size) => size.length === 2 && size.every((side) => Number.isInteger(side) && side > 0))
 ) {
 	throw new Error(
-		'Usage: pnpm --filter web shots <out-dir> [<link>…] [--viewport <W>x<H>,…] [--theme light|dark|both] [--wait <ms>] [--card <city>] [--compare <ref> [--title <title>]]',
+		'Usage: pnpm --filter web shots <out-dir> [<link>…] [--viewport <W>x<H>,…] [--theme light|dark|both] [--wait <ms>] [--card <city>] [--compare <ref> [--title <title>]] [--window]',
 	);
 }
 
@@ -205,7 +197,7 @@ try {
 					await after.close();
 					throw error;
 				});
-	const browser = await chromium.launch();
+	const pages = values.window ? await windowPages(viewports.map(([width, height]) => ({ width, height }))) : await headlessPages();
 	try {
 		const sides: Side[] =
 			old === undefined
@@ -214,9 +206,9 @@ try {
 						{ base: old.base, prefix: 'before-' },
 						{ base: after.base, prefix: 'after-' },
 					];
-		await shootAll(browser, { out, wait, card: values.card }, { sides, shots });
+		await shootAll({ out, wait, card: values.card, pages }, { sides, shots });
 	} finally {
-		await browser.close();
+		await pages.close();
 		await after.close();
 		await old?.close();
 	}

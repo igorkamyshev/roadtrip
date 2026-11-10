@@ -1,4 +1,4 @@
-// `pnpm --filter web record <steps.ts> <out-dir>`: a video of the screen without the Worker (e2e/demo.ts), for a
+// `pnpm --filter web record <steps.ts> <out-dir>`: a video of the screen without the Worker (tools/demo.ts), for a
 // PR's «Evidence» (web/README.md, «Demo»). It builds the client, serves it with the doubles, opens a phone of 390×844
 // in Chromium with a dot where the finger is, and runs the steps the file's default export takes. `<out-dir>` gets
 // `recording.mp4` (`recording.webm` without ffmpeg) and a PNG for each `shot`.

@@ -12,6 +12,7 @@ import { encodeCities, type CityRow } from 'data/cities-file';
 import type { Access, RingAnswer, RingResponse } from 'worker/api';
 import { PostHogDouble } from './posthog-double.ts';
 import { RingApi } from './ring-api.ts';
+import { keepMapForTests } from './screen.ts';
 
 export { expect };
 
@@ -146,13 +147,7 @@ export const test = base.extend<{ network: Network; ringApi: RingApi; posthog: P
 		async ({ context, baseURL }, use) => {
 			const network: Network = { tiles: [], blocked: [] };
 			await cutOffTheNetwork(context, network, baseURL ?? '');
-			// The map the client announces (`MAP_EVENT` of src/map/map-view.tsx), kept as `window.mapForTests` for
-			// e2e/screen.ts.
-			await context.addInitScript(() => {
-				window.addEventListener('roadtrip:map', (event) => {
-					window.mapForTests = event.detail;
-				});
-			});
+			await keepMapForTests(context);
 			await use(network);
 		},
 		{ auto: true },

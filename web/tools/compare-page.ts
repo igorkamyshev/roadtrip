@@ -1,4 +1,4 @@
-// The page of `shots --compare` (e2e/shots.ts): its shots before and after side by side, in both themes, the card's
+// The page of `shots --compare` (tools/shots.ts): its shots before and after side by side, in both themes, the card's
 // first, then the screens, for a private artifact with the PNGs as its files (web/README.md, «Demo»). It meets the
 // Artifact page's contract: no <html>, <head> or <body>, a <title>, colors as tokens on :root with their dark values
 // twice, the body's own background, 16 px at the sides, and it holds at 400 px wide.
