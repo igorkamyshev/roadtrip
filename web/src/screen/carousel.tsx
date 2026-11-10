@@ -16,7 +16,7 @@ export function Carousel({ screen }: { readonly screen: ScreenModel }): ReactEle
 	const access = shown.answer?.access;
 	const cities = shown.shownCities;
 	return (
-		<div className="c-car" ref={carousel} onScroll={onCarouselScroll}>
+		<div className="c-car" data-testid="carousel" ref={carousel} onScroll={onCarouselScroll}>
 			<FirstCard
 				state={card}
 				actions={{

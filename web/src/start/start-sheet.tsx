@@ -47,7 +47,11 @@ export function StartSheet({ cities, geolocationFailed, onPick, onPin, onLocate,
 					<LocateIcon /> Где я
 				</button>
 			</div>
-			{geolocationFailed ? <p className="muted small">Браузер не дал доступ к геолокации.</p> : null}
+			{geolocationFailed ? (
+				<p className="muted small" data-testid="geolocation-failed">
+					Браузер не дал доступ к геолокации.
+				</p>
+			) : null}
 			{found === undefined || text.trim() === '' ? null : <Found cities={found} onPick={onPick} />}
 		</Sheet>
 	);

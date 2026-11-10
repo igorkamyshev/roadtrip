@@ -21,9 +21,14 @@ const sheet = (page: Page) => page.getByRole('dialog', { name: 'Мои визы'
 const section = (page: Page, name: string) => sheet(page).getByRole('region', { name });
 /** A choice of `within` (the sheet or a section of it) by its name, without the counter under it. */
 const choiceIn = (within: Locator, name: string) =>
-	within.locator('.pick-item').filter({ has: within.page().locator('.pick-name', { hasText: new RegExp(`^${name}$`, 'u') }) });
+	within.getByTestId('pick-item').filter({
+		has: within
+			.page()
+			.getByTestId('pick-name')
+			.filter({ hasText: new RegExp(`^${name}$`, 'u') }),
+	});
 const choice = (page: Page, name: string) => choiceIn(sheet(page), name);
-const subOf = (page: Page, name: string) => choice(page, name).locator('.pick-sub');
+const subOf = (page: Page, name: string) => choice(page, name).getByTestId('pick-sub');
 
 test.describe('the held visas', () => {
 	test('are none by default: «мои визы: нет» in the phrase, none in the request and the link', async ({ page, ringApi }) => {
@@ -45,12 +50,12 @@ test.describe('the sheet «Мои визы»', () => {
 
 		await expect(sheet(page)).toContainText('Визы и ВНЖ, которые у вас уже есть.');
 		const four = section(page, 'Шенген и визы, которые открывают другие страны');
-		await expect(four.locator('.pick-name')).toHaveText(['Шенген', 'США', 'Великобритания', 'Канада']);
+		await expect(four.getByTestId('pick-name')).toHaveText(['Шенген', 'США', 'Великобритания', 'Канада']);
 		// For a Russian on 2026-11-07. Schengen: ALB, AND, MKD, MNE, SRB, BIH, CYP, GEO, MAR, MEX, BLZ, PAN. The USA: ALB,
 		// MKD, MNE, SRB, BIH, GEO, MAR, MEX, BLZ, PAN. The UK: ALB, MKD, MNE, SRB, GEO, MAR, MEX, PAN. Canada: MKD, MNE,
 		// GEO, MAR, MEX, BLZ, PAN. The rows for some citizenships only (MDA, ARM, CRI, COL, PER, ARG, IRL, TWN, PHL)
 		// are not for Russians.
-		await expect(four.locator('.pick-sub')).toHaveText([
+		await expect(four.getByTestId('pick-sub')).toHaveText([
 			'Открывает весь Шенген и ещё 12 стран, например Черногорию и Сербию',
 			'Открывает ещё 10 стран',
 			'Открывает ещё 8 стран',
@@ -66,13 +71,13 @@ test.describe('the sheet «Мои визы»', () => {
 			await expect(choiceIn(one, held)).toHaveCount(0);
 		}
 		// Every country: ISO 3166-1's 249, Kosovo and Northern Cyprus, but the 33 in Schengen and the USA, the UK and Canada.
-		await expect(one.locator('.pick-name')).toHaveCount(249 + 2 - 33 - 3);
+		await expect(one.getByTestId('pick-name')).toHaveCount(249 + 2 - 33 - 3);
 		for (const country of ['Гренландия', 'Северный Кипр', 'КНДР']) {
 			await expect(choiceIn(one, country)).toHaveCount(1);
 		}
 		// In the order of the Russian alphabet: the names as listed are those names sorted.
-		const names = await one.locator('.pick-name').allInnerTexts();
-		await expect(one.locator('.pick-name')).toHaveText(
+		const names = await one.getByTestId('pick-name').allInnerTexts();
+		await expect(one.getByTestId('pick-name')).toHaveText(
 			names.toSorted((a, b) => a.localeCompare(b, 'ru')),
 			{ useInnerText: true },
 		);
@@ -84,7 +89,7 @@ test.describe('the sheet «Мои визы»', () => {
 		await page.goto(LINK);
 		await phrase(page).getByRole('button', { name: 'нет' }).click();
 
-		await expect(sheet(page).locator('.pick-sub')).toHaveText([
+		await expect(sheet(page).getByTestId('pick-sub')).toHaveText([
 			'Открывает весь Шенген и ещё 12 стран, например Черногорию и Сербию',
 			'Открывает ещё 9 стран',
 			'Открывает ещё 7 стран',
@@ -104,14 +109,14 @@ test.describe('the sheet «Мои визы»', () => {
 		const filter = one.getByRole('searchbox', { name: 'Найти страну' });
 
 		await filter.fill('ГРУЗ');
-		await expect(one.locator('.pick-name')).toHaveText(['Грузия']);
+		await expect(one.getByTestId('pick-name')).toHaveText(['Грузия']);
 		await filter.fill('сент');
-		await expect(one.locator('.pick-name')).toHaveText(['Сент-Винсент и Гренадины', 'Сент-Китс и Невис', 'Сент-Люсия']);
+		await expect(one.getByTestId('pick-name')).toHaveText(['Сент-Винсент и Гренадины', 'Сент-Китс и Невис', 'Сент-Люсия']);
 		await filter.fill('Германия');
-		await expect(one.locator('.pick-name')).toHaveCount(0);
+		await expect(one.getByTestId('pick-name')).toHaveCount(0);
 		await expect(one).not.toContainText('нет в списке');
 		// The first section stays as it is.
-		await expect(section(page, 'Шенген и визы, которые открывают другие страны').locator('.pick-name')).toHaveCount(4);
+		await expect(section(page, 'Шенген и визы, которые открывают другие страны').getByTestId('pick-name')).toHaveCount(4);
 	});
 
 	test('chooses visas: each change is in the phrase, the request and the link, and none is fine', async ({ page, ringApi }) => {
@@ -165,7 +170,7 @@ test('«Мои визы» of the card `empty` opens the sheet, and a visa chosen
 
 	await firstCard(page).getByRole('button', { name: 'Мои визы' }).click();
 	await sheet(page)
-		.locator('.pick-item')
+		.getByTestId('pick-item')
 		.filter({ hasText: /^Шенген/u })
 		.click();
 
@@ -185,7 +190,7 @@ test.describe('the held visas of a link', () => {
 		await expect(page).toHaveURL(/&h=2&cit=RUS&visas=GEO,SCHENGEN$/u);
 		await expect(phrase(page)).toContainText('мои визы: Шенген, Грузия');
 		await phrase(page).getByRole('button', { name: 'Шенген, Грузия' }).click();
-		await expect(sheet(page).locator('.pick-item[aria-pressed="true"] .pick-name')).toHaveText(['Шенген', 'Грузия']);
+		await expect(sheet(page).getByRole('button', { pressed: true }).getByTestId('pick-name')).toHaveText(['Шенген', 'Грузия']);
 	});
 
 	test('without visas has none, though some were saved: the link wins', async ({ page, ringApi }) => {

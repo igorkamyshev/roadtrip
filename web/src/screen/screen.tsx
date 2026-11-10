@@ -22,7 +22,7 @@ export function Screen(): ReactElement {
 				<ScreenPhrase screen={screen} />
 				<SourcesOnOpen />
 				{state.origin !== undefined && !starts.pinning ? (
-					<div className="c-vs">
+					<div className="c-vs" data-testid="slider-column">
 						<Slider value={state.hours} onCommit={state.setHours} cached={shown.cachedHours} />
 					</div>
 				) : null}

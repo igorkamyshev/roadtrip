@@ -34,7 +34,9 @@ export function CityCard({ city, origin, access, citizenships, chosen, onTap }: 
 					{city.name}
 				</button>
 			</h3>
-			<div className="muted small">{cityFacts(city)}</div>
+			<div className="muted small" data-testid="city-facts">
+				{cityFacts(city)}
+			</div>
 			<EntryMark city={city} access={access} />
 			{platesBanned(city, citizenships) ? <div className="small plates">Российские номера не пустят</div> : null}
 			<div className="acts">
@@ -56,7 +58,9 @@ function cityFacts(city: City): string {
 export function CityRowText({ city }: { readonly city: City }): ReactElement {
 	return (
 		<span className="row-main">
-			<span className="row-name">{city.name}</span>
+			<span className="row-name" data-testid="row-name">
+				{city.name}
+			</span>
 			{city.local === undefined ? null : <span className="row-alt"> {city.local}</span>}
 			<span className="row-sub">{cityFacts({ ...city, local: undefined })}</span>
 		</span>

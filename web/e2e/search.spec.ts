@@ -60,7 +60,7 @@ test.describe('the search', () => {
 	}) => {
 		await page.goto('/');
 		await search(page, 'выберите', 'с');
-		await expect(found(page).locator('.row-name')).toHaveText(['Сараево', 'Сегед', 'Суботица', 'Смедерево']);
+		await expect(found(page).getByTestId('row-name')).toHaveText(['Сараево', 'Сегед', 'Суботица', 'Смедерево']);
 
 		for (const text of ['сад', 'Sad', 'град', 'grade']) {
 			await startSheet(page).getByRole('searchbox', { name: 'Найти город' }).fill(text);
@@ -71,12 +71,12 @@ test.describe('the search', () => {
 	test('takes a space for a hyphen and a hyphen for a space', async ({ page }) => {
 		await page.goto('/');
 		await search(page, 'выберите', 'нови с');
-		await expect(found(page).locator('.row-name')).toHaveText(['Нови-Сад']);
+		await expect(found(page).getByTestId('row-name')).toHaveText(['Нови-Сад']);
 
 		await startSheet(page).getByRole('searchbox', { name: 'Найти город' }).fill('novi-s');
-		await expect(found(page).locator('.row-name')).toHaveText(['Нови-Сад']);
+		await expect(found(page).getByTestId('row-name')).toHaveText(['Нови-Сад']);
 		await startSheet(page).getByRole('searchbox', { name: 'Найти город' }).fill('дробета турну');
-		await expect(found(page).locator('.row-name')).toHaveText(['Дробета-Турну-Северин']);
+		await expect(found(page).getByTestId('row-name')).toHaveText(['Дробета-Турну-Северин']);
 	});
 
 	test('shows the 8 biggest at most', async ({ page }) => {
@@ -88,7 +88,7 @@ test.describe('the search', () => {
 		await page.goto('/');
 		await search(page, 'выберите', 'сити');
 
-		await expect(found(page).locator('.row-name')).toHaveText([
+		await expect(found(page).getByTestId('row-name')).toHaveText([
 			'Сити 9',
 			'Сити 8',
 			'Сити 7',
@@ -128,7 +128,7 @@ test.describe('the sheet «Откуда едем»', () => {
 
 		await startSheet(page).getByRole('button', { name: 'Где я' }).click();
 
-		await expect(startSheet(page).locator('.chips + p')).toHaveText('Браузер не дал доступ к геолокации.');
+		await expect(startSheet(page).getByTestId('geolocation-failed')).toHaveText('Браузер не дал доступ к геолокации.');
 		await expect(phrase(page)).toContainText('Из точки Белград,');
 	});
 

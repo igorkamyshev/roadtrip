@@ -8,7 +8,7 @@ import { mkdirSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { parseArgs } from 'node:util';
-import { type Browser, chromium } from '@playwright/test';
+import { type Browser, chromium, expect } from '@playwright/test';
 import { startDemo } from './demo.ts';
 
 type Theme = 'light' | 'dark';
@@ -38,7 +38,7 @@ async function shoot(browser: Browser, { base, wait }: { readonly base: string; 
 		colorScheme: shot.theme,
 	});
 	await page.goto(new URL(shot.path, base).href);
-	await page.getByTestId('first-card').and(page.locator(':not([data-state="calculating"])')).waitFor();
+	await expect(page.getByTestId('first-card')).not.toHaveAttribute('data-state', 'calculating', { timeout: 30_000 });
 	await sleep(wait);
 	await page.screenshot({ path: shot.file });
 	await page.close();
