@@ -138,7 +138,9 @@ jobs:
   extract:
     needs: plan
     if: needs.plan.outputs.parts_run_id == ''
-    runs-on: ubuntu-latest
+    # Not ubuntu-latest: on ubuntu-26.04 apt fetches osmium-tool from security.ubuntu.com, which the runners cannot
+    # resolve (2026-11-11); build and places pin the same image.
+    runs-on: ubuntu-24.04
     timeout-minutes: 345
     strategy:
       # A failed part can be run again alone.
@@ -228,7 +230,7 @@ jobs:
   build:
     needs: [plan, extract]
     if: ${{ !cancelled() && needs.plan.result == 'success' && (needs.extract.result == 'success' || needs.extract.result == 'skipped') }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 345
     env:
       VERSION: ${{ needs.plan.outputs.version }}
@@ -305,7 +307,7 @@ jobs:
   places:
     needs: [plan, build]
     if: ${{ !cancelled() && needs.build.result == 'success' }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 180
     env:
       VERSION: ${{ needs.plan.outputs.version }}
