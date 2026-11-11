@@ -1,5 +1,5 @@
 // The MapLibre map of the map view (map-view.tsx): made once with the basemap and the overlay (overlay.ts), kept in
-// step with what the screen shows, and listened to for a tap on a city.
+// step with what the screen shows, and listened to for a tap on a point of interest.
 import { Map as MapLibre, setWorkerUrl, type MapMouseEvent } from 'maplibre-gl';
 import mapWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?url';
 import { useEffect, useEffectEvent, useRef, useState, type RefObject } from 'react';
@@ -8,22 +8,22 @@ import { basemapStyle } from './basemap.ts';
 import { openingView } from './camera.ts';
 import {
 	addOverlay,
-	cityAt,
 	loadOutlines,
+	pointAt,
 	runStripes,
-	showCities,
 	showClosed,
 	showOutlines,
+	showPoints,
 	showRing,
 	showStart,
-	type MapCity,
+	type MapPoint,
 	type RingGeometry,
 } from './overlay.ts';
 
 // MapLibre 6 looks for its worker next to its own module, which the bundle moves: point it at the worker's file.
 setWorkerUrl(mapWorkerUrl);
 
-/** How far from a city's dot a tap still picks it, in pixels: a finger is not a pointer. */
+/** How far from a point of interest's dot a tap still picks it, in pixels: a finger is not a pointer. */
 const TAP_RADIUS = 16;
 
 /** The map in `container`, made once where the origin it opens with is; undefined until it is loaded. */
@@ -73,14 +73,14 @@ async function addOutlines(map: MapLibre, removed: () => boolean): Promise<void>
 }
 
 /**
- * Tells `onCity` of a tap on a city's dot or name, and shows a pointer over one; without it, as in the pin mode, a tap
- * picks nothing and the cursor is the map's grab everywhere.
+ * Tells `onPoint` of a tap on a point of interest's dot or name, by its key, and shows a pointer over one; without it,
+ * as in the pin mode, a tap picks nothing and the cursor is the map's grab everywhere.
  */
-export function useCityTaps(map: MapLibre | undefined, onCity: ((id: number) => void) | undefined): void {
+export function usePointTaps(map: MapLibre | undefined, onPoint: ((key: string) => void) | undefined): void {
 	const tap = useEffectEvent((event: MapMouseEvent) => {
-		const id = map === undefined || onCity === undefined ? undefined : cityAt(map, event.point, TAP_RADIUS);
-		if (id !== undefined) {
-			onCity?.(id);
+		const key = map === undefined || onPoint === undefined ? undefined : pointAt(map, event.point, TAP_RADIUS);
+		if (key !== undefined) {
+			onPoint?.(key);
 		}
 	});
 	// The one listener the map keeps: it calls the latest handler.
@@ -93,7 +93,7 @@ export function useCityTaps(map: MapLibre | undefined, onCity: ((id: number) => 
 			map?.off('click', onClick);
 		};
 	}, [map]);
-	usePointerOverCities(map, onCity !== undefined);
+	usePointerOverPoints(map, onPoint !== undefined);
 }
 
 /**
@@ -103,17 +103,18 @@ export function useCityTaps(map: MapLibre | undefined, onCity: ((id: number) => 
 const POINTER = 'maplibregl-track-pointer';
 
 /**
- * The cursor over a city's dot or name, where a tap would pick it (the same hit test and radius), is a pointer (#105);
- * elsewhere, and everywhere while a tap picks nothing (`picking` off, as in the pin mode), the map's own grab.
+ * The cursor over a point of interest's dot or name, where a tap would pick it (the same hit test and radius), is a
+ * pointer (#105); elsewhere, and everywhere while a tap picks nothing (`picking` off, as in the pin mode), the map's
+ * own grab.
  */
-function usePointerOverCities(map: MapLibre | undefined, picking: boolean): void {
+function usePointerOverPoints(map: MapLibre | undefined, picking: boolean): void {
 	useEffect(() => {
 		if (map === undefined || !picking) {
 			return;
 		}
 		const container = map.getCanvasContainer();
 		const onMove = (event: MapMouseEvent): void => {
-			container.classList.toggle(POINTER, cityAt(map, event.point, TAP_RADIUS) !== undefined);
+			container.classList.toggle(POINTER, pointAt(map, event.point, TAP_RADIUS) !== undefined);
 		};
 		const onOut = (): void => {
 			container.classList.remove(POINTER);
@@ -136,16 +137,16 @@ export interface Overlay {
 	readonly striped: boolean;
 	/** The zones to hatch. */
 	readonly closed: readonly string[];
-	readonly cities: readonly MapCity[];
+	readonly points: readonly MapPoint[];
 }
 
 /** Keeps the overlay in step with what the screen shows. */
-export function useOverlay(map: MapLibre | undefined, { origin, ring, striped, closed, cities }: Overlay): void {
+export function useOverlay(map: MapLibre | undefined, { origin, ring, striped, closed, points }: Overlay): void {
 	useEffect(() => {
 		if (map !== undefined) {
-			showCities(map, cities);
+			showPoints(map, points);
 		}
-	}, [map, cities]);
+	}, [map, points]);
 	useEffect(() => {
 		if (map !== undefined) {
 			showStart(map, origin);

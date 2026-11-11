@@ -2,10 +2,10 @@
 // the vertical wheel over the row that scrolls it, and ← → on a card that move the focus to the next one, the row
 // following it. On the wide screen a step is the part of the row in view and the wheel scrolls by its turn; on the
 // narrow one both go a card at a time. They only scroll the carousel: its stop chooses on the narrow screen and nothing
-// on the wide one (use-chosen-city.ts). Without a mouse there is none of it: the plate, the wheel and the keys are the
+// on the wide one (use-chosen-point.ts). Without a mouse there is none of it: the plate, the wheel and the keys are the
 // browser's.
 import { type ReactElement, type ReactNode, type RefObject, useEffect, useEffectEvent, useRef, useState } from 'react';
-import { cardTarget, type Direction, leftEdgeTarget, neighbourToFocus, pageTarget, withinRow } from '../cities/carousel.ts';
+import { cardTarget, type Direction, leftEdgeTarget, neighbourToFocus, pageTarget, withinRow } from '../points/carousel.ts';
 import { useMedia } from '../use-media.ts';
 import { BackIcon, ForwardIcon } from './icons.tsx';
 

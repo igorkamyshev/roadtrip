@@ -2,7 +2,7 @@
 // when the browser gave no position.
 import { useMemo, useRef, useState, type ReactElement } from 'react';
 import type { City } from '../cities/cities.ts';
-import { CityRowText } from '../cities/city-card.tsx';
+import { CityRowText } from '../points/point-card.tsx';
 import { searchCities } from '../cities/search.ts';
 import { LocateIcon, PinIcon, SearchIcon } from '../screen/icons.tsx';
 import { Sheet } from '../screen/sheets.tsx';

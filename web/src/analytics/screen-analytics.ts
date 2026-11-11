@@ -1,6 +1,6 @@
 // When the screen's events go and what they say (spec #20 «Аналитика и ошибки», «Свои события браузера»; decision #18).
-// The place of `start set` and `ring result` is the nearest city of the cities file, so both wait for the file:
-// they go once it came, or could not be had (then without a place), with the time they happened.
+// The origin's city of `start set` and `ring result` is the nearest city of the cities file, so both wait for the file:
+// they go once it came, or could not be had (then without its city), with the time they happened.
 //
 // `ring result` is exactly one for each ring the screen asks for: on load, when the slider is let go (it changes N
 // only then), for other settings or another origin, and for «Повторить». An answer from memory is `memory` at once; a
@@ -8,13 +8,13 @@
 // page (then by `sendBeacon`, as is everything still waiting).
 import type { RingResponse } from 'worker/api';
 import type { City } from '../cities/cities.ts';
-import { citiesInRing, countOf } from '../cities/in-ring.ts';
 import { nearestCity } from '../cities/nearest.ts';
+import { countOf, pointsInRing } from '../points/in-ring.ts';
 import type { RingFailure } from '../ring/fetch-ring.ts';
 import type { Settings } from '../state/settings.ts';
 import type { GeolocationFailure } from '../start/geolocation.ts';
 import type { Start } from '../start/start.ts';
-import type { BrowserEvent, BrowserEvents, Place, RingResult } from './events.ts';
+import type { BrowserEvent, BrowserEvents, RingResult, StartCity } from './events.ts';
 import type { SendOptions } from './posthog.ts';
 
 export type Send = <Event extends BrowserEvent>(event: Event, properties: BrowserEvents[Event], options?: SendOptions) => void;
@@ -23,7 +23,7 @@ export type Send = <Event extends BrowserEvent>(event: Event, properties: Browse
 export interface RingAsk {
 	/** The ring's query key, and the time the person asked for it again («Повторить»): an ask of its own. */
 	readonly id: string;
-	/** How the origin was set, for the place. */
+	/** How the origin was set, for its city. */
 	readonly start: Start;
 	readonly hours: number;
 	readonly settings: Settings;
@@ -74,7 +74,7 @@ export class ScreenAnalytics {
 			return;
 		}
 		this.#lastStart = start;
-		this.#emit('start set', (cities) => ({ method: start.method, ...placeOf(start, cities) }), this.now());
+		this.#emit('start set', (cities) => ({ method: start.method, ...startCityOf(start, cities) }), this.now());
 	}
 
 	geolocationFailed(reason: GeolocationFailure): void {
@@ -148,7 +148,7 @@ export class ScreenAnalytics {
 		};
 		this.#emit(
 			'ring result',
-			(cities): RingResult => ({ ...outcomeOf(ending, ask.start.origin, cities), ...asked, ...placeOf(ask.start, cities) }),
+			(cities): RingResult => ({ ...outcomeOf(ending, ask.start.origin, cities), ...asked, ...startCityOf(ask.start, cities) }),
 			at,
 		);
 	}
@@ -167,7 +167,10 @@ export class ScreenAnalytics {
 	}
 }
 
-/** The outcome, the source and, for a ring once the cities are known, its cities and their countries. */
+/**
+ * The outcome, the source and, for a ring once the cities are known, its cities and the countries of its points of
+ * interest.
+ */
 function outcomeOf(
 	ending: Ending,
 	origin: Start['origin'],
@@ -187,13 +190,15 @@ function outcomeOf(
 	if (answer.outcome !== 'ring' || cities === undefined) {
 		return { outcome: answer.outcome, source };
 	}
-	// As the first card counts them.
-	const { count, countries } = countOf(citiesInRing(cities, { ring: answer.ring, access: answer.access, origin }));
-	return { outcome: answer.outcome, source, cities_count: count, countries_count: countries };
+	// The countries as the first card counts them, of all the points of interest; the cities alone.
+	const points = pointsInRing(cities, { ring: answer.ring, access: answer.access, origin });
+	// oxlint-disable-next-line typescript/no-unnecessary-condition -- the cities are the only kind until the places of spec #154 «Экран» join them, and `cities_count` stays the cities' alone
+	const citiesCount = points.filter((point) => point.kind === 'city').length;
+	return { outcome: answer.outcome, source, cities_count: citiesCount, countries_count: countOf(points).countries };
 }
 
-/** Where the origin is: the city picked in the search, else the nearest city of the file; nothing without the file. */
-function placeOf(start: Start, cities: readonly City[] | undefined): Place {
+/** The origin's city: the city picked in the search, else the nearest city of the file; nothing without the file. */
+function startCityOf(start: Start, cities: readonly City[] | undefined): StartCity {
 	const city = start.method === 'search' ? start.city : cities === undefined ? undefined : nearestCity(cities, start.origin);
 	return city === undefined ? {} : { start_country: city.zone, start_city: city.name, start_city_id: city.id };
 }

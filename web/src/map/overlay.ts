@@ -3,8 +3,9 @@
 // 1. the hatching of closed countries and closed territories, `closed-hatch`: the zone outlines of the dataset
 //    (source `zones`, `/data/zones.json`), filtered to the zones `access` closes;
 // 2. the ring: `ring-fill`, or `ring-stripes` (running stripes) while a calculation replaces it, and `ring-line`;
-// 3. the ring's cities (source `cities`): a dot for each of the biggest, `city-dots`, and the names of the
-//    carousel's cities and of the chosen one, `city-labels`; the chosen one larger, in the origin's colour;
+// 3. the ring's points of interest, the cities only for now (source `cities`): a dot for each of the most famous,
+//    `city-dots`, and the names of the carousel's and of the chosen one, `city-labels`; the chosen one larger, in the
+//    origin's colour;
 // 4. the origin's marker, `start`.
 //
 // The tests read the sources `ring`, `start`, `zones` and `cities`, the hatching's filter and the layers'
@@ -26,13 +27,14 @@ const HATCH_LAYER = 'closed-hatch';
 const CITIES_SOURCE = 'cities';
 const CITY_LAYERS = { dots: 'city-dots', labels: 'city-labels' } as const;
 
-/** A city as the map shows it. */
-export interface MapCity {
-	readonly id: number;
+/** A point of interest as the map shows it. */
+export interface MapPoint {
+	/** The point of interest's key, which a tap on it tells. */
+	readonly key: string;
 	readonly name: string;
 	readonly lat: number;
 	readonly lon: number;
-	/** Named on the map: a city of the carousel, or the chosen one. */
+	/** Named on the map: a point of the carousel, or the chosen one. */
 	readonly label: boolean;
 	readonly chosen: boolean;
 }
@@ -126,7 +128,7 @@ export function addOverlay(map: MapLibre): void {
 			'text-size': ['case', chosen, 14, 12],
 			'text-anchor': 'left',
 			'text-offset': [0.6, 0],
-			// Where labels collide, the chosen one wins, then the bigger city.
+			// Where labels collide, the chosen one wins, then the more famous point.
 			'symbol-sort-key': ['case', chosen, -1, ['get', 'rank']],
 		},
 		paint: { 'text-color': city, 'text-halo-color': halo, 'text-halo-width': 1.5 },
@@ -156,20 +158,23 @@ export function showStart(map: MapLibre, origin: LatLon | undefined): void {
 	);
 }
 
-/** Shows the ring's cities, biggest first: their dots, and the names of those with a label. */
-export function showCities(map: MapLibre, cities: readonly MapCity[]): void {
+/** Shows the ring's points of interest, the most famous first: their dots, and the names of those with a label. */
+export function showPoints(map: MapLibre, points: readonly MapPoint[]): void {
 	setData(map, CITIES_SOURCE, {
 		type: 'FeatureCollection',
-		features: cities.map(({ id, name, lat, lon, label, chosen }, rank) => ({
+		features: points.map(({ key, name, lat, lon, label, chosen }, rank) => ({
 			type: 'Feature',
-			properties: { id, name, label, chosen, rank },
+			properties: { key, name, label, chosen, rank },
 			geometry: { type: 'Point', coordinates: [lon, lat] },
 		})),
 	});
 }
 
-/** The city whose dot or label is nearest to a point of the map's canvas, within `radius` pixels. */
-export function cityAt(map: MapLibre, { x, y }: { readonly x: number; readonly y: number }, radius: number): number | undefined {
+/**
+ * The key of the point of interest whose dot or label is nearest to a point of the map's canvas, within `radius`
+ * pixels.
+ */
+export function pointAt(map: MapLibre, { x, y }: { readonly x: number; readonly y: number }, radius: number): string | undefined {
 	const near = map.queryRenderedFeatures(
 		[
 			[x - radius, y - radius],
@@ -177,7 +182,7 @@ export function cityAt(map: MapLibre, { x, y }: { readonly x: number; readonly y
 		],
 		{ layers: [CITY_LAYERS.dots, CITY_LAYERS.labels] },
 	);
-	let found: number | undefined;
+	let found: string | undefined;
 	let best = Infinity;
 	for (const feature of near) {
 		if (feature.geometry.type !== 'Point') {
@@ -188,7 +193,7 @@ export function cityAt(map: MapLibre, { x, y }: { readonly x: number; readonly y
 		const distance = Math.hypot(at.x - x, at.y - y);
 		if (distance < best) {
 			best = distance;
-			found = Number(feature.properties.id);
+			found = String(feature.properties.key);
 		}
 	}
 	return found;
