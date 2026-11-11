@@ -1,11 +1,12 @@
 // The ring the screen shows (spec #20 «Экран», «Состояние, ссылка и память браузера»): the request for the state's
-// origin, N and settings, the answer shown with its visa rules, the ring's cities, the hours in memory, and the
-// events that follow them (src/analytics/).
+// origin, N and settings, the answer shown with its visa rules, the ring's points of interest, the hours in memory, and
+// the events that follow them (src/analytics/).
 import { useMemo, useState } from 'react';
 import type { RingResponse } from 'worker/api';
 import { useScreenAnalytics } from '../analytics/use-screen-analytics.ts';
 import { useCitiesFile, type City } from '../cities/cities.ts';
-import { citiesInRing } from '../cities/in-ring.ts';
+import { pointsInRing } from '../points/in-ring.ts';
+import type { PointOfInterest } from '../points/point-of-interest.ts';
 import { ringKey, useCachedHours, useRing } from '../ring/use-ring.ts';
 import type { ScreenStateControls } from '../state/use-screen-state.ts';
 
@@ -27,15 +28,15 @@ export interface ShownRing {
 	readonly cities: readonly City[] | undefined;
 	/** The ring on the map: this request's, or the previous one of the same origin standing in for it, striped. */
 	readonly geometry: Extract<RingResponse, { readonly outcome: 'ring' }>['ring'] | undefined;
-	/** The answer whose visa rules the screen shows: what is hatched, how old the rules are, which cities are open. */
+	/** The answer whose visa rules the screen shows: what is hatched, how old the rules are, which points of interest are open. */
 	readonly answer: Answer | undefined;
 	/** The zones the answer closes, hatched on the map. */
 	readonly closed: readonly string[];
 	/**
-	 * The ring's cities but the origin's, biggest first, once the ring is this request's (not an old one) and the
+	 * The ring's points of interest, the most famous first, once the ring is this request's (not an old one) and the
 	 * cities came.
 	 */
-	readonly shownCities: readonly City[] | undefined;
+	readonly shownPoints: readonly PointOfInterest[] | undefined;
 	/** The cells, hours and days, whose rings are in memory for this origin and settings: the slider's marked ones. */
 	readonly cachedHours: ReadonlySet<number>;
 }
@@ -60,11 +61,11 @@ export function useShownRing({ origin, start, hours, settings }: ScreenStateCont
 	const answer = data?.outcome === 'visa_rules_missing' ? undefined : data;
 	const access = answer?.access;
 	const { cities } = citiesFile;
-	const ringCities = useMemo(
+	const ringPoints = useMemo(
 		() =>
 			cities === undefined || geometry === undefined || access === undefined || origin === undefined
 				? undefined
-				: citiesInRing(cities, { ring: geometry, access, origin }),
+				: pointsInRing(cities, { ring: geometry, access, origin }),
 		[cities, geometry, access, origin],
 	);
 	const closed = useMemo(
@@ -75,6 +76,6 @@ export function useShownRing({ origin, start, hours, settings }: ScreenStateCont
 		setRetries((count) => count + 1);
 		void ring.refetch();
 	};
-	const shownCities = ring.isPlaceholderData ? undefined : ringCities;
-	return { ring, requestId, retry, analytics, cities, geometry, answer, closed, shownCities, cachedHours };
+	const shownPoints = ring.isPlaceholderData ? undefined : ringPoints;
+	return { ring, requestId, retry, analytics, cities, geometry, answer, closed, shownPoints, cachedHours };
 }

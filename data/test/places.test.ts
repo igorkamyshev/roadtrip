@@ -43,13 +43,18 @@ function wikidata(asked: number[][] = []): PlacesSources['wikidata'] {
 	};
 }
 
-function build(sitelinks: Readonly<Record<number, ItemSitelinks>> = PLACES_SITELINKS, asked: number[][] = []) {
+function build(
+	sitelinks: Readonly<Record<number, ItemSitelinks>> = PLACES_SITELINKS,
+	asked: number[][] = [],
+	russianNames: ReadonlyMap<number, string> = new Map(),
+) {
 	return buildPlaces({
 		osm: openOsm(fixturePath('places.osm')),
 		sitelinks: ReadableStream.from(sitelinksDump(sitelinks)),
 		wikidata: wikidata(asked),
 		graph,
 		cities: CITIES,
+		russianNames,
 	});
 }
 
@@ -150,6 +155,7 @@ describe('the places with an outline', () => {
 				Promise.resolve(new Map(qids.map((qid) => [qid, { ru: undefined, en: undefined, point: POINTS[qid], monastery: false }]))),
 			graph: outlinesGraph,
 			cities: [{ lat: 0.8, lon: 0.3, population: 1_000_000 }],
+			russianNames: new Map(),
 		});
 
 	it('are the closed ways and relations of a place’s tags, up to 2 000 km², not wholly within a city’s limits', async () => {
@@ -249,5 +255,13 @@ describe('the report of the places', () => {
 			withoutRussian: { count: 1, mostFamous: [{ qid: 1008, name: 'Old Church' }] },
 			cells: { count: 0, outlines: 0, bytes: 0 },
 		});
+	});
+
+	it('leaves out of the places without a Russian name those the table of Russian names has, which the deploy names', async () => {
+		const { places, report } = await build(PLACES_SITELINKS, [], new Map([[1008, 'Старая церковь']]));
+
+		expect(report.withoutRussian).toEqual({ count: 0, mostFamous: [] });
+		// The file keeps Wikidata's and ruwiki's names: the deploy puts the table over them.
+		expect(byQid(places).get(1008)?.ru).toBe('');
 	});
 });

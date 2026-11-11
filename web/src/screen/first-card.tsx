@@ -1,7 +1,7 @@
 // The first card of the carousel: the ring's summary or the screen's state (spec #20 «Экран», «Первая карточка, по
 // состояниям»). The texts are the spec's table; the state comes from first-card-state.ts.
 import { useEffect, useState, type ReactElement, type ReactNode } from 'react';
-import type { CitiesCount } from '../cities/in-ring.ts';
+import type { PointsCount } from '../points/in-ring.ts';
 import type { RingFailure } from '../ring/fetch-ring.ts';
 import { hoursShort, plural } from './copy.ts';
 import { LocateIcon } from './icons.tsx';
@@ -9,8 +9,8 @@ import { LocateIcon } from './icons.tsx';
 export type FirstCardState =
 	| { readonly kind: 'no_origin'; readonly geolocationFailed: boolean }
 	| { readonly kind: 'calculating'; readonly hours: number; readonly request: string }
-	/** `cities`: how many cities the ring holds and in how many countries; undefined until the cities file comes. */
-	| { readonly kind: 'ring'; readonly hours: number; readonly cities?: CitiesCount }
+	/** `points`: how many points of interest the ring holds and in how many countries; undefined until the cities file comes. */
+	| { readonly kind: 'ring'; readonly hours: number; readonly points?: PointsCount }
 	| { readonly kind: 'no_cities' }
 	| { readonly kind: 'empty'; readonly maxHours: number }
 	| { readonly kind: 'no_roads' }
@@ -113,7 +113,7 @@ function Calculating({ hours }: { readonly hours: number }): ReactElement {
 	);
 }
 
-/** The ring's summary: its cities and their countries once the cities file came; or that it holds none. */
+/** The ring's summary: its points of interest and their countries once the cities file came; or that it holds none. */
 function RingCard({ state }: { readonly state: StateOf<'ring' | 'no_cities'> }): ReactElement {
 	if (state.kind === 'no_cities') {
 		return (
@@ -126,12 +126,12 @@ function RingCard({ state }: { readonly state: StateOf<'ring' | 'no_cities'> }):
 	return (
 		<Card state={state.kind}>
 			<span className="muted small">В кольце {hoursShort(state.hours)}</span>
-			{state.cities === undefined ? null : (
+			{state.points === undefined ? null : (
 				<>
-					<div className="big">{state.cities.count}</div>
+					<div className="big">{state.points.count}</div>
 					<div>
-						{plural(state.cities.count, ['город', 'города', 'городов'])} в {state.cities.countries}{' '}
-						{plural(state.cities.countries, ['стране', 'странах', 'странах'])}
+						{plural(state.points.count, ['город', 'города', 'городов'])} в {state.points.countries}{' '}
+						{plural(state.points.countries, ['стране', 'странах', 'странах'])}
 					</div>
 					<p className="muted small">Листайте → самые крупные</p>
 				</>

@@ -87,7 +87,10 @@ export interface AccessPoint {
 export interface Place {
 	/** Wikidata's Q-id, a number: 1029310 for Q1029310. */
 	readonly qid: number;
-	/** The Russian name: Wikidata's Russian label, else ruwiki's title without a qualifier in brackets; empty when none has one. */
+	/**
+	 * The Russian name: the table of Russian names of places' (data/place-russian-names.tsv, put in by the deploy), else
+	 * Wikidata's Russian label, else ruwiki's title without a qualifier in brackets; empty when none has one.
+	 */
 	readonly ru: string;
 	/** Wikidata's English label, else OSM's `name`. */
 	readonly local: string;

@@ -1,11 +1,15 @@
 // The screen's own events in PostHog (spec #20 «Аналитика и ошибки», «Свои события браузера»; decision #18): what the
-// person saw. Never the origin: a place is only the nearest city of the cities file and its country.
+// person saw. Never the origin: only its city, the nearest city of the cities file, and its country.
 import type { RingResponse, RingSource } from 'worker/api';
 import type { GeolocationFailure } from '../start/geolocation.ts';
 import type { StartMethod } from '../start/start.ts';
 
-/** Where the origin is, as the events say it; empty when the cities file could not be had. */
-export interface Place {
+/**
+ * The origin's city as the events say it: the nearest city of the cities file, wherever it is (not GLOSSARY «Город
+ * точки старта», which only a city whose limits hold the origin is), or the city picked in the search; empty when the
+ * cities file could not be had.
+ */
+export interface StartCity {
 	/** The nearest city's country: alpha-3, `NX` for Northern Cyprus, or a closed territory's code. */
 	readonly start_country?: string;
 	/** Its Russian name, else the local one. */
@@ -23,7 +27,7 @@ export type RingResultOutcome = RingResponse['outcome'] | 'too_many_requests' | 
 /** Where the ring came from: the browser's memory, or the Worker's `source`. */
 export type RingResultSource = 'memory' | RingSource;
 
-export interface RingResult extends Place {
+export interface RingResult extends StartCity {
 	readonly outcome: RingResultOutcome;
 	/** The ring's upper bound in hours: N, or worker/api's HOURS_PER_DAY·D for day D (#83), which names the slider's cell alone. */
 	readonly hours: number;
@@ -35,14 +39,17 @@ export interface RingResult extends Place {
 	readonly source?: RingResultSource;
 	/** From the request to its outcome; 0 from memory. */
 	readonly wait_ms: number;
-	/** The ring's cities and their countries, as the first card counts them: for `ring`, once the cities file came. */
+	/**
+	 * The ring's cities, and the countries of its points of interest, as the first card counts them: for `ring`, once
+	 * the cities file came.
+	 */
 	readonly cities_count?: number;
 	readonly countries_count?: number;
 }
 
 export interface BrowserEvents {
 	/** The origin was set, by any way, on load too. */
-	'start set': Place & { readonly method: StartMethod };
+	'start set': StartCity & { readonly method: StartMethod };
 	'geolocation failed': { readonly reason: GeolocationFailure };
 	/** Exactly one for each ring request: the slider let go, other settings or another origin, the load. */
 	'ring result': RingResult;
