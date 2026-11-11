@@ -39,6 +39,7 @@ import {
 	slider,
 	sliderHour,
 	tapMap,
+	theList,
 	wentTo,
 } from './screen.ts';
 
@@ -165,7 +166,7 @@ test.describe('the carousel', () => {
 
 		await more.click();
 
-		await expect(page.getByRole('dialog', { name: 'Всё в кольце 2–3 ч: 16' })).toBeVisible();
+		await expect(theList(page)).toHaveAccessibleName('Всё в кольце 2–3 ч: 16');
 	});
 
 	test('has no «и ещё» card for 12 cities or fewer', async ({ page, ringApi }) => {
@@ -177,9 +178,8 @@ test.describe('the carousel', () => {
 	});
 });
 
-/** The sheet with the list of all cities of the ring, and its rows. */
-const allCities = (page: Page) => page.getByRole('dialog', { name: /в кольце/u });
-const rows = (page: Page) => allCities(page).getByTestId('point-row');
+/** The rows of the open list of all. */
+const rows = (page: Page) => theList(page).getByTestId('point-row');
 
 test.describe('the list of all cities', () => {
 	test('lists every city of the ring, biggest first, with its flag and population, and no mark of its entry mode', async ({
@@ -199,8 +199,8 @@ test.describe('the list of all cities', () => {
 		expect(await read(rows(page).last())).toBe('Lukavac 🇧🇦 Население: 45 тыс.');
 		await expect(rows(page).first().getByRole('img', { name: 'Венгрия' })).toHaveAttribute('title', 'Венгрия');
 
-		await allCities(page).getByRole('button', { name: 'Закрыть' }).click();
-		await expect(allCities(page)).toHaveCount(0);
+		await theList(page).getByRole('button', { name: 'Закрыть' }).click();
+		await expect(theList(page)).toHaveCount(0);
 	});
 
 	test('keeps only the rows in view on the page, for the thousands of cities of a long ring', async ({ page, ringApi }) => {
@@ -229,7 +229,7 @@ test.describe('the list of all cities', () => {
 		await expect(rows(page).first()).toContainText('Город 1');
 		expect(await rows(page).count()).toBeLessThan(50);
 
-		await allCities(page)
+		await theList(page)
 			.getByTestId('sheet-body')
 			.evaluate((body) => {
 				body.scrollTop = body.scrollHeight;
@@ -558,7 +558,7 @@ test.describe('the carousel and the map', () => {
 		// Reşiţa, the 13th.
 		await tapMap(page, { lat: 45.301, lon: 21.889 });
 
-		const sheet = page.getByRole('dialog', { name: 'Всё в кольце 2–3 ч: 16' });
+		const sheet = theList(page);
 		await expect(sheet.locator('[aria-current="true"]')).toContainText('Решица');
 		await expect(sheet.locator('[aria-current="true"]')).toBeInViewport();
 	});
@@ -566,7 +566,7 @@ test.describe('the carousel and the map', () => {
 	test('a city picked in the list of all is chosen on the map, which goes to it', async ({ page }) => {
 		await openTheList(page);
 
-		await page.getByRole('dialog').getByTestId('point-row').filter({ hasText: 'Осиек' }).click();
+		await rows(page).filter({ hasText: 'Осиек' }).click();
 
 		await expect(page.getByRole('dialog')).toHaveCount(0);
 		await expect.poll(() => labelsOnMap(page)).toMatchObject({ chosen: ['Осиек'] });
@@ -580,7 +580,7 @@ test.describe('the carousel and the map', () => {
 	test('a city picked in the list of all that has a card is chosen in the carousel', async ({ page }) => {
 		await openTheList(page);
 
-		await page.getByRole('dialog').getByTestId('point-row').filter({ hasText: 'Тузла' }).click();
+		await rows(page).filter({ hasText: 'Тузла' }).click();
 
 		await expect(chosenCard(page).getByRole('heading')).toHaveText('Тузла');
 		await expect(chosenCard(page)).toBeInViewport({ ratio: 0.9 });

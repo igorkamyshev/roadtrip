@@ -121,6 +121,14 @@ export const carouselArrows = (page: Page): Locator => page.getByTestId('carouse
 /** «и ещё K / Всё в кольце →», the carousel's last card when the ring has more points of interest than cards. */
 export const moreCard = (page: Page): Locator => carousel(page).getByRole('button', { name: /и ещё/u });
 
+/** «Всё в кольце …», the list of all the ring's points of interest, open: titled by the ring, «Всё в кольце 2–3 ч: 24». */
+export const theList = (page: Page): Locator => page.getByRole('dialog', { name: /^Всё в кольце/u });
+
+/** The names of the rows the open list of all has drawn, in its order: its top ones, as it draws only what is in view. */
+export async function rowNames(page: Page): Promise<string[]> {
+	return theList(page).getByTestId('row-name').allInnerTexts();
+}
+
 /** The cards of the carousel's cities, in order. */
 export const pointCards = (page: Page): Locator => page.getByTestId('point-card');
 

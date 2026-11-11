@@ -25,23 +25,17 @@ import {
 	pointCard,
 	pointCards,
 	read,
+	rowNames,
 	runUntil,
 	runUntilMapAtRest,
 	tapMap,
+	theList,
 	wentTo,
 } from './screen.ts';
 
 /** A band from `inner` to `outer` degrees around Belgrade, with these entry modes. */
 function bandAroundBelgrade(band: readonly [inner: number, outer: number], access: Access = OPEN_AROUND_SERBIA) {
 	return { ...squareRing(BELGRADE.lat, BELGRADE.lon, band), ...visaRules(access) };
-}
-
-/** «Всё в кольце …», the list of all, open. */
-const theList = (page: Page) => page.getByRole('dialog', { name: /^Всё в кольце/u });
-
-/** The names of the list's rows on the page, in order. */
-async function rowNames(page: Page): Promise<string[]> {
-	return theList(page).getByTestId('row-name').allInnerTexts();
 }
 
 /** The names of the places the map marks as chosen. */

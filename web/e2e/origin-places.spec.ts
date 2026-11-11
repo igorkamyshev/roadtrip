@@ -3,24 +3,25 @@
 // card does not count it. The screen tells them by the cell of the places' outlines that holds the origin
 // (`PLACE_CELLS` of the fixtures): by a large place's outline and by a small place's radius. A distance below is the larger of |Δlat| and
 // |Δlon|, which is what decides whether `squareRing` holds a point.
-import type { Page } from '@playwright/test';
 import { carouselRing, expect, LINK_3_HOURS, OPEN_AROUND_SERBIA, servePlaceOutlines, squareRing, test, visaRules } from './fixtures.ts';
-import { citiesOnMap, firstCard, holdTheClock, moreCard, placesOnMap, pointCards, read, runUntil, runUntilMapAtRest } from './screen.ts';
+import {
+	citiesOnMap,
+	firstCard,
+	holdTheClock,
+	moreCard,
+	placesOnMap,
+	pointCards,
+	read,
+	rowNames,
+	runUntil,
+	runUntilMapAtRest,
+} from './screen.ts';
 
 /** A ring from the origin to `outer` degrees around it, whatever the origin, with a Russian's entry in Serbia. */
 const bandFromOrigin = (outer: number) => (call: { readonly lat: string; readonly lon: string }) => ({
 	...squareRing(Number(call.lat), Number(call.lon), [0, outer]),
 	...visaRules(),
 });
-
-/** The names of the rows of «Всё в кольце …» the list has drawn, its top ones. */
-async function namesInTheList(page: Page): Promise<string[]> {
-	await moreCard(page).click();
-	return page
-		.getByRole('dialog', { name: /^Всё в кольце/u })
-		.getByTestId('row-name')
-		.allInnerTexts();
-}
 
 test('a large place the origin is inside is nowhere, and the first card does not count it', async ({ page, ringApi }) => {
 	// Inside Deliblato Sands, 3° around with every country around open: its access points (0.11°, 0.05°), 24 cities
@@ -48,7 +49,8 @@ test('a large place the origin is inside is nowhere, and the first card does not
 	// On the map, the 24 cities' dots and the 8 other places' diamonds, not Deliblato's.
 	await expect.poll(async () => [(await citiesOnMap(page)).length, (await placesOnMap(page)).length]).toEqual([24, 8]);
 	expect((await placesOnMap(page)).map(({ name }) => name)).not.toContain('Делиблатские пески');
-	const listed = await namesInTheList(page);
+	await moreCard(page).click();
+	const listed = await rowNames(page);
 	expect([listed.slice(0, 12), listed.includes('Делиблатские пески')]).toEqual([carouselNames, false]);
 });
 
