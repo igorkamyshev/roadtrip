@@ -119,6 +119,26 @@ describe('taking the current dataset for the deploy', () => {
 		expect(readdirSync(join(directory, 'web/data')).toSorted()).toEqual(['cities.json', 'place-outlines', 'places.json']);
 	});
 
+	it('takes a version of no cells of the outlines, an empty file of them: the directory of the cells is empty', async () => {
+		// sha256sum of no bytes.
+		const noCells = { text: '', sha256: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855' };
+		const r2 = memorySource({
+			'current.json': pointer({ 'cities.json': CITIES, 'places.json': PLACES, 'place-outlines.tsv': noCells }),
+			'2026-11-07/cities.json': CITIES.text,
+			'2026-11-07/places.json': PLACES.text,
+			'2026-11-07/place-outlines.tsv': noCells.text,
+		});
+		mkdirSync(join(directory, 'web/data/place-outlines'), { recursive: true });
+		writeFileSync(join(directory, 'web/data/place-outlines/10_10.json'), 'a cell of the last deploy');
+
+		await fetchDataset(r2, staticPlaces(directory), silent);
+
+		expect([
+			readFileSync(join(directory, 'web/data/places.json'), 'utf8'),
+			readdirSync(join(directory, 'web/data/place-outlines')),
+		]).toEqual([PLACES.text, []]);
+	});
+
 	it.each([
 		['the places file', { '2026-11-07/places.json': PLACES.text.replace('Блед', 'Блэд'), '2026-11-07/place-outlines.tsv': CELLS.text }],
 		['the cells of the outlines', { '2026-11-07/places.json': PLACES.text, '2026-11-07/place-outlines.tsv': CELLS.text.slice(0, -2) }],

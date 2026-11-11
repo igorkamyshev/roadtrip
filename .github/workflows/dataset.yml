@@ -401,10 +401,12 @@ jobs:
           name: places-${{ needs.plan.outputs.version }}
           path: places
       # The places file and the cells beside the dataset's files, and the places' part of the build report after
-      # the graph's and the cities'.
+      # the graph's and the cities'. A build of no cells leaves an empty directory, which the artifact drops: it is
+      # made again, and the version gets an empty file of the cells.
       - name: The places
         if: needs.places.result == 'success'
         run: |
+          mkdir -p places/place-outlines
           mv places/places.json places/place-outlines dataset/
           cat places/report.md >> dataset/report.md
       # R2's S3 API takes the Cloudflare API token as credentials: its id, and the SHA-256 of its value.
