@@ -2,6 +2,8 @@
 // состояниям»). The texts are the spec's table; the state comes from first-card-state.ts.
 import { useEffect, useState, type ReactElement, type ReactNode } from 'react';
 import type { CitiesCount } from '../cities/in-ring.ts';
+import { citiesWord, placesWord } from '../places/place-card-prototype.tsx';
+import { VARIANT } from '../places/places-prototype.ts';
 import type { RingFailure } from '../ring/fetch-ring.ts';
 import { hoursShort, plural } from './copy.ts';
 import { LocateIcon } from './icons.tsx';
@@ -126,17 +128,41 @@ function RingCard({ state }: { readonly state: StateOf<'ring' | 'no_cities'> }):
 	return (
 		<Card state={state.kind}>
 			<span className="muted small">В кольце {hoursShort(state.hours)}</span>
-			{state.cities === undefined ? null : (
-				<>
-					<div className="big">{state.cities.count}</div>
-					<div>
-						{plural(state.cities.count, ['город', 'города', 'городов'])} в {state.cities.countries}{' '}
-						{plural(state.cities.countries, ['стране', 'странах', 'странах'])}
-					</div>
-					<p className="muted small">Листайте → самые крупные</p>
-				</>
-			)}
+			{state.cities === undefined ? null : <RingCounts counts={state.cities} />}
 		</Card>
+	);
+}
+
+/** PROTOTYPE (#148): the ring's counts of cities and places, by variant. */
+function RingCounts({ counts }: { readonly counts: CitiesCount }): ReactElement {
+	const cities = counts.count - counts.places;
+	const inCountries = `в ${counts.countries} ${plural(counts.countries, ['стране', 'странах', 'странах'])}`;
+	if (VARIANT === 'c') {
+		return (
+			<>
+				<div className="pp-counts">
+					<span>
+						<span className="big">{cities}</span> {citiesWord(cities)}
+					</span>
+					<span>
+						<span className="big">{counts.places}</span> {placesWord(counts.places)}
+					</span>
+				</div>
+				<div>{inCountries}</div>
+				<p className="muted small">Листайте → по известности</p>
+			</>
+		);
+	}
+	return (
+		<>
+			<div className="big">{VARIANT === 'a' ? cities : counts.count}</div>
+			<div>
+				{VARIANT === 'a'
+					? `${citiesWord(cities)} и ${counts.places} ${placesWord(counts.places)} ${inCountries}`
+					: `${plural(counts.count, ['точка интереса', 'точки интереса', 'точек интереса'])} ${inCountries}`}
+			</div>
+			<p className="muted small">{VARIANT === 'a' ? 'Листайте → самые известные' : 'Листайте → самое известное'}</p>
+		</>
 	);
 }
 

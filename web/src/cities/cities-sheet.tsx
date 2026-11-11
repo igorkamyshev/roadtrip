@@ -3,7 +3,8 @@
 // virtual (TanStack Virtual): only the rows in view are on the page.
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useEffect, useRef, type ReactElement } from 'react';
-import { hoursShort, plural } from '../screen/copy.ts';
+import { listTitle } from '../places/place-card-prototype.tsx';
+import { hoursShort } from '../screen/copy.ts';
 import { Sheet } from '../screen/sheets.tsx';
 import type { City } from './cities.ts';
 import { CityRowText } from './city-card.tsx';
@@ -36,7 +37,7 @@ export function CitiesSheet({ cities, hours, chosen, onPick, onClose }: CitiesSh
 			list.scrollToIndex(index, { align: 'center' });
 		}
 	}, [cities, chosen, list]);
-	const title = `${cities.length} ${plural(cities.length, ['город', 'города', 'городов'])} в кольце ${hoursShort(hours)}`;
+	const title = listTitle(cities, hoursShort(hours));
 	return (
 		<Sheet title={title} onClose={onClose} bodyRef={body} steady>
 			<div className="city-list" style={{ height: list.getTotalSize() }}>

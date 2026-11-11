@@ -44,11 +44,13 @@ function citiesOnMap(cities: readonly City[], chosen: number | undefined): MapCi
 	if (chosenCity !== undefined && !shown.includes(chosenCity)) {
 		shown.push(chosenCity);
 	}
-	return shown.map(({ id, name, lat, lon }, index) => ({
+	return shown.map(({ id, name, lat, lon, place }, index) => ({
 		id,
 		name,
 		lat,
 		lon,
+		type: place?.type ?? '',
+		own: place !== undefined && (place.own.lat !== lat || place.own.lon !== lon) ? place.own : undefined,
 		label: index < CAROUSEL_CITIES || id === chosen,
 		chosen: id === chosen,
 	}));

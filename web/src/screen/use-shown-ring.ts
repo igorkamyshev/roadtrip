@@ -6,6 +6,7 @@ import type { RingResponse } from 'worker/api';
 import { useScreenAnalytics } from '../analytics/use-screen-analytics.ts';
 import { useCitiesFile, type City } from '../cities/cities.ts';
 import { citiesInRing } from '../cities/in-ring.ts';
+import { mostInterestingFirst, placesInRing, usePlacesFile } from '../places/places-prototype.ts';
 import { ringKey, useCachedHours, useRing } from '../ring/use-ring.ts';
 import type { ScreenStateControls } from '../state/use-screen-state.ts';
 
@@ -60,12 +61,17 @@ export function useShownRing({ origin, start, hours, settings }: ScreenStateCont
 	const answer = data?.outcome === 'visa_rules_missing' ? undefined : data;
 	const access = answer?.access;
 	const { cities } = citiesFile;
+	const places = usePlacesFile();
+	// PROTOTYPE (#148): the ring's cities and places in one list, most interesting first.
 	const ringCities = useMemo(
 		() =>
 			cities === undefined || geometry === undefined || access === undefined || origin === undefined
 				? undefined
-				: citiesInRing(cities, { ring: geometry, access, origin }),
-		[cities, geometry, access, origin],
+				: [
+						...citiesInRing(cities, { ring: geometry, access, origin }),
+						...(places === undefined ? [] : placesInRing(places, { ring: geometry, access, origin })),
+					].toSorted(mostInterestingFirst),
+		[cities, places, geometry, access, origin],
 	);
 	const closed = useMemo(
 		() => (access === undefined ? [] : Object.keys(access).filter((code) => access[code].mode === 'closed')),

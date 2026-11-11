@@ -3,6 +3,7 @@
 import { queryOptions, useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import { CITIES_PATH, decodeCities, parseCitiesFile } from 'data/cities-file';
+import type { PlaceFacts } from '../places/places-prototype.ts';
 
 /** A city, a point of interest of the carousel (GLOSSARY «Точка интереса»). */
 export interface City {
@@ -17,6 +18,8 @@ export interface City {
 	readonly population: number;
 	/** The zone, as `access` names it: alpha-3, `RKS`, `NX` or a closed territory's code. */
 	readonly zone: string;
+	/** PROTOTYPE (#148): a place, not a city; `lat`/`lon` are then its access point in the ring. */
+	readonly place?: PlaceFacts;
 }
 
 /** The cities, biggest first; a failure when the file cannot be had or is not of the format the client reads. */

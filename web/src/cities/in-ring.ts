@@ -14,10 +14,16 @@ import { originCity } from './nearest.ts';
 export interface CitiesCount {
 	readonly count: number;
 	readonly countries: number;
+	/** PROTOTYPE (#148): how many of `count` are places. */
+	readonly places: number;
 }
 
 export function countOf(cities: readonly City[]): CitiesCount {
-	return { count: cities.length, countries: new Set(cities.map((city) => city.zone)).size };
+	return {
+		count: cities.length,
+		countries: new Set(cities.map((city) => city.zone)).size,
+		places: cities.filter((city) => city.place !== undefined).length,
+	};
 }
 
 /** What picks the cities: the ring, the entry modes of its answer, and the origin it was asked from. */

@@ -3,6 +3,7 @@
 // Its link with the map is src/cities/carousel.ts's.
 import type { ReactElement } from 'react';
 import { CityCard, MoreCard } from '../cities/city-card.tsx';
+import { PrototypeBar } from '../places/prototype-bar.tsx';
 import { CarouselArrows, useCarouselArrows } from './carousel-arrows.tsx';
 import { FirstCard } from './first-card.tsx';
 import type { ScreenModel } from './use-screen.ts';
@@ -20,6 +21,7 @@ export function Carousel({ screen }: { readonly screen: ScreenModel }): ReactEle
 		<>
 			{/* Before the row: its place in the screen's grid is over the cards (styles.css). */}
 			<CarouselArrows arrows={arrows} />
+			<PrototypeBar />
 			<div className="c-car" data-testid="carousel" ref={carousel} onScroll={onCarouselScroll} onFocus={onCarouselFocus}>
 				<FirstCard
 					state={card}

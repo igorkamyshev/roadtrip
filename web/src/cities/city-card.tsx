@@ -4,6 +4,8 @@
 // the list of all.
 import type { ReactElement } from 'react';
 import { countryFlag, countryName } from '../screen/countries.ts';
+import { MORE_LABEL, PlaceCard, PlaceRowText } from '../places/place-card-prototype.tsx';
+import { VARIANT } from '../places/places-prototype.ts';
 import type { LatLon } from '../state/point.ts';
 import type { City } from './cities.ts';
 import { populationLine, routeUrl } from './copy.ts';
@@ -18,6 +20,10 @@ export interface CityCardProps {
 }
 
 export function CityCard({ city, origin, chosen, onTap }: CityCardProps): ReactElement {
+	// PROTOTYPE (#148): a place's card.
+	if (city.place !== undefined) {
+		return <PlaceCard point={city} place={city.place} origin={origin} chosen={chosen} onTap={onTap} />;
+	}
 	return (
 		<div
 			className={chosen ? 'c-card clickable chosen' : 'c-card clickable'}
@@ -61,6 +67,9 @@ function CountryFlag({ zone }: { readonly zone: string }): ReactElement {
 
 /** A city in a row of a list: its name with its flag, and under them its population. */
 export function CityRowText({ city }: { readonly city: City }): ReactElement {
+	if (city.place !== undefined) {
+		return <PlaceRowText point={city} place={city.place} />;
+	}
 	return (
 		<span className="row-main">
 			<span className="row-name" data-testid="row-name">
@@ -78,7 +87,7 @@ export function MoreCard({ more, onOpen }: { readonly more: number; readonly onO
 		<button type="button" className="c-card clickable" onClick={onOpen}>
 			<span className="muted small">и ещё</span>
 			<div className="big">{more}</div>
-			<div className="c-more">Все города →</div>
+			<div className="c-more">{MORE_LABEL[VARIANT]}</div>
 		</button>
 	);
 }

@@ -14,6 +14,8 @@ import type { ExpressionSpecification, FilterSpecification, GeoJSONSource, Map a
 import type { RingAnswer } from 'worker/api';
 import type { LatLon } from '../state/point.ts';
 import { matchesMedia } from '../media.ts';
+import { addPlaceLayers, PLACE_LAYER, PLACE_LINK_SOURCE } from '../places/map-places-prototype.ts';
+import { VARIANT } from '../places/places-prototype.ts';
 
 export type RingGeometry = Extract<RingAnswer, { outcome: 'ring' }>['ring'];
 
@@ -35,6 +37,10 @@ export interface MapCity {
 	/** Named on the map: a city of the carousel, or the chosen one. */
 	readonly label: boolean;
 	readonly chosen: boolean;
+	/** PROTOTYPE (#148): a place's type; '' for a city. */
+	readonly type: string;
+	/** PROTOTYPE (#148): a place's own point, when it stands at its access point. */
+	readonly own: LatLon | undefined;
 }
 
 /** The zone outlines, a static asset of the Worker: the dataset's (data's `zoneOutlines`). */
@@ -107,6 +113,7 @@ export function addOverlay(map: MapLibre): void {
 		id: CITY_LAYERS.dots,
 		type: 'circle',
 		source: CITIES_SOURCE,
+		filter: ['==', ['get', 'type'], ''],
 		paint: {
 			'circle-radius': ['case', chosen, 6, 3],
 			'circle-color': ['case', chosen, start, city],
@@ -118,7 +125,7 @@ export function addOverlay(map: MapLibre): void {
 		id: CITY_LAYERS.labels,
 		type: 'symbol',
 		source: CITIES_SOURCE,
-		filter: ['get', 'label'],
+		filter: ['all', ['get', 'label'], ['==', ['get', 'type'], '']],
 		layout: {
 			'text-field': ['get', 'name'],
 			// A fontstack of the basemap's (public/basemap/fonts).
@@ -131,6 +138,7 @@ export function addOverlay(map: MapLibre): void {
 		},
 		paint: { 'text-color': city, 'text-halo-color': halo, 'text-halo-width': 1.5 },
 	});
+	addPlaceLayers(map, { ring, start, city, halo });
 	map.addLayer({
 		id: START_LAYER,
 		type: 'circle',
@@ -160,12 +168,31 @@ export function showStart(map: MapLibre, origin: LatLon | undefined): void {
 export function showCities(map: MapLibre, cities: readonly MapCity[]): void {
 	setData(map, CITIES_SOURCE, {
 		type: 'FeatureCollection',
-		features: cities.map(({ id, name, lat, lon, label, chosen }, rank) => ({
+		features: cities.map(({ id, name, lat, lon, label, chosen, type }, rank) => ({
 			type: 'Feature',
-			properties: { id, name, label, chosen, rank },
+			properties: { id, name, label, chosen, rank, type },
 			geometry: { type: 'Point', coordinates: [lon, lat] },
 		})),
 	});
+	// PROTOTYPE (#148), variant C: the chosen place's access point to the place itself.
+	const chosenPlace = VARIANT === 'c' ? cities.find((city) => city.chosen && city.own !== undefined) : undefined;
+	setData(
+		map,
+		PLACE_LINK_SOURCE,
+		chosenPlace?.own === undefined
+			? EMPTY
+			: {
+					type: 'Feature',
+					properties: {},
+					geometry: {
+						type: 'LineString',
+						coordinates: [
+							[chosenPlace.lon, chosenPlace.lat],
+							[chosenPlace.own.lon, chosenPlace.own.lat],
+						],
+					},
+				},
+	);
 }
 
 /** The city whose dot or label is nearest to a point of the map's canvas, within `radius` pixels. */
@@ -175,7 +202,7 @@ export function cityAt(map: MapLibre, { x, y }: { readonly x: number; readonly y
 			[x - radius, y - radius],
 			[x + radius, y + radius],
 		],
-		{ layers: [CITY_LAYERS.dots, CITY_LAYERS.labels] },
+		{ layers: [CITY_LAYERS.dots, CITY_LAYERS.labels, PLACE_LAYER] },
 	);
 	let found: number | undefined;
 	let best = Infinity;

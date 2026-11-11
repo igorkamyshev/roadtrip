@@ -1210,3 +1210,115 @@ a {
 		text-decoration-style: solid;
 	}
 }
+
+/* PROTOTYPE (#148), throwaway branch only: places in the carousel and the list, and the variant bar. */
+.pp-bar {
+	position: fixed;
+	top: 6px;
+	right: 6px;
+	z-index: 100;
+	display: flex;
+	gap: 4px;
+	align-items: center;
+	padding: 4px 6px;
+	border-radius: 999px;
+	background: #111;
+	color: #fff;
+	font:
+		12px/1 system-ui,
+		sans-serif;
+	box-shadow: 0 2px 8px rgb(0 0 0 / 40%);
+}
+
+.pp-bar-btn {
+	all: unset;
+	cursor: pointer;
+	padding: 4px 7px;
+	border-radius: 999px;
+}
+
+.pp-bar-btn.on {
+	background: #ffd84d;
+	color: #111;
+}
+
+.pp-bar-f {
+	margin-left: 8px;
+	opacity: 0.6;
+}
+
+.pp-icon {
+	display: block;
+	fill: currentcolor;
+}
+
+.pp-badge {
+	display: inline-grid;
+	place-items: center;
+	width: 26px;
+	height: 26px;
+	margin-right: 6px;
+	border-radius: 50%;
+	background: var(--ring);
+	color: #fff;
+	vertical-align: -5px;
+}
+
+.pp-badge.small {
+	width: 18px;
+	height: 18px;
+	margin-right: 5px;
+	vertical-align: -3px;
+}
+
+.pp-card.pp-b {
+	border-top: 5px solid var(--pp-group);
+}
+
+.pp-nature {
+	--pp-group: #2f7d4a;
+}
+
+.pp-history {
+	--pp-group: #a4552e;
+}
+
+.pp-chip {
+	display: inline-block;
+	padding: 2px 8px;
+	border-radius: 999px;
+	background: color-mix(in srgb, var(--pp-group) 14%, var(--surface));
+	color: var(--pp-group);
+	font-size: 13px;
+	font-weight: 600;
+}
+
+.pp-c-row {
+	display: grid;
+	grid-template-columns: 64px 1fr;
+	gap: 10px;
+	align-items: start;
+}
+
+.pp-pic {
+	display: grid;
+	place-items: center;
+	width: 64px;
+	height: 64px;
+	border-radius: var(--radius-inner);
+	background: color-mix(in srgb, var(--pp-group) 16%, var(--surface));
+	font-size: 36px;
+	line-height: 1;
+}
+
+.pp-c-text {
+	display: grid;
+	gap: 6px;
+	min-width: 0;
+}
+
+.pp-counts {
+	display: flex;
+	gap: 14px;
+	align-items: baseline;
+}
