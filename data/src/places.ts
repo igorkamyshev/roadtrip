@@ -310,43 +310,67 @@ function readCandidates(osm: OsmSource): Candidate[] {
 	return candidates;
 }
 
-/** A value of a tag among `values`. */
-const oneOf = (value: string | undefined, values: readonly string[]) => value !== undefined && values.includes(value);
+/**
+ * A tag of a type: its key with one of its values, and what else the object must have, which the build checks and the
+ * world build's filter does not (its other tags, or Wikidata's word on a place of worship, `worshipIsMonastery`).
+ */
+interface TypeTag {
+	readonly key: string;
+	readonly values: readonly string[];
+	readonly also?: (tags: Tags, worshipIsMonastery: boolean) => boolean;
+}
 
 /** IUCN's categories Ia to V, of the national parks among the protected areas. */
 const NATIONAL_PARK_CLASS = /^[1-5][ab]?$/u;
 
 /**
- * The tags of each type (amendment «Набор данных» of spec #20): a place of worship (`amenity=place_of_worship`) is a
- * monastery only when Wikidata calls its item one, `worshipIsMonastery`. Not `tourism=attraction` or
+ * The tags of each type, any one of them (amendment «Набор данных» of spec #20): a place of worship
+ * (`amenity=place_of_worship`) is a monastery only when Wikidata calls its item one. Not `tourism=attraction` or
  * `tourism=viewpoint`, valleys, ranges, rivers or hot springs. A castle in ruins is a castle: castles come before ruins.
  * The world build's `osmium tags-filter` of places (the job `extract` of `.github/workflows/dataset.yml`) keeps the
- * objects with these keys and values: a tag added here is added there.
+ * objects with these keys and values (`placeFilterTags`), which a test checks.
  */
-const TYPE_TAGS: Readonly<Record<PlaceType, (tags: Tags, worshipIsMonastery: boolean) => boolean>> = {
-	'national-park': (tags) =>
-		tags.boundary === 'national_park' ||
-		tags.leisure === 'nature_reserve' ||
-		(tags.boundary === 'protected_area' && NATIONAL_PARK_CLASS.test(tags.protect_class ?? '')),
-	mountain: (tags) => oneOf(tags.natural, ['peak', 'volcano', 'glacier']) || tags.mountain_pass === 'yes',
-	canyon: (tags) => tags.natural === 'gorge',
-	waterfall: (tags) => tags.waterway === 'waterfall',
-	cave: (tags) => tags.natural === 'cave_entrance',
-	lake: (tags) => tags.natural === 'water' && oneOf(tags.water, ['lake', 'reservoir']),
-	beach: (tags) => tags.natural === 'beach',
-	island: (tags) => tags.place === 'island',
-	monastery: (tags, worshipIsMonastery) =>
-		tags.amenity === 'monastery' ||
-		tags.historic === 'monastery' ||
-		tags.building === 'monastery' ||
-		(worshipIsMonastery && tags.amenity === 'place_of_worship'),
-	castle: (tags) => oneOf(tags.historic, ['castle', 'fort']),
-	ruins: (tags) => oneOf(tags.historic, ['archaeological_site', 'ruins']),
+const TYPE_TAGS: Readonly<Record<PlaceType, readonly TypeTag[]>> = {
+	'national-park': [
+		{ key: 'boundary', values: ['national_park'] },
+		{ key: 'leisure', values: ['nature_reserve'] },
+		{ key: 'boundary', values: ['protected_area'], also: (tags) => NATIONAL_PARK_CLASS.test(tags.protect_class ?? '') },
+	],
+	mountain: [
+		{ key: 'natural', values: ['peak', 'volcano', 'glacier'] },
+		{ key: 'mountain_pass', values: ['yes'] },
+	],
+	canyon: [{ key: 'natural', values: ['gorge'] }],
+	waterfall: [{ key: 'waterway', values: ['waterfall'] }],
+	cave: [{ key: 'natural', values: ['cave_entrance'] }],
+	lake: [{ key: 'natural', values: ['water'], also: (tags) => tags.water === 'lake' || tags.water === 'reservoir' }],
+	beach: [{ key: 'natural', values: ['beach'] }],
+	island: [{ key: 'place', values: ['island'] }],
+	monastery: [
+		{ key: 'amenity', values: ['monastery'] },
+		{ key: 'historic', values: ['monastery'] },
+		{ key: 'building', values: ['monastery'] },
+		{ key: 'amenity', values: ['place_of_worship'], also: (_, worshipIsMonastery) => worshipIsMonastery },
+	],
+	castle: [{ key: 'historic', values: ['castle', 'fort'] }],
+	ruins: [{ key: 'historic', values: ['archaeological_site', 'ruins'] }],
 };
 
 /** The type of an object by its tags, the first in the order of precedence; undefined for none. */
 function placeType(tags: Tags, worshipIsMonastery: boolean): PlaceType | undefined {
-	return PLACE_TYPES.find((type) => TYPE_TAGS[type](tags, worshipIsMonastery));
+	return PLACE_TYPES.find((type) =>
+		TYPE_TAGS[type].some(
+			({ key, values, also }) => values.includes(tags[key] ?? '') && (also === undefined || also(tags, worshipIsMonastery)),
+		),
+	);
+}
+
+/** The tags the world build's filter of places keeps an object with, `key=value`, sorted: every type's, without what else they need. */
+export function placeFilterTags(): string[] {
+	const tags = Object.values(TYPE_TAGS).flatMap((typeTags) =>
+		typeTags.flatMap(({ key, values }) => values.map((value) => `${key}=${value}`)),
+	);
+	return [...new Set(tags)].toSorted();
 }
 
 /** A qualifier in brackets at the end of a title: «Д'Арк (гора)». */

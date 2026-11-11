@@ -192,7 +192,8 @@ jobs:
           # Exits 1 when the part lacks some of them, as most parts do.
           measure "getid of #13's zones" osmium getid -r part.osm.pbf "${relations[@]}" -o zones.pbf || test -s zones.pbf
           # The objects that may be places (spec #154): those with wikidata=, then of them those with a place type's
-          # tags (TYPE_TAGS in data/src/places.ts; build-places checks the rest, water=lake of natural=water included),
+          # tags (TYPE_TAGS in data/src/places.ts, which data/test/places.test.ts checks this list against; build-places
+          # checks the rest, water=lake of natural=water included),
           # each with its members and their nodes, for the outlines. Two filters, since one keeps an object with any
           # of its tags.
           measure "tags-filter of wikidata" osmium tags-filter part.osm.pbf nwr/wikidata -o wikidata.pbf

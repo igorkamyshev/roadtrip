@@ -1,10 +1,12 @@
 // The build of the places file (spec #154 «Сборка мест», amendment «Набор данных» of spec #20): the places of
 // fixtures/places.osm (its header has the layout and the distances), their sitelinks from a tiny dump, a double of
 // Wikidata's Query Service, and two cities.
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import type { Place } from '../src/places-file.ts';
 import { openOsm } from '../src/osm/open.ts';
-import { buildPlaces, type PlacesSources } from '../src/places.ts';
+import { buildPlaces, placeFilterTags, type PlacesSources } from '../src/places.ts';
 import type { WikidataPlace } from '../src/wikidata.ts';
 import { fixtureGraph, fixturePath } from './fixture-graph.ts';
 import { PLACES_SITELINKS, type ItemSitelinks, sitelinksDump } from './sitelinks-dump.ts';
@@ -265,6 +267,19 @@ describe('the places with an outline', () => {
 			places: 5,
 			cells: { count: 3, outlines: 4, radii: 1 },
 		});
+	});
+});
+
+describe('the world build', () => {
+	it('keeps for the places the objects with the keys and values of every type’s tags, no more', () => {
+		// The job `extract`'s `osmium tags-filter` of places: `nwr/<key>=<value>,<value>…` after its name.
+		const workflow = readFileSync(join(import.meta.dirname, '../../.github/workflows/dataset.yml'), 'utf8');
+		const command = /measure "tags-filter of places" osmium tags-filter (?<args>[^-]*?) -o/su.exec(workflow)?.groups?.args ?? '';
+		const filtered = [...command.matchAll(/nwr\/(?<key>[\w:]+)=(?<values>[\w,]+)/gu)].flatMap(({ groups }) =>
+			(groups?.values ?? '').split(',').map((value) => `${groups?.key}=${value}`),
+		);
+
+		expect(filtered.toSorted()).toEqual(placeFilterTags());
 	});
 });
 
