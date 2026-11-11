@@ -61,7 +61,8 @@ function themesOf(text: string): readonly Theme[] | undefined {
  * cities.spec.ts does, and waits until it is the chosen one.
  */
 async function chooseCard(page: Page, name: string, path: string): Promise<Locator> {
-	const cards = page.getByTestId('point-card');
+	// `city-card` is the card of a build from before #160, for `--compare` against one.
+	const cards = page.getByTestId(/^(point|city)-card$/u);
 	const card = cards.filter({ has: page.getByRole('heading', { name, exact: true }) });
 	// The cards come at once, with the cities and places files.
 	await cards.first().waitFor({ timeout: READY_TIMEOUT_MS });

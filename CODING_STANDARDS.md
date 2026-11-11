@@ -6,6 +6,7 @@ Rules a reviewer checks by judgement: when a ticket's work is merged, and when a
 
 - A package is tested at its seam ([spec #20](docs/specs/20.md), «Решения по тестам»): the engine through `computeRing` on fixtures that `data` builds, the Worker through its handlers with doubles in `deps`, the screen through Playwright on the built client. A module under a seam is tested through the seam, not by a unit test of its own.
 - Only external boundaries are doubled: Sherpa, KV, R2, PostHog, the Container, time, geolocation.
+- A reader of a file from outside (a dump, an export) is tested on that file's own layout: its fixture, or the generator of one, is built on a sample of the real file, kept in the fixtures with where it came from. A layout written from memory passes while the real file fails (#159: the generated dump of `wb_items_per_site` had long INSERT lines, the real one a row a line, and the trial run built no place).
 - Expected values come from the spec or a worked example done by hand (an edge of 60 km on a 60 km/h road: 1 h at the wheel, 1.2 h in the ring), not recomputed the way the code computes them: not through `computeRing`, the code's own templates, or its sorting.
 - An e2e test drives the page's time with `page.clock`, paused, and waits on what the page shows. A running clock only where the test needs one, with `roadtrip/clock-through-screen` disabled on its line and the reason.
 - An e2e test waits for a state (the ring card's `data-state`), not for copy; only a test about the copy checks the copy.
