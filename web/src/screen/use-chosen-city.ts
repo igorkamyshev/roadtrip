@@ -1,4 +1,4 @@
-// The chosen city (GLOSSARY «Выбранный город», spec #20 «Экран», «Карусель»): the city of a card tapped, a city tapped
+// The chosen city (GLOSSARY «Выбранная точка интереса», spec #20 «Экран», «Карусель»): the city of a card tapped, a city tapped
 // on the map or picked in the list of all, and on the narrow screen of the card the carousel stops at. The map goes to
 // it and names it larger. A new ring chooses none and shows the carousel from its start.
 //
