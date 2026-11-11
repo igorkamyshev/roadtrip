@@ -1,15 +1,16 @@
-// When the screen's events go and what they say (spec #20 «Аналитика и ошибки», «Свои события браузера»; decision #18).
-// The origin's city of `start set` and `ring result` is the nearest city of the cities file, so both wait for the file:
-// they go once it came, or could not be had (then without its city), with the time they happened.
+// When the screen's events go and what they say (spec #20 «Аналитика и ошибки», «Свои события браузера»; decision #18;
+// spec #154 «События (PostHog)»). The origin's city of `start set`, `ring result` and `route opened` is the nearest city
+// of the cities file, so they wait for the file, and `ring result` for the places file too, for the ring's places: they
+// go once what they wait for came, or could not be had (then without what it gives), with the time they happened.
 //
 // `ring result` is exactly one for each ring the screen asks for: on load, when the slider is let go (it changes N
 // only then), for other settings or another origin, and for «Повторить». An answer from memory is `memory` at once; a
 // request ends with its answer, or `abandoned` when the screen asks for something else first or the person leaves the
 // page (then by `sendBeacon`, as is everything still waiting).
 import type { RingResponse } from 'worker/api';
-import type { City } from '../cities/cities.ts';
 import { nearestCity } from '../cities/nearest.ts';
-import { countOf, pointsInRing } from '../points/in-ring.ts';
+import { countOf, kindsOf, pointsInRing, type PointsFiles } from '../points/in-ring.ts';
+import type { PointOfInterest } from '../points/point-of-interest.ts';
 import type { RingFailure } from '../ring/fetch-ring.ts';
 import type { Settings } from '../state/settings.ts';
 import type { GeolocationFailure } from '../start/geolocation.ts';
@@ -32,16 +33,25 @@ export interface RingAsk {
 /** How a ring request ended: the answer (from memory or not), a failure, or nothing yet when the screen moved on. */
 type Ending = { readonly answer: RingResponse; readonly memory: boolean } | { readonly failure: RingFailure } | 'abandoned';
 
-/** An event that waits for the cities file: its properties once the cities are known (none if they cannot be had). */
+/** A file the events wait for: not settled yet, or settled with what it holds (undefined if it could not be had). */
+type Settled<Contents> = { readonly settled: false } | { readonly settled: true; readonly contents: Contents | undefined };
+
+/** What the files the events wait for gave, the cities file and the places file: undefined for one not settled or not had. */
+type Files = { readonly [File in keyof PointsFiles]: PointsFiles[File] | undefined };
+
+/** An event that waits for the files: its properties once they are known. */
 interface Waiting {
-	readonly properties: (cities: readonly City[] | undefined) => BrowserEvents[BrowserEvent];
+	readonly properties: (files: Files) => BrowserEvents[BrowserEvent];
 	readonly event: BrowserEvent;
 	/** When it happened (ms since the epoch). */
 	readonly at: number;
+	/** Whether it waits for the places file too, not the cities file alone. */
+	readonly places: boolean;
 }
 
 export class ScreenAnalytics {
-	#cities: { readonly settled: false } | { readonly settled: true; readonly cities: readonly City[] | undefined } = { settled: false };
+	#cities: Settled<PointsFiles['cities']> = { settled: false };
+	#places: Settled<PointsFiles['places']> = { settled: false };
 	#waiting: Waiting[] = [];
 	#lastStart: Start | undefined;
 	#lastAsk: string | undefined;
@@ -57,14 +67,18 @@ export class ScreenAnalytics {
 	) {}
 
 	/** The cities file came, or could not be had (undefined): what waited for it goes. */
-	citiesSettled(cities: readonly City[] | undefined): void {
-		if (this.#cities.settled) {
-			return;
+	citiesSettled(cities: Files['cities']): void {
+		if (!this.#cities.settled) {
+			this.#cities = { settled: true, contents: cities };
+			this.#sendReady();
 		}
-		this.#cities = { settled: true, cities };
-		const waiting = this.#waiting.splice(0);
-		for (const event of waiting) {
-			this.send(event.event, event.properties(cities), { at: new Date(event.at) });
+	}
+
+	/** The places file came, or could not be had (undefined): what waited for it goes. */
+	placesSettled(places: Files['places']): void {
+		if (!this.#places.settled) {
+			this.#places = { settled: true, contents: places };
+			this.#sendReady();
 		}
 	}
 
@@ -74,11 +88,28 @@ export class ScreenAnalytics {
 			return;
 		}
 		this.#lastStart = start;
-		this.#emit('start set', (cities) => ({ method: start.method, ...startCityOf(start, cities) }), this.now());
+		this.#emit('start set', ({ cities }) => ({ method: start.method, ...startCityOf(start, cities) }), { at: this.now(), places: false });
 	}
 
 	geolocationFailed(reason: GeolocationFailure): void {
 		this.send('geolocation failed', { reason });
+	}
+
+	/**
+	 * «Маршрут» of the card of `point`, `rank`th in the ring's list (1 for the most famous), of the ring of `hours`:
+	 * the origin's country is the last start's.
+	 */
+	routeOpened(point: PointOfInterest, rank: number, hours: number): void {
+		const start = this.#lastStart;
+		const kind = point.kind === 'city' ? 'city' : point.place.type;
+		this.#emit(
+			'route opened',
+			({ cities }) => {
+				const { start_country } = start === undefined ? {} : startCityOf(start, cities);
+				return start_country === undefined ? { kind, rank, hours } : { kind, rank, hours, start_country };
+			},
+			{ at: this.now(), places: false },
+		);
 	}
 
 	/**
@@ -126,15 +157,15 @@ export class ScreenAnalytics {
 
 	/**
 	 * The person leaves the page: the request under way is abandoned, and it and everything still waiting go by
-	 * beacon, whether posthog-js's own `pagehide` came before this one or not.
+	 * beacon, with what the files gave so far, whether posthog-js's own `pagehide` came before this one or not.
 	 */
 	leave(): void {
 		this.#leaving = true;
 		this.abandon();
 		this.#leaving = false;
-		const cities = this.#cities.settled ? this.#cities.cities : undefined;
+		const files = this.#files();
 		for (const event of this.#waiting.splice(0)) {
-			this.send(event.event, event.properties(cities), { at: new Date(event.at), beacon: true });
+			this.send(event.event, event.properties(files), { at: new Date(event.at), beacon: true });
 		}
 	}
 
@@ -148,34 +179,56 @@ export class ScreenAnalytics {
 		};
 		this.#emit(
 			'ring result',
-			(cities): RingResult => ({ ...outcomeOf(ending, ask.start.origin, cities), ...asked, ...startCityOf(ask.start, cities) }),
-			at,
+			(files): RingResult => ({ ...outcomeOf(ending, ask.start.origin, files), ...asked, ...startCityOf(ask.start, files.cities) }),
+			{ at, places: true },
 		);
 	}
 
-	/** Sends the event now if the cities are known, else when they are. */
+	/** What the files gave so far. */
+	#files(): Files {
+		return {
+			cities: this.#cities.settled ? this.#cities.contents : undefined,
+			places: this.#places.settled ? this.#places.contents : undefined,
+		};
+	}
+
+	/** Whether what `event` waits for is settled. */
+	#ready(event: Pick<Waiting, 'places'>): boolean {
+		return this.#cities.settled && (!event.places || this.#places.settled);
+	}
+
+	/** Sends the waiting events whose files are settled, in the order they happened. */
+	#sendReady(): void {
+		const files = this.#files();
+		const ready = this.#waiting.filter((event) => this.#ready(event));
+		this.#waiting = this.#waiting.filter((event) => !this.#ready(event));
+		for (const event of ready) {
+			this.send(event.event, event.properties(files), { at: new Date(event.at) });
+		}
+	}
+
+	/** Sends the event now if what it waits for is settled, else when it is. */
 	#emit<Event extends BrowserEvent>(
 		event: Event,
-		properties: (cities: readonly City[] | undefined) => BrowserEvents[Event],
-		at: number,
+		properties: (files: Files) => BrowserEvents[Event],
+		{ at, places }: { readonly at: number; readonly places: boolean },
 	): void {
-		if (this.#cities.settled) {
-			this.send(event, properties(this.#cities.cities), this.#leaving ? { beacon: true } : undefined);
+		if (this.#ready({ places })) {
+			this.send(event, properties(this.#files()), this.#leaving ? { beacon: true } : undefined);
 		} else {
-			this.#waiting.push({ event, properties, at });
+			this.#waiting.push({ event, properties, at, places });
 		}
 	}
 }
 
+/** What of `ring result` its ending tells. */
+type RingOutcome = Pick<RingResult, 'outcome' | 'source' | 'cities_count' | 'countries_count' | 'places_count' | 'carousel_places_count'>;
+
 /**
- * The outcome, the source and, for a ring once the cities are known, its cities and the countries of its points of
- * interest.
+ * The outcome, the source and, for a ring once the cities are known, its cities, its places once those are known too,
+ * and the countries of its points of interest.
  */
-function outcomeOf(
-	ending: Ending,
-	origin: Start['origin'],
-	cities: readonly City[] | undefined,
-): Pick<RingResult, 'outcome' | 'source' | 'cities_count' | 'countries_count'> {
+function outcomeOf(ending: Ending, origin: Start['origin'], { cities, places }: Files): RingOutcome {
 	if (ending === 'abandoned') {
 		return { outcome: 'abandoned' };
 	}
@@ -190,15 +243,15 @@ function outcomeOf(
 	if (answer.outcome !== 'ring' || cities === undefined) {
 		return { outcome: answer.outcome, source };
 	}
-	// The countries as the first card counts them, of the points of interest; the cities alone. The events do not wait
-	// for the places file yet, so they count the cities' points only (the places join them by spec #154 «События (PostHog)»).
-	const points = pointsInRing({ cities, places: [] }, { ring: answer.ring, access: answer.access, origin });
-	const citiesCount = points.filter((point) => point.kind === 'city').length;
-	return { outcome: answer.outcome, source, cities_count: citiesCount, countries_count: countOf(points).countries };
+	// The points of interest as the first card counts them: the cities alone without the places file.
+	const points = pointsInRing({ cities, places: places ?? [] }, { ring: answer.ring, access: answer.access, origin });
+	const kinds = kindsOf(points);
+	const counts: RingOutcome = { outcome: answer.outcome, source, cities_count: kinds.cities, countries_count: countOf(points).countries };
+	return places === undefined ? counts : { ...counts, places_count: kinds.places, carousel_places_count: kinds.carouselPlaces };
 }
 
 /** The origin's city: the city picked in the search, else the nearest city of the file; nothing without the file. */
-function startCityOf(start: Start, cities: readonly City[] | undefined): StartCity {
+function startCityOf(start: Start, cities: Files['cities']): StartCity {
 	const city = start.method === 'search' ? start.city : cities === undefined ? undefined : nearestCity(cities, start.origin);
 	return city === undefined ? {} : { start_country: city.zone, start_city: city.name, start_city_id: city.id };
 }
