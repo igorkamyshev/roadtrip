@@ -5,8 +5,8 @@ import { PLACE_GROUP } from 'data/places-file';
 import { lazy, Suspense, useMemo, type ReactElement } from 'react';
 import type { FreeArea } from '../map/camera.ts';
 import type { MapPoint } from '../map/overlay.ts';
+import { CAROUSEL_POINTS } from '../points/carousel.ts';
 import type { PointOfInterest } from '../points/point-of-interest.ts';
-import { CAROUSEL_POINTS } from './carousel.tsx';
 import type { ScreenModel } from './use-screen.ts';
 
 const MapView = lazy(async () => ({ default: (await import('../map/map-view.tsx')).MapView }));

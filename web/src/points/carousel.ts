@@ -4,6 +4,9 @@
 // src/screen/use-chosen-point.ts's. A card names its point of interest by its key, `data-point`.
 import { useEffect, useLayoutEffect, useRef, type RefObject } from 'react';
 
+/** The carousel's cards of points of interest: the most famous of the ring's, named on the map, counted by `ring result`. */
+export const CAROUSEL_POINTS = 12;
+
 /** How long the carousel stays still before its stop counts: a swipe scrolls in many steps, then snaps. */
 const STOP_AFTER_MS = 140;
 
