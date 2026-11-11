@@ -1,7 +1,8 @@
 // When the screen's events go and what they say (spec #20 «Аналитика и ошибки», «Свои события браузера»; decision #18;
 // spec #154 «События (PostHog)»). The origin's city of `start set`, `ring result` and `route opened` is the nearest city
-// of the cities file, so they wait for the file, and `ring result` for the places file too, for the ring's places: they
-// go once what they wait for came, or could not be had (then without what it gives), with the time they happened.
+// of the cities file, so they wait for the file, and `ring result` for the places a ring from its origin may show too
+// (the places file's but the origin's, src/places/origin.ts), for the ring's places: they go once what they wait for
+// came, or could not be had (then without what it gives), with the time they happened.
 //
 // `ring result` is exactly one for each ring the screen asks for: on load, when the slider is let go (it changes N
 // only then), for other settings or another origin, and for «Повторить». An answer from memory is `memory` at once; a
@@ -36,7 +37,10 @@ type Ending = { readonly answer: RingResponse; readonly memory: boolean } | { re
 /** A file the events wait for: not settled yet, or settled with what it holds (undefined if it could not be had). */
 type Settled<Contents> = { readonly settled: false } | { readonly settled: true; readonly contents: Contents | undefined };
 
-/** What the files the events wait for gave, the cities file and the places file: undefined for one not settled or not had. */
+/**
+ * What the files the events wait for gave, the cities file and the places of the event's origin: undefined for one not
+ * settled or not had.
+ */
 type Files = { readonly [File in keyof PointsFiles]: PointsFiles[File] | undefined };
 
 /** An event that waits for the files: its properties once they are known. */
@@ -45,13 +49,14 @@ interface Waiting {
 	readonly event: BrowserEvent;
 	/** When it happened (ms since the epoch). */
 	readonly at: number;
-	/** Whether it waits for the places file too, not the cities file alone. */
-	readonly places: boolean;
+	/** The origin (`originKey`) whose places it waits for too, not the cities file alone; undefined for none. */
+	readonly places: string | undefined;
 }
 
 export class ScreenAnalytics {
 	#cities: Settled<PointsFiles['cities']> = { settled: false };
-	#places: Settled<PointsFiles['places']> = { settled: false };
+	/** The places a ring may show, by the origin (`originKey`) they are of. */
+	#places = new Map<string, Settled<PointsFiles['places']>>();
 	#waiting: Waiting[] = [];
 	#lastStart: Start | undefined;
 	#lastAsk: string | undefined;
@@ -74,10 +79,14 @@ export class ScreenAnalytics {
 		}
 	}
 
-	/** The places file came, or could not be had (undefined): what waited for it goes. */
-	placesSettled(places: Files['places']): void {
-		if (!this.#places.settled) {
-			this.#places = { settled: true, contents: places };
+	/**
+	 * The places a ring from `origin` may show came (the places file's but the origin's), or could not be had
+	 * (undefined: no places file or no cell of outlines): what waited for them goes.
+	 */
+	placesSettled(origin: Start['origin'], places: Files['places']): void {
+		const key = originKey(origin);
+		if (this.#places.get(key)?.settled !== true) {
+			this.#places.set(key, { settled: true, contents: places });
 			this.#sendReady();
 		}
 	}
@@ -88,7 +97,10 @@ export class ScreenAnalytics {
 			return;
 		}
 		this.#lastStart = start;
-		this.#emit('start set', ({ cities }) => ({ method: start.method, ...startCityOf(start, cities) }), { at: this.now(), places: false });
+		this.#emit('start set', ({ cities }) => ({ method: start.method, ...startCityOf(start, cities) }), {
+			at: this.now(),
+			places: undefined,
+		});
 	}
 
 	geolocationFailed(reason: GeolocationFailure): void {
@@ -108,7 +120,7 @@ export class ScreenAnalytics {
 				const { start_country } = start === undefined ? {} : startCityOf(start, cities);
 				return start_country === undefined ? { kind, rank, hours } : { kind, rank, hours, start_country };
 			},
-			{ at: this.now(), places: false },
+			{ at: this.now(), places: undefined },
 		);
 	}
 
@@ -163,9 +175,8 @@ export class ScreenAnalytics {
 		this.#leaving = true;
 		this.abandon();
 		this.#leaving = false;
-		const files = this.#files();
 		for (const event of this.#waiting.splice(0)) {
-			this.send(event.event, event.properties(files), { at: new Date(event.at), beacon: true });
+			this.send(event.event, event.properties(this.#files(event.places)), { at: new Date(event.at), beacon: true });
 		}
 	}
 
@@ -180,30 +191,30 @@ export class ScreenAnalytics {
 		this.#emit(
 			'ring result',
 			(files): RingResult => ({ ...outcomeOf(ending, ask.start.origin, files), ...asked, ...startCityOf(ask.start, files.cities) }),
-			{ at, places: true },
+			{ at, places: originKey(ask.start.origin) },
 		);
 	}
 
-	/** What the files gave so far. */
-	#files(): Files {
+	/** What the files gave so far, with the places of the origin `places` (`originKey`). */
+	#files(places: string | undefined): Files {
+		const settled = places === undefined ? undefined : this.#places.get(places);
 		return {
 			cities: this.#cities.settled ? this.#cities.contents : undefined,
-			places: this.#places.settled ? this.#places.contents : undefined,
+			places: settled?.settled === true ? settled.contents : undefined,
 		};
 	}
 
 	/** Whether what `event` waits for is settled. */
 	#ready(event: Pick<Waiting, 'places'>): boolean {
-		return this.#cities.settled && (!event.places || this.#places.settled);
+		return this.#cities.settled && (event.places === undefined || this.#places.get(event.places)?.settled === true);
 	}
 
 	/** Sends the waiting events whose files are settled, in the order they happened. */
 	#sendReady(): void {
-		const files = this.#files();
 		const ready = this.#waiting.filter((event) => this.#ready(event));
 		this.#waiting = this.#waiting.filter((event) => !this.#ready(event));
 		for (const event of ready) {
-			this.send(event.event, event.properties(files), { at: new Date(event.at) });
+			this.send(event.event, event.properties(this.#files(event.places)), { at: new Date(event.at) });
 		}
 	}
 
@@ -211,10 +222,10 @@ export class ScreenAnalytics {
 	#emit<Event extends BrowserEvent>(
 		event: Event,
 		properties: (files: Files) => BrowserEvents[Event],
-		{ at, places }: { readonly at: number; readonly places: boolean },
+		{ at, places }: { readonly at: number; readonly places: string | undefined },
 	): void {
 		if (this.#ready({ places })) {
-			this.send(event, properties(this.#files()), this.#leaving ? { beacon: true } : undefined);
+			this.send(event, properties(this.#files(places)), this.#leaving ? { beacon: true } : undefined);
 		} else {
 			this.#waiting.push({ event, properties, at, places });
 		}
@@ -243,11 +254,17 @@ function outcomeOf(ending: Ending, origin: Start['origin'], { cities, places }: 
 	if (answer.outcome !== 'ring' || cities === undefined) {
 		return { outcome: answer.outcome, source };
 	}
-	// The points of interest as the first card counts them: the cities alone without the places file.
+	// The points of interest as the first card counts them: never the origin's places, and the cities alone without the
+	// places file or the origin's cell of outlines.
 	const points = pointsInRing({ cities, places: places ?? [] }, { ring: answer.ring, access: answer.access, origin });
 	const kinds = kindsOf(points);
 	const counts: RingOutcome = { outcome: answer.outcome, source, cities_count: kinds.cities, countries_count: countOf(points).countries };
 	return places === undefined ? counts : { ...counts, places_count: kinds.places, carousel_places_count: kinds.carouselPlaces };
+}
+
+/** An origin as the key of its places. */
+function originKey({ lat, lon }: Start['origin']): string {
+	return `${lat},${lon}`;
 }
 
 /** The origin's city: the city picked in the search, else the nearest city of the file; nothing without the file. */

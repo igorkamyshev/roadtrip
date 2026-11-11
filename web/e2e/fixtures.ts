@@ -2,15 +2,23 @@
 // scripted double that records every request and answers or holds it), the basemap's tiles (`GET /tiles/{z}/{x}/{y}`,
 // each one empty), the dataset's zone outlines (`/data/zones.json`, `ZONE_OUTLINES`), cities (`/data/cities.json`,
 // `CITIES`, or a test's own through `serveCities`) and places (`/data/places.json`, `PLACES`, or a test's own or none
-// through `servePlaces`), PostHog behind its proxy (`PostHogDouble` of
+// through `servePlaces`) and the cells of the places' outlines (`/data/place-outlines/`, `PLACE_OUTLINES`, or a test's
+// own or none through `servePlaceOutlines`), PostHog behind its proxy (`PostHogDouble` of
 // e2e/posthog-double.ts, the `posthog` fixture), and every other host, which is cut off in every test so that none
 // reaches the network. The production host is the preview server under the production name (`openInProduction`),
 // where the build runs PostHog. The basemap's fonts and sprites are the client's own static assets. Geolocation and
 // time come from Playwright itself (context permissions, `page.clock`; `failGeolocation` for a failure other than a
 // refusal).
-import { test as base, expect, type BrowserContext, type Page } from '@playwright/test';
+import { test as base, expect, type BrowserContext, type Page, type Route } from '@playwright/test';
 import { encodeCities, type CityRow } from 'data/cities-file';
-import { encodePlaces, type Place } from 'data/places-file';
+import {
+	encodePlaceOutlines,
+	encodePlaces,
+	placeOutlinesCell,
+	type Place,
+	type PlaceOutline,
+	type PlaceOutlinesFile,
+} from 'data/places-file';
 import type { Access, RingAnswer, RingResponse } from 'worker/api';
 import { PostHogDouble } from './posthog-double.ts';
 import { RingApi } from './ring-api.ts';
@@ -218,6 +226,52 @@ export const PLACES: readonly Place[] = [
 ];
 
 /**
+ * The outlines of the large places of `PLACES` (data's `build-places`, GLOSSARY «Место точки старта»), rough ones
+ * drawn by hand around Balaton and Deliblato Sands, which the Worker serves in the cells of `/data/place-outlines/`.
+ * Deliblato's touches the cell of Belgrade (44_20), whose file holds it, though Belgrade is 33 km from its edge; the
+ * cell of the Iron Gates (44_22) no outline touches, so it has no file.
+ */
+const PLACE_OUTLINES: readonly PlaceOutline[] = [
+	{ qid: 6383, rings: [[46.7, 17.23, 46.8, 17.22, 46.92, 17.75, 47.05, 18.17, 46.98, 18.2, 46.88, 18.0, 46.72, 17.45]] },
+	{ qid: 129979, rings: [[44.83, 20.88, 44.87, 21.25, 45.07, 21.33, 45.1, 21.05, 44.98, 20.86]] },
+];
+
+/** The cells of 1° × 1° an outline's bounds touch, as `placeOutlinesCell` names them. */
+function cellsOf({ rings }: PlaceOutline): string[] {
+	const lats = rings.flatMap((ring) => ring.filter((_, index) => index % 2 === 0));
+	const lons = rings.flatMap((ring) => ring.filter((_, index) => index % 2 === 1));
+	const cells: string[] = [];
+	for (let lat = Math.floor(Math.min(...lats)); lat <= Math.max(...lats); lat += 1) {
+		for (let lon = Math.floor(Math.min(...lons)); lon <= Math.max(...lons); lon += 1) {
+			cells.push(placeOutlinesCell({ lat, lon }));
+		}
+	}
+	return cells;
+}
+
+/**
+ * The file of the cell at `path` (`/data/place-outlines/44_20.json`) of `outlines`, as the Worker serves it: the
+ * outlines that touch the cell, or undefined for a cell none touches, which has no file.
+ */
+export function placeOutlinesFile(path: string, outlines: readonly PlaceOutline[] = PLACE_OUTLINES): PlaceOutlinesFile | undefined {
+	const cell =
+		path
+			.split('/')
+			.at(-1)
+			?.replace(/\.json$/u, '') ?? '';
+	const touching = outlines.filter((outline) => cellsOf(outline).includes(cell));
+	return touching.length === 0 ? undefined : encodePlaceOutlines(touching);
+}
+
+/** Answers a cell's file of `outlines`, or 404 for a cell none touches. */
+async function fulfilCell(route: Route, outlines: readonly PlaceOutline[]): Promise<void> {
+	const file = placeOutlinesFile(new URL(route.request().url()).pathname, outlines);
+	await (file === undefined
+		? route.fulfill({ status: 404 })
+		: route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(file) }));
+}
+
+/**
  * Places of the tests, as { lat, lon }: Belgrade, the origin of most; Budapest, the biggest city of `CITIES`, so the
  * first city card of a ring that holds it; and Niš.
  */
@@ -301,6 +355,7 @@ async function cutOffTheNetwork(context: BrowserContext, network: Network, previ
 	await context.route('**/data/places.json', (route) =>
 		route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(encodePlaces(PLACES)) }),
 	);
+	await context.route('**/data/place-outlines/*', (route) => fulfilCell(route, PLACE_OUTLINES));
 	await context.route('**/*', async (route) => {
 		const { hostname, origin } = new URL(route.request().url());
 		if (hostname === 'localhost' || origin === PRODUCTION) {
@@ -359,6 +414,16 @@ export async function servePlaces(page: Page, places: readonly Place[] | undefin
 		places === undefined
 			? route.fulfill({ status: 404 })
 			: route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(encodePlaces(places)) }),
+	);
+}
+
+/**
+ * Serves the page the cells of `outlines` instead of `PLACE_OUTLINES`, or cells that never come for `undefined`: an
+ * error of the server, not the 404 of a cell no outline touches.
+ */
+export async function servePlaceOutlines(page: Page, outlines: readonly PlaceOutline[] | undefined): Promise<void> {
+	await page.route('**/data/place-outlines/*', (route) =>
+		outlines === undefined ? route.fulfill({ status: 500 }) : fulfilCell(route, outlines),
 	);
 }
 
