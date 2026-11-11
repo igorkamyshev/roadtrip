@@ -95,6 +95,11 @@ export async function startPinning(page: Page): Promise<void> {
  */
 export const firstCard = (page: Page): Locator => page.getByTestId('first-card');
 
+/** What a person reads in an element: its inner text with the line breaks as spaces. */
+export async function read(locator: Locator): Promise<string> {
+	return (await locator.innerText()).replaceAll(/\s+/gu, ' ').trim();
+}
+
 /**
  * The data's sources under the phrase (src/screen/attribution.tsx): shown for 5 s once the screen opens, then hidden in
  * their place.
@@ -112,15 +117,15 @@ export const carousel = (page: Page): Locator => page.getByTestId('carousel');
  */
 export const carouselArrows = (page: Page): Locator => page.getByTestId('carousel-arrows');
 
-/** «и ещё K / Все города →», the carousel's last card when the ring has more cities than cards. */
+/** «и ещё K / Всё в кольце →», the carousel's last card when the ring has more points of interest than cards. */
 export const moreCard = (page: Page): Locator => carousel(page).getByRole('button', { name: /и ещё/u });
 
 /** The cards of the carousel's cities, in order. */
-export const cityCards = (page: Page): Locator => page.getByTestId('city-card');
+export const pointCards = (page: Page): Locator => page.getByTestId('point-card');
 
 /** The card of the city whose name is in its heading. */
-export const cityCard = (page: Page, name: string): Locator =>
-	cityCards(page).filter({ has: page.getByRole('heading', { name, exact: true }) });
+export const pointCard = (page: Page, name: string): Locator =>
+	pointCards(page).filter({ has: page.getByRole('heading', { name, exact: true }) });
 
 /**
  * The name of the first city card the window's right edge cuts, 12 px in, where the wide screen's row fades out: the
@@ -128,7 +133,7 @@ export const cityCard = (page: Page, name: string): Locator =>
  */
 export async function cutCard(page: Page): Promise<string> {
 	const { width } = page.viewportSize() ?? { width: 0 };
-	for (const card of await cityCards(page).all()) {
+	for (const card of await pointCards(page).all()) {
 		const box = await boxOf(card);
 		if (box.x + box.width > width - 12) {
 			return card.getByRole('heading').innerText();
@@ -138,7 +143,7 @@ export async function cutCard(page: Page): Promise<string> {
 }
 
 /** The card of the chosen city: the carousel marks it current. */
-export const chosenCard = (page: Page): Locator => cityCards(page).and(page.locator('[aria-current="true"]'));
+export const chosenCard = (page: Page): Locator => pointCards(page).and(page.locator('[aria-current="true"]'));
 
 /**
  * The carousel's cards wholly in the window, by name for `expectApart`: the first card, the city cards and «и ещё»
@@ -146,7 +151,7 @@ export const chosenCard = (page: Page): Locator => cityCards(page).and(page.loca
  */
 export async function cardsInView(page: Page): Promise<Record<string, Locator>> {
 	const { width } = page.viewportSize() ?? { width: 0 };
-	const cities = page.getByTestId('city-card');
+	const cities = page.getByTestId('point-card');
 	const cards: [string, Locator][] = [
 		['first card', firstCard(page)],
 		...Array.from({ length: await cities.count() }, (_, i): [string, Locator] => [`city card ${i + 1}`, cities.nth(i)]),
@@ -233,12 +238,12 @@ export function fromEdges(page: Page, box: Box): { top: number; right: number; b
 
 /**
  * Waits for the answer of a ring of `hours` («2–3 ч»): the slider at those hours and the first card a ring's, with
- * its cities, before the cities file comes or without any (`ring`, `no_cities`). Its copy is not read: the tests of
+ * its cities, before the cities file comes or without any (`ring`, `no_points`). Its copy is not read: the tests of
  * the card's texts read them.
  */
 export async function expectRingCard(page: Page, hours: string): Promise<void> {
 	await expect(slider(page)).toHaveAttribute('aria-valuetext', hours);
-	await expect(firstCard(page)).toHaveAttribute('data-state', /^(?:ring|no_cities)$/u);
+	await expect(firstCard(page)).toHaveAttribute('data-state', /^(?:ring|no_points)$/u);
 }
 
 /**
@@ -536,11 +541,11 @@ export const LAST_DAY_RING = '6–7 дней';
 
 /**
  * Opens the ring of the carousel's tests (`carouselRing` of e2e/fixtures.ts), 2–3 h around Belgrade, on the held
- * clock: its 12 city cards, the map up and come to rest on it.
+ * clock: its 12 cards, the map up and come to rest on it.
  */
 export async function openTheCarousel(page: Page): Promise<void> {
 	await page.goto(`${FROM_BELGRADE}&h=3`);
-	await runUntil(page, async () => (await cityCards(page).count()) === 12, 'the 12 city cards');
+	await runUntil(page, async () => (await pointCards(page).count()) === 12, 'the 12 cards of points of interest');
 	await runUntilMapAtRest(page);
 }
 
@@ -573,4 +578,38 @@ export async function leave(page: Page): Promise<void> {
 	await page.evaluate(() => {
 		window.dispatchEvent(new PageTransitionEvent('pagehide', { persisted: false }));
 	});
+}
+
+/**
+ * Opens the list of all by «и ещё», at the carousel's end, as a person would: scrolls the carousel there, lets it stop,
+ * then taps «и ещё». The stop chooses the card at the left edge 140 ms after the carousel's last `scroll` event, which
+ * the browser sends with a later frame: the test waits for `scrollend`, after that event, before it runs the page's
+ * clock past the stop, so the stop cannot come after the city the test picks next (#115).
+ */
+export async function openTheList(page: Page): Promise<void> {
+	await carousel(page).evaluate(async (element) => {
+		const end = element.scrollWidth - element.clientWidth;
+		// Already there (to a pixel: `scrollLeft` may be fractional), it would not scroll, and no `scrollend` would come.
+		if (element.scrollLeft < end - 1) {
+			const ended = new Promise((resolve) => {
+				element.addEventListener('scrollend', resolve, { once: true });
+			});
+			element.scrollTo({ left: end });
+			await ended;
+		}
+	});
+	await page.clock.fastForward(1000);
+	await page.getByRole('button', { name: /и ещё/u }).click();
+}
+
+/** Longer than any easing of the map's camera: MapLibre's `easeTo` takes 500 ms. */
+const EASING_PAST_MS = 2000;
+
+/**
+ * How far a point of interest is from the middle of the map once the camera went to it: past its easing, by the page's
+ * clock, which the test has installed.
+ */
+export async function wentTo(page: Page, at: { readonly lat: number; readonly lon: number }): Promise<number> {
+	await page.clock.fastForward(EASING_PAST_MS);
+	return distanceFromTheMiddle(page, at);
 }

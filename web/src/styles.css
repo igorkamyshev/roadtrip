@@ -18,6 +18,13 @@
 	--city: #0e2a5a;
 	--halo: #f4f6f2;
 
+	/* The groups of places (spec #154 «Экран»): nature green, history terracotta, the strip on top of a place's card and
+	   its type's chip, on its ground. */
+	--nature: #2f7d4a;
+	--nature-bg: #e3efe7;
+	--history: #a4552e;
+	--history-bg: #f5e7df;
+
 	/* The hatching of closed countries over the basemap: lines on a veil. */
 	--hatch: rgb(84 95 90 / 55%);
 	--hatch-veil: rgb(220 223 216 / 35%);
@@ -67,6 +74,10 @@
 		--start: #ff6a52;
 		--city: #d6e4ff;
 		--halo: #1c2321;
+		--nature: #6fc58c;
+		--nature-bg: #1f3327;
+		--history: #e4936b;
+		--history-bg: #3a261c;
 		--hatch: rgb(150 162 157 / 50%);
 		--hatch-veil: rgb(27 33 32 / 40%);
 		--warn: #ffcf7d;
@@ -462,8 +473,8 @@ a {
 	height: 14px;
 }
 
-/* ---------- the list of all cities (a virtual list: rows of a fixed height, placed by the list) ---------- */
-.city-list {
+/* ---------- the list of all points of interest (a virtual list: rows of a fixed height, placed by the list) ---------- */
+.point-list {
 	position: relative;
 }
 
@@ -476,7 +487,7 @@ a {
 	width: 100%;
 }
 
-.city-row {
+.point-row {
 	position: absolute;
 	top: 0;
 	left: 0;
@@ -499,12 +510,12 @@ a {
 	min-width: 0;
 }
 
-.city-row.on .row-name {
+.point-row.on .row-name {
 	color: var(--ring);
 }
 
-.city-row .row-main,
-.city-row .row-sub {
+.point-row .row-main,
+.point-row .row-sub {
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
@@ -1077,6 +1088,34 @@ a {
 	font-size: 30px;
 	font-weight: 700;
 	line-height: 1;
+}
+
+/* A place's card (spec #154 «Экран», «Карточка места»): a strip of its group's colour on top, and its type in a chip of
+   that colour; a city's card has neither. No icons. */
+.nature {
+	--group: var(--nature);
+	--group-bg: var(--nature-bg);
+}
+
+.history {
+	--group: var(--history);
+	--group-bg: var(--history-bg);
+}
+
+.c-card.nature,
+.c-card.history {
+	border-top: 5px solid var(--group);
+}
+
+.type-chip {
+	display: inline-block;
+	padding: 1px 8px;
+	border-radius: 999px;
+	background: var(--group-bg);
+	color: var(--group);
+	font-size: 13px;
+	font-weight: 600;
+	line-height: 18px;
 }
 
 /* The chosen point of interest's card: 2 px of --ring, close; the keyboard's focus looks otherwise (above). */

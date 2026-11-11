@@ -4,7 +4,7 @@
 // would pick it, mouse or not; elsewhere the map's own grab, and grab everywhere in the pin mode.
 import type { Locator, Page } from '@playwright/test';
 import { BELGRADE, expect, LINK_3_HOURS, squareRing, test, visaRules } from './fixtures.ts';
-import { cityCards, firstCard, mapAtRest, startPinning, theMap, whereOnScreen } from './screen.ts';
+import { pointCards, firstCard, mapAtRest, startPinning, theMap, whereOnScreen } from './screen.ts';
 import { DESKTOP, onWindow, type TestWindow, windowName, WINDOWS } from './windows.ts';
 
 /** A city of the ring 2–3 h around Belgrade, on the map clear of the panels at 1440×900. */
@@ -57,7 +57,7 @@ async function mouseOver(page: Page, at: { readonly lat: number; readonly lon: n
 /** A city card's background with the mouse away from it and over it, on its name. */
 async function cityCardUnderTheMouse(page: Page): Promise<{ away: string; over: string }> {
 	await page.goto(LINK_3_HOURS);
-	const card = cityCards(page).first();
+	const card = pointCards(page).first();
 	await expect(card).toBeVisible();
 	return underTheMouse(page, card, card.getByRole('heading'));
 }
@@ -106,7 +106,7 @@ test.describe('on 1440×900, mouse', () => {
 
 	test("the cursor is a pointer over a city on the map, the map's grab beside it, and grab over it in the pin mode", async ({ page }) => {
 		await page.goto(LINK_3_HOURS);
-		await expect(cityCards(page)).not.toHaveCount(0);
+		await expect(pointCards(page)).not.toHaveCount(0);
 
 		await mouseOver(page, SUBOTICA);
 		await expect.poll(() => cursorOverTheMap(page)).toBe('pointer');

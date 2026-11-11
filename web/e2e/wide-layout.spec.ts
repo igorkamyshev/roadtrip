@@ -17,6 +17,7 @@ import {
 	OLD_RULES,
 	OPEN_AROUND_SERBIA,
 	serveCities,
+	servePlaces,
 	SHORTEST,
 	SHORTEST_IN_DAYS,
 	squareRing,
@@ -167,8 +168,9 @@ for (const window of ROW_WINDOWS) {
 				page,
 				CITIES.filter(([, name]) => name === 'Будапешт'),
 			);
+			await servePlaces(page, []);
 			await open(page);
-			await expect(page.getByTestId('city-card')).toHaveCount(1);
+			await expect(page.getByTestId('point-card')).toHaveCount(1);
 
 			expect(fromEdges(page, await boxOf(firstCard(page))).left).toBeCloseTo(EDGE, 0);
 			expect(await carousel(page).evaluate((element) => element.scrollWidth - element.clientWidth)).toBe(0);
@@ -191,6 +193,8 @@ for (const window of ROW_WINDOWS.filter(({ pointer }) => pointer === 'mouse')) {
 				page,
 			}) => {
 				await open(page, path, ring);
+				// The plate comes with the cards, once the cities and places files are in: its buttons are read once.
+				await expect(carouselArrows(page)).toBeVisible();
 
 				const [plate, row, panel, ...buttons] = await Promise.all(
 					[carouselArrows(page), slider(page), sliderPanel(page), ...(await carouselArrows(page).getByRole('button').all())].map(
@@ -278,7 +282,7 @@ for (const window of WINDOWS.filter(({ pointer }) => pointer === 'touch')) {
 
 		test('without a mouse the carousel has no arrows, though its cards scroll', async ({ page }) => {
 			await open(page);
-			await expect(page.getByTestId('city-card')).toHaveCount(12);
+			await expect(page.getByTestId('point-card')).toHaveCount(12);
 
 			expect(await carousel(page).evaluate((element) => element.scrollWidth - element.clientWidth)).toBeGreaterThan(0);
 			await expect(carouselArrows(page)).toHaveCount(0);

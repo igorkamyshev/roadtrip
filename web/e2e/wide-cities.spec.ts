@@ -4,13 +4,13 @@
 // the chosen city's card at the left edge, where the narrow screen's chosen card stands. And at any width the
 // keyboard's focus looks other than the chosen card's mark. The narrow screen's carousel is `cities.spec.ts`'s.
 import type { Locator, Page } from '@playwright/test';
-import { carouselRing, CITIES, expect, test } from './fixtures.ts';
+import { carouselRing, CITIES, expect, servePlaces, test } from './fixtures.ts';
 import {
 	boxOf,
 	carousel,
 	chosenCard,
-	cityCard,
-	cityCards,
+	pointCard,
+	pointCards,
 	cutCard,
 	dragMap,
 	EDGE,
@@ -33,6 +33,8 @@ test.beforeEach(async ({ page, ringApi }) => {
 	// The map's easing and the carousel's stop run by the page's clock: a test runs it past them.
 	await holdTheClock(page);
 	ringApi.respond(carouselRing);
+	// The cities alone, which the tests name and find on the map; a place is chosen as a city is (e2e/places.spec.ts).
+	await servePlaces(page, []);
 });
 
 /** Where a city of `CITIES` is. */
@@ -70,7 +72,7 @@ const WENT_TO = 80;
  */
 async function pressCard(page: Page, pointer: TestWindow['pointer'], name: string): Promise<{ x: number; y: number }> {
 	const { width } = page.viewportSize() ?? { width: 0 };
-	const [card, heading] = await Promise.all([boxOf(cityCard(page, name)), boxOf(cityCard(page, name).getByRole('heading'))]);
+	const [card, heading] = await Promise.all([boxOf(pointCard(page, name)), boxOf(pointCard(page, name).getByRole('heading'))]);
 	const at = { x: (Math.max(card.x, EDGE) + Math.min(card.x + card.width, width - EDGE)) / 2, y: heading.y + heading.height / 2 };
 	await (pointer === 'touch' ? page.touchscreen.tap(at.x, at.y) : page.mouse.click(at.x, at.y));
 	return at;
@@ -79,7 +81,7 @@ async function pressCard(page: Page, pointer: TestWindow['pointer'], name: strin
 /** Where the city's card stands whole in the row: at its left or right edge, between them, or `cut` by one. */
 async function wholeAt(page: Page, name: string): Promise<'left' | 'right' | 'between' | 'cut'> {
 	const { width } = page.viewportSize() ?? { width: 0 };
-	const box = await boxOf(cityCard(page, name));
+	const box = await boxOf(pointCard(page, name));
 	const [left, right] = [Math.round(box.x), Math.round(box.x + box.width)];
 	if (left < EDGE || right > width - EDGE) {
 		return 'cut';
@@ -98,7 +100,7 @@ async function pickInTheList(page: Page, name: string): Promise<void> {
 	await tapMap(page, placeOf('Решица'));
 	await page
 		.getByRole('dialog', { name: /в кольце/u })
-		.getByTestId('city-row')
+		.getByTestId('point-row')
 		.filter({ hasText: name })
 		.click();
 	await expect(page.getByRole('dialog')).toHaveCount(0);
@@ -128,7 +130,7 @@ for (const window of CHECKED) {
 			await openTheCarousel(page);
 			const name = await cutCard(page);
 			const { width } = page.viewportSize() ?? { width: 0 };
-			const cut = await boxOf(cityCard(page, name));
+			const cut = await boxOf(pointCard(page, name));
 			const cutBy = cut.x + cut.width - (width - EDGE);
 			const [zoom, before] = await Promise.all([mapZoom(page), scrolled(page)]);
 			expect(await fromTheMapMiddle(page, name)).toBeGreaterThan(WENT_TO);
@@ -137,7 +139,7 @@ for (const window of CHECKED) {
 
 			await expect(chosenCard(page).getByRole('heading')).toHaveText(name);
 			await expect.poll(async () => Math.round((await scrolled(page)) - before)).toBe(Math.round(cutBy));
-			const card = await boxOf(cityCard(page, name));
+			const card = await boxOf(pointCard(page, name));
 			expect(Math.round(card.x + card.width)).toBe(width - EDGE);
 			expect(pressed.x).toBeGreaterThan(card.x);
 			expect(pressed.x).toBeLessThan(card.x + card.width);
@@ -160,7 +162,7 @@ for (const window of CHECKED) {
 			page,
 		}) => {
 			await openTheCarousel(page);
-			await expect(cityCard(page, 'Суботица')).not.toBeInViewport();
+			await expect(pointCard(page, 'Суботица')).not.toBeInViewport();
 			expect(await fromTheMapMiddle(page, 'Суботица')).toBeGreaterThan(WENT_TO);
 
 			await tapMap(page, placeOf('Суботица'));
@@ -195,14 +197,14 @@ for (const window of CHECKED) {
 		test('Tab goes through the cards: the card in focus comes whole into view, its city not chosen', async ({ page }) => {
 			await openTheCarousel(page);
 			const center = await mapCenter(page);
-			await cityCard(page, 'Будапешт').getByRole('button').focus();
+			await pointCard(page, 'Будапешт').getByRole('button').focus();
 
 			// A card's name, then its «Маршрут»: six cards on, Szeged, out of view.
 			for (let press = 0; press < 12; press += 1) {
 				await page.keyboard.press('Tab');
 			}
 
-			await expect(cityCard(page, 'Сегед').getByRole('button')).toBeFocused();
+			await expect(pointCard(page, 'Сегед').getByRole('button')).toBeFocused();
 			await expect.poll(() => wholeAt(page, 'Сегед')).not.toBe('cut');
 			await settle(page);
 			await expect(chosenCard(page)).toHaveCount(0);
@@ -227,7 +229,7 @@ test.describe('a window that turns narrow', () => {
 
 		await page.setViewportSize({ width: 390, height: 844 });
 
-		await expect.poll(async () => Math.round((await boxOf(cityCard(page, 'Ниш'))).x)).toBe(EDGE);
+		await expect.poll(async () => Math.round((await boxOf(pointCard(page, 'Ниш'))).x)).toBe(EDGE);
 		await settle(page);
 		await expect(chosenCard(page).getByRole('heading')).toHaveText('Ниш');
 		expect(await mapCenter(page)).toEqual(center);
@@ -279,7 +281,7 @@ async function narrowTo390(page: Page): Promise<void> {
 	await page.setViewportSize({ width: 390, height: 844 });
 	await expect
 		.poll(async () =>
-			(await cityCards(page).evaluateAll((cards) => cards.map((card) => Math.round(card.getBoundingClientRect().x)))).includes(EDGE),
+			(await pointCards(page).evaluateAll((cards) => cards.map((card) => Math.round(card.getBoundingClientRect().x)))).includes(EDGE),
 		)
 		.toBe(true);
 }
@@ -313,7 +315,7 @@ for (const window of [...CHECKED, ...WINDOWS.filter(({ width, height }) => width
 			page,
 		}) => {
 			await openTheCarousel(page);
-			await cityCard(page, 'Будапешт').getByRole('button').focus();
+			await pointCard(page, 'Будапешт').getByRole('button').focus();
 			await page.keyboard.press('Enter');
 			// On the phone the card is chosen by the stop of the carousel's smooth scroll to it, which the browser runs.
 			await runUntil(
@@ -327,7 +329,7 @@ for (const window of [...CHECKED, ...WINDOWS.filter(({ width, height }) => width
 			await page.keyboard.press('Tab');
 			await settle(page);
 
-			const focused = cityCard(page, 'Сараево').getByRole('button');
+			const focused = pointCard(page, 'Сараево').getByRole('button');
 			await expect(focused).toBeFocused();
 			expect(await focused.evaluate((element) => element.matches(':focus-visible'))).toBe(true);
 			const [ring, fg] = await Promise.all([tokenColor(page, '--ring'), tokenColor(page, '--fg')]);

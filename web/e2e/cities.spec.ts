@@ -2,17 +2,29 @@
 // городов»; stories 35–42): which cities the screen picks of the cities file, the carousel, the list of all cities,
 // the cards, and how the carousel and the map follow each other. The cities are `CITIES` of the fixtures, real ones
 // around Belgrade, or a test's own; their distance from Belgrade below is the larger of |Δlat| and |Δlon|, which is
-// what decides whether `squareRing` holds them.
-import type { Locator, Page } from '@playwright/test';
+// what decides whether `squareRing` holds them. The places file holds no places here: e2e/places.spec.ts has them.
+import type { Page } from '@playwright/test';
 import type { Access } from 'worker/api';
-import { allowGeolocation, BELGRADE, BUDAPEST, expect, LINK_3_HOURS, NIS, serveCities, squareRing, test, visaRules } from './fixtures.ts';
+import {
+	allowGeolocation,
+	BELGRADE,
+	BUDAPEST,
+	expect,
+	LINK_3_HOURS,
+	NIS,
+	serveCities,
+	servePlaces,
+	squareRing,
+	test,
+	visaRules,
+} from './fixtures.ts';
 import {
 	boxOf,
 	carousel,
 	chosenCard,
 	citiesOnMap,
-	cityCard,
-	cityCards,
+	pointCard,
+	pointCards,
 	distanceFromTheMiddle,
 	dragMap,
 	expectRingCard,
@@ -21,14 +33,14 @@ import {
 	labelsOnMap,
 	mapAtRest,
 	mapZoom,
+	openTheList,
 	phrase,
+	read,
 	slider,
 	sliderHour,
 	tapMap,
+	wentTo,
 } from './screen.ts';
-
-/** Longer than any easing of the map's camera: MapLibre's `easeTo` takes 500 ms. */
-const EASING_PAST_MS = 2000;
 
 /** A Russian's entry modes around Serbia, the start country. */
 const RUSSIAN: Access = {
@@ -54,18 +66,15 @@ function ringAroundBelgrade(access: Access) {
 	return { ...squareRing(BELGRADE.lat, BELGRADE.lon, [1, 3]), ...visaRules(access) };
 }
 
-/** What a person reads in an element: its inner text with the line breaks as spaces. */
-async function read(locator: Locator): Promise<string> {
-	return (await locator.innerText()).replaceAll(/\s+/gu, ' ').trim();
-}
-
 /** The cards of these cities as they read, in one reading. */
 async function readCards(page: Page, names: readonly string[]): Promise<string[]> {
-	return Promise.all(names.map((name) => read(cityCard(page, name))));
+	return Promise.all(names.map((name) => read(pointCard(page, name))));
 }
 
-test.beforeEach(async ({ context }) => {
+test.beforeEach(async ({ context, page }) => {
 	await allowGeolocation(context, BELGRADE);
+	// The cities alone: the places join them in e2e/places.spec.ts.
+	await servePlaces(page, []);
 });
 
 test.describe('the first card', () => {
@@ -76,16 +85,18 @@ test.describe('the first card', () => {
 		// From 1° to 3°, in Serbia, Bosnia and Herzegovina and Montenegro: Sarajevo 2.1°, Niš 1.5°, Podgorica 2.4°,
 		// Tuzla 1.8°, Mostar 2.6°, Subotica 1.3°, Lukavac 1.9°. Not Belgrade, 0.01°, in the ring's hole, nor
 		// Kragujevac, 0.8°, nor Budapest, 2.7°, in Hungary, closed, nor Pristina, 2.1°, in Kosovo, closed for everyone.
-		await expect.poll(() => read(firstCard(page))).toBe('В кольце 2–3 ч 7 городов в 3 странах Листайте → самые крупные');
+		await expect.poll(() => read(firstCard(page))).toBe('В кольце 2–3 ч 7 точек интереса в 3 странах Листайте → самое известное');
 	});
 
-	test('says «Городов в кольце нет» for a ring without cities of 15 000 people', async ({ page, ringApi }) => {
+	test('says «Точек интереса в кольце нет» for a ring without cities of 15 000 people', async ({ page, ringApi }) => {
 		// From 0.02° to 0.1°: Belgrade, 0.01°, is in the hole, Pančevo, 0.18°, outside.
 		ringApi.respond(() => ({ ...squareRing(BELGRADE.lat, BELGRADE.lon, [0.02, 0.1]), ...visaRules(RUSSIAN) }));
 		await page.goto(LINK_3_HOURS);
 
-		await expect.poll(() => read(firstCard(page))).toBe('Городов в кольце нет Показываем города больше 15 000 жителей.');
-		await expect(cityCards(page)).toHaveCount(0);
+		await expect
+			.poll(() => read(firstCard(page)))
+			.toBe('Точек интереса в кольце нет Показываем города от 15 000 жителей и известные места.');
+		await expect(pointCards(page)).toHaveCount(0);
 	});
 
 	test('takes the cities of Northern Cyprus by their zone, open while Cyprus is closed', async ({ page, ringApi }) => {
@@ -100,10 +111,10 @@ test.describe('the first card', () => {
 		}));
 		await page.goto('/#/?p=35.20000,33.40000&h=2');
 
-		await expect.poll(() => read(firstCard(page))).toBe('В кольце 1–2 ч 2 города в 1 стране Листайте → самые крупные');
+		await expect.poll(() => read(firstCard(page))).toBe('В кольце 1–2 ч 2 точки интереса в 1 стране Листайте → самое известное');
 		// Northern Cyprus has no flag of its own.
-		await expect(cityCards(page).getByTestId('city-facts')).toHaveText(['Население: 43 тыс.', 'Население: 27 тыс.']);
-		const flag = cityCard(page, 'Фамагуста').getByRole('img', { name: 'Северный Кипр' });
+		await expect(pointCards(page).getByTestId('point-facts')).toHaveText(['Население: 43 тыс.', 'Население: 27 тыс.']);
+		const flag = pointCard(page, 'Фамагуста').getByRole('img', { name: 'Северный Кипр' });
 		await expect(flag).toHaveText('⛳');
 		await expect(flag).toHaveAttribute('title', 'Северный Кипр');
 	});
@@ -123,7 +134,7 @@ test.describe('the first card', () => {
 			}));
 			await page.goto(`/#/?p=45.50000,33.50000&h=${'CRIMEA' in crimea ? 2 : 3}&cit=SRB`);
 
-			await expect(cityCards(page).getByRole('heading')).toHaveText(['Херсон']);
+			await expect(pointCards(page).getByRole('heading')).toHaveText(['Херсон']);
 		}
 	});
 });
@@ -134,8 +145,8 @@ test.describe('the carousel', () => {
 		await page.goto(LINK_3_HOURS);
 
 		// 16 cities from 1° to 3°, all but Pristina's Kosovo open: the 12 biggest, then 4 more.
-		await expect.poll(() => read(firstCard(page))).toBe('В кольце 2–3 ч 16 городов в 6 странах Листайте → самые крупные');
-		await expect(cityCards(page).getByRole('heading')).toHaveText([
+		await expect.poll(() => read(firstCard(page))).toBe('В кольце 2–3 ч 16 точек интереса в 6 странах Листайте → самое известное');
+		await expect(pointCards(page).getByRole('heading')).toHaveText([
 			'Будапешт',
 			'Сараево',
 			'Ниш',
@@ -150,25 +161,25 @@ test.describe('the carousel', () => {
 			'Суботица',
 		]);
 		const more = page.getByRole('button', { name: /и ещё/u });
-		expect(await read(more)).toBe('и ещё 4 Все города →');
+		expect(await read(more)).toBe('и ещё 4 Всё в кольце →');
 
 		await more.click();
 
-		await expect(page.getByRole('dialog', { name: '16 городов в кольце 2–3 ч' })).toBeVisible();
+		await expect(page.getByRole('dialog', { name: 'Всё в кольце 2–3 ч: 16' })).toBeVisible();
 	});
 
 	test('has no «и ещё» card for 12 cities or fewer', async ({ page, ringApi }) => {
 		ringApi.respond(() => ringAroundBelgrade(RUSSIAN));
 		await page.goto(LINK_3_HOURS);
 
-		await expect(cityCards(page)).toHaveCount(7);
+		await expect(pointCards(page)).toHaveCount(7);
 		await expect(page.getByRole('button', { name: /и ещё/u })).toHaveCount(0);
 	});
 });
 
 /** The sheet with the list of all cities of the ring, and its rows. */
 const allCities = (page: Page) => page.getByRole('dialog', { name: /в кольце/u });
-const rows = (page: Page) => allCities(page).getByTestId('city-row');
+const rows = (page: Page) => allCities(page).getByTestId('point-row');
 
 test.describe('the list of all cities', () => {
 	test('lists every city of the ring, biggest first, with its flag and population, and no mark of its entry mode', async ({
@@ -212,7 +223,7 @@ test.describe('the list of all cities', () => {
 		);
 		ringApi.respond(() => ringAroundBelgrade(RUSSIAN));
 		await page.goto(LINK_3_HOURS);
-		await expect.poll(() => read(firstCard(page))).toContain('3000 городов в 1 стране');
+		await expect.poll(() => read(firstCard(page))).toContain('3000 точек интереса в 1 стране');
 		await page.getByRole('button', { name: /и ещё/u }).click();
 
 		await expect(rows(page).first()).toContainText('Город 1');
@@ -249,8 +260,8 @@ test.describe("the origin's city", () => {
 		await expectRingCard(page, 'до 1 ч');
 
 		await expect(phrase(page)).toContainText('Из точки Белград, до 1 часа в пути.');
-		expect(await read(firstCard(page))).toBe('В кольце до 1 ч 24 города в 6 странах Листайте → самые крупные');
-		await expect(cityCards(page).getByRole('heading')).toHaveText([
+		expect(await read(firstCard(page))).toBe('В кольце до 1 ч 24 точки интереса в 6 странах Листайте → самое известное');
+		await expect(pointCards(page).getByRole('heading')).toHaveText([
 			'Будапешт',
 			'Сараево',
 			'Тимишоара',
@@ -284,7 +295,7 @@ test.describe("the origin's city", () => {
 		await expectRingCard(page, 'до 1 ч');
 
 		await expect(phrase(page)).toContainText('Из точки Белград, до 1 часа в пути.');
-		await expect(cityCards(page).getByRole('heading')).toHaveText(['Панчево']);
+		await expect(pointCards(page).getByRole('heading')).toHaveText(['Панчево']);
 	});
 
 	test('is no city of the ring at 2 hours either, when the band holds it', async ({ page, ringApi }) => {
@@ -293,7 +304,7 @@ test.describe("the origin's city", () => {
 		await page.goto('/#/?p=44.84580,20.40116&h=2');
 		await expectRingCard(page, '1–2 ч');
 
-		await expect(cityCards(page).getByRole('heading')).toHaveText(['Панчево']);
+		await expect(pointCards(page).getByRole('heading')).toHaveText(['Панчево']);
 	});
 
 	test('is none near Belgrade outside the limits of every city: Belgrade is in the ring, and the phrase says «на карте»', async ({
@@ -307,7 +318,7 @@ test.describe("the origin's city", () => {
 		await expectRingCard(page, 'до 1 ч');
 
 		await expect(phrase(page)).toContainText('Из точки на карте, до 1 часа в пути.');
-		await expect(cityCards(page).getByRole('heading')).toHaveText(['Белград', 'Панчево', 'Смедерево']);
+		await expect(pointCards(page).getByRole('heading')).toHaveText(['Белград', 'Панчево', 'Смедерево']);
 	});
 
 	test('is the nearest of two whose limits hold the origin: the other stays in the ring', async ({ page, ringApi }) => {
@@ -322,7 +333,7 @@ test.describe("the origin's city", () => {
 		await expectRingCard(page, 'до 1 ч');
 
 		await expect(phrase(page)).toContainText('Из точки Второй, до 1 часа в пути.');
-		await expect(cityCards(page).getByRole('heading')).toHaveText(['Первый']);
+		await expect(pointCards(page).getByRole('heading')).toHaveText(['Первый']);
 	});
 
 	test('is the city of the search, which the ring leaves out', async ({ page, ringApi }) => {
@@ -338,37 +349,15 @@ test.describe("the origin's city", () => {
 			.click();
 
 		await expect(phrase(page)).toContainText('Из точки Белград, до 1 часа в пути.');
-		await expect(cityCards(page).getByRole('heading')).toHaveText(['Панчево', 'Смедерево']);
+		await expect(pointCards(page).getByRole('heading')).toHaveText(['Панчево', 'Смедерево']);
 	});
 });
 
 /** The cards of the carousel, as the person scrolls it until the card is the current one, at its left edge. */
 async function scrollTo(page: Page, name: string): Promise<void> {
-	await cityCard(page, name).evaluate((element) => {
+	await pointCard(page, name).evaluate((element) => {
 		element.scrollIntoView({ inline: 'start', block: 'nearest' });
 	});
-}
-
-/**
- * Opens the list of all by «и ещё», at the carousel's end, as a person would: scrolls the carousel there, lets it stop,
- * then taps «и ещё». The stop chooses the card at the left edge 140 ms after the carousel's last `scroll` event, which
- * the browser sends with a later frame: the test waits for `scrollend`, after that event, before it runs the page's
- * clock past the stop, so the stop cannot come after the city the test picks next (#115).
- */
-async function openTheList(page: Page): Promise<void> {
-	await carousel(page).evaluate(async (element) => {
-		const end = element.scrollWidth - element.clientWidth;
-		// Already there (to a pixel: `scrollLeft` may be fractional), it would not scroll, and no `scrollend` would come.
-		if (element.scrollLeft < end - 1) {
-			const ended = new Promise((resolve) => {
-				element.addEventListener('scrollend', resolve, { once: true });
-			});
-			element.scrollTo({ left: end });
-			await ended;
-		}
-	});
-	await page.clock.fastForward(1000);
-	await page.getByRole('button', { name: /и ещё/u }).click();
 }
 
 /**
@@ -377,8 +366,8 @@ async function openTheList(page: Page): Promise<void> {
  */
 async function tapCard(page: Page, name: string): Promise<void> {
 	const [cardBox, headingBox, carouselBox, sliderBox] = await Promise.all([
-		boxOf(cityCard(page, name)),
-		boxOf(cityCard(page, name).getByRole('heading')),
+		boxOf(pointCard(page, name)),
+		boxOf(pointCard(page, name).getByRole('heading')),
 		boxOf(carousel(page)),
 		boxOf(slider(page)),
 	]);
@@ -405,12 +394,6 @@ async function swipeShort(page: Page): Promise<void> {
 	await session.detach();
 }
 
-/** How far the place is from the middle of the map once the camera went to it: past its easing, by the page's clock. */
-async function wentTo(page: Page, at: { readonly lat: number; readonly lon: number }): Promise<number> {
-	await page.clock.fastForward(EASING_PAST_MS);
-	return distanceFromTheMiddle(page, at);
-}
-
 test.describe('the carousel and the map', () => {
 	test.beforeEach(async ({ page, ringApi }) => {
 		// The page's clock, which the map's easing runs by: a test moves it past the easing, whatever the machine's load.
@@ -418,7 +401,7 @@ test.describe('the carousel and the map', () => {
 		await page.clock.install();
 		ringApi.respond(() => ringAroundBelgrade(WITH_SCHENGEN_VISA));
 		await page.goto(LINK_3_HOURS);
-		await expect(cityCards(page)).toHaveCount(12);
+		await expect(pointCards(page)).toHaveCount(12);
 		// The map is a chunk of its own: the carousel moves it once it is up and has fit the ring.
 		await mapAtRest(page);
 	});
@@ -451,7 +434,7 @@ test.describe('the carousel and the map', () => {
 	// The card after the current one peeks out between it and the slider (#77), then fades out before the slider.
 	test('tapping the card that peeks out chooses its city, and the map goes to it at the same zoom', async ({ page }) => {
 		const zoom = await mapZoom(page);
-		await expect(cityCard(page, 'Будапешт')).not.toBeInViewport({ ratio: 0.9 });
+		await expect(pointCard(page, 'Будапешт')).not.toBeInViewport({ ratio: 0.9 });
 
 		await tapCard(page, 'Будапешт');
 
@@ -509,7 +492,7 @@ test.describe('the carousel and the map', () => {
 	test('a tap on the slider over a card under it changes N and chooses no card', async ({ page }) => {
 		const hourBox = await boxOf(sliderHour(page, 1));
 		const tap = { x: hourBox.x + hourBox.width / 2, y: hourBox.y + hourBox.height / 2 };
-		const under = await cityCards(page).evaluateAll(
+		const under = await pointCards(page).evaluateAll(
 			(cards, at) =>
 				cards.some((card) => {
 					const box = card.getBoundingClientRect();
@@ -546,8 +529,8 @@ test.describe('the carousel and the map', () => {
 	}) => {
 		await scrollTo(page, 'Ниш');
 		await expect(chosenCard(page).getByRole('heading')).toHaveText('Ниш');
-		const names = await cityCards(page).getByRole('heading').allInnerTexts();
-		const next = cityCards(page)
+		const names = await pointCards(page).getByRole('heading').allInnerTexts();
+		const next = pointCards(page)
 			.nth(names.indexOf('Ниш') + 1)
 			.getByRole('link', { name: 'Маршрут' });
 		const href = await next.getAttribute('href');
@@ -575,7 +558,7 @@ test.describe('the carousel and the map', () => {
 		// Reşiţa, the 13th.
 		await tapMap(page, { lat: 45.301, lon: 21.889 });
 
-		const sheet = page.getByRole('dialog', { name: '16 городов в кольце 2–3 ч' });
+		const sheet = page.getByRole('dialog', { name: 'Всё в кольце 2–3 ч: 16' });
 		await expect(sheet.locator('[aria-current="true"]')).toContainText('Решица');
 		await expect(sheet.locator('[aria-current="true"]')).toBeInViewport();
 	});
@@ -583,7 +566,7 @@ test.describe('the carousel and the map', () => {
 	test('a city picked in the list of all is chosen on the map, which goes to it', async ({ page }) => {
 		await openTheList(page);
 
-		await page.getByRole('dialog').getByTestId('city-row').filter({ hasText: 'Осиек' }).click();
+		await page.getByRole('dialog').getByTestId('point-row').filter({ hasText: 'Осиек' }).click();
 
 		await expect(page.getByRole('dialog')).toHaveCount(0);
 		await expect.poll(() => labelsOnMap(page)).toMatchObject({ chosen: ['Осиек'] });
@@ -597,7 +580,7 @@ test.describe('the carousel and the map', () => {
 	test('a city picked in the list of all that has a card is chosen in the carousel', async ({ page }) => {
 		await openTheList(page);
 
-		await page.getByRole('dialog').getByTestId('city-row').filter({ hasText: 'Тузла' }).click();
+		await page.getByRole('dialog').getByTestId('point-row').filter({ hasText: 'Тузла' }).click();
 
 		await expect(chosenCard(page).getByRole('heading')).toHaveText('Тузла');
 		await expect(chosenCard(page)).toBeInViewport({ ratio: 0.9 });
@@ -628,7 +611,7 @@ test.describe('a city card', () => {
 		await expect
 			.poll(() => readCards(page, ['Будапешт', 'Ниш', 'Сараево']))
 			.toEqual(['Будапешт 🇭🇺 Население: 1,7 млн Маршрут', 'Ниш 🇷🇸 Население: 250 тыс. Маршрут', 'Сараево 🇧🇦 Население: 697 тыс. Маршрут']);
-		const budapest = cityCard(page, 'Будапешт');
+		const budapest = pointCard(page, 'Будапешт');
 		// The flag says its country to a screen reader, and as a tooltip; it stands on the name's line, right after it.
 		const flag = budapest.getByRole('img', { name: 'Венгрия' });
 		await expect(flag).toHaveAttribute('title', 'Венгрия');
@@ -646,7 +629,7 @@ test.describe('a city card', () => {
 		// a finger's tap.
 		await expect(route).not.toHaveClass(/\bbtn\b/u);
 		await expect(route).toHaveJSProperty('childElementCount', 0);
-		const facts = budapest.getByTestId('city-facts');
+		const facts = budapest.getByTestId('point-facts');
 		for (const property of ['color', 'font-size', 'background-color'] as const) {
 			expect(await route.evaluate((link, name) => getComputedStyle(link).getPropertyValue(name), property), property).toBe(
 				await facts.evaluate((line, name) => getComputedStyle(line).getPropertyValue(name), property),
@@ -658,10 +641,10 @@ test.describe('a city card', () => {
 	test('keeps the population whole: a no-break space before «млн» and «тыс.»', async ({ page, ringApi }) => {
 		ringApi.respond(() => ringAroundBelgrade(WITH_SCHENGEN_VISA));
 		await page.goto(LINK_3_HOURS);
-		await expect(cityCards(page)).toHaveCount(12);
+		await expect(pointCards(page)).toHaveCount(12);
 
 		// The text as it stands, its spaces unchanged: «toHaveText» and `read` take a no-break space for a space.
-		const facts = await cityCards(page).getByTestId('city-facts').allTextContents();
+		const facts = await pointCards(page).getByTestId('point-facts').allTextContents();
 		expect(facts.slice(0, 2)).toEqual(['Население: 1,7 млн', 'Население: 697 тыс.']);
 	});
 
@@ -669,7 +652,7 @@ test.describe('a city card', () => {
 		ringApi.respond(() => ringAroundBelgrade(RUSSIAN));
 		await page.goto(LINK_3_HOURS);
 
-		expect(await read(cityCard(page, 'Lukavac'))).toBe('Lukavac 🇧🇦 Население: 45 тыс. Маршрут');
+		expect(await read(pointCard(page, 'Lukavac'))).toBe('Lukavac 🇧🇦 Население: 45 тыс. Маршрут');
 	});
 
 	test('of Kosovo shows ⛳ for a flag, and names Kosovo', async ({ page, ringApi }) => {
@@ -677,7 +660,7 @@ test.describe('a city card', () => {
 		ringApi.respond(() => ringAroundBelgrade({ ...RUSSIAN, RKS: { mode: 'visa_free', citizenship: 'RUS' } }));
 		await page.goto(LINK_3_HOURS);
 
-		const pristina = cityCard(page, 'Приштина');
+		const pristina = pointCard(page, 'Приштина');
 		await expect.poll(() => read(pristina)).toBe('Приштина ⛳ Население: 550 тыс. Маршрут');
 		await expect(pristina.getByRole('img', { name: 'Косово' })).toHaveAttribute('title', 'Косово');
 	});
@@ -713,8 +696,8 @@ test.describe('a city card', () => {
 			return ringAroundBelgrade({ ...RUSSIAN, BIH: byVisa('USA'), MNE: byVisa('USA'), HUN: byVisa('SCHENGEN') });
 		});
 		await page.goto(`${LINK_3_HOURS}&cit=IND`);
-		await expect(cityCard(page, 'Ниш')).toBeVisible();
-		await expect(cityCard(page, 'Сараево')).toHaveCount(0);
+		await expect(pointCard(page, 'Ниш')).toBeVisible();
+		await expect(pointCard(page, 'Сараево')).toHaveCount(0);
 
 		const visasSheet = page.getByRole('dialog', { name: 'Мои визы' });
 		await phrase(page).getByRole('button', { name: 'нет' }).click();
@@ -722,15 +705,15 @@ test.describe('a city card', () => {
 		await visasSheet.getByRole('button', { name: 'Закрыть' }).click();
 
 		await expect.poll(() => ringApi.calls.at(-1)?.visas).toBe('USA');
-		await expect(cityCard(page, 'Сараево')).toBeVisible();
-		await expect(cityCard(page, 'Подгорица')).toBeVisible();
-		await expect(cityCard(page, 'Будапешт')).toHaveCount(0);
+		await expect(pointCard(page, 'Сараево')).toBeVisible();
+		await expect(pointCard(page, 'Подгорица')).toBeVisible();
+		await expect(pointCard(page, 'Будапешт')).toHaveCount(0);
 
 		// The link carries both visas: Hungary's cities come by Schengen's.
 		await page.goto(`${LINK_3_HOURS}&cit=IND&visas=SCHENGEN,USA`);
 		await expect(phrase(page)).toContainText('мои визы: Шенген, США');
-		await expect(cityCard(page, 'Будапешт')).toBeVisible();
-		await expect(cityCard(page, 'Сараево')).toBeVisible();
+		await expect(pointCard(page, 'Будапешт')).toBeVisible();
+		await expect(pointCard(page, 'Сараево')).toBeVisible();
 	});
 
 	test('says nothing of Russian plates in the EU, with a Russian citizenship too', async ({ page, ringApi }) => {
@@ -738,7 +721,7 @@ test.describe('a city card', () => {
 		await page.goto(`${LINK_3_HOURS}&cit=RUS,SRB`);
 
 		// Hungary is in the EU.
-		await expect.poll(() => read(cityCard(page, 'Будапешт'))).toBe('Будапешт 🇭🇺 Население: 1,7 млн Маршрут');
-		await expect(cityCards(page).filter({ hasText: /номер/u })).toHaveCount(0);
+		await expect.poll(() => read(pointCard(page, 'Будапешт'))).toBe('Будапешт 🇭🇺 Население: 1,7 млн Маршрут');
+		await expect(pointCards(page).filter({ hasText: /номер/u })).toHaveCount(0);
 	});
 });

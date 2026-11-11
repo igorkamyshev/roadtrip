@@ -8,7 +8,7 @@ import type { Page } from '@playwright/test';
 import { BELGRADE, BUDAPEST, expect, LONGEST, OPEN_AROUND_SERBIA, squareRing, test, visaRules } from './fixtures.ts';
 import {
 	boxOf,
-	cityCard,
+	pointCard,
 	EDGE,
 	expectRingCard,
 	holdTheClock,
@@ -108,7 +108,7 @@ for (const window of WIDE_WINDOWS) {
 			await page.clock.runFor(SOURCES_PAST_MS);
 			await expect(sources(page)).toHaveCount(0);
 
-			await cityCard(page, 'Будапешт').getByRole('button', { name: 'Будапешт' }).click();
+			await pointCard(page, 'Будапешт').getByRole('button', { name: 'Будапешт' }).click();
 
 			await settle(page);
 			await expect.poll(async () => (await labelsOnMap(page)).chosen).toEqual(['Будапешт']);

@@ -17,7 +17,7 @@ export interface FirstCardInput {
 	readonly geolocationFailed: boolean;
 	/** The request shown: «Считаем…» counts its 5 s from the request's start. */
 	readonly request: string;
-	/** The ring's points of interest, once the ring is this request's and the cities file came; undefined till then. */
+	/** The ring's points of interest, once the ring is this request's and the cities and places files came; undefined till then. */
 	readonly points: readonly PointOfInterest[] | undefined;
 }
 
@@ -54,5 +54,5 @@ function ringState(hours: number, points: readonly PointOfInterest[] | undefined
 	if (points === undefined) {
 		return { kind: 'ring', hours };
 	}
-	return points.length === 0 ? { kind: 'no_cities' } : { kind: 'ring', hours, points: countOf(points) };
+	return points.length === 0 ? { kind: 'no_points' } : { kind: 'ring', hours, points: countOf(points) };
 }
