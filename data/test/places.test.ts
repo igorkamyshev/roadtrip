@@ -189,17 +189,25 @@ describe('the places with an outline', () => {
 			{ lat: 0.395, lon: 1.012, zone: 'BBB' },
 			{ lat: 0.395, lon: 1.057, zone: 'BBB' },
 			{ lat: 0.395, lon: 1.102, zone: 'BBB' },
+			// The road's point nearest the cell's middle is 2.6 km from the lake: the road's nearest point to the
+			// middle of those within 1 km of the lake.
+			{ lat: 0.465, lon: 0.893, zone: 'AAA' },
 			{ lat: 0.465, lon: 0.922, zone: 'AAA' },
 			{ lat: 0.465, lon: 0.967, zone: 'AAA' },
 			{ lat: 0.465, lon: 0.995, zone: 'AAA' },
 		]);
-		// Not on the island, a hole of the lake.
+		// Not at the middle of the island, a hole of the lake, but within 1 km of its shore.
 		expect(places.get(2004)?.access).toEqual([
 			{ lat: 0.202, lon: 1.36, zone: 'BBB' },
+			{ lat: 0.229, lon: 1.36, zone: 'BBB' },
 			{ lat: 0.292, lon: 1.36, zone: 'BBB' },
 		]);
-		// Within the city's limits, which the place itself is not.
-		expect(places.get(2006)?.access).toEqual([{ lat: 0.787, lon: 0.355, zone: 'AAA' }]);
+		// Within the city's limits, which the place itself is not; in the cell to the north, where the point nearest the
+		// middle is 1.4 km off the corner, the nearest within 1 km of it.
+		expect(places.get(2006)?.access).toEqual([
+			{ lat: 0.787, lon: 0.355, zone: 'AAA' },
+			{ lat: 0.827, lon: 0.355, zone: 'AAA' },
+		]);
 		expect(places.get(2007)?.access).toEqual([
 			{ lat: 0.985, lon: 1.057, zone: 'BBB' },
 			{ lat: 0.985, lon: 1.102, zone: 'BBB' },
