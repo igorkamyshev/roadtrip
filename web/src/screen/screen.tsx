@@ -23,7 +23,7 @@ export function Screen(): ReactElement {
 	const sourcesShown = useSourcesOnOpen();
 	const sources = <SourcesOnOpen shown={sourcesShown} keepPlace={!wide} />;
 	// The part of the wide screen no panel covers, the grid's own (styles.css, .c-free), where the camera puts a new ring
-	// and a chosen city, read when it moves (#108); none on the narrow screen, whose room is the camera's.
+	// and a chosen point of interest, read when it moves (#108); none on the narrow screen, whose room is the camera's.
 	const free = useRef<HTMLDivElement>(null);
 	const freeArea = useCallback(() => free.current?.getBoundingClientRect(), []);
 	return (

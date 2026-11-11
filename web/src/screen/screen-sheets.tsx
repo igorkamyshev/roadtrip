@@ -1,7 +1,7 @@
 // The sheet open on the screen, if any (spec #20 «Экран»): «Гражданство», «Мои визы», «Откуда едем», «Что важно знать»
-// and the list of all the ring's cities. Each is a `Sheet` (sheets.tsx).
+// and the list of all the ring's points of interest. Each is a `Sheet` (sheets.tsx).
 import type { ReactElement } from 'react';
-import { CitiesSheet } from '../cities/cities-sheet.tsx';
+import { PointsSheet } from '../points/points-sheet.tsx';
 import { StartSheet } from '../start/start-sheet.tsx';
 import { CitizenshipSheet, InfoSheet, VisasSheet } from './sheets.tsx';
 import type { ScreenModel } from './use-screen.ts';
@@ -29,15 +29,15 @@ export function ScreenSheets({ screen }: { readonly screen: ScreenModel }): Reac
 	if (sheet === 'info') {
 		return <InfoSheet onClose={closeSheet} />;
 	}
-	if (sheet === 'cities' && shown.shownCities !== undefined) {
+	if (sheet === 'points' && shown.shownPoints !== undefined) {
 		return (
-			<CitiesSheet
-				cities={shown.shownCities}
+			<PointsSheet
+				points={shown.shownPoints}
 				hours={state.hours}
-				chosen={chosen.city}
-				onPick={(city) => {
+				chosen={chosen.key}
+				onPick={(point) => {
 					closeSheet();
-					chosen.pick(city);
+					chosen.pick(point);
 				}}
 				onClose={closeSheet}
 			/>
