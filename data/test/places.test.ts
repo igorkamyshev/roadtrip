@@ -43,13 +43,18 @@ function wikidata(asked: number[][] = []): PlacesSources['wikidata'] {
 	};
 }
 
-function build(sitelinks: Readonly<Record<number, ItemSitelinks>> = PLACES_SITELINKS, asked: number[][] = []) {
+function build(
+	sitelinks: Readonly<Record<number, ItemSitelinks>> = PLACES_SITELINKS,
+	asked: number[][] = [],
+	russianNames: ReadonlyMap<number, string> = new Map(),
+) {
 	return buildPlaces({
 		osm: openOsm(fixturePath('places.osm')),
 		sitelinks: ReadableStream.from(sitelinksDump(sitelinks)),
 		wikidata: wikidata(asked),
 		graph,
 		cities: CITIES,
+		russianNames,
 	});
 }
 
@@ -145,5 +150,13 @@ describe('the report of the places', () => {
 			places: 7,
 			withoutRussian: { count: 1, mostFamous: [{ qid: 1008, name: 'Old Church' }] },
 		});
+	});
+
+	it('leaves out of the places without a Russian name those the table of Russian names has, which the deploy names', async () => {
+		const { places, report } = await build(PLACES_SITELINKS, [], new Map([[1008, 'Старая церковь']]));
+
+		expect(report.withoutRussian).toEqual({ count: 0, mostFamous: [] });
+		// The file keeps Wikidata's and ruwiki's names: the deploy puts the table over them.
+		expect(byQid(places).get(1008)?.ru).toBe('');
 	});
 });

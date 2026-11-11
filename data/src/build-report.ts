@@ -92,10 +92,14 @@ export function cityPartsMarkdown({ cityParts, biggestCityParts }: CitiesReport)
 /** Bytes as megabytes in Russian, to 0.01: «0,58». */
 const megabytes = (bytes: number) => (bytes / 1e6).toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-/** The places file's part of the report (spec #154 «Сборка мест»): how many places, what was left out, the size, the places without a Russian name. */
+/**
+ * The places file's part of the report (spec #154 «Сборка мест»): how many places, what was left out, the size, the
+ * places without a Russian name that the table of Russian names of places lacks, the places to add to it
+ * (data/AGENTS.md, «Places file»).
+ */
 export function placesMarkdown(report: PlacesReport, brotliBytes: number, budgetBytes: number): string {
 	const { withoutRussian } = report;
-	const line = `Мест без русского названия: ${withoutRussian.count.toLocaleString('ru-RU')}.`;
+	const line = `Мест без русского названия, которых нет в таблице \`data/place-russian-names.tsv\`: ${withoutRussian.count.toLocaleString('ru-RU')}.`;
 	const examples = withoutRussian.mostFamous.map(({ qid, name }) => (name === '' ? `Q${qid}` : `${name} (Q${qid})`)).join(', ');
 	return [
 		'## Места',
