@@ -45,6 +45,8 @@ export interface MapPoint {
 	/** Named on the map: a point of the carousel, or the chosen one. */
 	readonly label: boolean;
 	readonly chosen: boolean;
+	/** A city's dot or a place's diamond. */
+	readonly kind: 'city' | 'place';
 	/** A place's group, the colour of its diamond and name; undefined for a city. */
 	readonly group: PlaceGroup | undefined;
 }
@@ -181,8 +183,8 @@ export function showStart(map: MapLibre, origin: LatLon | undefined): void {
 export function showPoints(map: MapLibre, points: readonly MapPoint[]): void {
 	const cities: Feature[] = [];
 	const places: Feature[] = [];
-	for (const [rank, { key, name, lat, lon, label, chosen, group }] of points.entries()) {
-		(group === undefined ? cities : places).push({
+	for (const [rank, { key, name, lat, lon, label, chosen, kind, group }] of points.entries()) {
+		(kind === 'city' ? cities : places).push({
 			type: 'Feature',
 			properties: { key, name, label, chosen, rank, group },
 			geometry: { type: 'Point', coordinates: [lon, lat] },

@@ -1,15 +1,14 @@
 // The carousel's cards after the first one (spec #20 «Экран», «Карусель», «Карточка города»; spec #154 «Экран»): a card
 // per point of interest, and the last card «и ещё K / Всё в кольце →». Time to the point is not on it (#19), nor a
 // city's local name, its entry mode or Russian plates (#73). And what a point says in a row of the list of all, and a
-// city in a row of the search. Only these look at what a point of interest is.
-import type { ReactElement } from 'react';
-import { PLACE_GROUP, type Place } from 'data/places-file';
+// city in a row of the search. Only these read a point of interest's city or place.
+import type { ReactElement, ReactNode } from 'react';
 import type { City } from '../cities/cities.ts';
 import { populationLine } from '../cities/copy.ts';
 import { PLACE_TYPE_NAMES } from '../places/copy.ts';
 import { countryFlag, countryName } from '../screen/countries.ts';
 import { pointText, type LatLon } from '../state/point.ts';
-import type { PointOfInterest } from './point-of-interest.ts';
+import type { PlacePoint, PointOfInterest } from './point-of-interest.ts';
 
 export interface PointCardProps {
 	readonly point: PointOfInterest;
@@ -28,7 +27,7 @@ export interface PointCardProps {
  * none, so a place is told from a city at a glance.
  */
 export function PointCard({ point, origin, chosen, onTap, onRoute }: PointCardProps): ReactElement {
-	const classes = ['c-card', 'clickable', point.kind === 'place' ? PLACE_GROUP[point.place.type] : '', chosen ? 'chosen' : ''];
+	const classes = ['c-card', 'clickable', point.group ?? '', chosen ? 'chosen' : ''];
 	return (
 		<div
 			className={classes.filter((name) => name !== '').join(' ')}
@@ -47,7 +46,7 @@ export function PointCard({ point, origin, chosen, onTap, onRoute }: PointCardPr
 				<CountryFlag zone={point.zone} />
 			</div>
 			<div className="muted small" data-testid="point-facts">
-				{point.kind === 'city' ? populationLine(point.city.population) : <TypeChip place={point.place} />}
+				{point.kind === 'city' ? populationLine(point.city.population) : <TypeChip point={point} />}
 			</div>
 			<div className="acts">
 				{/* A quiet link, not the card's brightest thing (#75). */}
@@ -80,37 +79,39 @@ function CountryFlag({ zone }: { readonly zone: string }): ReactElement {
 }
 
 /** A place's type, a chip in its group's colour: «Озеро», «Монастырь». No icon. */
-function TypeChip({ place }: { readonly place: Place }): ReactElement {
-	return <span className={`type-chip ${PLACE_GROUP[place.type]}`}>{PLACE_TYPE_NAMES[place.type]}</span>;
+function TypeChip({ point }: { readonly point: PlacePoint }): ReactElement {
+	return <span className={`type-chip ${point.group}`}>{PLACE_TYPE_NAMES[point.place.type]}</span>;
 }
 
 /** A point of interest in a row of the list of all: a city's as in the search, a place's name and flag over its type. */
 export function PointRowText({ point }: { readonly point: PointOfInterest }): ReactElement {
-	if (point.kind === 'city') {
-		return <CityRowText city={point.city} />;
-	}
-	return (
-		<span className="row-main">
-			<span className="row-name" data-testid="row-name">
-				{point.name}
-			</span>{' '}
-			<CountryFlag zone={point.zone} />
-			<span className="row-sub">
-				<TypeChip place={point.place} />
-			</span>
-		</span>
+	return point.kind === 'city' ? (
+		<CityRowText city={point.city} />
+	) : (
+		<RowText name={point.name} zone={point.zone}>
+			<TypeChip point={point} />
+		</RowText>
 	);
 }
 
 /** A city in a row of a list, the search's or the list of all: its name with its flag, and under them its population. */
 export function CityRowText({ city }: { readonly city: City }): ReactElement {
 	return (
+		<RowText name={city.name} zone={city.zone}>
+			{populationLine(city.population)}
+		</RowText>
+	);
+}
+
+/** A row's text: the name with its country's flag, and under them what the row says of it. */
+function RowText({ name, zone, children }: { readonly name: string; readonly zone: string; readonly children: ReactNode }): ReactElement {
+	return (
 		<span className="row-main">
 			<span className="row-name" data-testid="row-name">
-				{city.name}
+				{name}
 			</span>{' '}
-			<CountryFlag zone={city.zone} />
-			<span className="row-sub">{populationLine(city.population)}</span>
+			<CountryFlag zone={zone} />
+			<span className="row-sub">{children}</span>
 		</span>
 	);
 }

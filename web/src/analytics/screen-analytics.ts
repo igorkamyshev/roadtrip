@@ -113,7 +113,7 @@ export class ScreenAnalytics {
 	 */
 	routeOpened(point: PointOfInterest, rank: number, hours: number): void {
 		const start = this.#lastStart;
-		const kind = point.kind === 'city' ? 'city' : point.place.type;
+		const kind = point.eventKind;
 		this.#emit(
 			'route opened',
 			({ cities }) => {
