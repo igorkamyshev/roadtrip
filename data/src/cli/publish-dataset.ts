@@ -2,11 +2,13 @@
 // `<version>/` in R2, then the pointer `current.json` (src/publish.ts). R2 by its S3 API, through the aws CLI, which
 // uploads a file of any size in parts; `wrangler r2 object put` takes 300 MiB at most, about the world's graph.
 //
-//   node data/src/cli/publish-dataset.ts <dataset directory> [--bucket <name>] [--prefix <prefix>] [--trial]
+//   node data/src/cli/publish-dataset.ts <dataset directory> [--bucket <name>] [--prefix <prefix>] [--trial] [--places-failed]
 //
-// The account is CLOUDFLARE_ACCOUNT_ID, the S3 credentials AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY (the
+// The directory holds the places file and the cells of the outlines in `place-outlines/` too, as `build-places` writes
+// them. The account is CLOUDFLARE_ACCOUNT_ID, the S3 credentials AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY (the
 // workflow derives them from its Cloudflare API token). --prefix puts every key under it, as a trial run does;
-// --trial says the dataset holds some parts of the world only, so its countries' zones are not checked.
+// --trial says the dataset holds some parts of the world only, so its countries' zones are not checked;
+// --places-failed says the places job failed, so the version takes the places of the current one.
 import { spawn } from 'node:child_process';
 import { parseArgs } from 'node:util';
 import { field } from 'engine/json';
@@ -19,13 +21,14 @@ const { values, positionals } = parseArgs({
 		bucket: { type: 'string', default: 'roadtrip-datasets' },
 		prefix: { type: 'string', default: '' },
 		trial: { type: 'boolean', default: false },
+		'places-failed': { type: 'boolean', default: false },
 	},
 });
 const directory = positionals.at(0);
 const account = process.env.CLOUDFLARE_ACCOUNT_ID;
 if (directory === undefined || account === undefined) {
 	log(
-		'usage: CLOUDFLARE_ACCOUNT_ID=… node data/src/cli/publish-dataset.ts <dataset directory> [--bucket <name>] [--prefix <prefix>] [--trial]',
+		'usage: CLOUDFLARE_ACCOUNT_ID=… node data/src/cli/publish-dataset.ts <dataset directory> [--bucket <name>] [--prefix <prefix>] [--trial] [--places-failed]',
 	);
 	process.exit(2);
 }
@@ -49,10 +52,22 @@ const r2: DatasetStore = {
 	async write(key, text) {
 		await aws(['s3', 'cp', '-', url(key), '--only-show-errors', ...endpoint], { input: text });
 	},
+	async copy(from, to) {
+		await aws(['s3', 'cp', url(from), url(to), '--only-show-errors', ...endpoint]);
+	},
 };
 
-const { manifest } = await publishDataset(r2, userPath(directory), { log, trial: values.trial });
+const { manifest, places } = await publishDataset(r2, userPath(directory), {
+	log,
+	trial: values.trial,
+	placesFailed: values['places-failed'],
+});
 log(`published ${manifest.version} to ${values.bucket}/${values.prefix}`);
+if (places.from === 'previous') {
+	log(`the places job failed: the places are those of ${places.version}`);
+} else if (places.from === 'none') {
+	log(`the places job failed and ${places.previous ?? 'no version before'} has no places: published without them`);
+}
 
 /**
  * Runs the aws CLI and gives its output. With `missing`, an object that is not there gives undefined (S3's 404)
