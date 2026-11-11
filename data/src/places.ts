@@ -295,6 +295,8 @@ const NATIONAL_PARK_CLASS = /^[1-5][ab]?$/u;
  * The tags of each type (amendment «Набор данных» of spec #20): a place of worship (`amenity=place_of_worship`) is a
  * monastery only when Wikidata calls its item one, `worshipIsMonastery`. Not `tourism=attraction` or
  * `tourism=viewpoint`, valleys, ranges, rivers or hot springs. A castle in ruins is a castle: castles come before ruins.
+ * The world build's `osmium tags-filter` of places (the job `extract` of `.github/workflows/dataset.yml`) keeps the
+ * objects with these keys and values: a tag added here is added there.
  */
 const TYPE_TAGS: Readonly<Record<PlaceType, (tags: Tags, worshipIsMonastery: boolean) => boolean>> = {
 	'national-park': (tags) =>
