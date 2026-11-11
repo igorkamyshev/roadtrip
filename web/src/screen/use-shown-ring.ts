@@ -5,6 +5,7 @@ import { useMemo, useState } from 'react';
 import type { RingResponse } from 'worker/api';
 import { useScreenAnalytics } from '../analytics/use-screen-analytics.ts';
 import { useCitiesFile, type City } from '../cities/cities.ts';
+import { useRingPlaces } from '../places/origin.ts';
 import { usePlacesFile } from '../places/places.ts';
 import { pointsInRing } from '../points/in-ring.ts';
 import type { PointOfInterest } from '../points/point-of-interest.ts';
@@ -35,8 +36,9 @@ export interface ShownRing {
 	readonly closed: readonly string[];
 	/**
 	 * The ring's points of interest, the most famous first, once the ring is this request's (not an old one), the cities
-	 * came and the places file is settled: the cities alone if it could not be had. Undefined until then, so that the
-	 * carousel is not built anew when the places come.
+	 * came and the places file and the origin's cell of outlines are settled: the cities alone if either could not be
+	 * had, and never the origin's places (src/places/origin.ts). Undefined until then, so that the carousel is not built
+	 * anew when the places come.
 	 */
 	readonly shownPoints: readonly PointOfInterest[] | undefined;
 	/** The cells, hours and days, whose rings are in memory for this origin and settings: the slider's marked ones. */
@@ -47,6 +49,7 @@ export function useShownRing({ origin, start, hours, settings }: ScreenStateCont
 	const ring = useRing(origin, hours, settings);
 	const citiesFile = useCitiesFile();
 	const placesFile = usePlacesFile();
+	const ringPlaces = useRingPlaces(origin, placesFile);
 	const cachedHours = useCachedHours(origin, settings);
 	const requestId = origin === undefined ? '' : JSON.stringify(ringKey(origin, hours, settings));
 	const [retries, setRetries] = useState(0);
@@ -64,7 +67,7 @@ export function useShownRing({ origin, start, hours, settings }: ScreenStateCont
 	const answer = data?.outcome === 'visa_rules_missing' ? undefined : data;
 	const access = answer?.access;
 	const { cities } = citiesFile;
-	const { settled: placesSettled, places } = placesFile;
+	const { settled: placesSettled, places } = ringPlaces;
 	const ringPoints = useMemo(
 		() =>
 			cities === undefined || !placesSettled || geometry === undefined || access === undefined || origin === undefined
