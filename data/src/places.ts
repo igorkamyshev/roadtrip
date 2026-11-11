@@ -31,6 +31,8 @@ export interface PlacesSources {
 	readonly graph: Graph;
 	/** The cities of the cities file: no place is within their limits (GLOSSARY «Пределы города»). */
 	readonly cities: readonly Placed[];
+	/** The table of Russian names of places (`readPlaceRussianNames`), which the deploy puts in: the file leaves it out, the report counts the places it lacks. */
+	readonly russianNames: ReadonlyMap<number, string>;
 }
 
 export interface PlacesReport {
@@ -46,7 +48,7 @@ export interface PlacesReport {
 	readonly notMonasteries: number;
 	/** The places in the file: one per item. */
 	readonly places: number;
-	/** The places without a Russian name: how many, and the most famous of them with their local names. */
+	/** The places without a Russian name that the table of Russian names lacks: how many, and the most famous of them with their local names. */
 	readonly withoutRussian: {
 		readonly count: number;
 		readonly mostFamous: readonly { readonly qid: number; readonly name: string }[];
@@ -115,7 +117,7 @@ export async function buildPlaces(sources: PlacesSources): Promise<{ places: Pla
 			};
 		})
 		.toSorted(mostFamousFirst);
-	const withoutRussian = places.filter(({ ru }) => ru === '');
+	const withoutRussian = places.filter(({ qid, ru }) => ru === '' && !sources.russianNames.has(qid));
 	return {
 		places,
 		report: {

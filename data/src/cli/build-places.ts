@@ -15,8 +15,10 @@ import { decodeCities, parseCitiesFile } from '../cities-file.ts';
 import { openOsm } from '../osm/open.ts';
 import { encodePlaces } from '../places-file.ts';
 import { buildPlaces, MAX_ACCESS_METERS, MIN_SITELINKS } from '../places.ts';
+import { readPlaceRussianNames } from '../russian-names.ts';
 import { wikidataPlaces } from '../wikidata.ts';
 import { brotliBytes, fileLines, log, seconds, sizes, userPath, withLocalFile } from './input.ts';
+// oxlint-disable-next-line import/max-dependencies -- the command wires each of its inputs (OSM, the graph, the cities, the sitelinks, Wikidata, the table of names) to the builder, each from its own module
 import { loadGraph } from './load-graph.ts';
 
 /** The file the screen downloads once: 0.6 MB in brotli of quality 11, as the Worker serves it (spec #154 «Сборка мест»). */
@@ -71,6 +73,7 @@ const { places, report } = await buildPlaces({
 			},
 	graph,
 	cities,
+	russianNames: readPlaceRussianNames(),
 });
 const json = JSON.stringify(encodePlaces(places));
 const brotli = brotliBytes(json);
@@ -82,7 +85,7 @@ log(
 );
 const { withoutRussian } = report;
 log(
-	`without a Russian name: ${withoutRussian.count}${withoutRussian.mostFamous
+	`without a Russian name and not in the table of Russian names of places: ${withoutRussian.count}${withoutRussian.mostFamous
 		.map(({ qid, name }, index) => `${index === 0 ? '; the most famous: ' : ', '}Q${qid}${name === '' ? '' : ` ${name}`}`)
 		.join('')}`,
 );
