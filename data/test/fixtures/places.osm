@@ -1,0 +1,176 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Places (spec #154 «Сборка мест») in two countries side by side: AAA from 0° to 1°E, BBB from 1°E to 2°E, both
+  from the equator to 1°N. Each country has one secondary road from 0.2°N to 0.8°N: AAA's along 0.93°E, BBB's along
+  1.08°E. The places are nodes with a place's tags and wikidata=; their sitelinks are the tests' (places.test.ts).
+
+  Here 0.01° is 1.11 km: a place 0.05° off a road is 5.6 km from it, 0.08° 8.9 km, 0.09° 10.0 km, 0.11° 12.2 km.
+  The cities of the tests: one of 1 000 000 people at (0.7°N, 0.93°E), limits 9 km; one of 250 000 at
+  (0.25°N, 0.95°E), limits 4.5 km.
+
+  - 101 Q1001, a waterfall in BBB by the border (0.45°N, 1.01°E): BBB's road 7.8 km east, AAA's 8.9 km west,
+    both at 0.45°N, between the roads' nodes: an access point in each country.
+  - 102 Q1002, a peak (0.3°N, 0.82°E): AAA's road 12.2 km east, no road within 10 km.
+  - 103 Q1003, a cave (0.72°N, 0.96°E): 4.0 km from the city of a million, within its limits.
+  - 104 Q1004, a peak with historic=ruins (0.3°N, 0.88°E): a mountain, which comes before ruins.
+  - 105 Q1005, a castle in ruins (0.35°N, 0.88°E): a castle.
+  - 106 Q1006, a place of worship that Wikidata calls a monastery (0.25°N, 0.88°E): 7.8 km from the city of
+    250 000, outside its limits, though its access point (0.25°N, 0.93°E) is 2.2 km from it, inside them.
+  - 107 Q1007, a place of worship that Wikidata calls no monastery (0.4°N, 0.88°E): no place.
+  - 108 Q1008, a place of worship that is ruins, no monastery (0.55°N, 0.88°E): ruins.
+  - 109 Q1009, tourism=attraction (0.5°N, 0.88°E): no place's tag.
+  - 110 Q1010, a protected area of class 2 (0.2°N, 1.13°E): a national park.
+  - 111 Q1011, a protected area of class 6 (0.3°N, 1.13°E): no place.
+  - 112 Q1012, an island (0.62°N, 1.13°E), and 113 Q1012, a lake (0.6°N, 1.13°E): one item, a lake, which comes
+    before an island, at the lake's node though the island's has the smaller id.
+  - 114 Q1014, a river (0.65°N, 1.13°E): no place.
+  - 115, a peak without wikidata= (0.7°N, 1.13°E): no place.
+  - 116 Q1016, a beach (0.4°N, 1.13°E): of too few sitelinks in the tests.
+
+         1°N +-----------------+-----------------+
+             |       AAA     3 |  13     BBB     |
+             |               | |  |  114 115     |
+             |  103 by the city| |  112 113      |
+             |  108          | |  |              |
+             |  109          | 101|              |
+             |  107          | |  |  116         |
+             |  105          | |  |              |
+             | 102 104       | |  |  111         |
+             |  106          1 |  11 110         |
+          0° +-----------------+-----------------+
+            0°               1°E                2°E
+-->
+<osm version="0.6" generator="hand">
+	<node id="1" lat="0.2" lon="0.93"/>
+	<node id="2" lat="0.5" lon="0.93"/>
+	<node id="3" lat="0.8" lon="0.93"/>
+	<node id="11" lat="0.2" lon="1.08"/>
+	<node id="12" lat="0.5" lon="1.08"/>
+	<node id="13" lat="0.8" lon="1.08"/>
+
+	<node id="201" lat="0" lon="1"/>
+	<node id="202" lat="1" lon="1"/>
+	<node id="211" lat="0" lon="0"/>
+	<node id="212" lat="1" lon="0"/>
+	<node id="221" lat="1" lon="2"/>
+	<node id="222" lat="0" lon="2"/>
+
+	<node id="101" lat="0.45" lon="1.01">
+		<tag k="waterway" v="waterfall"/>
+		<tag k="name" v="Granični vodopad"/>
+		<tag k="wikidata" v="Q1001"/>
+	</node>
+	<node id="102" lat="0.3" lon="0.82">
+		<tag k="natural" v="peak"/>
+		<tag k="wikidata" v="Q1002"/>
+	</node>
+	<node id="103" lat="0.72" lon="0.96">
+		<tag k="natural" v="cave_entrance"/>
+		<tag k="wikidata" v="Q1003"/>
+	</node>
+	<node id="104" lat="0.3" lon="0.88">
+		<tag k="historic" v="ruins"/>
+		<tag k="natural" v="peak"/>
+		<tag k="wikidata" v="Q1004"/>
+	</node>
+	<node id="105" lat="0.35" lon="0.88">
+		<tag k="historic" v="castle"/>
+		<tag k="ruins" v="yes"/>
+		<tag k="wikidata" v="Q1005"/>
+	</node>
+	<node id="106" lat="0.25" lon="0.88">
+		<tag k="amenity" v="place_of_worship"/>
+		<tag k="name" v="Manastir Svetog Save"/>
+		<tag k="wikidata" v="Q1006"/>
+	</node>
+	<node id="107" lat="0.4" lon="0.88">
+		<tag k="amenity" v="place_of_worship"/>
+		<tag k="wikidata" v="Q1007"/>
+	</node>
+	<node id="108" lat="0.55" lon="0.88">
+		<tag k="amenity" v="place_of_worship"/>
+		<tag k="historic" v="ruins"/>
+		<tag k="wikidata" v="Q1008"/>
+	</node>
+	<node id="109" lat="0.5" lon="0.88">
+		<tag k="tourism" v="attraction"/>
+		<tag k="wikidata" v="Q1009"/>
+	</node>
+	<node id="110" lat="0.2" lon="1.13">
+		<tag k="boundary" v="protected_area"/>
+		<tag k="protect_class" v="2"/>
+		<tag k="wikidata" v="Q1010"/>
+	</node>
+	<node id="111" lat="0.3" lon="1.13">
+		<tag k="boundary" v="protected_area"/>
+		<tag k="protect_class" v="6"/>
+		<tag k="wikidata" v="Q1011"/>
+	</node>
+	<node id="112" lat="0.62" lon="1.13">
+		<tag k="place" v="island"/>
+		<tag k="wikidata" v="Q1012"/>
+	</node>
+	<node id="113" lat="0.6" lon="1.13">
+		<tag k="natural" v="water"/>
+		<tag k="water" v="lake"/>
+		<tag k="name" v="Jezero Le"/>
+		<tag k="wikidata" v="Q1012"/>
+	</node>
+	<node id="114" lat="0.65" lon="1.13">
+		<tag k="natural" v="water"/>
+		<tag k="water" v="river"/>
+		<tag k="wikidata" v="Q1014"/>
+	</node>
+	<node id="115" lat="0.7" lon="1.13">
+		<tag k="natural" v="peak"/>
+	</node>
+	<node id="116" lat="0.4" lon="1.13">
+		<tag k="natural" v="beach"/>
+		<tag k="wikidata" v="Q1016"/>
+	</node>
+
+	<way id="1">
+		<nd ref="1"/><nd ref="2"/><nd ref="3"/>
+		<tag k="highway" v="secondary"/>
+	</way>
+	<way id="11">
+		<nd ref="11"/><nd ref="12"/><nd ref="13"/>
+		<tag k="highway" v="secondary"/>
+	</way>
+
+	<!-- The border between AAA and BBB, south to north. -->
+	<way id="200">
+		<nd ref="201"/><nd ref="202"/>
+		<tag k="boundary" v="administrative"/>
+		<tag k="admin_level" v="2"/>
+	</way>
+	<!-- The rest of AAA's boundary: from the border's south end round the west to its north end. -->
+	<way id="210">
+		<nd ref="201"/><nd ref="211"/><nd ref="212"/><nd ref="202"/>
+		<tag k="boundary" v="administrative"/>
+		<tag k="admin_level" v="2"/>
+	</way>
+	<!-- The rest of BBB's boundary: from the border's north end round the east to its south end. -->
+	<way id="220">
+		<nd ref="202"/><nd ref="221"/><nd ref="222"/><nd ref="201"/>
+		<tag k="boundary" v="administrative"/>
+		<tag k="admin_level" v="2"/>
+	</way>
+
+	<relation id="1000">
+		<member type="way" ref="210" role="outer"/>
+		<member type="way" ref="200" role="outer"/>
+		<tag k="type" v="boundary"/>
+		<tag k="boundary" v="administrative"/>
+		<tag k="admin_level" v="2"/>
+		<tag k="ISO3166-1:alpha3" v="AAA"/>
+	</relation>
+	<relation id="2000">
+		<member type="way" ref="220" role="outer"/>
+		<member type="way" ref="200" role="outer"/>
+		<tag k="type" v="boundary"/>
+		<tag k="boundary" v="administrative"/>
+		<tag k="admin_level" v="2"/>
+		<tag k="ISO3166-1:alpha3" v="BBB"/>
+	</relation>
+</osm>

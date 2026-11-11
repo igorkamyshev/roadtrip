@@ -2,8 +2,8 @@
 // card (first-card.tsx) shows it, and the phrase's spinner turns with `calculating`.
 import type { UseQueryResult } from '@tanstack/react-query';
 import type { RingResponse } from 'worker/api';
-import type { City } from '../cities/cities.ts';
-import { countOf } from '../cities/in-ring.ts';
+import { countOf } from '../points/in-ring.ts';
+import type { PointOfInterest } from '../points/point-of-interest.ts';
 import { RingRequestError } from '../ring/fetch-ring.ts';
 import type { LatLon } from '../state/point.ts';
 import { citizenshipsLabel } from './countries.ts';
@@ -17,11 +17,11 @@ export interface FirstCardInput {
 	readonly geolocationFailed: boolean;
 	/** The request shown: «Считаем…» counts its 5 s from the request's start. */
 	readonly request: string;
-	/** The ring's cities, once the ring is this request's and the cities file came; undefined till then. */
-	readonly cities: readonly City[] | undefined;
+	/** The ring's points of interest, once the ring is this request's and the cities and places files came; undefined till then. */
+	readonly points: readonly PointOfInterest[] | undefined;
 }
 
-export function firstCardState({ origin, hours, ring, geolocationFailed, request, cities }: FirstCardInput): FirstCardState {
+export function firstCardState({ origin, hours, ring, geolocationFailed, request, points }: FirstCardInput): FirstCardState {
 	if (origin === undefined) {
 		return { kind: 'no_origin', geolocationFailed };
 	}
@@ -32,12 +32,12 @@ export function firstCardState({ origin, hours, ring, geolocationFailed, request
 	if (ring.error !== null) {
 		return { kind: ring.error instanceof RingRequestError ? ring.error.failure : 'error' };
 	}
-	return ring.data === undefined ? { kind: 'calculating', hours, request } : answerState(ring.data, hours, cities);
+	return ring.data === undefined ? { kind: 'calculating', hours, request } : answerState(ring.data, hours, points);
 }
 
-function answerState(answer: RingResponse, hours: number, cities: readonly City[] | undefined): FirstCardState {
+function answerState(answer: RingResponse, hours: number, points: readonly PointOfInterest[] | undefined): FirstCardState {
 	if (answer.outcome === 'ring') {
-		return ringState(hours, cities);
+		return ringState(hours, points);
 	}
 	if (answer.outcome === 'empty') {
 		return { kind: 'empty', maxHours: answer.maxHours };
@@ -49,10 +49,10 @@ function answerState(answer: RingResponse, hours: number, cities: readonly City[
 	return { kind: answer.outcome };
 }
 
-/** The ring's card: with its cities and countries once the cities are known, or that it holds none. */
-function ringState(hours: number, cities: readonly City[] | undefined): FirstCardState {
-	if (cities === undefined) {
+/** The ring's card: with its points of interest and countries once they are known, or that it holds none. */
+function ringState(hours: number, points: readonly PointOfInterest[] | undefined): FirstCardState {
+	if (points === undefined) {
 		return { kind: 'ring', hours };
 	}
-	return cities.length === 0 ? { kind: 'no_cities' } : { kind: 'ring', hours, cities: countOf(cities) };
+	return points.length === 0 ? { kind: 'no_points' } : { kind: 'ring', hours, points: countOf(points) };
 }

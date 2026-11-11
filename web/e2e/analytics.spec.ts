@@ -13,6 +13,8 @@ import {
 	openInProduction,
 	POSTHOG_PROXY,
 	PRODUCTION,
+	servePlaceOutlines,
+	servePlaces,
 	squareRing,
 	test,
 	visaRules,
@@ -28,6 +30,8 @@ import {
 	leave,
 	mapAtRest,
 	phrase,
+	pointCard,
+	pointCards,
 	slider,
 } from './screen.ts';
 
@@ -321,8 +325,12 @@ test.describe('geolocation failed', () => {
 });
 
 /**
- * Belgrade's ring 0–1.5° around it, Serbia and Hungary open: worked out from `CITIES`, 9 Serbian cities and Szeged.
- * Not Belgrade, the origin's city.
+ * Belgrade's ring 0–1.5° around it, Serbia and Hungary open: worked out from `CITIES`, 9 Serbian cities and Szeged,
+ * not Belgrade, the origin's city; and of `PLACES` 7 Serbian ones, all but Lepenski Vir (1.57°). The first card counts
+ * the 17 points of interest, `cities_count` the 10 cities, `places_count` the 7 places. By fame (e2e/places.spec.ts
+ * works it): Studenica 66, Deliblato Sands 51, Niš 48.5, Đerdap 48, Novi Sad 46.1, Szeged 41.7, Kragujevac 40.5,
+ * Manasija 37.5, Subotica 35.5, Tara 33, Zrenjanin 32.9, Pančevo 32.4, the 12 of the carousel, 5 of them places; then
+ * the lake of Zvornik 31.5, Smederevo, Valjevo, Šabac and Krušedol 28.5.
  */
 const belgradeRing = (source: RingSource = 'calculation'): RingResponse => ({
 	...squareRing(BELGRADE.lat, BELGRADE.lon, [0, 1.5]),
@@ -330,8 +338,22 @@ const belgradeRing = (source: RingSource = 'calculation'): RingResponse => ({
 	source,
 });
 
+/**
+ * `belgradeRing` with Bosnia and Herzegovina open too: the lake of Zvornik is reached from it (its Bosnian access
+ * point, 1.35°, is nearer than the Serbian one), and no city of Bosnia is in the ring. 17 points of interest in 3
+ * countries, the cities in 2.
+ */
+const belgradeRingWithBosnia = (): RingResponse => ({
+	...belgradeRing(),
+	...visaRules({
+		SRB: { mode: 'visa_free', citizenship: 'RUS' },
+		HUN: { mode: 'visa_free', citizenship: 'RUS' },
+		BIH: { mode: 'visa_free', citizenship: 'RUS' },
+	}),
+});
+
 test.describe('ring result', () => {
-	test('tells the ring: N, the citizenships and held visas sorted, the place, the source, the wait and the cities', async ({
+	test('tells the ring: N, the citizenships and held visas sorted, the place, the source, the wait, the cities and the places', async ({
 		page,
 		ringApi,
 		posthog,
@@ -341,8 +363,8 @@ test.describe('ring result', () => {
 		await ringApi.waitForCalls(1);
 		await page.clock.runFor(1000);
 		await ringApi.answer(belgradeRing());
-		// The answer is in, at the held time, before the clock goes on.
-		await runNowUntil(page, async () => /10\s*городов в 2 странах/u.test(await firstCard(page).innerText()));
+		// The answer and its points of interest are in, the cards with them, at the held time, before the clock goes on.
+		await runNowUntil(page, async () => (await pointCards(page).count()) > 0);
 		await page.clock.resume();
 
 		await expect.poll(() => posthog.named('ring result'), SENT).toHaveLength(1);
@@ -357,9 +379,107 @@ test.describe('ring result', () => {
 			start_city_id: 792680,
 			source: 'calculation',
 			cities_count: 10,
+			places_count: 7,
+			carousel_places_count: 5,
 			countries_count: 2,
 		});
 		expect(result.wait_ms).toBe(1000);
+	});
+
+	test('counts the countries of every point of interest, as the first card: a place adds its own', async ({ page, ringApi, posthog }) => {
+		ringApi.respond(() => belgradeRingWithBosnia());
+
+		await openInProduction(page, LINK_3_HOURS_RUS);
+
+		await expectRingCard(page, '2–3 ч');
+		await expect
+			.poll(() => posthog.named('ring result'), SENT)
+			.toEqual([
+				expect.objectContaining({ outcome: 'ring', cities_count: 10, places_count: 7, carousel_places_count: 5, countries_count: 3 }),
+			]);
+	});
+
+	test('waits for the places file', async ({ page, ringApi, posthog }) => {
+		const held = Promise.withResolvers<void>();
+		await page.route('**/data/places.json', async (route) => {
+			await held.promise;
+			await route.fallback();
+		});
+		ringApi.respond(() => belgradeRing());
+		await openInProduction(page, LINK_3_HOURS_RUS);
+		await expect.poll(() => posthog.named('start set'), SENT).toHaveLength(1);
+		expect(posthog.named('ring result')).toEqual([]);
+
+		held.resolve();
+
+		await expect
+			.poll(() => posthog.named('ring result'), SENT)
+			.toEqual([expect.objectContaining({ outcome: 'ring', cities_count: 10, places_count: 7, carousel_places_count: 5 })]);
+	});
+
+	test('without the places file: no places_count nor carousel_places_count, and the cities alone counted', async ({
+		page,
+		ringApi,
+		posthog,
+	}) => {
+		await servePlaces(page, undefined);
+		ringApi.respond(() => belgradeRingWithBosnia());
+
+		await openInProduction(page, LINK_3_HOURS_RUS);
+
+		await expectRingCard(page, '2–3 ч');
+		await expect.poll(() => posthog.named('ring result'), SENT).toHaveLength(1);
+		const [result] = posthog.named('ring result');
+		expect(result).toMatchObject({ outcome: 'ring', cities_count: 10, countries_count: 2 });
+		expect(result).not.toHaveProperty('places_count');
+		expect(result).not.toHaveProperty('carousel_places_count');
+	});
+
+	test('does not count the origin’s places, as the first card', async ({ page, ringApi, posthog }) => {
+		// Inside Deliblato Sands (e2e/origin-places.spec.ts), 0.5° around: Pančevo and Smederevo, and Deliblato's access
+		// points, which the screen leaves out.
+		ringApi.respond((call) => ({ ...squareRing(Number(call.lat), Number(call.lon), [0, 0.5]), ...visaRules() }));
+
+		await openInProduction(page, '/#/?p=44.95000,21.10000&h=3&cit=RUS');
+
+		await expectRingCard(page, '2–3 ч');
+		await expect
+			.poll(() => posthog.named('ring result'), SENT)
+			.toEqual([
+				expect.objectContaining({ outcome: 'ring', cities_count: 2, places_count: 0, carousel_places_count: 0, countries_count: 1 }),
+			]);
+	});
+
+	test('waits for the cell of the outlines of the origin', async ({ page, ringApi, posthog }) => {
+		const held = Promise.withResolvers<void>();
+		await page.route('**/data/place-outlines/*', async (route) => {
+			await held.promise;
+			await route.fallback();
+		});
+		ringApi.respond(() => belgradeRing());
+		await openInProduction(page, LINK_3_HOURS_RUS);
+		await expect.poll(() => posthog.named('start set'), SENT).toHaveLength(1);
+		expect(posthog.named('ring result')).toEqual([]);
+
+		held.resolve();
+
+		await expect
+			.poll(() => posthog.named('ring result'), SENT)
+			.toEqual([expect.objectContaining({ outcome: 'ring', cities_count: 10, places_count: 7, carousel_places_count: 5 })]);
+	});
+
+	test('without the cell of the outlines: the cities alone counted, as without the places file', async ({ page, ringApi, posthog }) => {
+		await servePlaceOutlines(page, undefined);
+		ringApi.respond(() => belgradeRingWithBosnia());
+
+		await openInProduction(page, LINK_3_HOURS_RUS);
+
+		await expectRingCard(page, '2–3 ч');
+		await expect.poll(() => posthog.named('ring result'), SENT).toHaveLength(1);
+		const [result] = posthog.named('ring result');
+		expect(result).toMatchObject({ outcome: 'ring', cities_count: 10, countries_count: 2 });
+		expect(result).not.toHaveProperty('places_count');
+		expect(result).not.toHaveProperty('carousel_places_count');
 	});
 
 	test('tells a ring of days by its upper bound in hours: 16 for day 2', async ({ page, ringApi, posthog }) => {
@@ -383,7 +503,8 @@ test.describe('ring result', () => {
 	test('from memory: source memory, wait 0, as it came', async ({ page, ringApi, posthog }) => {
 		ringApi.respond(() => belgradeRing());
 		await openInProduction(page, LINK_3_HOURS_RUS);
-		await expect(firstCard(page)).toContainText(/10\s*городов/u);
+		await expectRingCard(page, '2–3 ч');
+		await expect.poll(() => posthog.named('ring result'), SENT).toHaveLength(1);
 		await dragSlider(page, 5);
 		await expect.poll(() => ringApi.calls, SENT).toHaveLength(2);
 
@@ -502,7 +623,8 @@ test.describe('ring result', () => {
 	test('none while the slider moves: only where it is let go', async ({ page, ringApi, posthog }) => {
 		ringApi.respond(() => belgradeRing());
 		await openInProduction(page, LINK_3_HOURS_RUS);
-		await expect(firstCard(page)).toContainText(/10\s*городов/u);
+		await expectRingCard(page, '2–3 ч');
+		await expect.poll(() => posthog.named('ring result'), SENT).toHaveLength(1);
 
 		await dragSlider(page, 7);
 
@@ -511,6 +633,34 @@ test.describe('ring result', () => {
 		await slider(page).press('ArrowUp');
 		await expect.poll(() => posthog.named('ring result').map(({ hours }) => hours), SENT).toEqual([3, 7, 8]);
 	});
+});
+
+test('route opened: «Маршрут» of a place and of a city, with its kind, its rank in the ring, N and the start country, not its name nor id', async ({
+	page,
+	ringApi,
+	posthog,
+}) => {
+	ringApi.respond(() => belgradeRing());
+	await openInProduction(page, LINK_3_HOURS_RUS);
+	await expectRingCard(page, '2–3 ч');
+
+	// Studenica, the first of `belgradeRing`, a monastery; Niš the third, a city.
+	for (const name of ['Монастырь Студеница', 'Ниш']) {
+		const route = page.waitForEvent('popup');
+		await pointCard(page, name).getByRole('link', { name: 'Маршрут' }).click();
+		await route;
+	}
+
+	await expect
+		.poll(() => posthog.named('route opened'), SENT)
+		.toEqual([
+			expect.objectContaining({ kind: 'monastery', rank: 1, hours: 3, start_country: 'SRB' }),
+			expect.objectContaining({ kind: 'city', rank: 3, hours: 3, start_country: 'SRB' }),
+		]);
+	const opened = JSON.stringify(posthog.named('route opened'));
+	for (const named of ['Студеница', 'Studenica', '143042', 'Ниш', 'Niš', '787657', 'Белград', '792680']) {
+		expect(opened).not.toContain(named);
+	}
 });
 
 test('taps on the map are no dead clicks or rage clicks; a tap on text that does nothing is a dead click', async ({

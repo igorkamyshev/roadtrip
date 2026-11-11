@@ -1,20 +1,18 @@
-// The carousel at the bottom of the screen (spec #20 «Экран», «Карусель»): the first card, the cards of the ring's
-// biggest cities, and «и ещё K / Все города →» when the ring holds more; with a mouse, its arrows (carousel-arrows.tsx).
-// Its link with the map is src/cities/carousel.ts's.
+// The carousel at the bottom of the screen (spec #20 «Экран», «Карусель»): the first card, the cards of the ring's most
+// famous points of interest, and «и ещё K / Всё в кольце →» when the ring holds more; with a mouse, its arrows
+// (carousel-arrows.tsx). Its link with the map is src/points/carousel.ts's.
 import type { ReactElement } from 'react';
-import { CityCard, MoreCard } from '../cities/city-card.tsx';
+import { CAROUSEL_POINTS } from '../points/carousel.ts';
+import { MoreCard, PointCard } from '../points/point-card.tsx';
 import { CarouselArrows, useCarouselArrows } from './carousel-arrows.tsx';
 import { FirstCard } from './first-card.tsx';
 import type { ScreenModel } from './use-screen.ts';
-
-/** The carousel's cards of cities: the biggest of the ring's, named on the map. */
-export const CAROUSEL_CITIES = 12;
 
 export function Carousel({ screen }: { readonly screen: ScreenModel }): ReactElement {
 	const { state, shown, card, starts, chosen, openSheet } = screen;
 	const { carousel, onCarouselScroll, onCarouselFocus } = chosen;
 	const { origin } = state;
-	const cities = shown.shownCities;
+	const points = shown.shownPoints;
 	const arrows = useCarouselArrows(carousel);
 	return (
 		<>
@@ -40,22 +38,25 @@ export function Carousel({ screen }: { readonly screen: ScreenModel }): ReactEle
 				/>
 				{origin === undefined
 					? null
-					: cities?.slice(0, CAROUSEL_CITIES).map((city) => (
-							<CityCard
-								key={city.id}
-								city={city}
+					: points?.slice(0, CAROUSEL_POINTS).map((point, index) => (
+							<PointCard
+								key={point.key}
+								point={point}
 								origin={origin}
-								chosen={city.id === chosen.city}
+								chosen={point.key === chosen.key}
 								onTap={() => {
-									chosen.tapCard(city);
+									chosen.tapCard(point);
+								}}
+								onRoute={() => {
+									shown.analytics.routeOpened(point, index + 1, state.hours);
 								}}
 							/>
 						))}
-				{cities !== undefined && cities.length > CAROUSEL_CITIES ? (
+				{points !== undefined && points.length > CAROUSEL_POINTS ? (
 					<MoreCard
-						more={cities.length - CAROUSEL_CITIES}
+						more={points.length - CAROUSEL_POINTS}
 						onOpen={() => {
-							openSheet('cities');
+							openSheet('points');
 						}}
 					/>
 				) : null}

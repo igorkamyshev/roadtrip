@@ -5,7 +5,7 @@ import { basename, join, resolve } from 'node:path';
 import { createInterface } from 'node:readline';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
-import { brotliCompressSync } from 'node:zlib';
+import { brotliCompressSync, createGunzip } from 'node:zlib';
 
 /**
  * A path as the person typed it: `pnpm --filter data <command>` runs in data/, so a relative path is taken from
@@ -44,11 +44,20 @@ export async function withLocalFile<T>(pathOrUrl: string, use: (path: string) =>
 }
 
 /**
- * The lines of a text file, a path or a URL: as it is, or `<name>.txt` inside `<name>.zip`, as GeoNames packs its
- * dumps (`cities1000.zip`, `alternateNamesV2.zip`, `alternatenames/RS.zip`), streamed out of the archive by `unzip`.
+ * The lines of a text file, a path or a URL: as it is, `<name>.txt` inside `<name>.zip`, as GeoNames packs its
+ * dumps (`cities1000.zip`, `alternateNamesV2.zip`, `alternatenames/RS.zip`), streamed out of the archive by `unzip`,
+ * or gzipped, as Wikimedia packs its dumps (`wikidatawiki-latest-wb_items_per_site.sql.gz`).
  */
 export async function* fileLines(pathOrUrl: string): AsyncGenerator<string> {
 	const copy = await localCopy(pathOrUrl);
+	if (copy.path.endsWith('.gz')) {
+		try {
+			yield* createInterface({ input: createReadStream(copy.path).pipe(createGunzip()), crlfDelay: Infinity });
+		} finally {
+			copy.remove();
+		}
+		return;
+	}
 	const unzip = copy.path.endsWith('.zip')
 		? spawn('unzip', ['-p', copy.path, `${basename(copy.path, '.zip')}.txt`], { stdio: ['ignore', 'pipe', 'inherit'] })
 		: undefined;
@@ -101,8 +110,13 @@ export function log(line: string): void {
 }
 
 /** The size of a file the screen downloads, as it is and in brotli, as the Worker serves it: `1.83 MB, 0.60 MB in brotli` for the world's cities file. */
-export function sizes(text: string): string {
-	return `${megabytes(Buffer.byteLength(text))} MB, ${megabytes(brotliCompressSync(text).length)} MB in brotli`;
+export function sizes(text: string, brotli = brotliBytes(text)): string {
+	return `${megabytes(Buffer.byteLength(text))} MB, ${megabytes(brotli)} MB in brotli`;
+}
+
+/** The size of a text in brotli of quality 11, Node's default, bytes. */
+export function brotliBytes(text: string): number {
+	return brotliCompressSync(text).length;
 }
 
 function megabytes(bytes: number): string {

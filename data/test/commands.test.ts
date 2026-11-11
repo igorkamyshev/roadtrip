@@ -1,13 +1,16 @@
 // The commands as a person runs them: `ring` writes GeoJSON, `build-graph` a graph file `ring` reads.
 import { execFileSync, spawnSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { gzipSync } from 'node:zlib';
 import { afterAll, describe, expect, it } from 'vitest';
-import { decodeCities, encodeCities, parseCitiesFile } from '../src/cities-file.ts';
+import { type CityRow, decodeCities, encodeCities, parseCitiesFile } from '../src/cities-file.ts';
+import { decodePlaceOutlines, decodePlaces, encodePlaces, parsePlaceOutlinesFile, parsePlacesFile } from '../src/places-file.ts';
 import { field, items } from 'engine/json';
 import { fixturePath } from './fixture-graph.ts';
+import { PLACES_SITELINKS, sitelinksDump } from './sitelinks-dump.ts';
 
 const command = (name: string, ...args: string[]) =>
 	execFileSync(process.execPath, [fileURLToPath(new URL(`../src/cli/${name}.ts`, import.meta.url)), ...args], {
@@ -29,8 +32,16 @@ const russianNames = (...args: string[]) =>
 		encoding: 'utf8',
 	});
 
+/** The build-places command as a process, which may fail. */
+const buildPlaces = (...args: string[]) =>
+	spawnSync(process.execPath, [fileURLToPath(new URL('../src/cli/build-places.ts', import.meta.url)), ...args], { encoding: 'utf8' });
+
 /** The cities file a command wrote, its cities biggest first. */
 const writtenCities = (path: string) => decodeCities(parseCitiesFile(JSON.parse(readFileSync(path, 'utf8'))));
+
+/** The places a command wrote, the most famous first, each its Q-id and names. */
+const writtenPlaces = (path: string) =>
+	decodePlaces(parsePlacesFile(JSON.parse(readFileSync(path, 'utf8')))).map(({ qid, ru, local }) => [qid, ru, local]);
 
 describe('the ring command', () => {
 	const directory = mkdtempSync(join(tmpdir(), 'roadtrip-commands-'));
@@ -228,6 +239,148 @@ describe('the build-cities command', () => {
 	});
 });
 
+describe('the build-places command', () => {
+	const directory = mkdtempSync(join(tmpdir(), 'roadtrip-commands-'));
+	afterAll(() => {
+		rmSync(directory, { recursive: true });
+	});
+
+	/** The cities file of the cities of places.osm's header. */
+	const citiesFile = (name: string, cities: readonly CityRow[]) => {
+		const path = join(directory, name);
+		writeFileSync(path, JSON.stringify(encodeCities(cities)));
+		return path;
+	};
+	/** The dump of the sitelinks, gzipped as Wikimedia serves it. */
+	const dump = (name: string, sitelinks: Parameters<typeof sitelinksDump>[0]) => {
+		const path = join(directory, name);
+		writeFileSync(path, gzipSync(`${sitelinksDump(sitelinks).join('\n')}\n`));
+		return path;
+	};
+
+	it('writes the places file of the places, the graph, the cities and the sitelinks, and adds the places to the report', () => {
+		const out = join(directory, 'places.json');
+		const report = join(directory, 'report.md');
+		writeFileSync(report, '## Граф дорог\n');
+
+		const run = buildPlaces(
+			fixturePath('places.osm'),
+			fixturePath('places.osm'),
+			citiesFile('cities.json', [
+				[1, '', 'Big', 0.7, 0.93, 1_000_000, 'AAA'],
+				[2, '', 'Small', 0.25, 0.95, 250_000, 'AAA'],
+			]),
+			out,
+			'--sitelinks',
+			dump('sitelinks.sql.gz', PLACES_SITELINKS),
+			'--no-wikidata',
+			'--report',
+			report,
+		);
+
+		expect(run.status).toBe(0);
+		// Without Wikidata no place of worship is a monastery, and the names are ruwiki's titles and OSM's.
+		expect(
+			decodePlaces(parsePlacesFile(JSON.parse(readFileSync(out, 'utf8')))).map(({ qid, ru, local, type }) => [qid, ru, local, type]),
+		).toEqual([
+			[1001, 'Пограничный водопад', 'Granični vodopad', 'waterfall'],
+			[1010, 'Заповедник Би', '', 'national-park'],
+			[1008, '', '', 'ruins'],
+			[1012, '', 'Jezero Le', 'lake'],
+			[1005, 'Каштел', '', 'castle'],
+			[1004, "Д'Арк", '', 'mountain'],
+		]);
+		expect(run.stderr).toContain('6 places of 12 objects');
+		expect(run.stderr).toContain(
+			'left out: 1 of fewer than 10 sitelinks, 0 without a whole outline, 0 over 2000 km², 1 within a city, 1 with no road within 10 km, ' +
+				'2 places of worship that are no monastery',
+		);
+		expect(run.stderr).toContain(
+			'without a Russian name and not in the table of Russian names of places: 2; the most famous: Q1008, Q1012 Jezero Le',
+		);
+		expect(run.stderr).toMatch(/wrote .*places\.json: 0\.00 MB, 0\.00 MB in brotli of 0\.60/u);
+		expect(readFileSync(report, 'utf8')).toBe(
+			[
+				'## Граф дорог',
+				'',
+				'## Места',
+				'',
+				'В файле мест 6 мест, 0,00 МБ в brotli при бюджете 0,6 МБ.',
+				'',
+				'Не вошли: меньше 10 сайтлинков — 1, без целого контура — 0, больше 2000 км² — 0, в пределах города — 1, без дороги ближе 10 км — 1, ' +
+					'храмы, которые Wikidata не называет монастырём, — 2.',
+				'',
+				'Клеток контуров: 2, в них 0 мест контуром и 6 мест радиусом, 0,00 МБ.',
+				'',
+				'Мест без русского названия, которых нет в таблице `data/place-russian-names.tsv`: 2. Самые известные: Q1008, Jezero Le (Q1012).',
+				'',
+			].join('\n'),
+		);
+	});
+
+	it('writes the cells of the outlines beside the places file, in place of those there were, and counts them', () => {
+		const out = join(directory, 'outlines', 'places.json');
+		mkdirSync(join(directory, 'outlines', 'place-outlines'), { recursive: true });
+		writeFileSync(join(directory, 'outlines', 'place-outlines', '9_9.json'), '{}');
+
+		const run = buildPlaces(
+			fixturePath('place-outlines.osm'),
+			fixturePath('place-outlines.osm'),
+			citiesFile('outline-cities.json', [[1, '', 'Big', 0.8, 0.3, 1_000_000, 'AAA']]),
+			out,
+			'--sitelinks',
+			dump(
+				'outline-sitelinks.sql.gz',
+				Object.fromEntries([2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008].map((qid) => [qid, { count: 20 }])),
+			),
+			'--no-wikidata',
+		);
+
+		expect(run.status).toBe(0);
+		expect(readdirSync(join(directory, 'outlines', 'place-outlines')).toSorted()).toEqual(['0_0.json', '0_1.json', '1_1.json']);
+		expect(
+			decodePlaceOutlines(
+				parsePlaceOutlinesFile(JSON.parse(readFileSync(join(directory, 'outlines', 'place-outlines', '1_1.json'), 'utf8'))),
+			),
+		).toEqual({ outlines: [{ qid: 2007, rings: [[0.95, 1.05, 0.95, 1.1, 0.995, 1.1, 0.995, 1.05]] }], radii: [] });
+		expect(run.stderr).toContain('1 without a whole outline, 1 over 2000 km²');
+		expect(run.stderr).toMatch(/wrote 3 cells of the outlines of 4 places and the radii of 1, 0\.00 MB, to .*place-outlines/u);
+	});
+
+	// Brotli of quality 11 takes seconds over 0.7 MB.
+	it('fails over the budget of 0.6 MB in brotli, printing the size, and writes no file', { timeout: 30_000 }, () => {
+		// 8 000 peaks of random names of 120 of 64 letters, digits and signs, 90 bytes each in brotli: 0.72 MB.
+		const peaks = 8000;
+		let seed = 1;
+		const random = () => {
+			seed = (seed * 48_271) % 2_147_483_647;
+			return seed / 2_147_483_647;
+		};
+		const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
+		const nodes = Array.from({ length: peaks }, (_, index) => {
+			const name = Array.from({ length: 120 }, () => letters[Math.floor(random() * letters.length)]).join('');
+			return `<node id="${10_000 + index}" lat="${(0.2 + (0.6 * index) / peaks).toFixed(6)}" lon="0.88"><tag k="natural" v="peak"/><tag k="name" v="${name}"/><tag k="wikidata" v="Q${10_000 + index}"/></node>`;
+		});
+		const osm = join(directory, 'many-peaks.osm');
+		writeFileSync(osm, readFileSync(fixturePath('places.osm'), 'utf8').replace('<way id="1">', `${nodes.join('\n')}\n<way id="1">`));
+		const out = join(directory, 'too-big.json');
+
+		const run = buildPlaces(
+			osm,
+			fixturePath('places.osm'),
+			citiesFile('no-cities.json', []),
+			out,
+			'--sitelinks',
+			dump('many-sitelinks.sql.gz', Object.fromEntries(Array.from({ length: peaks }, (_, index) => [10_000 + index, { count: 10 }]))),
+			'--no-wikidata',
+		);
+
+		expect(run.status).not.toBe(0);
+		expect(run.stderr).toMatch(/0\.7\d MB in brotli, over the budget of 0\.60 MB/u);
+		expect(existsSync(out)).toBe(false);
+	});
+});
+
 describe('the russian-names command', () => {
 	const directory = mkdtempSync(join(tmpdir(), 'roadtrip-commands-'));
 	afterAll(() => {
@@ -304,5 +457,104 @@ describe('the russian-names command', () => {
 
 		expect(run.status).toBe(0);
 		expect(writtenCities(cities).map(([, ru]) => ru)).toEqual(['Белград', 'Марондера', 'Ногоя']);
+	});
+
+	/** A places file as R2 holds it: Garda with Wikidata's Russian label, Lovćen without one. Indented, as `fetchedCities`. */
+	const fetchedPlaces = (name: string) => {
+		const path = join(directory, name);
+		writeFileSync(
+			path,
+			JSON.stringify(
+				encodePlaces([
+					{
+						qid: 6386,
+						ru: 'Гарда',
+						local: 'Lake Garda',
+						lat: 45.65,
+						lon: 10.667,
+						sitelinks: 90,
+						type: 'lake',
+						access: [{ lat: 45.6, lon: 10.6, zone: 'ITA' }],
+					},
+					{
+						qid: 1_430_120,
+						ru: '',
+						local: 'Lovćen',
+						lat: 42.4,
+						lon: 18.817,
+						sitelinks: 40,
+						type: 'national-park',
+						access: [{ lat: 42.399, lon: 18.81, zone: 'MNE' }],
+					},
+				]),
+				undefined,
+				'\t',
+			),
+		);
+		return path;
+	};
+	it("puts the places table's Russian names over the places file's by Q-id", () => {
+		const places = fetchedPlaces('places.json');
+		const names = table('place-names.tsv', [
+			'qid\tname\tru',
+			'Q6386\tLake Garda\tОзеро Гарда',
+			'Q1430120\tLovćen\tЛовчен',
+			'Q42\tDouglas Adams\tДуглас Адамс',
+		]);
+
+		const run = russianNames(places, '--place-names', names);
+
+		expect(run.status).toBe(0);
+		expect(writtenPlaces(places)).toEqual([
+			[6386, 'Озеро Гарда', 'Lake Garda'],
+			[1_430_120, 'Ловчен', 'Lovćen'],
+		]);
+		expect(run.stderr).toContain('2 places named; Q-ids of the table not in the file: 1');
+	});
+
+	it.each([
+		['a key without Q', ['qid\tname\tru', 'Q6386\tLake Garda\tОзеро Гарда', '1430120\tLovćen\tЛовчен'], 3],
+		['a line of two columns', ['qid\tname\tru', 'Q6386\tОзеро Гарда'], 2],
+		['a repeated Q-id', ['qid\tname\tru', 'Q6386\tLake Garda\tОзеро Гарда', 'Q6386\tLake Garda\tГарда'], 3],
+		["the cities' header", ['geonameid\tname\tru', 'Q6386\tLake Garda\tОзеро Гарда'], 1],
+	])('fails on a places table with %s, naming its line, and leaves the places file as it was', (_, lines, line) => {
+		const places = fetchedPlaces('untouched-places.json');
+		const before = readFileSync(places);
+
+		const run = russianNames(places, '--place-names', table('bad-places.tsv', lines));
+
+		expect(run.status).not.toBe(0);
+		expect(run.stderr).toContain(`line ${line}`);
+		expect(readFileSync(places)).toEqual(before);
+	});
+
+	it('names the cities of a directory without a places file, as fetch-dataset leaves one of a dataset without places', () => {
+		const fetched = mkdtempSync(join(directory, 'without-places-'));
+		const cities = fetchedCities('without-places-cities.json');
+		writeFileSync(join(fetched, 'cities.json'), readFileSync(cities));
+
+		const run = russianNames(fetched);
+
+		expect(run.status).toBe(0);
+		expect(writtenCities(join(fetched, 'cities.json')).map(([, ru]) => ru)).toEqual(['Белград', 'Марондера', 'Ногоя']);
+		expect(existsSync(join(fetched, 'places.json'))).toBe(false);
+		expect(run.stderr).toContain('no places file');
+	});
+
+	it('names the cities and the places of a directory, each by its own table', () => {
+		const fetched = mkdtempSync(join(directory, 'with-places-'));
+		writeFileSync(join(fetched, 'cities.json'), readFileSync(fetchedCities('with-places-cities.json')));
+		writeFileSync(join(fetched, 'places.json'), readFileSync(fetchedPlaces('with-places-places.json')));
+
+		const run = russianNames(fetched, '--place-names', table('directory-places.tsv', ['qid\tname\tru', 'Q1430120\tLovćen\tЛовчен']));
+
+		expect(run.status).toBe(0);
+		expect(writtenCities(join(fetched, 'cities.json')).map(([, ru]) => ru)).toEqual(['Белград', 'Марондера', 'Ногоя']);
+		expect(writtenPlaces(join(fetched, 'places.json'))).toEqual([
+			[6386, 'Гарда', 'Lake Garda'],
+			[1_430_120, 'Ловчен', 'Lovćen'],
+		]);
+		expect(run.stderr).toContain('2 cities named');
+		expect(run.stderr).toContain('1 places named');
 	});
 });

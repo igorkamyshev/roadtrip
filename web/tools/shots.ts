@@ -1,16 +1,16 @@
 // `pnpm --filter web shots <out-dir> [<link>…] [--viewport <W>x<H>,…] [--theme light|dark|both] [--wait <ms>]
-// [--card <city>] [--compare <ref> [--title <title>]] [--window]`: PNGs of the screen without the Worker (tools/demo.ts), for a PR's
-// «Evidence» or a look at a layout (web/README.md, «Demo»). It builds the client, serves it with the doubles, and in
-// Chromium opens each link (the part from `/#/`; by default Belgrade at 6 h, a ring with cities) on each viewport in
-// each theme, at deviceScaleFactor 2, and shoots it once the first card is no longer calculating, the map's camera has
-// stopped, and `--wait` ms more have passed (5000 and more: after the data's sources have gone). `<out-dir>` gets
-// `<link's number>-<W>x<H>-<theme>.png`.
+// [--card <name>] [--compare <ref> [--title <title>]] [--window]`: PNGs of the screen without the Worker (tools/demo.ts),
+// for a PR's «Evidence» or a look at a layout (web/README.md, «Demo»). It builds the client, serves it with the doubles,
+// and in Chromium opens each link (the part from `/#/`; by default Belgrade at 6 h, a ring with cities and places) on
+// each viewport in each theme, at deviceScaleFactor 2, and shoots it once the first card is no longer calculating, the
+// map's camera has stopped, and `--wait` ms more have passed (5000 and more: after the data's sources have gone).
+// `<out-dir>` gets `<link's number>-<W>x<H>-<theme>.png`.
 //
-// `--card <city>` first scrolls the carousel until the card of that city (its heading) is the chosen one, as a person
-// would, and also shoots the card alone, to `…-<theme>-card.png`; a ring without that card fails. `--compare <ref>`
-// also builds the client of git ref `<ref>` (`origin/main`) in a worktree of its own, removed at the end, serves it with
-// this checkout's doubles and shoots it the same way: its files are `before-…`, this checkout's `after-…`, and
-// `index.html` (tools/compare-page.ts) puts them side by side, titled `--title`, for a private artifact.
+// `--card <name>` first scrolls the carousel until the card of that point of interest (its heading) is the chosen one,
+// as a person would, and also shoots the card alone, to `…-<theme>-card.png`; a ring without that card fails.
+// `--compare <ref>` also builds the client of git ref `<ref>` (`origin/main`) in a worktree of its own, removed at the
+// end, serves it with this checkout's doubles and shoots it the same way: its files are `before-…`, this checkout's
+// `after-…`, and `index.html` (tools/compare-page.ts) puts them side by side, titled `--title`, for a private artifact.
 //
 // `--window` shoots the browser's whole window instead, its tab (title and icon) and address bar included, at one pixel
 // per CSS pixel: Chromium runs with a window on a display of its own (Xvfb), in its dark look for the dark theme, and
@@ -27,10 +27,10 @@ import { startDemo } from './demo.ts';
 import { mapAtRest } from '../e2e/screen.ts';
 import { headlessPages, type Pages, windowPages } from './pages.ts';
 
-/** Belgrade at 6 h: the demo's ring with cities (at 3 h it has none). */
+/** Belgrade at 6 h: the demo's ring with cities and places (at 3 h it has none). */
 const DEFAULT_LINK = '/#/?p=44.81760,20.45730&h=6&cit=RUS';
 
-/** How long the page may take to load and its ring and cities to come. */
+/** How long the page may take to load and its ring, cities and places to come. */
 const READY_TIMEOUT_MS = 30_000;
 
 /** A client being shot: where it is served and the prefix of its files (`before-`, `after-`, or none). */
@@ -42,7 +42,7 @@ interface Side {
 interface Run {
 	readonly out: string;
 	readonly wait: number;
-	/** The city of `--card`. */
+	/** The point of interest of `--card`. */
 	readonly card: string | undefined;
 	/** Where each shot's page opens and is shot: headless, or in a window (`--window`). */
 	readonly pages: Pages;
@@ -56,15 +56,18 @@ function themesOf(text: string): readonly Theme[] | undefined {
 	return text === 'light' || text === 'dark' ? [text] : undefined;
 }
 
-/** Scrolls the carousel to the card of `city`, as `scrollTo` of cities.spec.ts does, and waits until it is the chosen one. */
-async function chooseCard(page: Page, city: string, path: string): Promise<Locator> {
-	const cards = page.getByTestId('city-card');
-	const card = cards.filter({ has: page.getByRole('heading', { name: city, exact: true }) });
-	// The cards come at once, with the cities file.
+/**
+ * Scrolls the carousel to the card of the point of interest named `name`, a city or a place, as `scrollTo` of
+ * cities.spec.ts does, and waits until it is the chosen one.
+ */
+async function chooseCard(page: Page, name: string, path: string): Promise<Locator> {
+	const cards = page.getByTestId('point-card');
+	const card = cards.filter({ has: page.getByRole('heading', { name, exact: true }) });
+	// The cards come at once, with the cities and places files.
 	await cards.first().waitFor({ timeout: READY_TIMEOUT_MS });
 	if ((await card.count()) === 0) {
 		const names = await cards.getByRole('heading').allTextContents();
-		throw new Error(`No card of «${city}» in the carousel of ${path}, only: ${names.join(', ')}`);
+		throw new Error(`No card of «${name}» in the carousel of ${path}, only: ${names.join(', ')}`);
 	}
 	await card.evaluate((element) => {
 		element.scrollIntoView({ inline: 'start', block: 'nearest' });
@@ -81,7 +84,7 @@ async function shoot({ out, wait, card, pages }: Run, { side, shot }: { readonly
 	await firstCard.waitFor({ timeout: READY_TIMEOUT_MS });
 	await expect(firstCard).not.toHaveAttribute('data-state', 'calculating', { timeout: READY_TIMEOUT_MS });
 	const cardShown = card === undefined ? undefined : await chooseCard(page, card, shot.path);
-	// The camera moves over a new ring and to the chosen city: «before» and «after» are shot where it stops.
+	// The camera moves over a new ring and to the chosen point of interest: «before» and «after» are shot where it stops.
 	await mapAtRest(page);
 	await page.waitForTimeout(wait);
 	const screenFile = join(out, `${side.prefix}${shot.name}.png`);
@@ -172,7 +175,7 @@ if (
 	!viewports.every((size) => size.length === 2 && size.every((side) => Number.isInteger(side) && side > 0))
 ) {
 	throw new Error(
-		'Usage: pnpm --filter web shots <out-dir> [<link>…] [--viewport <W>x<H>,…] [--theme light|dark|both] [--wait <ms>] [--card <city>] [--compare <ref> [--title <title>]] [--window]',
+		'Usage: pnpm --filter web shots <out-dir> [<link>…] [--viewport <W>x<H>,…] [--theme light|dark|both] [--wait <ms>] [--card <name>] [--compare <ref> [--title <title>]] [--window]',
 	);
 }
 

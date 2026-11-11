@@ -20,7 +20,7 @@ interface ComparePage {
 	/** The git ref of «before». */
 	readonly ref: string;
 	readonly links: readonly string[];
-	/** The city of `--card`, whose card was shot too. */
+	/** The point of interest of `--card`, whose card was shot too. */
 	readonly card: string | undefined;
 	readonly shots: readonly Shot[];
 }

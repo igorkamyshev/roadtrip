@@ -1,10 +1,11 @@
 // The screen's events from its state (screen-analytics.ts says when each goes): the start, the ring asked for and its
-// answer, the cities file, and the page going away.
+// answer, the cities file and the places a ring from the origin may show, and the page going away.
 import type { UseQueryResult } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import type { RingResponse } from 'worker/api';
-import type { City } from '../cities/cities.ts';
+import type { PointsFiles } from '../points/in-ring.ts';
 import { RingRequestError } from '../ring/fetch-ring.ts';
+import type { Settled } from '../session-cache.ts';
 import type { Settings } from '../state/settings.ts';
 import type { Start } from '../start/start.ts';
 import { send } from './posthog.ts';
@@ -19,17 +20,34 @@ export interface ScreenAnalyticsInput {
 	readonly hours: number;
 	readonly settings: Settings;
 	readonly ring: UseQueryResult<RingResponse, RingRequestError>;
-	readonly citiesFile: { readonly settled: boolean; readonly cities: readonly City[] | undefined };
+	readonly citiesFile: Settled<PointsFiles['cities']>;
+	/** The places a ring from the start's origin may show: the places file's but the origin's (src/places/origin.ts). */
+	readonly ringPlaces: Settled<PointsFiles['places']>;
 }
 
-export function useScreenAnalytics({ start, request, retries, hours, settings, ring, citiesFile }: ScreenAnalyticsInput): ScreenAnalytics {
+export function useScreenAnalytics({
+	start,
+	request,
+	retries,
+	hours,
+	settings,
+	ring,
+	citiesFile,
+	ringPlaces,
+}: ScreenAnalyticsInput): ScreenAnalytics {
 	const [analytics] = useState(() => new ScreenAnalytics(send));
 
 	useEffect(() => {
 		if (citiesFile.settled) {
-			analytics.citiesSettled(citiesFile.cities);
+			analytics.citiesSettled(citiesFile.contents);
 		}
 	}, [analytics, citiesFile]);
+
+	useEffect(() => {
+		if (start !== undefined && ringPlaces.settled) {
+			analytics.placesSettled(start.origin, ringPlaces.contents);
+		}
+	}, [analytics, start, ringPlaces]);
 
 	useEffect(() => {
 		if (start !== undefined) {

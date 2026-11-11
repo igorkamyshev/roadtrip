@@ -1,14 +1,25 @@
 // The external boundaries of the screen, doubled for its tests: `GET /api/ring` (`RingApi` of e2e/ring-api.ts, a
 // scripted double that records every request and answers or holds it), the basemap's tiles (`GET /tiles/{z}/{x}/{y}`,
-// each one empty), the dataset's zone outlines (`/data/zones.json`, `ZONE_OUTLINES`) and cities (`/data/cities.json`,
-// `CITIES`, or a test's own through `serveCities`), PostHog behind its proxy (`PostHogDouble` of
+// each one empty), the dataset's zone outlines (`/data/zones.json`, `ZONE_OUTLINES`), cities (`/data/cities.json`,
+// `CITIES`, or a test's own through `serveCities`) and places (`/data/places.json`, `PLACES`, or a test's own or none
+// through `servePlaces`) and the cells of the places' outlines and radii (`/data/place-outlines/`, `PLACE_CELLS`, or a
+// test's own or none through `servePlaceOutlines`), PostHog behind its proxy (`PostHogDouble` of
 // e2e/posthog-double.ts, the `posthog` fixture), and every other host, which is cut off in every test so that none
 // reaches the network. The production host is the preview server under the production name (`openInProduction`),
 // where the build runs PostHog. The basemap's fonts and sprites are the client's own static assets. Geolocation and
 // time come from Playwright itself (context permissions, `page.clock`; `failGeolocation` for a failure other than a
 // refusal).
-import { test as base, expect, type BrowserContext, type Page } from '@playwright/test';
+import { test as base, expect, type BrowserContext, type Page, type Route } from '@playwright/test';
 import { encodeCities, type CityRow } from 'data/cities-file';
+import {
+	encodePlaceOutlines,
+	encodePlaces,
+	placeOutlinesCell,
+	type Place,
+	type PlaceOutline,
+	type PlaceOutlinesFile,
+	type PlaceRadius,
+} from 'data/places-file';
 import type { Access, RingAnswer, RingResponse } from 'worker/api';
 import { PostHogDouble } from './posthog-double.ts';
 import { RingApi } from './ring-api.ts';
@@ -79,6 +90,214 @@ export const CITIES: readonly CityRow[] = [
 	[3191376, 'Шабац', 'Šabac', 44.747, 19.69, 55_114, 'SRB'],
 	[3196079, '', 'Lukavac', 44.542, 18.526, 44_520, 'BIH'],
 ];
+
+/**
+ * The places of the file the Worker serves at `/data/places.json` (data's `build-places`, `encodePlaces`): real places
+ * around Belgrade, their Q-ids, names, points, sitelinks and types Wikidata's (#148's research), their access points
+ * (GLOSSARY «Подъезд») picked by hand on roads near them. Balaton and Đerdap are large, with access points along their
+ * shores far apart; the lake of Zvornik is on the border, with one in Bosnia and Herzegovina and one in Serbia, the
+ * Bosnian one nearer Belgrade. Vjetrenica has no Russian name, and as many sitelinks as Lepenski Vir.
+ */
+export const PLACES: readonly Place[] = [
+	{
+		qid: 6383,
+		ru: 'Балатон',
+		local: 'Lake Balaton',
+		lat: 46.85,
+		lon: 17.72,
+		sitelinks: 97,
+		type: 'lake',
+		// Siófok, Keszthely.
+		access: [
+			{ lat: 46.905, lon: 18.058, zone: 'HUN' },
+			{ lat: 46.765, lon: 17.247, zone: 'HUN' },
+		],
+	},
+	{
+		qid: 61757,
+		ru: 'Хортобадь',
+		local: 'Hortobágy National Park',
+		lat: 47.5946,
+		lon: 21.1568,
+		sitelinks: 54,
+		type: 'national-park',
+		access: [{ lat: 47.583, lon: 21.151, zone: 'HUN' }],
+	},
+	{
+		qid: 143042,
+		ru: 'Монастырь Студеница',
+		local: 'Studenica Monastery',
+		lat: 43.4867,
+		lon: 20.5316,
+		sitelinks: 44,
+		type: 'monastery',
+		access: [{ lat: 43.486, lon: 20.533, zone: 'SRB' }],
+	},
+	{
+		qid: 129979,
+		ru: 'Делиблатские пески',
+		local: 'Deliblato Sands',
+		lat: 44.9647,
+		lon: 21.0142,
+		sitelinks: 34,
+		type: 'national-park',
+		access: [
+			{ lat: 44.93, lon: 20.99, zone: 'SRB' },
+			{ lat: 45.05, lon: 21.15, zone: 'SRB' },
+		],
+	},
+	{
+		qid: 1258055,
+		ru: 'Джердап',
+		local: 'Đerdap National Park',
+		lat: 44.6667,
+		lon: 22.5167,
+		sitelinks: 32,
+		type: 'national-park',
+		// Golubac, Donji Milanovac, Tekija.
+		access: [
+			{ lat: 44.664, lon: 21.676, zone: 'SRB' },
+			{ lat: 44.618, lon: 22.163, zone: 'SRB' },
+			{ lat: 44.55, lon: 22.41, zone: 'SRB' },
+		],
+	},
+	{
+		qid: 906669,
+		ru: 'Лепенски-Вир',
+		local: 'Lepenski Vir',
+		lat: 44.5611,
+		lon: 22.0242,
+		sitelinks: 29,
+		type: 'ruins',
+		access: [{ lat: 44.557, lon: 22.026, zone: 'SRB' }],
+	},
+	{
+		qid: 2880621,
+		ru: '',
+		local: 'Vjetrenica',
+		lat: 42.8458,
+		lon: 17.9839,
+		sitelinks: 29,
+		type: 'cave',
+		access: [{ lat: 42.847, lon: 17.985, zone: 'BIH' }],
+	},
+	{
+		qid: 1264703,
+		ru: 'Монастырь Манасия',
+		local: 'Manasija',
+		lat: 44.1009,
+		lon: 21.4696,
+		sitelinks: 25,
+		type: 'monastery',
+		access: [{ lat: 44.098, lon: 21.466, zone: 'SRB' }],
+	},
+	{
+		qid: 12759913,
+		ru: 'Тара',
+		local: 'Tara',
+		lat: 43.8483,
+		lon: 19.4594,
+		sitelinks: 22,
+		type: 'mountain',
+		access: [{ lat: 43.89, lon: 19.52, zone: 'SRB' }],
+	},
+	{
+		qid: 231499,
+		ru: 'Зворничко-езеро',
+		local: 'Zvornik Lake',
+		lat: 44.3107,
+		lon: 19.1394,
+		sitelinks: 21,
+		type: 'lake',
+		access: [
+			{ lat: 44.38, lon: 19.112, zone: 'BIH' },
+			{ lat: 44.27, lon: 19.163, zone: 'SRB' },
+		],
+	},
+	{
+		qid: 1290986,
+		ru: 'Монастырь Крушедол',
+		local: 'Krušedol Monastery',
+		lat: 45.1194,
+		lon: 19.9453,
+		sitelinks: 19,
+		type: 'monastery',
+		access: [{ lat: 45.118, lon: 19.944, zone: 'SRB' }],
+	},
+];
+
+/** What the cells of `/data/place-outlines/` hold: the outlines of the large places, the radii of the small ones around their points. */
+interface PlaceCells {
+	readonly outlines: readonly PlaceOutline[];
+	readonly radii: readonly (PlaceRadius & Pick<Place, 'lat' | 'lon'>)[];
+}
+
+/** Manasija's walls, 0.6 km across: a small outline, a radius of 1 km and half of that. */
+const MANASIJA_RADIUS_METERS = 1300;
+
+/**
+ * The cells of `PLACES` (data's `build-places`, GLOSSARY «Место точки старта»), which the Worker serves in
+ * `/data/place-outlines/`: rough outlines drawn by hand around Balaton and Deliblato Sands, and the others as small
+ * places, a radius around their points, 1 km (a place-point), Manasija's `MANASIJA_RADIUS_METERS`. Deliblato's outline
+ * touches the cell of Belgrade (44_20), whose file holds it, though Belgrade is 33 km from its edge; the cell north of
+ * it (45_20) holds it too, and the one north of that (46_20) no place touches, so it has no file.
+ */
+const PLACE_CELLS: PlaceCells = {
+	outlines: [
+		{ qid: 6383, rings: [[46.7, 17.23, 46.8, 17.22, 46.92, 17.75, 47.05, 18.17, 46.98, 18.2, 46.88, 18.0, 46.72, 17.45]] },
+		{ qid: 129979, rings: [[44.83, 20.88, 44.87, 21.25, 45.07, 21.33, 45.1, 21.05, 44.98, 20.86]] },
+	],
+	radii: PLACES.filter(({ qid }) => qid !== 6383 && qid !== 129979).map(({ qid, lat, lon }) => ({
+		qid,
+		lat,
+		lon,
+		meters: qid === 1_264_703 ? MANASIJA_RADIUS_METERS : 1000,
+	})),
+};
+
+/** The cells of 1° × 1° the bounds of points (degrees) touch, with `meters` to spare, as `placeOutlinesCell` names them. */
+function cellsOf(lats: readonly number[], lons: readonly number[], meters = 0): string[] {
+	// 111 195 m a degree of latitude.
+	const spareLat = meters / 111_195;
+	const spareLon = spareLat / Math.cos((Math.max(...lats.map((lat) => Math.abs(lat))) * Math.PI) / 180);
+	const cells: string[] = [];
+	for (let lat = Math.floor(Math.min(...lats) - spareLat); lat <= Math.max(...lats) + spareLat; lat += 1) {
+		for (let lon = Math.floor(Math.min(...lons) - spareLon); lon <= Math.max(...lons) + spareLon; lon += 1) {
+			cells.push(placeOutlinesCell({ lat, lon }));
+		}
+	}
+	return cells;
+}
+
+/**
+ * The file of the cell at `path` (`/data/place-outlines/44_20.json`) of `cells`, as the Worker serves it: the outlines
+ * and the radii that touch the cell, or undefined for a cell none touches, which has no file.
+ */
+export function placeOutlinesFile(path: string, cells: PlaceCells = PLACE_CELLS): PlaceOutlinesFile | undefined {
+	const cell =
+		path
+			.split('/')
+			.at(-1)
+			?.replace(/\.json$/u, '') ?? '';
+	const outlines = cells.outlines.filter(({ rings }) =>
+		cellsOf(
+			rings.flatMap((ring) => ring.filter((_, index) => index % 2 === 0)),
+			rings.flatMap((ring) => ring.filter((_, index) => index % 2 === 1)),
+		).includes(cell),
+	);
+	const radii = cells.radii.filter(({ lat, lon, meters }) => cellsOf([lat], [lon], meters).includes(cell));
+	return outlines.length === 0 && radii.length === 0
+		? undefined
+		: encodePlaceOutlines({ outlines, radii: radii.map(({ qid, meters }) => ({ qid, meters })) });
+}
+
+/** Answers a cell's file of `cells`, or 404 for a cell none touches. */
+async function fulfilCell(route: Route, cells: PlaceCells): Promise<void> {
+	const file = placeOutlinesFile(new URL(route.request().url()).pathname, cells);
+	await (file === undefined
+		? route.fulfill({ status: 404 })
+		: route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(file) }));
+}
 
 /**
  * Places of the tests, as { lat, lon }: Belgrade, the origin of most; Budapest, the biggest city of `CITIES`, so the
@@ -161,6 +380,10 @@ async function cutOffTheNetwork(context: BrowserContext, network: Network, previ
 	await context.route('**/data/cities.json', (route) =>
 		route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(encodeCities(CITIES)) }),
 	);
+	await context.route('**/data/places.json', (route) =>
+		route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(encodePlaces(PLACES)) }),
+	);
+	await context.route('**/data/place-outlines/*', (route) => fulfilCell(route, PLACE_CELLS));
 	await context.route('**/*', async (route) => {
 		const { hostname, origin } = new URL(route.request().url());
 		if (hostname === 'localhost' || origin === PRODUCTION) {
@@ -210,6 +433,25 @@ export async function openInProduction(page: Page, path = '/'): Promise<void> {
 export async function serveCities(page: Page, cities: readonly CityRow[]): Promise<void> {
 	await page.route('**/data/cities.json', (route) =>
 		route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(encodeCities(cities)) }),
+	);
+}
+
+/** Serves the page `places` as the places file instead of `PLACES`, or no places file at all for `undefined`. */
+export async function servePlaces(page: Page, places: readonly Place[] | undefined): Promise<void> {
+	await page.route('**/data/places.json', (route) =>
+		places === undefined
+			? route.fulfill({ status: 404 })
+			: route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(encodePlaces(places)) }),
+	);
+}
+
+/**
+ * Serves the page `cells` instead of `PLACE_CELLS`, or cells that never come for `undefined`: an error of the server,
+ * not the 404 of a cell no place touches.
+ */
+export async function servePlaceOutlines(page: Page, cells: PlaceCells | undefined): Promise<void> {
+	await page.route('**/data/place-outlines/*', (route) =>
+		cells === undefined ? route.fulfill({ status: 500 }) : fulfilCell(route, cells),
 	);
 }
 
@@ -297,7 +539,8 @@ const AROUND_SERBIA_WITH_SCHENGEN: Access = {
 
 /**
  * The ring of the carousel's tests, 2–3 h around Belgrade (`openTheCarousel` of e2e/screen.ts): a band from 1° to 3°
- * with every country around open, which holds 12 city cards and «и ещё», a row that scrolls on every window.
+ * with every country around open, which holds 12 cards of cities and places and «и ещё» (e2e/places.spec.ts), a row
+ * that scrolls on every window.
  */
 export const carouselRing = (): RingResponse => ({
 	...squareRing(BELGRADE.lat, BELGRADE.lon, [1, 3]),
@@ -306,7 +549,7 @@ export const carouselRing = (): RingResponse => ({
 
 /**
  * Every country around Serbia, the start, open to a Russian: the band of 2–3 h around Belgrade (1° to 3°) holds 16
- * cities of `CITIES`, 12 cards and «и ещё 4».
+ * cities of `CITIES` and 8 places of `PLACES`, 12 cards and «и ещё 12».
  */
 export const OPEN_AROUND_SERBIA: Access = {
 	SRB: { mode: 'start' },

@@ -5,8 +5,9 @@
 import { METERS_PER_DEGREE } from 'engine/geo';
 import { type Graph, ZoneLocator } from 'engine/graph';
 import { COUNTRIES } from 'rules/countries';
-import { biggestFirst, cityAround, type CityRow, limitsKm } from './cities-file.ts';
+import { biggestFirst, cityAround, type CityRow, limitsKm, type Placed, type Point } from './cities-file.ts';
 import { type MissingRussianNames, missingRussianNames } from './russian-names.ts';
+import { roundDegrees } from './degrees.ts';
 
 const MIN_POPULATION = 15_000;
 
@@ -107,7 +108,7 @@ export async function buildCities(sources: CitiesSources): Promise<{ cities: Cit
 	const wikidata = await sources.wikidataLabels(zoned.filter((place) => !geonames.has(place.id)).map((place) => place.id));
 	const rows = zoned.map((place): CityRow => {
 		const russian = geonames.get(place.id)?.name ?? wikidata.get(place.id) ?? '';
-		return [place.id, russian, place.name, round(place.lat), round(place.lon), place.population, place.zone];
+		return [place.id, russian, place.name, roundDegrees(place.lat), roundDegrees(place.lon), place.population, place.zone];
 	});
 	const withoutRussian = rows.filter(([, russian]) => russian === '').length;
 	return {
@@ -162,10 +163,11 @@ const cell = (lat: number, lon: number) => lat * LON_CELLS + (((lon % LON_CELLS)
 
 /**
  * The places whose limits may hold a point: each place is put in every cell its limits touch, so a point meets only
- * those of its own cell, in the order of `places`. The world has 32 000 places, too many to measure each to each.
+ * those of its own cell, in the order of `places`. The world has 32 000 places, too many to measure each to each;
+ * the build of the places file finds the cities around its places by it too (src/places.ts).
  */
-function limitsGrid(places: readonly Place[]): (at: Place) => readonly Place[] {
-	const cells = new Map<number, Place[]>();
+export function limitsGrid<City extends Placed>(places: readonly City[]): (at: Point) => readonly City[] {
+	const cells = new Map<number, City[]>();
 	for (const place of places) {
 		const km = limitsKm(place.population);
 		const latDegrees = km / KM_PER_DEGREE;
@@ -287,9 +289,4 @@ async function readPlaces(lines: AsyncIterable<string>): Promise<{ places: Place
 		});
 	}
 	return { places, read };
-}
-
-/** Degrees to 0.001°, about 100 m. */
-function round(degrees: number): number {
-	return Math.round(degrees * 1000) / 1000;
 }

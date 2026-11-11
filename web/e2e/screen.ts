@@ -26,6 +26,7 @@ interface MapForTests {
 	readonly project: (lngLat: [number, number]) => { x: number; y: number };
 	readonly getSource: (id: string) => { readonly getData: () => Promise<GeoJSON> } | undefined;
 	readonly getLayoutProperty: (layer: string, name: string) => unknown;
+	readonly getPaintProperty: (layer: string, name: string) => unknown;
 	readonly getLayer: (layer: string) => unknown;
 	readonly getFilter: (layer: string) => unknown;
 	readonly getBounds: () => {
@@ -95,6 +96,11 @@ export async function startPinning(page: Page): Promise<void> {
  */
 export const firstCard = (page: Page): Locator => page.getByTestId('first-card');
 
+/** What a person reads in an element: its inner text with the line breaks as spaces. */
+export async function read(locator: Locator): Promise<string> {
+	return (await locator.innerText()).replaceAll(/\s+/gu, ' ').trim();
+}
+
 /**
  * The data's sources under the phrase (src/screen/attribution.tsx): shown for 5 s once the screen opens, then hidden in
  * their place.
@@ -103,7 +109,7 @@ export const sources = (page: Page): Locator => page.getByTestId('sources');
 
 export const slider = (page: Page): Locator => page.getByRole('slider', { name: 'Время в пути' });
 
-/** The carousel at the bottom of the screen: the first card, the city cards, «и ещё». */
+/** The carousel at the bottom of the screen: the first card, the cards of the points of interest, «и ещё». */
 export const carousel = (page: Page): Locator => page.getByTestId('carousel');
 
 /**
@@ -112,44 +118,52 @@ export const carousel = (page: Page): Locator => page.getByTestId('carousel');
  */
 export const carouselArrows = (page: Page): Locator => page.getByTestId('carousel-arrows');
 
-/** «и ещё K / Все города →», the carousel's last card when the ring has more cities than cards. */
+/** «и ещё K / Всё в кольце →», the carousel's last card when the ring has more points of interest than cards. */
 export const moreCard = (page: Page): Locator => carousel(page).getByRole('button', { name: /и ещё/u });
 
-/** The cards of the carousel's cities, in order. */
-export const cityCards = (page: Page): Locator => page.getByTestId('city-card');
+/** «Всё в кольце …», the list of all the ring's points of interest, open: titled by the ring, «Всё в кольце 2–3 ч: 24». */
+export const theList = (page: Page): Locator => page.getByRole('dialog', { name: /^Всё в кольце/u });
 
-/** The card of the city whose name is in its heading. */
-export const cityCard = (page: Page, name: string): Locator =>
-	cityCards(page).filter({ has: page.getByRole('heading', { name, exact: true }) });
+/** The names of the rows the open list of all has drawn, in its order: its top ones, as it draws only what is in view. */
+export async function rowNames(page: Page): Promise<string[]> {
+	return theList(page).getByTestId('row-name').allInnerTexts();
+}
+
+/** The cards of the carousel's points of interest, cities and places, in order. */
+export const pointCards = (page: Page): Locator => page.getByTestId('point-card');
+
+/** The card of the point of interest whose name is in its heading. */
+export const pointCard = (page: Page, name: string): Locator =>
+	pointCards(page).filter({ has: page.getByRole('heading', { name, exact: true }) });
 
 /**
- * The name of the first city card the window's right edge cuts, 12 px in, where the wide screen's row fades out: the
- * row shows it only in part.
+ * The name of the first card of a point of interest the window's right edge cuts, 12 px in, where the wide screen's
+ * row fades out: the row shows it only in part.
  */
 export async function cutCard(page: Page): Promise<string> {
 	const { width } = page.viewportSize() ?? { width: 0 };
-	for (const card of await cityCards(page).all()) {
+	for (const card of await pointCards(page).all()) {
 		const box = await boxOf(card);
 		if (box.x + box.width > width - 12) {
 			return card.getByRole('heading').innerText();
 		}
 	}
-	throw new Error('every city card is whole in the row');
+	throw new Error('every card of a point of interest is whole in the row');
 }
 
-/** The card of the chosen city: the carousel marks it current. */
-export const chosenCard = (page: Page): Locator => cityCards(page).and(page.locator('[aria-current="true"]'));
+/** The card of the chosen point of interest: the carousel marks it current. */
+export const chosenCard = (page: Page): Locator => pointCards(page).and(page.locator('[aria-current="true"]'));
 
 /**
- * The carousel's cards wholly in the window, by name for `expectApart`: the first card, the city cards and «и ещё»
- * that the row shows whole where it stands now.
+ * The carousel's cards wholly in the window, by name for `expectApart`: the first card, the cards of the points of
+ * interest and «и ещё» that the row shows whole where it stands now.
  */
 export async function cardsInView(page: Page): Promise<Record<string, Locator>> {
 	const { width } = page.viewportSize() ?? { width: 0 };
-	const cities = page.getByTestId('city-card');
+	const points = pointCards(page);
 	const cards: [string, Locator][] = [
 		['first card', firstCard(page)],
-		...Array.from({ length: await cities.count() }, (_, i): [string, Locator] => [`city card ${i + 1}`, cities.nth(i)]),
+		...Array.from({ length: await points.count() }, (_, i): [string, Locator] => [`point card ${i + 1}`, points.nth(i)]),
 		['«и ещё»', moreCard(page)],
 	];
 	const boxes = await Promise.all(cards.map(async ([, card]) => ((await card.count()) === 0 ? null : card.boundingBox())));
@@ -233,12 +247,12 @@ export function fromEdges(page: Page, box: Box): { top: number; right: number; b
 
 /**
  * Waits for the answer of a ring of `hours` («2–3 ч»): the slider at those hours and the first card a ring's, with
- * its cities, before the cities file comes or without any (`ring`, `no_cities`). Its copy is not read: the tests of
+ * its cities, before the cities file comes or without any (`ring`, `no_points`). Its copy is not read: the tests of
  * the card's texts read them.
  */
 export async function expectRingCard(page: Page, hours: string): Promise<void> {
 	await expect(slider(page)).toHaveAttribute('aria-valuetext', hours);
-	await expect(firstCard(page)).toHaveAttribute('data-state', /^(?:ring|no_cities)$/u);
+	await expect(firstCard(page)).toHaveAttribute('data-state', /^(?:ring|no_points)$/u);
 }
 
 /**
@@ -311,8 +325,11 @@ async function mapIsUp(page: Page): Promise<void> {
 	await page.waitForFunction(() => window.mapForTests !== undefined);
 }
 
-/** The features of a map source: `ring` (the ring), `start` (the origin's marker) or `cities` (the ring's cities). */
-async function sourceFeatures(page: Page, source: 'ring' | 'start' | 'cities'): Promise<Feature[]> {
+/**
+ * The features of a map source: `ring` (the ring), `start` (the origin's marker), `cities` (the ring's cities) or
+ * `places` (the ring's places).
+ */
+async function sourceFeatures(page: Page, source: 'ring' | 'start' | 'cities' | 'places'): Promise<Feature[]> {
 	await mapIsUp(page);
 	const data = await page.evaluate(async (id) => window.mapForTests?.getSource(id)?.getData(), source);
 	// The screen's sources hold a collection or a single feature (src/map/overlay.ts).
@@ -393,6 +410,26 @@ export async function labelsOnMap(page: Page): Promise<{ labels: string[]; chose
 		labels: cities.filter((city) => city.label).map((city) => city.name),
 		chosen: cities.filter((city) => city.chosen).map((city) => city.name),
 	};
+}
+
+/** A place on the map: a diamond of its group at its access point, [lon, lat], named when it has a card or is chosen. */
+interface PlaceOnMap {
+	readonly name: string;
+	readonly at: number[];
+	readonly group: string;
+	readonly label: boolean;
+	readonly chosen: boolean;
+}
+
+/** The places the map shows, the most famous first (the source `places`). */
+export async function placesOnMap(page: Page): Promise<PlaceOnMap[]> {
+	return (await sourceFeatures(page, 'places')).map(({ properties, geometry }) => ({
+		name: String(properties?.name),
+		at: geometry.type === 'Point' ? geometry.coordinates : [],
+		group: String(properties?.group),
+		label: properties?.label === true,
+		chosen: properties?.chosen === true,
+	}));
 }
 
 /** Taps the map where the point (lat, lon) is, once the map has drawn everything and stopped. */
@@ -536,11 +573,11 @@ export const LAST_DAY_RING = '6–7 дней';
 
 /**
  * Opens the ring of the carousel's tests (`carouselRing` of e2e/fixtures.ts), 2–3 h around Belgrade, on the held
- * clock: its 12 city cards, the map up and come to rest on it.
+ * clock: its 12 cards, the map up and come to rest on it.
  */
 export async function openTheCarousel(page: Page): Promise<void> {
 	await page.goto(`${FROM_BELGRADE}&h=3`);
-	await runUntil(page, async () => (await cityCards(page).count()) === 12, 'the 12 city cards');
+	await runUntil(page, async () => (await pointCards(page).count()) === 12, 'the 12 cards of points of interest');
 	await runUntilMapAtRest(page);
 }
 
@@ -573,4 +610,38 @@ export async function leave(page: Page): Promise<void> {
 	await page.evaluate(() => {
 		window.dispatchEvent(new PageTransitionEvent('pagehide', { persisted: false }));
 	});
+}
+
+/**
+ * Opens the list of all by «и ещё», at the carousel's end, as a person would: scrolls the carousel there, lets it stop,
+ * then taps «и ещё». The stop chooses the card at the left edge 140 ms after the carousel's last `scroll` event, which
+ * the browser sends with a later frame: the test waits for `scrollend`, after that event, before it runs the page's
+ * clock past the stop, so the stop cannot come after the city the test picks next (#115).
+ */
+export async function openTheList(page: Page): Promise<void> {
+	await carousel(page).evaluate(async (element) => {
+		const end = element.scrollWidth - element.clientWidth;
+		// Already there (to a pixel: `scrollLeft` may be fractional), it would not scroll, and no `scrollend` would come.
+		if (element.scrollLeft < end - 1) {
+			const ended = new Promise((resolve) => {
+				element.addEventListener('scrollend', resolve, { once: true });
+			});
+			element.scrollTo({ left: end });
+			await ended;
+		}
+	});
+	await page.clock.fastForward(1000);
+	await page.getByRole('button', { name: /и ещё/u }).click();
+}
+
+/** Longer than any easing of the map's camera: MapLibre's `easeTo` takes 500 ms. */
+const EASING_PAST_MS = 2000;
+
+/**
+ * How far a point of interest is from the middle of the map once the camera went to it: past its easing, by the page's
+ * clock, which the test has installed.
+ */
+export async function wentTo(page: Page, at: { readonly lat: number; readonly lon: number }): Promise<number> {
+	await page.clock.fastForward(EASING_PAST_MS);
+	return distanceFromTheMiddle(page, at);
 }

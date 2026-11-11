@@ -1,8 +1,11 @@
 // The carousel's link with the map (spec #20 «Экран», «Карусель»): on the narrow screen the current card when it stops,
-// the one at its left edge (#85), is the chosen city, which the map goes to, and a city tapped on the map scrolls its
-// card there; on the wide screen (#104) a chosen city's card is only shown whole. Which applies is
-// src/screen/use-chosen-city.ts's.
+// the one at its left edge (#85), is the chosen point of interest, which the map goes to, and a point tapped on the map
+// scrolls its card there; on the wide screen (#104) a chosen point's card is only shown whole. Which applies is
+// src/screen/use-chosen-point.ts's. A card names its point of interest by its key, `data-point`.
 import { useEffect, useLayoutEffect, useRef, type RefObject } from 'react';
+
+/** The carousel's cards of points of interest: the most famous of the ring's, named on the map, counted by `ring result`. */
+export const CAROUSEL_POINTS = 12;
 
 /** How long the carousel stays still before its stop counts: a swipe scrolls in many steps, then snaps. */
 const STOP_AFTER_MS = 140;
@@ -19,10 +22,10 @@ export interface CarouselStops {
 }
 
 /**
- * The carousel's stops: `onStop` is called once it stops, with the city of the current card, or undefined for another
- * card (the first one, «и ещё»).
+ * The carousel's stops: `onStop` is called once it stops, with the key of the current card's point of interest, or
+ * undefined for another card (the first one, «и ещё»).
  */
-export function useCarouselStops(carousel: RefObject<HTMLElement | null>, onStop: (city: number | undefined) => void): CarouselStops {
+export function useCarouselStops(carousel: RefObject<HTMLElement | null>, onStop: (key: string | undefined) => void): CarouselStops {
 	// The latest handler, for the stop that comes after a render.
 	const latest = useRef(onStop);
 	useLayoutEffect(() => {
@@ -44,7 +47,7 @@ export function useCarouselStops(carousel: RefObject<HTMLElement | null>, onStop
 			const skipped = layouts.current;
 			layouts.current = false;
 			if (element !== null && !skipped) {
-				latest.current(currentCity(element));
+				latest.current(currentPoint(element));
 			}
 		}, STOP_AFTER_MS);
 	};
@@ -59,10 +62,10 @@ export function useCarouselStops(carousel: RefObject<HTMLElement | null>, onStop
 }
 
 /**
- * The city of the card nearest the carousel's left edge, where a card snaps: where the first card stands before any
- * scroll.
+ * The key of the point of interest of the card nearest the carousel's left edge, where a card snaps: where the first
+ * card stands before any scroll.
  */
-function currentCity(carousel: HTMLElement): number | undefined {
+function currentPoint(carousel: HTMLElement): string | undefined {
 	const first = carousel.firstElementChild;
 	const start = carousel.scrollLeft + (first instanceof HTMLElement ? first.offsetLeft : 0);
 	let nearest: HTMLElement | undefined;
@@ -76,38 +79,37 @@ function currentCity(carousel: HTMLElement): number | undefined {
 			}
 		}
 	}
-	const city = nearest?.dataset.city;
-	return city === undefined ? undefined : Number(city);
+	return nearest?.dataset.point;
 }
 
-/** Whether the card of `city` is the current one: scrolling to it would not stop the carousel. */
-export function isCurrentCard(carousel: HTMLElement | null, city: number): boolean {
-	return carousel !== null && currentCity(carousel) === city;
+/** Whether the card of the point `key` is the current one: scrolling to it would not stop the carousel. */
+export function isCurrentCard(carousel: HTMLElement | null, key: string): boolean {
+	return carousel !== null && currentPoint(carousel) === key;
 }
 
-/** The card of `city` in the carousel, or undefined when the city has none. */
-function cardOf(carousel: HTMLElement | null, city: number): Element | undefined {
-	return carousel?.querySelector(`[data-city="${city}"]`) ?? undefined;
+/** The card of the point `key` in the carousel, or undefined when the point has none. */
+function cardOf(carousel: HTMLElement | null, key: string): Element | undefined {
+	return carousel?.querySelector(`[data-point="${key}"]`) ?? undefined;
 }
 
-/** Scrolls the card of `city` to the carousel's left edge, the current card's place; false when the city has no card. */
-export function scrollToCard(carousel: HTMLElement | null, city: number): boolean {
-	const card = cardOf(carousel, city);
+/** Scrolls the card of the point `key` to the carousel's left edge, the current card's place; false when it has none. */
+export function scrollToCard(carousel: HTMLElement | null, key: string): boolean {
+	const card = cardOf(carousel, key);
 	card?.scrollIntoView({ inline: 'start', block: 'nearest', behavior: 'smooth' });
 	return card !== undefined;
 }
 
-/** Puts the card of `city` at the carousel's left edge at once, with no scrolling to see; nothing for no card. */
-export function alignCard(carousel: HTMLElement | null, city: number): void {
-	cardOf(carousel, city)?.scrollIntoView({ inline: 'start', block: 'nearest', behavior: 'instant' });
+/** Puts the card of the point `key` at the carousel's left edge at once, with no scrolling to see; nothing for no card. */
+export function alignCard(carousel: HTMLElement | null, key: string): void {
+	cardOf(carousel, key)?.scrollIntoView({ inline: 'start', block: 'nearest', behavior: 'instant' });
 }
 
 /**
- * On the wide screen (#104): scrolls the carousel just enough to show the card of `city` whole, by the edge it is
- * nearer, and not at all when it is whole in view; false when the city has no card.
+ * On the wide screen (#104): scrolls the carousel just enough to show the card of the point `key` whole, by the edge it
+ * is nearer, and not at all when it is whole in view; false when the point has no card.
  */
-export function showCard(carousel: HTMLElement | null, city: number): boolean {
-	const card = cardOf(carousel, city);
+export function showCard(carousel: HTMLElement | null, key: string): boolean {
+	const card = cardOf(carousel, key);
 	card?.scrollIntoView({ inline: 'nearest', block: 'nearest', behavior: 'smooth' });
 	return card !== undefined;
 }

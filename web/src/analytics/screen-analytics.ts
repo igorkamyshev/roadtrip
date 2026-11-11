@@ -1,20 +1,22 @@
-// When the screen's events go and what they say (spec #20 «Аналитика и ошибки», «Свои события браузера»; decision #18).
-// The place of `start set` and `ring result` is the nearest city of the cities file, so both wait for the file:
-// they go once it came, or could not be had (then without a place), with the time they happened.
+// When the screen's events go and what they say (spec #20 «Аналитика и ошибки», «Свои события браузера»; decision #18;
+// spec #154 «События (PostHog)»). The origin's city of `start set`, `ring result` and `route opened` is the nearest city
+// of the cities file, so they wait for the file, and `ring result` for the places a ring from its origin may show too
+// (the places file's but the origin's, src/places/origin.ts), for the ring's places: they go once what they wait for
+// came, or could not be had (then without what it gives), with the time they happened.
 //
 // `ring result` is exactly one for each ring the screen asks for: on load, when the slider is let go (it changes N
 // only then), for other settings or another origin, and for «Повторить». An answer from memory is `memory` at once; a
 // request ends with its answer, or `abandoned` when the screen asks for something else first or the person leaves the
 // page (then by `sendBeacon`, as is everything still waiting).
 import type { RingResponse } from 'worker/api';
-import type { City } from '../cities/cities.ts';
-import { citiesInRing, countOf } from '../cities/in-ring.ts';
 import { nearestCity } from '../cities/nearest.ts';
+import { countOf, kindsOf, pointsInRing, type PointsFiles } from '../points/in-ring.ts';
 import type { RingFailure } from '../ring/fetch-ring.ts';
+import type { Settled } from '../session-cache.ts';
 import type { Settings } from '../state/settings.ts';
 import type { GeolocationFailure } from '../start/geolocation.ts';
 import type { Start } from '../start/start.ts';
-import type { BrowserEvent, BrowserEvents, Place, RingResult } from './events.ts';
+import type { BrowserEvent, BrowserEvents, RingResult, RouteOpened, StartCity } from './events.ts';
 import type { SendOptions } from './posthog.ts';
 
 export type Send = <Event extends BrowserEvent>(event: Event, properties: BrowserEvents[Event], options?: SendOptions) => void;
@@ -23,7 +25,7 @@ export type Send = <Event extends BrowserEvent>(event: Event, properties: Browse
 export interface RingAsk {
 	/** The ring's query key, and the time the person asked for it again («Повторить»): an ask of its own. */
 	readonly id: string;
-	/** How the origin was set, for the place. */
+	/** How the origin was set, for its city. */
 	readonly start: Start;
 	readonly hours: number;
 	readonly settings: Settings;
@@ -32,16 +34,26 @@ export interface RingAsk {
 /** How a ring request ended: the answer (from memory or not), a failure, or nothing yet when the screen moved on. */
 type Ending = { readonly answer: RingResponse; readonly memory: boolean } | { readonly failure: RingFailure } | 'abandoned';
 
-/** An event that waits for the cities file: its properties once the cities are known (none if they cannot be had). */
+/**
+ * What the files the events wait for gave, the cities file and the places of the event's origin: undefined for one not
+ * settled or not had.
+ */
+type FileContents = { readonly [File in keyof PointsFiles]: PointsFiles[File] | undefined };
+
+/** An event that waits for the files: its properties once they are known. */
 interface Waiting {
-	readonly properties: (cities: readonly City[] | undefined) => BrowserEvents[BrowserEvent];
+	readonly properties: (contents: FileContents) => BrowserEvents[BrowserEvent];
 	readonly event: BrowserEvent;
 	/** When it happened (ms since the epoch). */
 	readonly at: number;
+	/** The origin (`originKey`) whose places it waits for too, not the cities file alone; undefined for none. */
+	readonly placesOrigin: string | undefined;
 }
 
 export class ScreenAnalytics {
-	#cities: { readonly settled: false } | { readonly settled: true; readonly cities: readonly City[] | undefined } = { settled: false };
+	#cities: Settled<PointsFiles['cities']> = { settled: false, contents: undefined };
+	/** The places a ring may show, by the origin (`originKey`) they are of. */
+	#places = new Map<string, Settled<PointsFiles['places']>>();
 	#waiting: Waiting[] = [];
 	#lastStart: Start | undefined;
 	#lastAsk: string | undefined;
@@ -57,14 +69,22 @@ export class ScreenAnalytics {
 	) {}
 
 	/** The cities file came, or could not be had (undefined): what waited for it goes. */
-	citiesSettled(cities: readonly City[] | undefined): void {
-		if (this.#cities.settled) {
-			return;
+	citiesSettled(cities: FileContents['cities']): void {
+		if (!this.#cities.settled) {
+			this.#cities = { settled: true, contents: cities };
+			this.#sendReady();
 		}
-		this.#cities = { settled: true, cities };
-		const waiting = this.#waiting.splice(0);
-		for (const event of waiting) {
-			this.send(event.event, event.properties(cities), { at: new Date(event.at) });
+	}
+
+	/**
+	 * The places a ring from `origin` may show came (the places file's but the origin's), or could not be had
+	 * (undefined: no places file or no cell of outlines): what waited for them goes.
+	 */
+	placesSettled(origin: Start['origin'], places: FileContents['places']): void {
+		const key = originKey(origin);
+		if (this.#places.get(key)?.settled !== true) {
+			this.#places.set(key, { settled: true, contents: places });
+			this.#sendReady();
 		}
 	}
 
@@ -74,11 +94,30 @@ export class ScreenAnalytics {
 			return;
 		}
 		this.#lastStart = start;
-		this.#emit('start set', (cities) => ({ method: start.method, ...placeOf(start, cities) }), this.now());
+		this.#emit('start set', ({ cities }) => ({ method: start.method, ...startCityOf(start, cities) }), {
+			at: this.now(),
+			placesOrigin: undefined,
+		});
 	}
 
 	geolocationFailed(reason: GeolocationFailure): void {
 		this.send('geolocation failed', { reason });
+	}
+
+	/**
+	 * «Маршрут» of the card of a point of interest, its `eventKind`, `rank`th in the ring's list (1 for the most famous),
+	 * of the ring of `hours`: the origin's country is the last start's.
+	 */
+	routeOpened({ eventKind: kind }: { readonly eventKind: RouteOpened['kind'] }, rank: number, hours: number): void {
+		const start = this.#lastStart;
+		this.#emit(
+			'route opened',
+			({ cities }) => {
+				const { start_country } = start === undefined ? {} : startCityOf(start, cities);
+				return start_country === undefined ? { kind, rank, hours } : { kind, rank, hours, start_country };
+			},
+			{ at: this.now(), placesOrigin: undefined },
+		);
 	}
 
 	/**
@@ -126,15 +165,14 @@ export class ScreenAnalytics {
 
 	/**
 	 * The person leaves the page: the request under way is abandoned, and it and everything still waiting go by
-	 * beacon, whether posthog-js's own `pagehide` came before this one or not.
+	 * beacon, with what the files gave so far, whether posthog-js's own `pagehide` came before this one or not.
 	 */
 	leave(): void {
 		this.#leaving = true;
 		this.abandon();
 		this.#leaving = false;
-		const cities = this.#cities.settled ? this.#cities.cities : undefined;
 		for (const event of this.#waiting.splice(0)) {
-			this.send(event.event, event.properties(cities), { at: new Date(event.at), beacon: true });
+			this.send(event.event, event.properties(this.#fileContents(event.placesOrigin)), { at: new Date(event.at), beacon: true });
 		}
 	}
 
@@ -148,31 +186,59 @@ export class ScreenAnalytics {
 		};
 		this.#emit(
 			'ring result',
-			(cities): RingResult => ({ ...outcomeOf(ending, ask.start.origin, cities), ...asked, ...placeOf(ask.start, cities) }),
-			at,
+			(contents): RingResult => ({
+				...outcomeOf(ending, ask.start.origin, contents),
+				...asked,
+				...startCityOf(ask.start, contents.cities),
+			}),
+			{ at, placesOrigin: originKey(ask.start.origin) },
 		);
 	}
 
-	/** Sends the event now if the cities are known, else when they are. */
+	/** What the files gave so far, with the places of the origin `placesOrigin` (`originKey`). */
+	#fileContents(placesOrigin: string | undefined): FileContents {
+		return {
+			cities: this.#cities.contents,
+			places: placesOrigin === undefined ? undefined : this.#places.get(placesOrigin)?.contents,
+		};
+	}
+
+	/** Whether what `event` waits for is settled. */
+	#ready({ placesOrigin }: Pick<Waiting, 'placesOrigin'>): boolean {
+		return this.#cities.settled && (placesOrigin === undefined || this.#places.get(placesOrigin)?.settled === true);
+	}
+
+	/** Sends the waiting events whose files are settled, in the order they happened. */
+	#sendReady(): void {
+		const ready = this.#waiting.filter((event) => this.#ready(event));
+		this.#waiting = this.#waiting.filter((event) => !this.#ready(event));
+		for (const event of ready) {
+			this.send(event.event, event.properties(this.#fileContents(event.placesOrigin)), { at: new Date(event.at) });
+		}
+	}
+
+	/** Sends the event now if what it waits for is settled, else when it is. */
 	#emit<Event extends BrowserEvent>(
 		event: Event,
-		properties: (cities: readonly City[] | undefined) => BrowserEvents[Event],
-		at: number,
+		properties: (contents: FileContents) => BrowserEvents[Event],
+		{ at, placesOrigin }: { readonly at: number; readonly placesOrigin: string | undefined },
 	): void {
-		if (this.#cities.settled) {
-			this.send(event, properties(this.#cities.cities), this.#leaving ? { beacon: true } : undefined);
+		if (this.#ready({ placesOrigin })) {
+			this.send(event, properties(this.#fileContents(placesOrigin)), this.#leaving ? { beacon: true } : undefined);
 		} else {
-			this.#waiting.push({ event, properties, at });
+			this.#waiting.push({ event, properties, at, placesOrigin });
 		}
 	}
 }
 
-/** The outcome, the source and, for a ring once the cities are known, its cities and their countries. */
-function outcomeOf(
-	ending: Ending,
-	origin: Start['origin'],
-	cities: readonly City[] | undefined,
-): Pick<RingResult, 'outcome' | 'source' | 'cities_count' | 'countries_count'> {
+/** What of `ring result` its ending tells. */
+type RingOutcome = Pick<RingResult, 'outcome' | 'source' | 'cities_count' | 'countries_count' | 'places_count' | 'carousel_places_count'>;
+
+/**
+ * The outcome, the source and, for a ring once the cities are known, its cities, its places once those are known too,
+ * and the countries of its points of interest.
+ */
+function outcomeOf(ending: Ending, origin: Start['origin'], { cities, places }: FileContents): RingOutcome {
 	if (ending === 'abandoned') {
 		return { outcome: 'abandoned' };
 	}
@@ -187,13 +253,21 @@ function outcomeOf(
 	if (answer.outcome !== 'ring' || cities === undefined) {
 		return { outcome: answer.outcome, source };
 	}
-	// As the first card counts them.
-	const { count, countries } = countOf(citiesInRing(cities, { ring: answer.ring, access: answer.access, origin }));
-	return { outcome: answer.outcome, source, cities_count: count, countries_count: countries };
+	// The points of interest as the first card counts them: never the origin's places, and the cities alone without the
+	// places file or the origin's cell of outlines.
+	const points = pointsInRing({ cities, places: places ?? [] }, { ring: answer.ring, access: answer.access, origin });
+	const kinds = kindsOf(points);
+	const counts: RingOutcome = { outcome: answer.outcome, source, cities_count: kinds.cities, countries_count: countOf(points).countries };
+	return places === undefined ? counts : { ...counts, places_count: kinds.places, carousel_places_count: kinds.carouselPlaces };
 }
 
-/** Where the origin is: the city picked in the search, else the nearest city of the file; nothing without the file. */
-function placeOf(start: Start, cities: readonly City[] | undefined): Place {
+/** An origin as the key of its places. */
+function originKey({ lat, lon }: Start['origin']): string {
+	return `${lat},${lon}`;
+}
+
+/** The origin's city: the city picked in the search, else the nearest city of the file; nothing without the file. */
+function startCityOf(start: Start, cities: FileContents['cities']): StartCity {
 	const city = start.method === 'search' ? start.city : cities === undefined ? undefined : nearestCity(cities, start.origin);
 	return city === undefined ? {} : { start_country: city.zone, start_city: city.name, start_city_id: city.id };
 }

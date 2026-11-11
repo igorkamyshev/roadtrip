@@ -17,6 +17,6 @@
 - **Wikivoyage.** Листинги в основном городские, ранга нет, лицензия CC BY-SA с share-alike.
 - **OpenTripMap.** Нет дампа, только API с ключом.
 
-Новой строки в `docs/attribution.md` не нужно: OSM уже указан, а данные Wikidata выложены под CC0.
+Новой строки атрибуции на экране не нужно: OSM уже указан, а данные Wikidata выложены под CC0. В `docs/attribution.md` добавлен раздел «Wikidata (CC0)» — записка о том, что берём из Wikidata и почему указывать её не обязательно (#159).
 
 Решение принято в тикете «Выбор источника мест» (#144) по исследованию «Источники мест: OSM, Wikidata, Wikivoyage, OpenTripMap, GeoNames» (#143, [docs/research/places.md](https://github.com/igorkamyshev/roadtrip/blob/research/places/docs/research/places.md) в ветке `research/places`).

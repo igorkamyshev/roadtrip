@@ -4,14 +4,14 @@
 // screen none of it chooses a city; on the narrow one the row's stop does, as after a finger's swipe. Without a mouse
 // there is none of it. Where the plate stands is `wide-layout.spec.ts`'s.
 import type { Locator, Page } from '@playwright/test';
-import { carouselRing, CITIES, expect, serveCities, test } from './fixtures.ts';
+import { carouselRing, CITIES, expect, serveCities, servePlaces, test } from './fixtures.ts';
 import {
 	boxOf,
 	carousel,
 	carouselArrows,
 	chosenCard,
-	cityCard,
-	cityCards,
+	pointCard,
+	pointCards,
 	cutCard,
 	EDGE,
 	firstCard,
@@ -48,8 +48,8 @@ async function chosenAfterTheStop(page: Page): Promise<string[]> {
 	return chosenCard(page).getByRole('heading').allInnerTexts();
 }
 
-/** The names of the city cards in order. */
-const cityNames = async (page: Page): Promise<string[]> => cityCards(page).getByRole('heading').allInnerTexts();
+/** The names of the cards of the points of interest, in order. */
+const cardNames = async (page: Page): Promise<string[]> => pointCards(page).getByRole('heading').allInnerTexts();
 
 /** Puts the mouse over the middle of the row's first card. */
 async function overTheRow(page: Page): Promise<void> {
@@ -62,7 +62,7 @@ const scrolledPx = async (page: Page): Promise<number> => Math.round(await scrol
 
 /** Whether the city's card stands whole at the row's left edge, 12 px in: its left edge there, its right one in view. */
 async function wholeAtTheLeftEdge(page: Page, name: string): Promise<boolean> {
-	const { left, right } = await edgesOf(cityCard(page, name));
+	const { left, right } = await edgesOf(pointCard(page, name));
 	return left === EDGE && right <= DESKTOP.width - EDGE;
 }
 
@@ -73,7 +73,7 @@ test.describe(`on ${DESKTOP.width}×${DESKTOP.height}, mouse`, () => {
 		page,
 	}) => {
 		await openTheCarousel(page);
-		const names = await cityNames(page);
+		const names = await cardNames(page);
 
 		// The card the right edge cuts, read where the cards stand before the step, comes whole to the left edge.
 		const cut = await cutCard(page);
@@ -89,7 +89,7 @@ test.describe(`on ${DESKTOP.width}×${DESKTOP.height}, mouse`, () => {
 		// Back from there, the card before the one at the left edge comes to the right edge.
 		const before = names[names.indexOf(next) - 1] ?? '';
 		await back(page).click();
-		await expect.poll(async () => (await edgesOf(cityCard(page, before))).right).toBe(DESKTOP.width - EDGE);
+		await expect.poll(async () => (await edgesOf(pointCard(page, before))).right).toBe(DESKTOP.width - EDGE);
 		expect(await chosenAfterTheStop(page)).toEqual([]);
 	});
 
@@ -131,24 +131,24 @@ test.describe(`on ${DESKTOP.width}×${DESKTOP.height}, mouse`, () => {
 
 	test('← and → on a card move the focus to the next one, and the row follows it; no city is chosen', async ({ page }) => {
 		await openTheCarousel(page);
-		const names = await cityNames(page);
+		const names = await cardNames(page);
 		const cut = await cutCard(page);
-		await cityCards(page).first().getByRole('button').focus();
+		await pointCards(page).first().getByRole('button').focus();
 
-		// From the first city card on to the one the right edge cuts.
+		// From the first card of a point of interest on to the one the right edge cuts.
 		for (let press = 0; press < names.indexOf(cut); press += 1) {
 			await page.keyboard.press('ArrowRight');
 		}
 
-		await expect(cityCard(page, cut).getByRole('button')).toBeFocused();
+		await expect(pointCard(page, cut).getByRole('button')).toBeFocused();
 		await expect
 			.poll(async () => {
-				const { left, right } = await edgesOf(cityCard(page, cut));
+				const { left, right } = await edgesOf(pointCard(page, cut));
 				return left >= EDGE && right <= DESKTOP.width - EDGE;
 			})
 			.toBe(true);
 		await page.keyboard.press('ArrowLeft');
-		await expect(cityCard(page, names[names.indexOf(cut) - 1] ?? '').getByRole('button')).toBeFocused();
+		await expect(pointCard(page, names[names.indexOf(cut) - 1] ?? '').getByRole('button')).toBeFocused();
 		expect(await chosenAfterTheStop(page)).toEqual([]);
 	});
 
@@ -169,8 +169,9 @@ test.describe(`on ${DESKTOP.width}×${DESKTOP.height}, mouse`, () => {
 			page,
 			CITIES.filter(([, name]) => name === 'Будапешт'),
 		);
+		await servePlaces(page, []);
 		await page.reload();
-		await runUntil(page, async () => (await cityCards(page).count()) === 1, 'the one city card');
+		await runUntil(page, async () => (await pointCards(page).count()) === 1, 'the one city card');
 		await expect(carouselArrows(page)).toHaveCount(0);
 	});
 });
@@ -180,44 +181,44 @@ test.describe(`on ${NARROW_WINDOW.width}×${NARROW_WINDOW.height}, mouse`, () =>
 
 	test('an arrow steps one card, and the stop chooses the city at the left edge', async ({ page }) => {
 		await openTheCarousel(page);
-		const [first, second] = await cityNames(page);
+		const [first, second] = await cardNames(page);
 
 		await forward(page).click();
-		await expect.poll(async () => (await edgesOf(cityCards(page).first())).left).toBe(EDGE);
+		await expect.poll(async () => (await edgesOf(pointCards(page).first())).left).toBe(EDGE);
 		expect(await chosenAfterTheStop(page)).toEqual([first]);
 
 		await forward(page).click();
-		await expect.poll(async () => (await edgesOf(cityCards(page).nth(1))).left).toBe(EDGE);
+		await expect.poll(async () => (await edgesOf(pointCards(page).nth(1))).left).toBe(EDGE);
 		expect(await chosenAfterTheStop(page)).toEqual([second]);
 
 		await back(page).click();
-		await expect.poll(async () => (await edgesOf(cityCards(page).first())).left).toBe(EDGE);
+		await expect.poll(async () => (await edgesOf(pointCards(page).first())).left).toBe(EDGE);
 		expect(await chosenAfterTheStop(page)).toEqual([first]);
 	});
 
 	test('a turn of the wheel over the row steps one card, and the stop chooses its city', async ({ page }) => {
 		await openTheCarousel(page);
-		const [first, second] = await cityNames(page);
+		const [first, second] = await cardNames(page);
 		await overTheRow(page);
 
 		await page.mouse.wheel(0, 100);
-		await expect.poll(async () => (await edgesOf(cityCards(page).first())).left).toBe(EDGE);
+		await expect.poll(async () => (await edgesOf(pointCards(page).first())).left).toBe(EDGE);
 		expect(await chosenAfterTheStop(page)).toEqual([first]);
 
 		await page.mouse.wheel(0, 100);
-		await expect.poll(async () => (await edgesOf(cityCards(page).nth(1))).left).toBe(EDGE);
+		await expect.poll(async () => (await edgesOf(pointCards(page).nth(1))).left).toBe(EDGE);
 		expect(await chosenAfterTheStop(page)).toEqual([second]);
 	});
 
 	test('→ on a card moves the focus to the next one, which comes to the left edge, and the stop chooses its city', async ({ page }) => {
 		await openTheCarousel(page);
-		const [, second] = await cityNames(page);
-		await cityCards(page).first().getByRole('button').focus();
+		const [, second] = await cardNames(page);
+		await pointCards(page).first().getByRole('button').focus();
 
 		await page.keyboard.press('ArrowRight');
 
-		await expect(cityCards(page).nth(1).getByRole('button')).toBeFocused();
-		await expect.poll(async () => (await edgesOf(cityCards(page).nth(1))).left).toBe(EDGE);
+		await expect(pointCards(page).nth(1).getByRole('button')).toBeFocused();
+		await expect.poll(async () => (await edgesOf(pointCards(page).nth(1))).left).toBe(EDGE);
 		expect(await chosenAfterTheStop(page)).toEqual([second]);
 	});
 
@@ -242,7 +243,7 @@ for (const window of WINDOWS.filter(({ width, height }) => width === 768 && heig
 
 		test('without a mouse the vertical wheel and ← → are the browser’s: the wheel leaves the row, → leaves the focus', async ({ page }) => {
 			await openTheCarousel(page);
-			await cityCards(page).first().getByRole('button').focus();
+			await pointCards(page).first().getByRole('button').focus();
 			await overTheRow(page);
 
 			await page.mouse.wheel(0, 300);
@@ -250,7 +251,7 @@ for (const window of WINDOWS.filter(({ width, height }) => width === 768 && heig
 			expect(await scrolled(page)).toBe(0);
 
 			await page.keyboard.press('ArrowRight');
-			await expect(cityCards(page).first().getByRole('button')).toBeFocused();
+			await expect(pointCards(page).first().getByRole('button')).toBeFocused();
 		});
 	});
 }

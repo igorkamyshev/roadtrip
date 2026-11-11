@@ -11,7 +11,7 @@ import { onWindow, WIDE_WINDOWS, windowName } from './windows.ts';
 /** The modals with a filter, and the list of all, are this high, where the window has room (#98). */
 const MODAL_HEIGHT = 640;
 
-const MODAL_NAMES = ['Гражданство', 'Мои визы', 'Откуда едем', 'Что важно знать', 'Все города'] as const;
+const MODAL_NAMES = ['Гражданство', 'Мои визы', 'Откуда едем', 'Что важно знать', 'Всё в кольце'] as const;
 type ModalName = (typeof MODAL_NAMES)[number];
 
 /** How each modal opens: by its word of the phrase, or by «и ещё» at the carousel's end. */
@@ -20,11 +20,11 @@ const MODALS: Record<ModalName, (page: Page) => Locator> = {
 	'Мои визы': (page) => phrase(page).getByRole('button', { name: 'нет' }),
 	'Откуда едем': (page) => phrase(page).getByRole('button', { name: 'Белград' }),
 	'Что важно знать': (page) => phrase(page).getByRole('button', { name: 'Что важно знать' }),
-	'Все города': (page) => page.getByRole('button', { name: /и ещё/u }),
+	'Всё в кольце': (page) => page.getByRole('button', { name: /и ещё/u }),
 };
 
-/** The list of all is titled by the ring: «16 городов в кольце 2–3 ч». */
-const title = (name: ModalName): string | RegExp => (name === 'Все города' ? /в кольце/u : name);
+/** The list of all is titled by the ring: «Всё в кольце 2–3 ч: 24». */
+const title = (name: ModalName): string | RegExp => (name === 'Всё в кольце' ? /в кольце/u : name);
 
 async function openModal(page: Page, name: ModalName): Promise<void> {
 	await MODALS[name](page).click();
@@ -84,9 +84,9 @@ for (const window of WIDE_WINDOWS) {
 		}
 
 		test('the list of all is 640 px high or down to 12 px over the bottom', async ({ page }) => {
-			await openModal(page, 'Все города');
+			await openModal(page, 'Всё в кольце');
 
-			expect(await sheetPlace(page, title('Все города'))).toMatchObject({ top, height });
+			expect(await sheetPlace(page, title('Всё в кольце'))).toMatchObject({ top, height });
 		});
 
 		for (const name of ['Откуда едем', 'Что важно знать'] as const) {

@@ -191,8 +191,8 @@ test.describe('the visa rules', () => {
 
 		// Another N, then back: a request each time, and a mark only for the ring.
 		await slider(page).press('ArrowUp');
-		// The ring of 2–3 h, 0.2°–0.3° around Belgrade, has none of the test's cities.
-		await expect(firstCard(page)).toContainText('Городов в кольце нет');
+		// The ring of 2–3 h, 0.2°–0.3° around Belgrade, has none of the test's cities nor places.
+		await expect(firstCard(page)).toContainText('Точек интереса в кольце нет');
 		expect(await dottedHours(page)).toEqual([3]);
 		await slider(page).press('ArrowDown');
 		await expect(firstCard(page)).toContainText('Не удалось загрузить визовые правила для гражданства Сербия.');

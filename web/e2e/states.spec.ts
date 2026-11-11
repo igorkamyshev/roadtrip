@@ -94,7 +94,7 @@ for (const { failure, reply, state, texts } of failures) {
 
 		await runUntil(
 			page,
-			async () => /^(?:ring|no_cities)$/u.test((await firstCard(page).getAttribute('data-state')) ?? ''),
+			async () => /^(?:ring|no_points)$/u.test((await firstCard(page).getAttribute('data-state')) ?? ''),
 			'the ring card',
 		);
 		await expectRingCard(page, 'до 1 ч');

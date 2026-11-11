@@ -9,7 +9,7 @@ import { expect, LONGEST, LONGEST_IN_DAYS, OLD_RULES, SHORTEST, squareRing, test
 import {
 	BETWEEN,
 	boxOf,
-	cityCards,
+	pointCards,
 	EDGE,
 	expectApart,
 	firstCard,
@@ -56,7 +56,7 @@ const LOWEST_SLIDER = 120;
  * once the clock is held shows only as the clock runs: a frame at a time, far from the sources' 5 s.
  */
 async function citiesCame(page: Page): Promise<void> {
-	await runUntil(page, async () => (await cityCards(page).count()) > 0, 'the cards of the ring’s cities');
+	await runUntil(page, async () => (await pointCards(page).count()) > 0, 'the cards of the ring’s cities');
 }
 
 test.beforeEach(({ ringApi }) => {

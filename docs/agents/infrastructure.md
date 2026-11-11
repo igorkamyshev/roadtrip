@@ -141,7 +141,7 @@ The Container application: `GET /accounts/{account_id}/containers/applications` 
 - `gh` reaches Actions from a cloud session (`gh api …/actions`, `gh run watch`, `gh run download`), although `gh auth status` calls the token in `GH_TOKEN` invalid; only the secrets API is closed to it, and secrets are the Owner's.
 - Wait for a run with `gh run watch <run id> --exit-status` as a background command: it outlives the 10-minute limit of a foreground one and exits non-zero when the run fails. A failed job's log: the GitHub MCP's `get_job_logs` with `failed_only`.
 - A cloud session may neither dispatch a workflow (`workflow_dispatch`, by `gh` or the GitHub MCP) nor delete a branch: GitHub and the git proxy answer 403. A workflow a session must start runs on a push that changes a file of its own as well, as `world-rings.yml` on `.github/world-rings.json`.
-- Try a heavy workflow on a small input first: `dataset.yml` with a few `parts` is a trial, published under `trials/` and deployed nowhere.
+- Try a heavy workflow on a small input first: `dataset.yml` with a few `parts` is a trial, published under `trials/` and deployed nowhere. A session starts it by pushing a change to `.github/dataset-trial.json` on its branch (`data/AGENTS.md`, «The world build»).
 
 ## PostHog
 

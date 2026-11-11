@@ -1,6 +1,6 @@
 // The map under the whole screen: MapLibre GL with the basemap and the overlay (use-map.ts, overlay.ts). It shows
-// the ring whole when a new one comes, with room for the phrase, the slider and the carousel, goes to a city when the
-// screen says (camera.ts), and tells the screen of a tap on a city.
+// the ring whole when a new one comes, with room for the phrase, the slider and the carousel, goes to a point of
+// interest when the screen says (camera.ts), and tells the screen of a tap on one.
 import 'maplibre-gl/dist/maplibre-gl.css';
 import type { Map as MapLibre } from 'maplibre-gl';
 import { useEffect, useImperativeHandle, useRef, type ReactElement, type Ref } from 'react';
@@ -8,8 +8,8 @@ import { DropPin } from '../screen/icons.tsx';
 import { PIN_HINT } from '../screen/pin-bar.tsx';
 import type { LatLon } from '../state/point.ts';
 import { mapHandle, useCamera, type Camera, type MapHandle } from './camera.ts';
-import type { MapCity, RingGeometry } from './overlay.ts';
-import { useCityTaps, useMapLibre, useOverlay } from './use-map.ts';
+import type { MapPoint, RingGeometry } from './overlay.ts';
+import { useMapLibre, useOverlay, usePointTaps } from './use-map.ts';
 
 /**
  * The event the map view announces its MapLibre map with, on `window`, once it is loaded and shows what the screen
@@ -29,20 +29,20 @@ export interface MapViewProps {
 	readonly pinning: boolean;
 	/** The zones to hatch: the countries and closed territories `access` closes. */
 	readonly closed: readonly string[];
-	/** The ring's cities to show, biggest first. */
-	readonly cities: readonly MapCity[];
-	/** A tap on a city's dot or name. */
-	readonly onCity: (id: number) => void;
+	/** The ring's points of interest to show, the most famous first. */
+	readonly points: readonly MapPoint[];
+	/** A tap on a point of interest's dot or name, with its key. */
+	readonly onPoint: (key: string) => void;
 	readonly ref?: Ref<MapHandle>;
 }
 
-export function MapView({ origin, ring, striped, camera, pinning, closed, cities, onCity, ref }: MapViewProps): ReactElement {
+export function MapView({ origin, ring, striped, camera, pinning, closed, points, onPoint, ref }: MapViewProps): ReactElement {
 	const { fit, freeArea } = camera;
 	const container = useRef<HTMLDivElement>(null);
 	const map = useMapLibre(container, origin);
 	useImperativeHandle(ref, () => mapHandle(map, origin, freeArea), [map, origin, freeArea]);
-	useCityTaps(map, pinning ? undefined : onCity);
-	useOverlay(map, { origin, ring, striped, closed, cities });
+	usePointTaps(map, pinning ? undefined : onPoint);
+	useOverlay(map, { origin, ring, striped, closed, points });
 	useCamera(map, { origin, ring, fit, freeArea });
 	usePinFocus(map, pinning);
 

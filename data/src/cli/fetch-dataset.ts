@@ -4,8 +4,9 @@
 //
 // - the graph and its version into engine/dataset/, which the Container's image copies (engine/Dockerfile) and whose
 //   dataset.json the Worker bundles;
-// - the zone outlines and the cities file into web/public/data/, which the client's build copies into its static
-//   assets.
+// - the zone outlines, the cities file, the places file and the cells of the outlines (`place-outlines/`, a file per
+//   cell) into web/public/data/, which the client's build copies into its static assets. A dataset without places
+//   (one from before them) puts neither there.
 //
 //   node data/src/cli/fetch-dataset.ts [--bucket <name>]
 //
@@ -14,16 +15,19 @@
 import { join } from 'node:path';
 import { parseArgs } from 'node:util';
 import { type DatasetSource, fetchDataset } from '../fetch-dataset.ts';
+import { PLACE_OUTLINES_DIRECTORY, PLACE_OUTLINES_FILE, PLACES_FILE } from '../publish.ts';
 import { log } from './input.ts';
 
 const ROOT = join(import.meta.dirname, '../../..');
 
-/** Each file of the dataset the deploy takes, and where it goes; `report.md` stays in R2. */
-const PLACES = {
+/** Each file of the dataset the deploy takes, and where it goes (the cells: their directory); `report.md` stays in R2. */
+const DESTINATIONS = {
 	'graph.graph': join(ROOT, 'engine/dataset/graph.graph'),
 	'dataset.json': join(ROOT, 'engine/dataset/dataset.json'),
 	'zones.json': join(ROOT, 'web/public/data/zones.json'),
 	'cities.json': join(ROOT, 'web/public/data/cities.json'),
+	[PLACES_FILE]: join(ROOT, 'web/public/data', PLACES_FILE),
+	[PLACE_OUTLINES_FILE]: join(ROOT, 'web/public/data', PLACE_OUTLINES_DIRECTORY),
 };
 
 const { values } = parseArgs({ options: { bucket: { type: 'string', default: 'roadtrip-datasets' } } });
@@ -56,5 +60,5 @@ const r2: DatasetSource = {
 	},
 };
 
-const manifest = await fetchDataset(r2, PLACES, log);
+const manifest = await fetchDataset(r2, DESTINATIONS, log);
 log(`the deploy takes the dataset ${manifest.version} from ${values.bucket}`);
