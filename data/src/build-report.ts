@@ -2,6 +2,7 @@
 // run's summary, for the Owner to add the missing crossings to the border table. In Russian, like the issues.
 import type { BuildReport } from './build-graph.ts';
 import type { CitiesReport } from './cities.ts';
+import { MAX_ACCESS_METERS, MIN_SITELINKS, type PlacesReport } from './places.ts';
 
 const plural = new Intl.PluralRules('ru');
 
@@ -86,6 +87,28 @@ export function cityPartsMarkdown({ cityParts, biggestCityParts }: CitiesReport)
 	}
 	lines.push('');
 	return lines.join('\n');
+}
+
+/** Bytes as megabytes in Russian, to 0.01: «0,58». */
+const megabytes = (bytes: number) => (bytes / 1e6).toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+/** The places file's part of the report (spec #154 «Сборка мест»): how many places, what was left out, the size, the places without a Russian name. */
+export function placesMarkdown(report: PlacesReport, brotliBytes: number, budgetBytes: number): string {
+	const { withoutRussian } = report;
+	const line = `Мест без русского названия: ${withoutRussian.count.toLocaleString('ru-RU')}.`;
+	const examples = withoutRussian.mostFamous.map(({ qid, name }) => (name === '' ? `Q${qid}` : `${name} (Q${qid})`)).join(', ');
+	return [
+		'## Места',
+		'',
+		`В файле мест ${count(report.places, ['место', 'места', 'мест'])}, ${megabytes(brotliBytes)} МБ в brotli при бюджете ` +
+			`${(budgetBytes / 1e6).toLocaleString('ru-RU')} МБ.`,
+		'',
+		`Не вошли: меньше ${MIN_SITELINKS} сайтлинков — ${report.belowSitelinks}, в пределах города — ${report.inCities}, ` +
+			`без дороги ближе ${MAX_ACCESS_METERS / 1000} км — ${report.withoutAccess}, храмы, которые Wikidata не называет монастырём, — ${report.notMonasteries}.`,
+		'',
+		withoutRussian.mostFamous.length > 0 ? `${line} Самые известные: ${examples}.` : line,
+		'',
+	].join('\n');
 }
 
 /**

@@ -3,14 +3,16 @@
 	"version": "0.0.0",
 	"private": true,
 	"type": "module",
-	"description": "The dataset build: the road graph and the zone outlines from an OSM extract, the cities file from GeoNames and Wikidata with the table of Russian names, and the command that computes a ring from an extract.",
+	"description": "The dataset build: the road graph and the zone outlines from an OSM extract, the cities file from GeoNames and Wikidata with the table of Russian names, the places file from OSM and Wikidata, and the command that computes a ring from an extract.",
 	"exports": {
 		"./cities-file": "./src/cities-file.ts",
-		"./fixture-graph": "./test/fixture-graph.ts"
+		"./fixture-graph": "./test/fixture-graph.ts",
+		"./places-file": "./src/places-file.ts"
 	},
 	"scripts": {
 		"build-cities": "node src/cli/build-cities.ts",
 		"build-graph": "node src/cli/build-graph.ts",
+		"build-places": "node src/cli/build-places.ts",
 		"engine-fingerprint": "node src/cli/engine-fingerprint.ts",
 		"fetch-dataset": "node src/cli/fetch-dataset.ts",
 		"publish-dataset": "node src/cli/publish-dataset.ts",

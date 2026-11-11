@@ -7,7 +7,7 @@
 Read a package's `AGENTS.md` before working in it:
 
 - `engine/AGENTS.md`: the ring engine, keeping it portable, when to bump the engine version and record its fingerprint, where its tests live; the engine server of the Container and its image.
-- `data/AGENTS.md`: the graph builder, the zone outlines, the cities file and the table of Russian names, the `ring`, `build-cities` and `russian-names` commands, rings on real roads and their pictures (`region`, `render`), the fixtures; the monthly world build (`.github/workflows/dataset.yml`) and the dataset in R2 with its pointer `current.json`.
+- `data/AGENTS.md`: the graph builder, the zone outlines, the cities file and the table of Russian names, the places file, the `ring`, `build-cities`, `build-places` and `russian-names` commands, rings on real roads and their pictures (`region`, `render`), the fixtures; the monthly world build (`.github/workflows/dataset.yml`) and the dataset in R2 with its pointer `current.json`.
 
 `rules` holds the tables edited by hand: the border table, the visa exemptions' table (`VISA_EXEMPTIONS`), the Schengen area, the countries as zones (`COUNTRIES`) and Sherpa's 199 passports (`SHERPA_PASSPORTS`); it has no `AGENTS.md` yet.
 
