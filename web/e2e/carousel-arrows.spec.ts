@@ -48,8 +48,8 @@ async function chosenAfterTheStop(page: Page): Promise<string[]> {
 	return chosenCard(page).getByRole('heading').allInnerTexts();
 }
 
-/** The names of the city cards in order. */
-const cityNames = async (page: Page): Promise<string[]> => pointCards(page).getByRole('heading').allInnerTexts();
+/** The names of the cards of the points of interest, in order. */
+const cardNames = async (page: Page): Promise<string[]> => pointCards(page).getByRole('heading').allInnerTexts();
 
 /** Puts the mouse over the middle of the row's first card. */
 async function overTheRow(page: Page): Promise<void> {
@@ -73,7 +73,7 @@ test.describe(`on ${DESKTOP.width}×${DESKTOP.height}, mouse`, () => {
 		page,
 	}) => {
 		await openTheCarousel(page);
-		const names = await cityNames(page);
+		const names = await cardNames(page);
 
 		// The card the right edge cuts, read where the cards stand before the step, comes whole to the left edge.
 		const cut = await cutCard(page);
@@ -131,11 +131,11 @@ test.describe(`on ${DESKTOP.width}×${DESKTOP.height}, mouse`, () => {
 
 	test('← and → on a card move the focus to the next one, and the row follows it; no city is chosen', async ({ page }) => {
 		await openTheCarousel(page);
-		const names = await cityNames(page);
+		const names = await cardNames(page);
 		const cut = await cutCard(page);
 		await pointCards(page).first().getByRole('button').focus();
 
-		// From the first city card on to the one the right edge cuts.
+		// From the first card of a point of interest on to the one the right edge cuts.
 		for (let press = 0; press < names.indexOf(cut); press += 1) {
 			await page.keyboard.press('ArrowRight');
 		}
@@ -181,7 +181,7 @@ test.describe(`on ${NARROW_WINDOW.width}×${NARROW_WINDOW.height}, mouse`, () =>
 
 	test('an arrow steps one card, and the stop chooses the city at the left edge', async ({ page }) => {
 		await openTheCarousel(page);
-		const [first, second] = await cityNames(page);
+		const [first, second] = await cardNames(page);
 
 		await forward(page).click();
 		await expect.poll(async () => (await edgesOf(pointCards(page).first())).left).toBe(EDGE);
@@ -198,7 +198,7 @@ test.describe(`on ${NARROW_WINDOW.width}×${NARROW_WINDOW.height}, mouse`, () =>
 
 	test('a turn of the wheel over the row steps one card, and the stop chooses its city', async ({ page }) => {
 		await openTheCarousel(page);
-		const [first, second] = await cityNames(page);
+		const [first, second] = await cardNames(page);
 		await overTheRow(page);
 
 		await page.mouse.wheel(0, 100);
@@ -212,7 +212,7 @@ test.describe(`on ${NARROW_WINDOW.width}×${NARROW_WINDOW.height}, mouse`, () =>
 
 	test('→ on a card moves the focus to the next one, which comes to the left edge, and the stop chooses its city', async ({ page }) => {
 		await openTheCarousel(page);
-		const [, second] = await cityNames(page);
+		const [, second] = await cardNames(page);
 		await pointCards(page).first().getByRole('button').focus();
 
 		await page.keyboard.press('ArrowRight');

@@ -56,15 +56,18 @@ function themesOf(text: string): readonly Theme[] | undefined {
 	return text === 'light' || text === 'dark' ? [text] : undefined;
 }
 
-/** Scrolls the carousel to the card of `city`, as `scrollTo` of cities.spec.ts does, and waits until it is the chosen one. */
-async function chooseCard(page: Page, city: string, path: string): Promise<Locator> {
+/**
+ * Scrolls the carousel to the card of the point of interest named `name`, a city or a place, as `scrollTo` of
+ * cities.spec.ts does, and waits until it is the chosen one.
+ */
+async function chooseCard(page: Page, name: string, path: string): Promise<Locator> {
 	const cards = page.getByTestId('point-card');
-	const card = cards.filter({ has: page.getByRole('heading', { name: city, exact: true }) });
+	const card = cards.filter({ has: page.getByRole('heading', { name, exact: true }) });
 	// The cards come at once, with the cities and places files.
 	await cards.first().waitFor({ timeout: READY_TIMEOUT_MS });
 	if ((await card.count()) === 0) {
 		const names = await cards.getByRole('heading').allTextContents();
-		throw new Error(`No card of «${city}» in the carousel of ${path}, only: ${names.join(', ')}`);
+		throw new Error(`No card of «${name}» in the carousel of ${path}, only: ${names.join(', ')}`);
 	}
 	await card.evaluate((element) => {
 		element.scrollIntoView({ inline: 'start', block: 'nearest' });
