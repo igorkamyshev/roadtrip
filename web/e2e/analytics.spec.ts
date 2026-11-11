@@ -31,6 +31,7 @@ import {
 	mapAtRest,
 	phrase,
 	pointCard,
+	pointCards,
 	slider,
 } from './screen.ts';
 
@@ -362,8 +363,8 @@ test.describe('ring result', () => {
 		await ringApi.waitForCalls(1);
 		await page.clock.runFor(1000);
 		await ringApi.answer(belgradeRing());
-		// The answer is in, at the held time, before the clock goes on.
-		await runNowUntil(page, async () => /17\s*точек интереса в 2 странах/u.test(await firstCard(page).innerText()));
+		// The answer and its points of interest are in, the cards with them, at the held time, before the clock goes on.
+		await runNowUntil(page, async () => (await pointCards(page).count()) > 0);
 		await page.clock.resume();
 
 		await expect.poll(() => posthog.named('ring result'), SENT).toHaveLength(1);
@@ -390,7 +391,7 @@ test.describe('ring result', () => {
 
 		await openInProduction(page, LINK_3_HOURS_RUS);
 
-		await expect(firstCard(page)).toContainText(/17\s*точек интереса в 3 странах/u);
+		await expectRingCard(page, '2–3 ч');
 		await expect
 			.poll(() => posthog.named('ring result'), SENT)
 			.toEqual([
@@ -426,7 +427,7 @@ test.describe('ring result', () => {
 
 		await openInProduction(page, LINK_3_HOURS_RUS);
 
-		await expect(firstCard(page)).toContainText(/10\s*точек интереса в 2 странах/u);
+		await expectRingCard(page, '2–3 ч');
 		await expect.poll(() => posthog.named('ring result'), SENT).toHaveLength(1);
 		const [result] = posthog.named('ring result');
 		expect(result).toMatchObject({ outcome: 'ring', cities_count: 10, countries_count: 2 });
@@ -441,7 +442,7 @@ test.describe('ring result', () => {
 
 		await openInProduction(page, '/#/?p=44.95000,21.10000&h=3&cit=RUS');
 
-		await expect(firstCard(page)).toContainText(/2\s*точки интереса в 1 стране/u);
+		await expectRingCard(page, '2–3 ч');
 		await expect
 			.poll(() => posthog.named('ring result'), SENT)
 			.toEqual([
@@ -473,7 +474,7 @@ test.describe('ring result', () => {
 
 		await openInProduction(page, LINK_3_HOURS_RUS);
 
-		await expect(firstCard(page)).toContainText(/10\s*точек интереса в 2 странах/u);
+		await expectRingCard(page, '2–3 ч');
 		await expect.poll(() => posthog.named('ring result'), SENT).toHaveLength(1);
 		const [result] = posthog.named('ring result');
 		expect(result).toMatchObject({ outcome: 'ring', cities_count: 10, countries_count: 2 });
@@ -502,7 +503,8 @@ test.describe('ring result', () => {
 	test('from memory: source memory, wait 0, as it came', async ({ page, ringApi, posthog }) => {
 		ringApi.respond(() => belgradeRing());
 		await openInProduction(page, LINK_3_HOURS_RUS);
-		await expect(firstCard(page)).toContainText(/17\s*точек интереса/u);
+		await expectRingCard(page, '2–3 ч');
+		await expect.poll(() => posthog.named('ring result'), SENT).toHaveLength(1);
 		await dragSlider(page, 5);
 		await expect.poll(() => ringApi.calls, SENT).toHaveLength(2);
 
@@ -621,7 +623,8 @@ test.describe('ring result', () => {
 	test('none while the slider moves: only where it is let go', async ({ page, ringApi, posthog }) => {
 		ringApi.respond(() => belgradeRing());
 		await openInProduction(page, LINK_3_HOURS_RUS);
-		await expect(firstCard(page)).toContainText(/17\s*точек интереса/u);
+		await expectRingCard(page, '2–3 ч');
+		await expect.poll(() => posthog.named('ring result'), SENT).toHaveLength(1);
 
 		await dragSlider(page, 7);
 
@@ -639,7 +642,7 @@ test('route opened: «Маршрут» of a place and of a city, with its kind, 
 }) => {
 	ringApi.respond(() => belgradeRing());
 	await openInProduction(page, LINK_3_HOURS_RUS);
-	await expect(firstCard(page)).toContainText(/17\s*точек интереса/u);
+	await expectRingCard(page, '2–3 ч');
 
 	// Studenica, the first of `belgradeRing`, a monastery; Niš the third, a city.
 	for (const name of ['Монастырь Студеница', 'Ниш']) {

@@ -1,7 +1,8 @@
 // The points of interest of a ring (GLOSSARY «Точка интереса», spec #154): what the carousel, the list of all, the map,
-// the choice and the events show and count, one list in order of fame, cities and places alike. Only the card and a
-// row of the list look at what a point is; the rest take its name, fame, country and point.
-import { cityFame, placeFame, type AccessPoint, type Place } from 'data/places-file';
+// the choice and the events show and count, one list in order of fame, cities and places alike. What tells a city from
+// a place on the screen and in the events is on the point itself, set where it is built (`cityPoint`, `placePoint`):
+// its `kind`, its `group` and its `eventKind`. Only the card and a row of the list read its city or its place.
+import { cityFame, PLACE_GROUP, placeFame, type AccessPoint, type Place, type PlaceGroup, type PlaceType } from 'data/places-file';
 import type { City } from '../cities/cities.ts';
 
 /** What every point of interest has, whatever its kind. */
@@ -22,17 +23,37 @@ interface PointBase {
 	/** Where the map shows it and «Маршрут» leads, degrees: a place's access point in this ring. */
 	readonly lat: number;
 	readonly lon: number;
+	/** What the events call it (`route opened`'s `kind`): `city`, or a place's type. */
+	readonly eventKind: 'city' | PlaceType;
 }
 
-/** A point of interest of the ring: a city or a place. Only the card and a row of the list look at `kind`. */
+/**
+ * A point of interest of the ring: a city or a place. A place has its group, the colour of its card's strip, its chip,
+ * its diamond and its name on the map; a city none.
+ */
 export type PointOfInterest =
-	| (PointBase & { readonly kind: 'city'; readonly city: City })
-	| (PointBase & { readonly kind: 'place'; readonly place: Place });
+	| (PointBase & { readonly kind: 'city'; readonly group: undefined; readonly city: City })
+	| (PointBase & { readonly kind: 'place'; readonly group: PlaceGroup; readonly place: Place });
+
+/** A place as a point of interest. */
+export type PlacePoint = Extract<PointOfInterest, { readonly kind: 'place' }>;
 
 /** A city as a point of interest: its fame by its population (`cityFame`), its zone and its point. */
 export function cityPoint(city: City): PointOfInterest {
 	const { id, name, zone, lat, lon, population } = city;
-	return { key: `city:${id}`, id, name, fame: cityFame(population), zone, lat, lon, kind: 'city', city };
+	return {
+		key: `city:${id}`,
+		id,
+		name,
+		fame: cityFame(population),
+		zone,
+		lat,
+		lon,
+		eventKind: 'city',
+		kind: 'city',
+		group: undefined,
+		city,
+	};
 }
 
 /**
@@ -40,8 +61,20 @@ export function cityPoint(city: City): PointOfInterest {
  * name or else its other one, and the access point's zone and point.
  */
 export function placePoint(place: Place, { lat, lon, zone }: AccessPoint): PointOfInterest {
-	const { qid, ru, local, sitelinks } = place;
-	return { key: `place:Q${qid}`, id: qid, name: ru === '' ? local : ru, fame: placeFame(sitelinks), zone, lat, lon, kind: 'place', place };
+	const { qid, ru, local, sitelinks, type } = place;
+	return {
+		key: `place:Q${qid}`,
+		id: qid,
+		name: ru === '' ? local : ru,
+		fame: placeFame(sitelinks),
+		zone,
+		lat,
+		lon,
+		eventKind: type,
+		kind: 'place',
+		group: PLACE_GROUP[type],
+		place,
+	};
 }
 
 /**

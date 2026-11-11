@@ -7,14 +7,16 @@
 
   Here 0.01° is 1.11 km. The grid of the access points: rows of 5 km, 0.044966° (5 000 m over 111 195 m a degree)
   from the equator, row k from k · 0.044966°; columns of 5 km at the row's middle, from 0°, 0.044966° / cos(middle),
-  which is 0.044967°–0.044972° here. Of each cell and country, the point of a road nearest the cell's middle,
-  if it is in the cell and in the outline or within 1 km of its edge, to 0.001°.
+  which is 0.044967°–0.044972° here. Of each cell and country, the point of a road nearest the cell's middle of
+  those in the cell and in the outline or within 1 km of its edge (0.008993°), to 0.001°.
 
   - 101 Q2001, a lake across the border (0.40°N–0.46°N, 0.90°E–1.10°E), 22 km across; its point is Wikidata's
     P625 (0.43°N, 1.0°E). Node 300 Q2001, a lake's node in it: one item, the outline wins. Roads 0.56 km off its
     shores: AAA's along 0.465°N from 0.85°E to 0.995°E, BBB's along 0.395°N from 1.005°E to 1.15°E.
-      AAA, row 10 (0.44966°N–0.49463°N, middle 0.47214°N), columns of 0.044968°: column 19 (middle 0.87687°E) has
-      its point 2.6 km from the lake's corner, out; column 20 (0.92183°E) and 21 (0.96680°E) at their middles,
+      AAA, row 10 (0.44966°N–0.49463°N, middle 0.47214°N), columns of 0.044968°: column 19 (0.85439°E–0.89936°E)
+      has its point nearest the middle (0.87687°E) 2.6 km from the lake's corner (0.46°N, 0.9°E), but the road
+      comes within 1 km of the corner east of 0.9° − √(0.008993² − 0.005²)° = 0.89253°E, (0.465, 0.893);
+      column 20 (0.92183°E) and 21 (0.96680°E) at their middles,
       (0.465, 0.922) and (0.465, 0.967); column 22 (0.98929°E–1.03425°E) at the road's end, (0.465, 0.995).
       BBB, row 8 (0.35973°N–0.40469°N, middle 0.38221°N), columns of 0.044967°: column 22 (middle 1.01176°E),
       23 (1.05672°E), 24 (1.10169°E, 0.19° east of the shore, 0.59 km off the corner) at their middles,
@@ -25,16 +27,18 @@
   - 103 Q2003, a national park, a relation of one square (0.50°N–0.95°N, 1.35°E–1.80°E), 2 504 km²: too large.
   - 104 Q2004, a lake, a multipolygon (0.20°N–0.30°N, 1.30°E–1.40°E), its outer ring of two ways, with an island,
     the hole (0.22°N–0.28°N, 1.32°E–1.38°E). BBB's road along 1.36°E from 0.15°N to 0.35°N crosses both. Column 30
-    (1.34899°E–1.39396°E): row 4 (middle 0.20235°N) in the lake, (0.202, 1.36); row 5 (0.24731°N) on the island,
-    2.2 km from its shore, out; row 6 (0.29228°N) in the lake, (0.292, 1.36). Its point is inside it: on the
+    (1.34899°E–1.39396°E): row 4 (middle 0.20235°N) in the lake, (0.202, 1.36); row 5 (0.22483°N–0.26979°N)
+    has its middle on the island, 2.2 km from its shore, but the road is within 1 km of the island's south shore up
+    to 0.22°N + 0.008993°, (0.229, 1.36); row 6 (0.29228°N) in the lake, (0.292, 1.36). Its point is inside it: on the
     middle of its box, 0.25°N, the wider of its spans of water (1.30°E–1.32°E and 1.38°E–1.40°E, the first of
     two as wide), (0.25, 1.31).
   - 105 Q2005, a castle (0.80°N–0.81°N, 0.30°E–0.31°E), wholly within the city's limits: its farthest corner is
     1.6 km from the city.
   - 106 Q2006, a fortress (0.78°N–0.82°N, 0.36°E–0.40°E), 4.4 km across, its west 6.7 km from the city, its
     east 11.1 km: not within the limits. AAA's road along 0.355°E from 0.7°N to 0.9°N, 0.56 km west, inside the
-    limits: row 17 (middle 0.78690°N), column 7 (0.31479°E–0.35976°E), (0.787, 0.355); row 18 (0.83187°N) 1.4 km
-    off the corner, out. Its point inside it: (0.8, 0.38).
+    limits: row 17 (middle 0.78690°N), column 7 (0.31479°E–0.35976°E), (0.787, 0.355); row 18 (0.80934°N–0.85431°N)
+    has its middle (0.83187°N) 1.4 km off the corner (0.82°N, 0.36°E), but the road comes within 1 km of it south of
+    0.82° + √(0.008993² − 0.005²)° = 0.82748°N, (0.827, 0.355). Its point inside it: (0.8, 0.38).
   - 107 Q2007, a glacier (0.95°N–0.995°N, 1.05°E–1.10°E), 5 km across, 0.56 km from 1°N; its point is P625
     (0.97°N, 1.08°E). BBB's road along 0.985°N from 1.02°E to 1.2°E: row 21 (0.94429°N–0.98925°N), columns of
     0.044972°: column 22 (middle 1.01188°E) at the road's end, 3.3 km off, out; column 23 (1.05685°E) on the

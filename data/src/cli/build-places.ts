@@ -108,9 +108,10 @@ log(`wrote ${out}: ${sizes(json, brotli)} of ${(PLACES_BUDGET_BYTES / 1e6).toFix
 const outlines = join(dirname(userPath(out)), PLACE_OUTLINES_PATH.slice(PLACES_PATH.lastIndexOf('/') + 1));
 rmSync(outlines, { recursive: true, force: true });
 mkdirSync(outlines, { recursive: true });
-for (const [cell, cellOutlines] of cells) {
-	writeFileSync(join(outlines, `${cell}.json`), JSON.stringify(encodePlaceOutlines(cellOutlines)));
+for (const [name, cell] of cells) {
+	writeFileSync(join(outlines, `${name}.json`), JSON.stringify(encodePlaceOutlines(cell)));
 }
 log(
-	`wrote ${report.cells.count} cells of the outlines of ${report.cells.outlines} places, ${(report.cells.bytes / 1e6).toFixed(2)} MB, to ${outlines}`,
+	`wrote ${report.cells.count} cells of the outlines of ${report.cells.outlines} places and the radii of ${report.cells.radii}, ` +
+		`${(report.cells.bytes / 1e6).toFixed(2)} MB, to ${outlines}`,
 );

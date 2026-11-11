@@ -1,5 +1,7 @@
 // Wikidata's sitelinks, from the SQL dump of the table `wb_items_per_site` (ADR 0003, CC0): a row per item and wiki
-// of any project of Wikimedia, `(ips_row_id, ips_item_id, 'ips_site_id', 'ips_site_page')`, in long INSERT lines.
+// of any project of Wikimedia, `(ips_row_id, ips_item_id, 'ips_site_id', 'ips_site_page')`, in INSERT statements:
+// MariaDB 10.11's dump (2026-11) writes `INSERT INTO … VALUES` on its own line and then a row a line, the last ending in
+// `;`; older dumps, a statement and its rows on one long line. Either is read a line at a time, as the dump streams.
 // The number of an item's rows is the place's fame; its row of ruwiki holds the title of its article in Russian.
 
 /** An item's sitelinks. */
@@ -20,10 +22,14 @@ const ESCAPE = /\\(.)/gu;
 export async function readSitelinks(lines: AsyncIterable<string>, qids: ReadonlySet<number>): Promise<Map<number, Sitelinks>> {
 	const counts = new Map<number, number>();
 	const ruwiki = new Map<number, string>();
+	// Whether the line is in an INSERT statement's rows: from its `INSERT INTO` to the line that ends it with `;`.
+	let inRows = false;
 	for await (const line of lines) {
-		if (!line.startsWith('INSERT INTO')) {
+		inRows ||= line.startsWith('INSERT INTO');
+		if (!inRows) {
 			continue;
 		}
+		inRows = !line.trimEnd().endsWith(';');
 		for (const [, item, site, page] of line.matchAll(ROW)) {
 			const qid = Number(item);
 			if (!qids.has(qid)) {

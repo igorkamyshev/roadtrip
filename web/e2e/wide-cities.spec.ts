@@ -23,6 +23,7 @@ import {
 	scrolled,
 	settle,
 	tapMap,
+	theList,
 } from './screen.ts';
 import { onWindow, type TestWindow, windowName, WINDOWS } from './windows.ts';
 
@@ -98,11 +99,7 @@ async function wholeAt(page: Page, name: string): Promise<'left' | 'right' | 'be
  */
 async function pickInTheList(page: Page, name: string): Promise<void> {
 	await tapMap(page, placeOf('Решица'));
-	await page
-		.getByRole('dialog', { name: /в кольце/u })
-		.getByTestId('point-row')
-		.filter({ hasText: name })
-		.click();
+	await theList(page).getByTestId('point-row').filter({ hasText: name }).click();
 	await expect(page.getByRole('dialog')).toHaveCount(0);
 }
 

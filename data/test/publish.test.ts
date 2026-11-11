@@ -145,6 +145,17 @@ describe('publishing a dataset', () => {
 		);
 	});
 
+	it('puts an empty file of the cells in the version when the build wrote none, an empty directory', async () => {
+		rmSync(join(directory, 'place-outlines'), { recursive: true });
+		mkdirSync(join(directory, 'place-outlines'));
+		const r2 = memoryStore();
+
+		await publishDataset(r2.store, directory, silent);
+
+		expect(r2.text('2026-11-07/place-outlines.tsv')).toBe('');
+		expect(JSON.parse(r2.text('current.json'))).toMatchObject({ files: { 'place-outlines.tsv': { size: 0 } } });
+	});
+
 	describe('when the places job failed', () => {
 		it("takes the version before's places file and cells, and the report says so", async () => {
 			const r2 = memoryStore();

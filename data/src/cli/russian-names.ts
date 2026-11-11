@@ -46,19 +46,19 @@ const cityNames = readRussianNames(citiesTable);
 const placeNames = readPlaceRussianNames(placesTable);
 const named = files.map((path) => {
 	const json: unknown = JSON.parse(readFileSync(path, 'utf8'));
-	if (field(json, 'places') === undefined) {
-		const { file, named: count, notInFile } = withRussianNames(parseCitiesFile(json), cityNames);
-		return {
-			path,
-			file,
-			line: `Russian names of ${citiesTable ?? 'the shipped table'} in ${path}: ${count} cities named; ids of the table not in the file: ${notInFile}`,
-		};
-	}
-	const { file, named: count, notInFile } = withPlaceRussianNames(parsePlacesFile(json), placeNames);
+	const cities = field(json, 'places') === undefined;
+	const {
+		file,
+		named: count,
+		notInFile,
+	} = cities ? withRussianNames(parseCitiesFile(json), cityNames) : withPlaceRussianNames(parsePlacesFile(json), placeNames);
+	const [table, what, keys] = cities
+		? [citiesTable ?? 'the shipped table', 'cities', 'ids']
+		: [placesTable ?? 'the shipped table of places', 'places', 'Q-ids'];
 	return {
 		path,
 		file,
-		line: `Russian names of ${placesTable ?? 'the shipped table of places'} in ${path}: ${count} places named; Q-ids of the table not in the file: ${notInFile}`,
+		line: `Russian names of ${table} in ${path}: ${count} ${what} named; ${keys} of the table not in the file: ${notInFile}`,
 	};
 });
 for (const { path, file, line } of named) {

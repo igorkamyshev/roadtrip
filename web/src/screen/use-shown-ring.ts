@@ -66,8 +66,8 @@ export function useShownRing({ origin, start, hours, settings }: ScreenStateCont
 	const geometry = data?.outcome === 'ring' ? data.ring : undefined;
 	const answer = data?.outcome === 'visa_rules_missing' ? undefined : data;
 	const access = answer?.access;
-	const { cities } = citiesFile;
-	const { settled: placesSettled, places } = ringPlaces;
+	const { contents: cities } = citiesFile;
+	const { settled: placesSettled, contents: places } = ringPlaces;
 	const ringPoints = useMemo(
 		() =>
 			cities === undefined || !placesSettled || geometry === undefined || access === undefined || origin === undefined

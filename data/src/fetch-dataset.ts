@@ -17,7 +17,7 @@ export interface DatasetSource {
 const OPTIONAL = new Set([PLACES_FILE, PLACE_OUTLINES_FILE]);
 
 /**
- * Puts the files of the current version in their places: `places` maps a file of the dataset (`graph.graph`) to its
+ * Puts the files of the current version in their places: `destinations` maps a file of the dataset (`graph.graph`) to its
  * local path, and the cells of the outlines (`PLACE_OUTLINES_FILE`) to the directory each cell's file goes in, in
  * place of those there were. Each file is downloaded next to its place and checked against the pointer's size and
  * SHA-256; only when every one matches do they all take their places, so a failed download leaves the files there
@@ -25,11 +25,11 @@ const OPTIONAL = new Set([PLACES_FILE, PLACE_OUTLINES_FILE]);
  */
 export async function fetchDataset(
 	source: DatasetSource,
-	places: Readonly<Record<string, string>>,
+	destinations: Readonly<Record<string, string>>,
 	log: (line: string) => void,
 ): Promise<Manifest> {
 	const manifest = parseManifest(await text(source, POINTER), POINTER);
-	const taken = Object.entries(places).filter(([name]) => {
+	const taken = Object.entries(destinations).filter(([name]) => {
 		if (Object.hasOwn(manifest.files, name)) {
 			return true;
 		}
@@ -39,33 +39,56 @@ export async function fetchDataset(
 		log(`${manifest.version} has no ${name}: the deploy goes on without it`);
 		return false;
 	});
+	const placings = taken.map(([name, path]) => ({ name, path, placing: name === PLACE_OUTLINES_FILE ? CELLS : ONE_FILE }));
 	try {
-		for (const [name, path] of taken) {
+		for (const { name, path, placing } of placings) {
 			await download(source, { key: `${manifest.version}/${name}`, path, expected: manifest.files[name] }, log);
-			if (name === PLACE_OUTLINES_FILE) {
-				const cells = unpackPlaceOutlines(readFileSync(`${path}.download`, 'utf8'), `${path}.cells`);
-				log(`${manifest.version}/${name}: ${cells} cells of the outlines`);
-			}
+			placing.unpack(path, (line) => {
+				log(`${manifest.version}/${name}: ${line}`);
+			});
 		}
 	} catch (error) {
-		for (const [, path] of taken) {
+		for (const { path } of placings) {
 			rmSync(`${path}.download`, { force: true });
 			rmSync(`${path}.cells`, { recursive: true, force: true });
 		}
 		throw error;
 	}
-	for (const [name, path] of taken) {
-		if (name === PLACE_OUTLINES_FILE) {
-			rmSync(path, { recursive: true, force: true });
-			renameSync(`${path}.cells`, path);
-			rmSync(`${path}.download`);
-		} else {
-			renameSync(`${path}.download`, path);
-		}
+	for (const { name, path, placing } of placings) {
+		placing.place(path);
 		log(`${manifest.version}/${name} → ${path}`);
 	}
 	return manifest;
 }
+
+/**
+ * How a file downloaded to `<path>.download` takes its place: what is done with it once it came (`unpack`), and once
+ * every file came (`place`).
+ */
+interface Placing {
+	readonly unpack: (path: string, log: (line: string) => void) => void;
+	readonly place: (path: string) => void;
+}
+
+/** A file of the dataset takes its path as it came. */
+const ONE_FILE: Placing = {
+	unpack: () => {},
+	place: (path) => {
+		renameSync(`${path}.download`, path);
+	},
+};
+
+/** The cells of the outlines, a file per cell in `<path>.cells`, take the place of the directory of the cells there were. */
+const CELLS: Placing = {
+	unpack: (path, log) => {
+		log(`${unpackPlaceOutlines(readFileSync(`${path}.download`, 'utf8'), `${path}.cells`)} cells of the outlines`);
+	},
+	place: (path) => {
+		rmSync(path, { recursive: true, force: true });
+		renameSync(`${path}.cells`, path);
+		rmSync(`${path}.download`);
+	},
+};
 
 /** Downloads the object under `key` to `<path>.download` and checks its size and SHA-256. */
 async function download(

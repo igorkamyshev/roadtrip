@@ -7,6 +7,7 @@ import { type Graph, ZoneLocator } from 'engine/graph';
 import { COUNTRIES } from 'rules/countries';
 import { biggestFirst, cityAround, type CityRow, limitsKm, type Placed, type Point } from './cities-file.ts';
 import { type MissingRussianNames, missingRussianNames } from './russian-names.ts';
+import { roundDegrees } from './degrees.ts';
 
 const MIN_POPULATION = 15_000;
 
@@ -107,7 +108,7 @@ export async function buildCities(sources: CitiesSources): Promise<{ cities: Cit
 	const wikidata = await sources.wikidataLabels(zoned.filter((place) => !geonames.has(place.id)).map((place) => place.id));
 	const rows = zoned.map((place): CityRow => {
 		const russian = geonames.get(place.id)?.name ?? wikidata.get(place.id) ?? '';
-		return [place.id, russian, place.name, round(place.lat), round(place.lon), place.population, place.zone];
+		return [place.id, russian, place.name, roundDegrees(place.lat), roundDegrees(place.lon), place.population, place.zone];
 	});
 	const withoutRussian = rows.filter(([, russian]) => russian === '').length;
 	return {
@@ -288,9 +289,4 @@ async function readPlaces(lines: AsyncIterable<string>): Promise<{ places: Place
 		});
 	}
 	return { places, read };
-}
-
-/** Degrees to 0.001°, about 100 m. */
-function round(degrees: number): number {
-	return Math.round(degrees * 1000) / 1000;
 }

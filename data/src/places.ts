@@ -15,11 +15,16 @@ import {
 	mostFamousFirst,
 	type Place,
 	type PlaceOutline,
+	type PlaceOutlinesCell,
+	placeRadius,
+	type PlaceRadius,
 	PLACE_TYPES,
 	type PlaceType,
+	QID,
 } from './places-file.ts';
 import { readSitelinks } from './sitelinks.ts';
 import type { WikidataPlace } from './wikidata.ts';
+import { roundDegrees } from './degrees.ts';
 
 /** A place has this many sitelinks or more. */
 export const MIN_SITELINKS = 10;
@@ -70,8 +75,11 @@ export interface PlacesReport {
 		readonly count: number;
 		readonly mostFamous: readonly { readonly qid: number; readonly name: string }[];
 	};
-	/** The cells of the outlines: how many, how many places' outlines are in them, and their files' bytes in all. */
-	readonly cells: { readonly count: number; readonly outlines: number; readonly bytes: number };
+	/**
+	 * The cells of the outlines: how many, how many places are in them as their outline and how many as a radius, and
+	 * their files' bytes in all.
+	 */
+	readonly cells: { readonly count: number; readonly outlines: number; readonly radii: number; readonly bytes: number };
 }
 
 /** An object of OSM that may be a place. */
@@ -113,7 +121,7 @@ const KIND_ORDER = ['relation', 'way', 'node'] as const;
  */
 export async function buildPlaces(
 	sources: PlacesSources,
-): Promise<{ places: Place[]; cells: Map<string, PlaceOutline[]>; report: PlacesReport }> {
+): Promise<{ places: Place[]; cells: Map<string, PlaceOutlinesCell>; report: PlacesReport }> {
 	const candidates = readCandidates(sources.osm);
 	const sitelinks = await readSitelinks(sources.sitelinks, new Set(candidates.map(({ qid }) => qid)));
 	const famous = candidates.filter(({ qid }) => (sitelinks.get(qid)?.count ?? 0) >= MIN_SITELINKS);
@@ -128,12 +136,8 @@ export async function buildPlaces(
 	const places = typed
 		.map((place) => placeOf(place, items.get(place.candidate.qid), sitelinks.get(place.candidate.qid)))
 		.toSorted(mostFamousFirst);
-	const outlines = typed.flatMap(({ candidate, outline }) =>
-		outline !== undefined && outline.acrossMeters >= MIN_OUTLINE_METERS && outline.rings.length > 0
-			? [{ qid: candidate.qid, rings: outline.rings }]
-			: [],
-	);
-	const cells = outlineCells(outlines);
+	const { outlines, radii } = cellPlaces(typed, places);
+	const cells = outlineCells(outlines, radii);
 	const withoutRussian = places.filter(({ qid, ru }) => ru === '' && !sources.russianNames.has(qid));
 	return {
 		places,
@@ -154,10 +158,31 @@ export async function buildPlaces(
 			cells: {
 				count: cells.size,
 				outlines: outlines.length,
+				radii: radii.length,
 				bytes: [...cells.values()].reduce((sum, cell) => sum + JSON.stringify(encodePlaceOutlines(cell)).length, 0),
 			},
 		},
 	};
+}
+
+/**
+ * What the cells hold of the places (GLOSSARY «Место точки старта»): the outlines from `MIN_OUTLINE_METERS` across,
+ * and of the other places, the small outlines and the places-points, the radius (`placeRadius`) around their point in
+ * the file.
+ */
+function cellPlaces(typed: readonly Typed[], places: readonly Place[]): { outlines: PlaceOutline[]; radii: (PlaceRadius & Point)[] } {
+	const pointOf = new Map(places.map((place) => [place.qid, place]));
+	const outlines: PlaceOutline[] = [];
+	const radii: (PlaceRadius & Point)[] = [];
+	for (const { candidate, outline } of typed) {
+		const point = pointOf.get(candidate.qid);
+		if (outline !== undefined && outline.acrossMeters >= MIN_OUTLINE_METERS && outline.rings.length > 0) {
+			outlines.push({ qid: candidate.qid, rings: outline.rings });
+		} else if (point !== undefined) {
+			radii.push({ qid: candidate.qid, meters: placeRadius(outline?.acrossMeters), lat: point.lat, lon: point.lon });
+		}
+	}
+	return { outlines, radii };
 }
 
 /** A place of the file: at its node's point, or at Wikidata's P625, else a point inside its outline. */
@@ -168,8 +193,8 @@ function placeOf(place: Typed, item: WikidataPlace | undefined, links: { count: 
 		qid: candidate.qid,
 		ru: russianName(item?.ru, links?.ruwiki),
 		local: item?.en ?? candidate.name,
-		lat: round(point.lat),
-		lon: round(point.lon),
+		lat: roundDegrees(point.lat),
+		lon: roundDegrees(point.lon),
 		sitelinks: links?.count ?? 0,
 		type,
 		access,
@@ -262,7 +287,7 @@ function comesBefore(one: Pick<Typed, 'candidate' | 'type'>, two: Pick<Typed, 'c
 function readCandidates(osm: OsmSource): Candidate[] {
 	const candidates: Candidate[] = [];
 	const add = (tags: Tags, object: Pick<Candidate, 'kind' | 'osmId' | 'point' | 'members'>) => {
-		const qid = Number(/^Q([1-9]\d*)$/u.exec(tags.wikidata ?? '')?.[1]);
+		const qid = Number(QID.exec(tags.wikidata ?? '')?.[1]);
 		const ifMonastery = placeType(tags, true);
 		if (Number.isInteger(qid) && ifMonastery !== undefined) {
 			candidates.push({ qid, name: tags.name ?? '', ...object, ifMonastery, otherwise: placeType(tags, false) });
@@ -285,43 +310,67 @@ function readCandidates(osm: OsmSource): Candidate[] {
 	return candidates;
 }
 
-/** A value of a tag among `values`. */
-const oneOf = (value: string | undefined, values: readonly string[]) => value !== undefined && values.includes(value);
+/**
+ * A tag of a type: its key with one of its values, and what else the object must have, which the build checks and the
+ * world build's filter does not (its other tags, or Wikidata's word on a place of worship, `worshipIsMonastery`).
+ */
+interface TypeTag {
+	readonly key: string;
+	readonly values: readonly string[];
+	readonly also?: (tags: Tags, worshipIsMonastery: boolean) => boolean;
+}
 
 /** IUCN's categories Ia to V, of the national parks among the protected areas. */
 const NATIONAL_PARK_CLASS = /^[1-5][ab]?$/u;
 
 /**
- * The tags of each type (amendment «Набор данных» of spec #20): a place of worship (`amenity=place_of_worship`) is a
- * monastery only when Wikidata calls its item one, `worshipIsMonastery`. Not `tourism=attraction` or
+ * The tags of each type, any one of them (amendment «Набор данных» of spec #20): a place of worship
+ * (`amenity=place_of_worship`) is a monastery only when Wikidata calls its item one. Not `tourism=attraction` or
  * `tourism=viewpoint`, valleys, ranges, rivers or hot springs. A castle in ruins is a castle: castles come before ruins.
  * The world build's `osmium tags-filter` of places (the job `extract` of `.github/workflows/dataset.yml`) keeps the
- * objects with these keys and values: a tag added here is added there.
+ * objects with these keys and values (`placeFilterTags`), which a test checks.
  */
-const TYPE_TAGS: Readonly<Record<PlaceType, (tags: Tags, worshipIsMonastery: boolean) => boolean>> = {
-	'national-park': (tags) =>
-		tags.boundary === 'national_park' ||
-		tags.leisure === 'nature_reserve' ||
-		(tags.boundary === 'protected_area' && NATIONAL_PARK_CLASS.test(tags.protect_class ?? '')),
-	mountain: (tags) => oneOf(tags.natural, ['peak', 'volcano', 'glacier']) || tags.mountain_pass === 'yes',
-	canyon: (tags) => tags.natural === 'gorge',
-	waterfall: (tags) => tags.waterway === 'waterfall',
-	cave: (tags) => tags.natural === 'cave_entrance',
-	lake: (tags) => tags.natural === 'water' && oneOf(tags.water, ['lake', 'reservoir']),
-	beach: (tags) => tags.natural === 'beach',
-	island: (tags) => tags.place === 'island',
-	monastery: (tags, worshipIsMonastery) =>
-		tags.amenity === 'monastery' ||
-		tags.historic === 'monastery' ||
-		tags.building === 'monastery' ||
-		(worshipIsMonastery && tags.amenity === 'place_of_worship'),
-	castle: (tags) => oneOf(tags.historic, ['castle', 'fort']),
-	ruins: (tags) => oneOf(tags.historic, ['archaeological_site', 'ruins']),
+const TYPE_TAGS: Readonly<Record<PlaceType, readonly TypeTag[]>> = {
+	'national-park': [
+		{ key: 'boundary', values: ['national_park'] },
+		{ key: 'leisure', values: ['nature_reserve'] },
+		{ key: 'boundary', values: ['protected_area'], also: (tags) => NATIONAL_PARK_CLASS.test(tags.protect_class ?? '') },
+	],
+	mountain: [
+		{ key: 'natural', values: ['peak', 'volcano', 'glacier'] },
+		{ key: 'mountain_pass', values: ['yes'] },
+	],
+	canyon: [{ key: 'natural', values: ['gorge'] }],
+	waterfall: [{ key: 'waterway', values: ['waterfall'] }],
+	cave: [{ key: 'natural', values: ['cave_entrance'] }],
+	lake: [{ key: 'natural', values: ['water'], also: (tags) => tags.water === 'lake' || tags.water === 'reservoir' }],
+	beach: [{ key: 'natural', values: ['beach'] }],
+	island: [{ key: 'place', values: ['island'] }],
+	monastery: [
+		{ key: 'amenity', values: ['monastery'] },
+		{ key: 'historic', values: ['monastery'] },
+		{ key: 'building', values: ['monastery'] },
+		{ key: 'amenity', values: ['place_of_worship'], also: (_, worshipIsMonastery) => worshipIsMonastery },
+	],
+	castle: [{ key: 'historic', values: ['castle', 'fort'] }],
+	ruins: [{ key: 'historic', values: ['archaeological_site', 'ruins'] }],
 };
 
 /** The type of an object by its tags, the first in the order of precedence; undefined for none. */
 function placeType(tags: Tags, worshipIsMonastery: boolean): PlaceType | undefined {
-	return PLACE_TYPES.find((type) => TYPE_TAGS[type](tags, worshipIsMonastery));
+	return PLACE_TYPES.find((type) =>
+		TYPE_TAGS[type].some(
+			({ key, values, also }) => values.includes(tags[key] ?? '') && (also === undefined || also(tags, worshipIsMonastery)),
+		),
+	);
+}
+
+/** The tags the world build's filter of places keeps an object with, `key=value`, sorted: every type's, without what else they need. */
+export function placeFilterTags(): string[] {
+	const tags = Object.values(TYPE_TAGS).flatMap((typeTags) =>
+		typeTags.flatMap(({ key, values }) => values.map((value) => `${key}=${value}`)),
+	);
+	return [...new Set(tags)].toSorted();
 }
 
 /** A qualifier in brackets at the end of a title: «Д'Арк (гора)». */
@@ -331,9 +380,4 @@ const QUALIFIER = /\s*\([^)]*\)$/u;
 function russianName(label: string | undefined, ruwiki: string | undefined): string {
 	const name = (label ?? ruwiki?.replace(QUALIFIER, '') ?? '').trim();
 	return name.charAt(0).toLocaleUpperCase('ru') + name.slice(1);
-}
-
-/** Degrees to 0.001°, about 100 m. */
-function round(degrees: number): number {
-	return Math.round(degrees * 1000) / 1000;
 }

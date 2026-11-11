@@ -74,6 +74,9 @@ export function cityFame(population: number): number {
 	return CITY_FAME_SCALE * population ** CITY_FAME_EXPONENT;
 }
 
+/** A Q-id as Wikidata writes it, `Q1029310` (OSM's `wikidata=`, the table of Russian names of places): its number the first group. */
+export const QID = /^Q([1-9]\d*)$/u;
+
 /** A point on a road near a place, where a car gets to it (GLOSSARY «Подъезд»), and the zone of the road. */
 export interface AccessPoint {
 	/** Degrees, to 0.001°. */
@@ -204,22 +207,27 @@ function isType(value: unknown): value is number {
 
 /**
  * Where the Worker serves the cells of the places' outlines (spec #154 «Сборка мест»), as static assets: one file of
- * the outlines of the places that touch a cell of 1° × 1°, `<PLACE_OUTLINES_PATH>/<lat>_<lon>.json` by its south-west
- * corner (`placeOutlinesPath`). A cell no outline touches has no file.
+ * the outlines and the radii of the places that touch a cell of 1° × 1°, `<PLACE_OUTLINES_PATH>/<lat>_<lon>.json` by
+ * its south-west corner (`placeOutlinesPath`). A cell no place touches has no file.
  */
 export const PLACE_OUTLINES_PATH = '/data/place-outlines';
 
 /** The layout of a cell's file. */
-export const PLACE_OUTLINES_FORMAT = 1;
+export const PLACE_OUTLINES_FORMAT = 2;
 
-/** A place this many metres across or more is in the cells of the outlines; a smaller one is a point (`originPlaces`). */
+/** A place this many metres across or more is in the cells as its outline; a smaller one, as a radius (`placeRadius`). */
 export const MIN_OUTLINE_METERS = 2000;
 
-/** The origin is at a place inside it or nearer its edge than this, or nearer a point place (GLOSSARY «Место точки старта»). */
+/** The origin is at a place inside it or nearer its edge than this, or nearer a place-point (GLOSSARY «Место точки старта»). */
 export const ORIGIN_PLACE_METERS = 1000;
 
-/** The places that are a point to the origin's rule, nearer than `ORIGIN_PLACE_METERS` (GLOSSARY «Место точки старта»). */
-const POINT_TYPES: ReadonlySet<PlaceType> = new Set(['mountain', 'waterfall', 'cave']);
+/**
+ * The radius around a place's point within which the origin is at it, for a place in the cells as no outline:
+ * `ORIGIN_PLACE_METERS` for a place-point, and that and half its size across (`acrossMeters`) for a small outline.
+ */
+export function placeRadius(acrossMeters = 0): number {
+	return Math.round(ORIGIN_PLACE_METERS + acrossMeters / 2);
+}
 
 /** The cell of 1° × 1° that holds a point (degrees), by its south-west corner: `44_20`. */
 export function placeOutlinesCell({ lat, lon }: Point): string {
@@ -241,29 +249,52 @@ export interface PlaceOutline {
 	readonly rings: readonly (readonly number[])[];
 }
 
+/** A small place (a place-point, or an outline smaller than `MIN_OUTLINE_METERS` across) in a cell: its radius (`placeRadius`). */
+export interface PlaceRadius {
+	readonly qid: number;
+	/** Around the place's point in the places file, whole metres. */
+	readonly meters: number;
+}
+
+/** A cell: the places' outlines and the small places' radii that touch it. */
+export interface PlaceOutlinesCell {
+	readonly outlines: readonly PlaceOutline[];
+	readonly radii: readonly PlaceRadius[];
+}
+
 /** An outline as a row of a cell's file: its Q-id, then its rings. */
 export type PlaceOutlineRow = readonly [qid: number, ...rings: (readonly number[])[]];
 
-/** A cell's file: the outlines that touch it, in order of Q-id. */
+/** A radius as a row of a cell's file. */
+export type PlaceRadiusRow = readonly [qid: number, meters: number];
+
+/** A cell's file: the outlines and the radii that touch it, each in order of Q-id. */
 export interface PlaceOutlinesFile {
 	readonly format: typeof PLACE_OUTLINES_FORMAT;
 	readonly outlines: readonly PlaceOutlineRow[];
+	readonly radii: readonly PlaceRadiusRow[];
 }
 
-/** The file of a cell of these outlines. */
-export function encodePlaceOutlines(outlines: readonly PlaceOutline[]): PlaceOutlinesFile {
+const byQid = (one: { qid: number }, two: { qid: number }) => one.qid - two.qid;
+
+/** The file of a cell. */
+export function encodePlaceOutlines({ outlines, radii }: PlaceOutlinesCell): PlaceOutlinesFile {
 	return {
 		format: PLACE_OUTLINES_FORMAT,
-		outlines: outlines.toSorted((one, two) => one.qid - two.qid).map(({ qid, rings }) => outlineRow(qid, rings)),
+		outlines: outlines.toSorted(byQid).map(({ qid, rings }) => outlineRow(qid, rings)),
+		radii: radii.toSorted(byQid).map(({ qid, meters }) => [qid, meters]),
 	};
 }
 
-/** The outlines of a cell's file. */
-export function decodePlaceOutlines(file: PlaceOutlinesFile): PlaceOutline[] {
-	return file.outlines.map(([qid, ...rings]) => ({ qid, rings }));
+/** The outlines and the radii of a cell's file. */
+export function decodePlaceOutlines(file: PlaceOutlinesFile): PlaceOutlinesCell {
+	return {
+		outlines: file.outlines.map(([qid, ...rings]) => ({ qid, rings })),
+		radii: file.radii.map(([qid, meters]) => ({ qid, meters })),
+	};
 }
 
-/** A cell's file as JSON.parse gives it, checked: an error for a file of another format or an outline of other columns. */
+/** A cell's file as JSON.parse gives it, checked: an error for a file of another format or an outline or a radius of other columns. */
 export function parsePlaceOutlinesFile(json: unknown): PlaceOutlinesFile {
 	const format = field(json, 'format');
 	if (format !== PLACE_OUTLINES_FORMAT) {
@@ -271,12 +302,19 @@ export function parsePlaceOutlinesFile(json: unknown): PlaceOutlinesFile {
 	}
 	return {
 		format,
-		outlines: items(field(json, 'outlines'), 'The outlines of the file').map((row): PlaceOutlineRow => {
+		outlines: items(field(json, 'outlines'), 'The outlines of the file of the outlines').map((row): PlaceOutlineRow => {
 			const [qid, ...rings] = items(row, 'An outline of the file of the outlines');
 			if (typeof qid !== 'number' || rings.length === 0 || !rings.every((ring) => isRing(ring))) {
 				throw new TypeError(`An outline of the file of the outlines has other columns: ${JSON.stringify(row)}`);
 			}
 			return outlineRow(qid, rings);
+		}),
+		radii: items(field(json, 'radii'), 'The radii of the file of the outlines').map((row): PlaceRadiusRow => {
+			const [qid, meters, ...rest] = items(row, 'A radius of the file of the outlines');
+			if (typeof qid !== 'number' || typeof meters !== 'number' || rest.length > 0) {
+				throw new TypeError(`A radius of the file of the outlines has other columns: ${JSON.stringify(row)}`);
+			}
+			return [qid, meters];
 		}),
 	};
 }
@@ -295,16 +333,15 @@ function isRing(value: unknown): value is number[] {
 }
 
 /**
- * The places of the origin (GLOSSARY «Место точки старта»), by Q-id, of `places` and the `outlines` of the origin's
- * cell (`placeOutlinesPath`): a place with an outline there when the origin is inside it or nearer its edge than
- * `ORIGIN_PLACE_METERS`; any other is a point, which the origin is nearer than `ORIGIN_PLACE_METERS`, and for a place
- * that may have a small outline (smaller than `MIN_OUTLINE_METERS` across, of no type of `POINT_TYPES`) nearer than
- * that and half `MIN_OUTLINE_METERS`. The builder and the screen share it, so they agree.
+ * The places of the origin (GLOSSARY «Место точки старта»), by Q-id, of `places` and the origin's `cell`
+ * (`placeOutlinesPath`): a place with an outline there when the origin is inside it or nearer its edge than
+ * `ORIGIN_PLACE_METERS`, one with a radius there when the origin is nearer its point than that (`placeRadius`). A place
+ * the cell holds neither of is far. The builder and the screen share it, so they agree.
  */
 export function originPlaces(
 	origin: Point,
-	places: Iterable<Pick<Place, 'qid' | 'lat' | 'lon' | 'type'>>,
-	outlines: readonly PlaceOutline[],
+	places: Iterable<Pick<Place, 'qid' | 'lat' | 'lon'>>,
+	{ outlines, radii }: PlaceOutlinesCell,
 ): Set<number> {
 	const found = new Set<number>();
 	for (const outline of outlines) {
@@ -312,10 +349,9 @@ export function originPlaces(
 			found.add(outline.qid);
 		}
 	}
-	const outlined = new Set(outlines.map(({ qid }) => qid));
+	const radiusOf = new Map(radii.map(({ qid, meters }) => [qid, meters]));
 	for (const place of places) {
-		const reach = POINT_TYPES.has(place.type) ? ORIGIN_PLACE_METERS : ORIGIN_PLACE_METERS + MIN_OUTLINE_METERS / 2;
-		if (!outlined.has(place.qid) && distanceKm(origin, place) * 1000 < reach) {
+		if (distanceKm(origin, place) * 1000 < (radiusOf.get(place.qid) ?? 0)) {
 			found.add(place.qid);
 		}
 	}

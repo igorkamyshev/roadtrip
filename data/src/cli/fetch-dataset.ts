@@ -21,7 +21,7 @@ import { log } from './input.ts';
 const ROOT = join(import.meta.dirname, '../../..');
 
 /** Each file of the dataset the deploy takes, and where it goes (the cells: their directory); `report.md` stays in R2. */
-const PLACES = {
+const DESTINATIONS = {
 	'graph.graph': join(ROOT, 'engine/dataset/graph.graph'),
 	'dataset.json': join(ROOT, 'engine/dataset/dataset.json'),
 	'zones.json': join(ROOT, 'web/public/data/zones.json'),
@@ -60,5 +60,5 @@ const r2: DatasetSource = {
 	},
 };
 
-const manifest = await fetchDataset(r2, PLACES, log);
+const manifest = await fetchDataset(r2, DESTINATIONS, log);
 log(`the deploy takes the dataset ${manifest.version} from ${values.bucket}`);

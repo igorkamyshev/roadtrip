@@ -109,7 +109,7 @@ export const sources = (page: Page): Locator => page.getByTestId('sources');
 
 export const slider = (page: Page): Locator => page.getByRole('slider', { name: 'Время в пути' });
 
-/** The carousel at the bottom of the screen: the first card, the city cards, «и ещё». */
+/** The carousel at the bottom of the screen: the first card, the cards of the points of interest, «и ещё». */
 export const carousel = (page: Page): Locator => page.getByTestId('carousel');
 
 /**
@@ -121,16 +121,24 @@ export const carouselArrows = (page: Page): Locator => page.getByTestId('carouse
 /** «и ещё K / Всё в кольце →», the carousel's last card when the ring has more points of interest than cards. */
 export const moreCard = (page: Page): Locator => carousel(page).getByRole('button', { name: /и ещё/u });
 
-/** The cards of the carousel's cities, in order. */
+/** «Всё в кольце …», the list of all the ring's points of interest, open: titled by the ring, «Всё в кольце 2–3 ч: 24». */
+export const theList = (page: Page): Locator => page.getByRole('dialog', { name: /^Всё в кольце/u });
+
+/** The names of the rows the open list of all has drawn, in its order: its top ones, as it draws only what is in view. */
+export async function rowNames(page: Page): Promise<string[]> {
+	return theList(page).getByTestId('row-name').allInnerTexts();
+}
+
+/** The cards of the carousel's points of interest, cities and places, in order. */
 export const pointCards = (page: Page): Locator => page.getByTestId('point-card');
 
-/** The card of the city whose name is in its heading. */
+/** The card of the point of interest whose name is in its heading. */
 export const pointCard = (page: Page, name: string): Locator =>
 	pointCards(page).filter({ has: page.getByRole('heading', { name, exact: true }) });
 
 /**
- * The name of the first city card the window's right edge cuts, 12 px in, where the wide screen's row fades out: the
- * row shows it only in part.
+ * The name of the first card of a point of interest the window's right edge cuts, 12 px in, where the wide screen's
+ * row fades out: the row shows it only in part.
  */
 export async function cutCard(page: Page): Promise<string> {
 	const { width } = page.viewportSize() ?? { width: 0 };
@@ -140,22 +148,22 @@ export async function cutCard(page: Page): Promise<string> {
 			return card.getByRole('heading').innerText();
 		}
 	}
-	throw new Error('every city card is whole in the row');
+	throw new Error('every card of a point of interest is whole in the row');
 }
 
-/** The card of the chosen city: the carousel marks it current. */
+/** The card of the chosen point of interest: the carousel marks it current. */
 export const chosenCard = (page: Page): Locator => pointCards(page).and(page.locator('[aria-current="true"]'));
 
 /**
- * The carousel's cards wholly in the window, by name for `expectApart`: the first card, the city cards and «и ещё»
- * that the row shows whole where it stands now.
+ * The carousel's cards wholly in the window, by name for `expectApart`: the first card, the cards of the points of
+ * interest and «и ещё» that the row shows whole where it stands now.
  */
 export async function cardsInView(page: Page): Promise<Record<string, Locator>> {
 	const { width } = page.viewportSize() ?? { width: 0 };
-	const cities = page.getByTestId('point-card');
+	const points = pointCards(page);
 	const cards: [string, Locator][] = [
 		['first card', firstCard(page)],
-		...Array.from({ length: await cities.count() }, (_, i): [string, Locator] => [`city card ${i + 1}`, cities.nth(i)]),
+		...Array.from({ length: await points.count() }, (_, i): [string, Locator] => [`point card ${i + 1}`, points.nth(i)]),
 		['«и ещё»', moreCard(page)],
 	];
 	const boxes = await Promise.all(cards.map(async ([, card]) => ((await card.count()) === 0 ? null : card.boundingBox())));

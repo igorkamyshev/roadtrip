@@ -1,7 +1,6 @@
 // The map under the screen (src/map/map-view.tsx), a chunk of its own with MapLibre: the phrase, the slider and the
 // first card paint without waiting for it. It shows the ring shown, the zones its answer closes, the origin and the
 // ring's most famous points of interest, and tells of a tap on one.
-import { PLACE_GROUP } from 'data/places-file';
 import { lazy, Suspense, useMemo, type ReactElement } from 'react';
 import type { FreeArea } from '../map/camera.ts';
 import type { MapPoint } from '../map/overlay.ts';
@@ -40,7 +39,7 @@ export function ScreenMap({ screen, freeArea }: { readonly screen: ScreenModel; 
 
 /**
  * The points of interest the map shows: the most famous of the ring's, named if they have a card, and the chosen one;
- * a place with its group, for its diamond's colour.
+ * each a dot or a diamond by its kind, a place's in its group's colour.
  */
 function pointsOnMap(points: readonly PointOfInterest[], chosen: string | undefined): MapPoint[] {
 	const shown = points.slice(0, MAP_POINTS);
@@ -55,6 +54,7 @@ function pointsOnMap(points: readonly PointOfInterest[], chosen: string | undefi
 		lon: point.lon,
 		label: index < CAROUSEL_POINTS || point.key === chosen,
 		chosen: point.key === chosen,
-		group: point.kind === 'place' ? PLACE_GROUP[point.place.type] : undefined,
+		kind: point.kind,
+		group: point.group,
 	}));
 }

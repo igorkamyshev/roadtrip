@@ -111,8 +111,8 @@ export function placesMarkdown(report: PlacesReport, brotliBytes: number, budget
 			`больше ${MAX_SQUARE_KM} км² — ${report.tooLarge}, в пределах города — ${report.inCities}, ` +
 			`без дороги ближе ${MAX_ACCESS_METERS / 1000} км — ${report.withoutAccess}, храмы, которые Wikidata не называет монастырём, — ${report.notMonasteries}.`,
 		'',
-		`Клеток контуров: ${report.cells.count.toLocaleString('ru-RU')}, в них контуры ${count(report.cells.outlines, ['места', 'мест', 'мест'])}, ` +
-			`${megabytes(report.cells.bytes)} МБ.`,
+		`Клеток контуров: ${report.cells.count.toLocaleString('ru-RU')}, в них ${count(report.cells.outlines, ['место', 'места', 'мест'])} контуром ` +
+			`и ${count(report.cells.radii, ['место', 'места', 'мест'])} радиусом, ${megabytes(report.cells.bytes)} МБ.`,
 		'',
 		withoutRussian.mostFamous.length > 0 ? `${line} Самые известные: ${examples}.` : line,
 		'',
@@ -127,4 +127,25 @@ export function missingRussianNamesMarkdown({ missingRussianNames: { count: miss
 	const line = `Городов без русского названия, которых нет в таблице \`data/russian-names.tsv\`: ${missing.toLocaleString('ru-RU')}.`;
 	const examples = biggest.map(({ id, name }) => `${name} (${id})`).join(', ');
 	return ['## Русские названия', '', biggest.length > 0 ? `${line} Самые большие: ${examples}.` : line, ''].join('\n');
+}
+
+/**
+ * Where a version's places came from when their job failed (src/publish.ts): the version before it (`version`), or
+ * nowhere, the version before (`previous`, if any) having none either.
+ */
+export type FailedPlacesOrigin =
+	| { readonly from: 'previous'; readonly version: string }
+	| { readonly from: 'none'; readonly previous: string | undefined };
+
+/** The build report's section on the places when their job failed: where the version's places came from. */
+export function placesFailedMarkdown(places: FailedPlacesOrigin): string {
+	let what: string;
+	if (places.from === 'previous') {
+		what = `файл мест и клетки контуров — из прошлой версии ${places.version}.`;
+	} else if (places.previous === undefined) {
+		what = 'прошлой версии набора нет, так что он выложен без мест.';
+	} else {
+		what = `в прошлой версии ${places.previous} мест нет, так что набор выложен без мест.`;
+	}
+	return ['## Места', '', `Джоба мест упала: ${what}`, ''].join('\n');
 }

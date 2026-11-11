@@ -1,15 +1,17 @@
 // The outlines of the places with one (spec #154 «Сборка мест», amendment «Набор данных» of spec #20): the closed
 // ways and the relations with a place's tags (places.ts), read from OSM once the sitelinks have kept the famous ones,
 // as their area, their size across, a point inside them and their rings, simplified, as the cells of the outlines
-// hold them (`PlaceOutline` of places-file.ts); and the cells of 1° × 1° each outline touches.
+// hold them (`PlaceOutline` of places-file.ts); and the cells of 1° × 1° each outline, or each small place's radius,
+// touches.
 import { METERS_PER_DEGREE } from 'engine/geo';
 import type { Pair } from 'polygon-clipping';
 import type { Point } from './cities-file.ts';
 import { OsmNodes, wayNodeLocator } from './osm-nodes.ts';
 import type { OsmSource, OsmWay } from './osm/source.ts';
 import { simplifyRing } from './outlines.ts';
-import { ORIGIN_PLACE_METERS, type PlaceOutline, placeOutlinesCell } from './places-file.ts';
+import { ORIGIN_PLACE_METERS, type PlaceOutline, placeOutlinesCell, type PlaceRadius } from './places-file.ts';
 import { type Chain, relationRings } from './zones.ts';
+import { roundDegrees } from './degrees.ts';
 
 /** A way of an outline, and whether it bounds a hole (its role in a relation is `inner`). */
 export interface OutlineMember {
@@ -138,7 +140,7 @@ function flatRing({ lat, lon }: Chain): number[] {
 	const pairs = lat.map((latE7, point): Pair => [lon[point] / 1e7, latE7 / 1e7]);
 	const ring: number[] = [];
 	for (const [pointLon, pointLat] of (simplifyRing(pairs, OUTLINE_TOLERANCE_METERS) ?? pairs).slice(0, -1)) {
-		const rounded = [round(pointLat), round(pointLon)];
+		const rounded = [roundDegrees(pointLat), roundDegrees(pointLon)];
 		if (ring.at(-2) !== rounded[0] || ring.at(-1) !== rounded[1]) {
 			ring.push(...rounded);
 		}
@@ -149,41 +151,52 @@ function flatRing({ lat, lon }: Chain): number[] {
 	return ring;
 }
 
-/** Degrees to 0.001°, about 100 m. */
-function round(degrees: number): number {
-	return Math.round(degrees * 1000) / 1000;
-}
-
 /**
- * The cells of 1° × 1° (`placeOutlinesCell`) the outlines touch with `ORIGIN_PLACE_METERS` to spare, by the boxes of
- * their edges, each cell with its outlines in order of Q-id; the cells in order of their names.
+ * The cells of 1° × 1° (`placeOutlinesCell`): those the outlines touch with `ORIGIN_PLACE_METERS` to spare, by the
+ * boxes of their edges, and those the radii's discs around their points touch, by the discs' boxes; each cell with its
+ * outlines and its radii in order of Q-id, the cells in order of their names.
  */
-export function outlineCells(outlines: readonly PlaceOutline[]): Map<string, PlaceOutline[]> {
-	const cells = new Map<string, PlaceOutline[]>();
+export function outlineCells(
+	outlines: readonly PlaceOutline[],
+	radii: readonly (PlaceRadius & Point)[],
+): Map<string, { outlines: PlaceOutline[]; radii: PlaceRadius[] }> {
+	const cells = new Map<string, { outlines: PlaceOutline[]; radii: PlaceRadius[] }>();
+	const cellOf = (name: string) => {
+		const cell = cells.get(name) ?? { outlines: [], radii: [] };
+		cells.set(name, cell);
+		return cell;
+	};
 	for (const outline of outlines.toSorted((one, two) => one.qid - two.qid)) {
 		const touched = new Set<string>();
 		for (const ring of outline.rings) {
 			for (let at = 0; at < ring.length; at += 2) {
 				const next = (at + 2) % ring.length;
-				edgeCells([ring[at], ring[next]], [ring[at + 1], ring[next + 1]], touched);
+				boxCells([ring[at], ring[next], ring[at + 1], ring[next + 1]], ORIGIN_PLACE_METERS, touched);
 			}
 		}
-		for (const cell of touched) {
-			cells.set(cell, [...(cells.get(cell) ?? []), outline]);
+		for (const name of touched) {
+			cellOf(name).outlines.push(outline);
+		}
+	}
+	for (const { qid, meters, lat, lon } of radii.toSorted((one, two) => one.qid - two.qid)) {
+		const touched = new Set<string>();
+		boxCells([lat, lat, lon, lon], meters, touched);
+		for (const name of touched) {
+			cellOf(name).radii.push({ qid, meters });
 		}
 	}
 	return new Map([...cells].toSorted(([one], [two]) => (one < two ? -1 : 1)));
 }
 
-/** Adds to `cells` the cells the box of an edge (its ends' latitudes and longitudes) touches with `ORIGIN_PLACE_METERS` to spare. */
-function edgeCells(lat: readonly [number, number], lon: readonly [number, number], cells: Set<string>): void {
-	const spareLat = ORIGIN_PLACE_METERS / METERS_PER_DEGREE;
-	const south = Math.min(...lat) - spareLat;
-	const north = Math.max(...lat) + spareLat;
+/** Adds to `cells` the cells a box (two latitudes, then two longitudes) touches with `spareMeters` to spare. */
+function boxCells([lat1, lat2, lon1, lon2]: readonly [number, number, number, number], spareMeters: number, cells: Set<string>): void {
+	const spareLat = spareMeters / METERS_PER_DEGREE;
+	const south = Math.min(lat1, lat2) - spareLat;
+	const north = Math.max(lat1, lat2) + spareLat;
 	// A degree of longitude is shortest at the box's edge farthest from the equator.
 	const spareLon = spareLat / Math.cos(Math.min(89, Math.max(Math.abs(south), Math.abs(north))) * (Math.PI / 180));
 	for (let row = Math.floor(south); row <= Math.floor(north); row++) {
-		for (let column = Math.floor(Math.min(...lon) - spareLon); column <= Math.floor(Math.max(...lon) + spareLon); column++) {
+		for (let column = Math.floor(Math.min(lon1, lon2) - spareLon); column <= Math.floor(Math.max(lon1, lon2) + spareLon); column++) {
 			cells.add(placeOutlinesCell({ lat: row, lon: column }));
 		}
 	}

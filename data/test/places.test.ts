@@ -1,10 +1,12 @@
 // The build of the places file (spec #154 «Сборка мест», amendment «Набор данных» of spec #20): the places of
 // fixtures/places.osm (its header has the layout and the distances), their sitelinks from a tiny dump, a double of
 // Wikidata's Query Service, and two cities.
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import type { Place } from '../src/places-file.ts';
 import { openOsm } from '../src/osm/open.ts';
-import { buildPlaces, type PlacesSources } from '../src/places.ts';
+import { buildPlaces, placeFilterTags, type PlacesSources } from '../src/places.ts';
 import type { WikidataPlace } from '../src/wikidata.ts';
 import { fixtureGraph, fixturePath } from './fixture-graph.ts';
 import { PLACES_SITELINKS, type ItemSitelinks, sitelinksDump } from './sitelinks-dump.ts';
@@ -56,6 +58,19 @@ function build(
 		cities: CITIES,
 		russianNames,
 	});
+}
+
+/** The places of `fixtures/places.osm` with the sitelinks and the ruwiki titles of a dump's lines. */
+async function sitelinksOf(dump: readonly string[]) {
+	const { places } = await buildPlaces({
+		osm: openOsm(fixturePath('places.osm')),
+		sitelinks: ReadableStream.from(dump),
+		wikidata: wikidata(),
+		graph,
+		cities: CITIES,
+		russianNames: new Map(),
+	});
+	return places.map(({ qid, sitelinks, ru }) => [qid, sitelinks, ru]);
 }
 
 /** The places by Q-id. */
@@ -130,6 +145,12 @@ describe('the places', () => {
 		expect(asked.flat().toSorted((one, two) => one - two)).toEqual([1001, 1004, 1005, 1006, 1007, 1008, 1010, 1012]);
 	});
 
+	it('count the sitelinks of a dump of long INSERT lines as of a dump of a row a line', async () => {
+		expect(await sitelinksOf(sitelinksDump(PLACES_SITELINKS, { lines: 'longLine', perStatement: 7 }))).toEqual(
+			await sitelinksOf(sitelinksDump(PLACES_SITELINKS, { lines: 'rowALine', perStatement: 7 })),
+		);
+	});
+
 	it('leave out an item of fewer than 10 sitelinks', async () => {
 		const { places } = await build({ ...PLACES_SITELINKS, 1004: { count: 9 } });
 
@@ -189,17 +210,25 @@ describe('the places with an outline', () => {
 			{ lat: 0.395, lon: 1.012, zone: 'BBB' },
 			{ lat: 0.395, lon: 1.057, zone: 'BBB' },
 			{ lat: 0.395, lon: 1.102, zone: 'BBB' },
+			// The road's point nearest the cell's middle is 2.6 km from the lake: the road's nearest point to the
+			// middle of those within 1 km of the lake.
+			{ lat: 0.465, lon: 0.893, zone: 'AAA' },
 			{ lat: 0.465, lon: 0.922, zone: 'AAA' },
 			{ lat: 0.465, lon: 0.967, zone: 'AAA' },
 			{ lat: 0.465, lon: 0.995, zone: 'AAA' },
 		]);
-		// Not on the island, a hole of the lake.
+		// Not at the middle of the island, a hole of the lake, but within 1 km of its shore.
 		expect(places.get(2004)?.access).toEqual([
 			{ lat: 0.202, lon: 1.36, zone: 'BBB' },
+			{ lat: 0.229, lon: 1.36, zone: 'BBB' },
 			{ lat: 0.292, lon: 1.36, zone: 'BBB' },
 		]);
-		// Within the city's limits, which the place itself is not.
-		expect(places.get(2006)?.access).toEqual([{ lat: 0.787, lon: 0.355, zone: 'AAA' }]);
+		// Within the city's limits, which the place itself is not; in the cell to the north, where the point nearest the
+		// middle is 1.4 km off the corner, the nearest within 1 km of it.
+		expect(places.get(2006)?.access).toEqual([
+			{ lat: 0.787, lon: 0.355, zone: 'AAA' },
+			{ lat: 0.827, lon: 0.355, zone: 'AAA' },
+		]);
 		expect(places.get(2007)?.access).toEqual([
 			{ lat: 0.985, lon: 1.057, zone: 'BBB' },
 			{ lat: 0.985, lon: 1.102, zone: 'BBB' },
@@ -212,15 +241,17 @@ describe('the places with an outline', () => {
 		expect(places.get(2002)?.access).toEqual([{ lat: 0.205, lon: 0.55, zone: 'AAA' }]);
 	});
 
-	it('are in the cells of 1° × 1° they touch with 1 km to spare, from 2 km across', async () => {
+	it('are in the cells of 1° × 1° they touch with 1 km to spare, from 2 km across; a smaller one is a radius of 1 km and half its size', async () => {
 		const { cells } = await buildOutlines();
 
-		expect([...cells].map(([cell, outlines]) => [cell, outlines.map(({ qid }) => qid)])).toEqual([
-			['0_0', [2001, 2006]],
-			['0_1', [2001, 2004, 2007]],
-			['1_1', [2007]],
+		expect([...cells].map(([cell, { outlines, radii }]) => [cell, outlines.map(({ qid }) => qid), radii.map(({ qid }) => qid)])).toEqual([
+			['0_0', [2001, 2006], [2002]],
+			['0_1', [2001, 2004, 2007], []],
+			['1_1', [2007], []],
 		]);
-		expect(cells.get('1_1')).toEqual([{ qid: 2007, rings: [[0.95, 1.05, 0.95, 1.1, 0.995, 1.1, 0.995, 1.05]] }]);
+		expect(cells.get('1_1')?.outlines).toEqual([{ qid: 2007, rings: [[0.95, 1.05, 0.95, 1.1, 0.995, 1.1, 0.995, 1.05]] }]);
+		// The small lake is 0.01° across, 1.112 km: 1 km + 0.556 km around its point.
+		expect(cells.get('0_0')?.radii).toEqual([{ qid: 2002, meters: 1556 }]);
 	});
 
 	it('are counted in the report: too large, broken, the cells', async () => {
@@ -234,8 +265,21 @@ describe('the places with an outline', () => {
 			inCities: 1,
 			withoutAccess: 0,
 			places: 5,
-			cells: { count: 3, outlines: 4 },
+			cells: { count: 3, outlines: 4, radii: 1 },
 		});
+	});
+});
+
+describe('the world build', () => {
+	it('keeps for the places the objects with the keys and values of every type’s tags, no more', () => {
+		// The job `extract`'s `osmium tags-filter` of places: `nwr/<key>=<value>,<value>…` after its name.
+		const workflow = readFileSync(join(import.meta.dirname, '../../.github/workflows/dataset.yml'), 'utf8');
+		const command = /measure "tags-filter of places" osmium tags-filter (?<args>[^-]*?) -o/su.exec(workflow)?.groups?.args ?? '';
+		const filtered = [...command.matchAll(/nwr\/(?<key>[\w:]+)=(?<values>[\w,]+)/gu)].flatMap(({ groups }) =>
+			(groups?.values ?? '').split(',').map((value) => `${groups?.key}=${value}`),
+		);
+
+		expect(filtered.toSorted()).toEqual(placeFilterTags());
 	});
 });
 
@@ -253,8 +297,20 @@ describe('the report of the places', () => {
 			notMonasteries: 1,
 			places: 7,
 			withoutRussian: { count: 1, mostFamous: [{ qid: 1008, name: 'Old Church' }] },
-			cells: { count: 0, outlines: 0, bytes: 0 },
+			// The places are points, each a radius of 1 km: 0.88°E in 0_0, 1.01°E and 1.13°E in 0_1. The files are
+			// {"format":2,"outlines":[],"radii":[…]}, 37 bytes, and 11 a radius and a comma between two: 37 + 4 · 11 + 3
+			// and 37 + 3 · 11 + 2.
+			cells: { count: 2, outlines: 0, radii: 7, bytes: 156 },
 		});
+	});
+
+	it('puts a place that is a point in the cells its radius of 1 km touches', async () => {
+		const { cells } = await build();
+
+		expect([...cells].map(([cell, { radii }]) => [cell, radii])).toEqual([
+			['0_0', [1004, 1005, 1006, 1008].map((qid) => ({ qid, meters: 1000 }))],
+			['0_1', [1001, 1010, 1012].map((qid) => ({ qid, meters: 1000 }))],
+		]);
 	});
 
 	it('leaves out of the places without a Russian name those the table of Russian names has, which the deploy names', async () => {
