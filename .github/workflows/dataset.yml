@@ -162,8 +162,7 @@ jobs:
         run: .github/dataset/runner.sh
       - name: Install osmium-tool
         run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq osmium-tool time > /dev/null
+          .github/dataset/apt.sh osmium-tool time
           osmium --version | head -1
       - name: Download the part
         working-directory: ${{ env.WORK }}
@@ -244,8 +243,7 @@ jobs:
         run: .github/dataset/runner.sh
       - name: Install osmium-tool
         run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq osmium-tool time unzip brotli > /dev/null
+          .github/dataset/apt.sh osmium-tool time unzip brotli
           osmium --version | head -1
       - uses: actions/download-artifact@v4
         with:
@@ -321,8 +319,7 @@ jobs:
         run: .github/dataset/runner.sh
       - name: Install osmium-tool
         run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq osmium-tool time brotli > /dev/null
+          .github/dataset/apt.sh osmium-tool time brotli
           osmium --version | head -1
       - uses: actions/download-artifact@v4
         with:
