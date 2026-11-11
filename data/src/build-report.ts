@@ -2,7 +2,7 @@
 // run's summary, for the Owner to add the missing crossings to the border table. In Russian, like the issues.
 import type { BuildReport } from './build-graph.ts';
 import type { CitiesReport } from './cities.ts';
-import { MAX_ACCESS_METERS, MIN_SITELINKS, type PlacesReport } from './places.ts';
+import { MAX_ACCESS_METERS, MAX_SQUARE_KM, MIN_SITELINKS, type PlacesReport } from './places.ts';
 
 const plural = new Intl.PluralRules('ru');
 
@@ -94,8 +94,8 @@ const megabytes = (bytes: number) => (bytes / 1e6).toLocaleString('ru-RU', { min
 
 /**
  * The places file's part of the report (spec #154 «Сборка мест»): how many places, what was left out, the size, the
- * places without a Russian name that the table of Russian names of places lacks, the places to add to it
- * (data/AGENTS.md, «Places file»).
+ * cells of the outlines, the places without a Russian name that the table of Russian names of places lacks, the
+ * places to add to it (data/AGENTS.md, «Places file»).
  */
 export function placesMarkdown(report: PlacesReport, brotliBytes: number, budgetBytes: number): string {
 	const { withoutRussian } = report;
@@ -107,8 +107,12 @@ export function placesMarkdown(report: PlacesReport, brotliBytes: number, budget
 		`В файле мест ${count(report.places, ['место', 'места', 'мест'])}, ${megabytes(brotliBytes)} МБ в brotli при бюджете ` +
 			`${(budgetBytes / 1e6).toLocaleString('ru-RU')} МБ.`,
 		'',
-		`Не вошли: меньше ${MIN_SITELINKS} сайтлинков — ${report.belowSitelinks}, в пределах города — ${report.inCities}, ` +
+		`Не вошли: меньше ${MIN_SITELINKS} сайтлинков — ${report.belowSitelinks}, без целого контура — ${report.withoutOutline}, ` +
+			`больше ${MAX_SQUARE_KM} км² — ${report.tooLarge}, в пределах города — ${report.inCities}, ` +
 			`без дороги ближе ${MAX_ACCESS_METERS / 1000} км — ${report.withoutAccess}, храмы, которые Wikidata не называет монастырём, — ${report.notMonasteries}.`,
+		'',
+		`Клеток контуров: ${report.cells.count.toLocaleString('ru-RU')}, в них контуры ${count(report.cells.outlines, ['места', 'мест', 'мест'])}, ` +
+			`${megabytes(report.cells.bytes)} МБ.`,
 		'',
 		withoutRussian.mostFamous.length > 0 ? `${line} Самые известные: ${examples}.` : line,
 		'',

@@ -1,13 +1,13 @@
 // The commands as a person runs them: `ring` writes GeoJSON, `build-graph` a graph file `ring` reads.
 import { execFileSync, spawnSync } from 'node:child_process';
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { gzipSync } from 'node:zlib';
 import { afterAll, describe, expect, it } from 'vitest';
 import { type CityRow, decodeCities, encodeCities, parseCitiesFile } from '../src/cities-file.ts';
-import { decodePlaces, encodePlaces, parsePlacesFile } from '../src/places-file.ts';
+import { decodePlaceOutlines, decodePlaces, encodePlaces, parsePlaceOutlinesFile, parsePlacesFile } from '../src/places-file.ts';
 import { field, items } from 'engine/json';
 import { fixturePath } from './fixture-graph.ts';
 import { PLACES_SITELINKS, sitelinksDump } from './sitelinks-dump.ts';
@@ -292,7 +292,8 @@ describe('the build-places command', () => {
 		]);
 		expect(run.stderr).toContain('6 places of 12 objects');
 		expect(run.stderr).toContain(
-			'left out: 1 of fewer than 10 sitelinks, 1 within a city, 1 with no road within 10 km, 2 places of worship that are no monastery',
+			'left out: 1 of fewer than 10 sitelinks, 0 without a whole outline, 0 over 2000 km², 1 within a city, 1 with no road within 10 km, ' +
+				'2 places of worship that are no monastery',
 		);
 		expect(run.stderr).toContain(
 			'without a Russian name and not in the table of Russian names of places: 2; the most famous: Q1008, Q1012 Jezero Le',
@@ -306,12 +307,44 @@ describe('the build-places command', () => {
 				'',
 				'В файле мест 6 мест, 0,00 МБ в brotli при бюджете 0,6 МБ.',
 				'',
-				'Не вошли: меньше 10 сайтлинков — 1, в пределах города — 1, без дороги ближе 10 км — 1, храмы, которые Wikidata не называет монастырём, — 2.',
+				'Не вошли: меньше 10 сайтлинков — 1, без целого контура — 0, больше 2000 км² — 0, в пределах города — 1, без дороги ближе 10 км — 1, ' +
+					'храмы, которые Wikidata не называет монастырём, — 2.',
+				'',
+				'Клеток контуров: 0, в них контуры 0 мест, 0,00 МБ.',
 				'',
 				'Мест без русского названия, которых нет в таблице `data/place-russian-names.tsv`: 2. Самые известные: Q1008, Jezero Le (Q1012).',
 				'',
 			].join('\n'),
 		);
+	});
+
+	it('writes the cells of the outlines beside the places file, in place of those there were, and counts them', () => {
+		const out = join(directory, 'outlines', 'places.json');
+		mkdirSync(join(directory, 'outlines', 'place-outlines'), { recursive: true });
+		writeFileSync(join(directory, 'outlines', 'place-outlines', '9_9.json'), '{}');
+
+		const run = buildPlaces(
+			fixturePath('place-outlines.osm'),
+			fixturePath('place-outlines.osm'),
+			citiesFile('outline-cities.json', [[1, '', 'Big', 0.8, 0.3, 1_000_000, 'AAA']]),
+			out,
+			'--sitelinks',
+			dump(
+				'outline-sitelinks.sql.gz',
+				Object.fromEntries([2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008].map((qid) => [qid, { count: 20 }])),
+			),
+			'--no-wikidata',
+		);
+
+		expect(run.status).toBe(0);
+		expect(readdirSync(join(directory, 'outlines', 'place-outlines')).toSorted()).toEqual(['0_0.json', '0_1.json', '1_1.json']);
+		expect(
+			decodePlaceOutlines(
+				parsePlaceOutlinesFile(JSON.parse(readFileSync(join(directory, 'outlines', 'place-outlines', '1_1.json'), 'utf8'))),
+			),
+		).toEqual([{ qid: 2007, rings: [[0.95, 1.05, 0.95, 1.1, 0.995, 1.1, 0.995, 1.05]] }]);
+		expect(run.stderr).toContain('1 without a whole outline, 1 over 2000 km²');
+		expect(run.stderr).toMatch(/wrote 3 cells of the outlines of 4 places, 0\.00 MB, to .*place-outlines/u);
 	});
 
 	// Brotli of quality 11 takes seconds over 0.7 MB.

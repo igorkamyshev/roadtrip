@@ -137,6 +137,108 @@ describe('the places', () => {
 	});
 });
 
+describe('the places with an outline', () => {
+	const outlinesGraph = fixtureGraph('place-outlines.osm');
+	/** The sitelinks of the places of place-outlines.osm, every one famous. */
+	const OUTLINE_SITELINKS = Object.fromEntries([2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009].map((qid) => [qid, { count: 20 }]));
+	/** Wikidata's P625 of its places. */
+	const POINTS: Readonly<Partial<Record<number, { lat: number; lon: number }>>> = {
+		2001: { lat: 0.43, lon: 1 },
+		2007: { lat: 0.97, lon: 1.08 },
+	};
+
+	const buildOutlines = () =>
+		buildPlaces({
+			osm: openOsm(fixturePath('place-outlines.osm')),
+			sitelinks: ReadableStream.from(sitelinksDump(OUTLINE_SITELINKS)),
+			wikidata: (qids) =>
+				Promise.resolve(new Map(qids.map((qid) => [qid, { ru: undefined, en: undefined, point: POINTS[qid], monastery: false }]))),
+			graph: outlinesGraph,
+			cities: [{ lat: 0.8, lon: 0.3, population: 1_000_000 }],
+			russianNames: new Map(),
+		});
+
+	it('are the closed ways and relations of a place’s tags, up to 2 000 km², not wholly within a city’s limits', async () => {
+		const { places } = await buildOutlines();
+
+		expect(places.map(({ qid, type }) => [qid, type]).toSorted(([one], [two]) => Number(one) - Number(two))).toEqual([
+			[2001, 'lake'],
+			[2002, 'lake'],
+			[2004, 'lake'],
+			[2006, 'castle'],
+			[2007, 'mountain'],
+		]);
+	});
+
+	it('are at Wikidata’s point, else at a point inside the outline', async () => {
+		const places = byQid((await buildOutlines()).places);
+
+		expect([2001, 2002, 2004, 2006, 2007].map((qid) => [qid, places.get(qid)?.lat, places.get(qid)?.lon])).toEqual([
+			[2001, 0.43, 1],
+			[2002, 0.205, 0.505],
+			[2004, 0.25, 1.31],
+			[2006, 0.8, 0.38],
+			[2007, 0.97, 1.08],
+		]);
+	});
+
+	it('get the roads inside the outline and within 1 km of its edge, one a cell of 5 km and country', async () => {
+		const places = byQid((await buildOutlines()).places);
+
+		expect(places.get(2001)?.access).toEqual([
+			{ lat: 0.395, lon: 1.012, zone: 'BBB' },
+			{ lat: 0.395, lon: 1.057, zone: 'BBB' },
+			{ lat: 0.395, lon: 1.102, zone: 'BBB' },
+			{ lat: 0.465, lon: 0.922, zone: 'AAA' },
+			{ lat: 0.465, lon: 0.967, zone: 'AAA' },
+			{ lat: 0.465, lon: 0.995, zone: 'AAA' },
+		]);
+		// Not on the island, a hole of the lake.
+		expect(places.get(2004)?.access).toEqual([
+			{ lat: 0.202, lon: 1.36, zone: 'BBB' },
+			{ lat: 0.292, lon: 1.36, zone: 'BBB' },
+		]);
+		// Within the city's limits, which the place itself is not.
+		expect(places.get(2006)?.access).toEqual([{ lat: 0.787, lon: 0.355, zone: 'AAA' }]);
+		expect(places.get(2007)?.access).toEqual([
+			{ lat: 0.985, lon: 1.057, zone: 'BBB' },
+			{ lat: 0.985, lon: 1.102, zone: 'BBB' },
+		]);
+	});
+
+	it('get the access point of a place with a point when no road is within 1 km of the outline', async () => {
+		const places = byQid((await buildOutlines()).places);
+
+		expect(places.get(2002)?.access).toEqual([{ lat: 0.205, lon: 0.55, zone: 'AAA' }]);
+	});
+
+	it('are in the cells of 1° × 1° they touch with 1 km to spare, from 2 km across', async () => {
+		const { cells } = await buildOutlines();
+
+		expect([...cells].map(([cell, outlines]) => [cell, outlines.map(({ qid }) => qid)])).toEqual([
+			['0_0', [2001, 2006]],
+			['0_1', [2001, 2004, 2007]],
+			['1_1', [2007]],
+		]);
+		expect(cells.get('1_1')).toEqual([{ qid: 2007, rings: [[0.95, 1.05, 0.95, 1.1, 0.995, 1.1, 0.995, 1.05]] }]);
+	});
+
+	it('are counted in the report: too large, broken, the cells', async () => {
+		const { report } = await buildOutlines();
+
+		expect(report).toMatchObject({
+			objects: 9,
+			belowSitelinks: 0,
+			withoutOutline: 1,
+			tooLarge: 1,
+			inCities: 1,
+			withoutAccess: 0,
+			places: 5,
+			cells: { count: 3, outlines: 4 },
+		});
+	});
+});
+
 describe('the report of the places', () => {
 	it('counts what was left out and the places without a Russian name, the most famous of them named', async () => {
 		const { report } = await build();
@@ -144,11 +246,14 @@ describe('the report of the places', () => {
 		expect(report).toEqual({
 			objects: 12,
 			belowSitelinks: 1,
+			withoutOutline: 0,
+			tooLarge: 0,
 			inCities: 1,
 			withoutAccess: 1,
 			notMonasteries: 1,
 			places: 7,
 			withoutRussian: { count: 1, mostFamous: [{ qid: 1008, name: 'Old Church' }] },
+			cells: { count: 0, outlines: 0, bytes: 0 },
 		});
 	});
 

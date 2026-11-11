@@ -90,22 +90,35 @@ export function findZones(relations: readonly ZoneRelation[], boundaryWays: Read
 	const incompleteZones = new Set<string>();
 	const partialZones = new Set<string>();
 	for (const relation of relations) {
-		const ways = relation.ways.flatMap(({ id, inner }) => {
-			const way = boundaryWays.get(id);
-			const located = way === undefined ? undefined : locatedWay(way, inner, locate);
-			return located === undefined ? [] : [located];
-		});
-		const { rings, open } = joinRings(ways);
+		const { rings, whole } = relationRings(relation.ways, boundaryWays, locate);
 		if (!rings.some((ring) => !ring.inner)) {
 			incompleteZones.add(relation.code);
 			continue;
 		}
-		if (open > 0 || ways.length < relation.ways.length) {
+		if (!whole) {
 			partialZones.add(relation.code);
 		}
 		ringsByZone.set(relation.code, [...(ringsByZone.get(relation.code) ?? []), ...rings]);
 	}
 	return { ringsByZone, incompleteZones, partialZones };
+}
+
+/**
+ * The closed rings that a relation's ways make, joined end to end (a zone's, or a place's outline, places.ts), and
+ * whether they are all of it: a way the file lacks, or one with a node it lacks, leaves its ring out.
+ */
+export function relationRings(
+	members: readonly { readonly id: number; readonly inner: boolean }[],
+	ways: ReadonlyMap<number, OsmWay>,
+	locate: Locate,
+): { rings: Chain[]; whole: boolean } {
+	const located = members.flatMap(({ id, inner }) => {
+		const way = ways.get(id);
+		const boundary = way === undefined ? undefined : locatedWay(way, inner, locate);
+		return boundary === undefined ? [] : [boundary];
+	});
+	const { rings, open } = joinRings(located);
+	return { rings, whole: open === 0 && located.length === members.length };
 }
 
 /** A boundary way with its nodes' coordinates, or undefined when the file lacks one of them. */
@@ -144,7 +157,8 @@ interface BoundaryWay {
 	readonly inner: boolean;
 }
 
-interface Chain {
+/** A chain of nodes, a ring once closed: their ids and coordinates (1e-7 degrees). */
+export interface Chain {
 	refs: number[];
 	lat: number[];
 	lon: number[];
