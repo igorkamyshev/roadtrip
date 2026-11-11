@@ -1,7 +1,7 @@
 // Wikidata's Russian labels of cities by their GeoNames id (P1566), for the cities file (#6, «Обогащение из
 // Wikidata»): the Query Service is doubled by a fetch that answers in its JSON and records each query.
 import { describe, expect, it } from 'vitest';
-import { wikidataRussianLabels } from '../src/wikidata.ts';
+import { wikidataPlaces, wikidataRussianLabels } from '../src/wikidata.ts';
 
 interface Query {
 	readonly url: string;
@@ -104,5 +104,76 @@ describe("Wikidata's Russian labels", () => {
 
 		expect(await wikidataRussianLabels([], { fetch: service.fetch, sleep: clock().sleep })).toEqual(new Map());
 		expect(service.queries).toEqual([]);
+	});
+});
+
+/** What the query service knows of an item, for the places. */
+interface Item {
+	readonly ru?: string;
+	readonly en?: string;
+	/** P625, as WKT: `Point(<lon> <lat>)`; several values make several rows. */
+	readonly points?: readonly string[];
+	/** Whether it is an instance of Q44613, a monastery. */
+	readonly monastery?: boolean;
+}
+
+/** A literal of a SPARQL answer in JSON. */
+const literal = (value: string, language?: string) => ({
+	type: 'literal',
+	value,
+	...(language === undefined ? {} : { 'xml:lang': language }),
+});
+
+/** The rows of the answer for an item: one, or one per point, as SPARQL's OPTIONAL gives them. */
+function itemRows(qid: number, { ru, en, points = [], monastery = false }: Item): Record<string, unknown>[] {
+	const row: Record<string, unknown> = {
+		item: { type: 'uri', value: `http://www.wikidata.org/entity/Q${qid}` },
+		monastery: { type: 'literal', datatype: 'http://www.w3.org/2001/XMLSchema#boolean', value: String(monastery) },
+	};
+	if (ru !== undefined) {
+		row.ru = literal(ru, 'ru');
+	}
+	if (en !== undefined) {
+		row.en = literal(en, 'en');
+	}
+	return points.length === 0 ? [row] : points.map((point) => Object.assign({}, row, { point: literal(point) }));
+}
+
+/** The query service for the places: items by Q-id, each asked for answered with its rows. */
+function placesService(known: Record<number, Item>) {
+	const queries: number[][] = [];
+	const fetch = (_: string | URL | Request, init?: RequestInit) => {
+		const sparql = new URLSearchParams(typeof init?.body === 'string' ? init.body : '').get('query') ?? '';
+		const qids = [...sparql.matchAll(/wd:Q(\d+)/gu)].map((match) => Number(match[1])).filter((qid) => qid !== 44_613);
+		queries.push(qids);
+		const bindings = qids.flatMap((qid) => itemRows(qid, known[qid] ?? {}));
+		return Promise.resolve(Response.json({ results: { bindings } }));
+	};
+	return { fetch, queries };
+}
+
+describe("Wikidata's items of the places", () => {
+	it('are asked by Q-id, 400 at a time: the Russian and English labels, the point and whether it is a monastery', async () => {
+		const qids = Array.from({ length: 401 }, (_, index) => index + 1);
+		const service = placesService({
+			1: { ru: 'Бледское озеро', en: 'Lake Bled', points: ['Point(14.094 46.363)'] },
+			2: { en: 'Manasija', monastery: true },
+			401: {},
+		});
+
+		const items = await wikidataPlaces(qids, { fetch: service.fetch, sleep: clock().sleep });
+
+		expect(service.queries.map((query) => query.length)).toEqual([400, 1]);
+		expect(items.get(1)).toEqual({ ru: 'Бледское озеро', en: 'Lake Bled', point: { lat: 46.363, lon: 14.094 }, monastery: false });
+		expect(items.get(2)).toEqual({ ru: undefined, en: 'Manasija', point: undefined, monastery: true });
+		expect(items.get(401)).toEqual({ ru: undefined, en: undefined, point: undefined, monastery: false });
+	});
+
+	it('take the first point of an item with several', async () => {
+		const service = placesService({ 7: { points: ['Point(20.5 44.8)', 'Point(20.6 44.9)'] } });
+
+		const items = await wikidataPlaces([7], { fetch: service.fetch, sleep: clock().sleep });
+
+		expect(items.get(7)?.point).toEqual({ lat: 44.8, lon: 20.5 });
 	});
 });
