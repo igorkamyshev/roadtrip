@@ -5,7 +5,7 @@
 // |Δlon|, which is what decides whether `squareRing` holds a point.
 import type { Page } from '@playwright/test';
 import { carouselRing, expect, LINK_3_HOURS, OPEN_AROUND_SERBIA, servePlaceOutlines, squareRing, test, visaRules } from './fixtures.ts';
-import { citiesOnMap, firstCard, holdTheClock, moreCard, pointCards, read, runUntil, runUntilMapAtRest } from './screen.ts';
+import { citiesOnMap, firstCard, holdTheClock, moreCard, placesOnMap, pointCards, read, runUntil, runUntilMapAtRest } from './screen.ts';
 
 /** A ring from the origin to `outer` degrees around it, whatever the origin, with a Russian's entry in Serbia. */
 const bandFromOrigin = (outer: number) => (call: { readonly lat: string; readonly lon: string }) => ({
@@ -45,8 +45,9 @@ test('a large place the origin is inside is nowhere, and the first card does not
 		'Лепенски-Вир',
 	];
 	await expect(pointCards(page).getByRole('heading')).toHaveText(carouselNames);
-	await expect.poll(async () => (await citiesOnMap(page)).length).toBe(32);
-	expect((await citiesOnMap(page)).map(({ name }) => name)).not.toContain('Делиблатские пески');
+	// On the map, the 24 cities' dots and the 8 other places' diamonds, not Deliblato's.
+	await expect.poll(async () => [(await citiesOnMap(page)).length, (await placesOnMap(page)).length]).toEqual([24, 8]);
+	expect((await placesOnMap(page)).map(({ name }) => name)).not.toContain('Делиблатские пески');
 	const listed = await namesInTheList(page);
 	expect([listed.slice(0, 12), listed.includes('Делиблатские пески')]).toEqual([carouselNames, false]);
 });
