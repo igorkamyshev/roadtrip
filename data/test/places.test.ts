@@ -58,6 +58,19 @@ function build(
 	});
 }
 
+/** The places of `fixtures/places.osm` with the sitelinks and the ruwiki titles of a dump's lines. */
+async function sitelinksOf(dump: readonly string[]) {
+	const { places } = await buildPlaces({
+		osm: openOsm(fixturePath('places.osm')),
+		sitelinks: ReadableStream.from(dump),
+		wikidata: wikidata(),
+		graph,
+		cities: CITIES,
+		russianNames: new Map(),
+	});
+	return places.map(({ qid, sitelinks, ru }) => [qid, sitelinks, ru]);
+}
+
 /** The places by Q-id. */
 const byQid = (places: readonly Place[]) => new Map(places.map((place) => [place.qid, place]));
 
@@ -128,6 +141,12 @@ describe('the places', () => {
 		await build(PLACES_SITELINKS, asked);
 
 		expect(asked.flat().toSorted((one, two) => one - two)).toEqual([1001, 1004, 1005, 1006, 1007, 1008, 1010, 1012]);
+	});
+
+	it('count the sitelinks of a dump of long INSERT lines as of a dump of a row a line', async () => {
+		expect(await sitelinksOf(sitelinksDump(PLACES_SITELINKS, { lines: 'longLine', perStatement: 7 }))).toEqual(
+			await sitelinksOf(sitelinksDump(PLACES_SITELINKS, { lines: 'rowALine', perStatement: 7 })),
+		);
 	});
 
 	it('leave out an item of fewer than 10 sitelinks', async () => {
