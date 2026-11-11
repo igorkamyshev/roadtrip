@@ -15,6 +15,7 @@ import {
 	type PlaceOutline,
 } from 'data/places-file';
 import type { LatLon } from '../state/point.ts';
+import { usePlacesFile } from './places.ts';
 
 /** The outlines of the cell that holds `origin`; none for a cell without a file, a failure for any other answer. */
 async function loadOutlines(origin: LatLon): Promise<readonly PlaceOutline[]> {
@@ -50,7 +51,8 @@ interface SettledPlaces {
  * The places a ring may show: the places file's but the origin's. Settled once the file and the origin's cell are;
  * without the cell, none (the screen shows the cities alone and says nothing of it), as without the file.
  */
-export function useRingPlaces(origin: LatLon | undefined, { settled: fileSettled, places }: SettledPlaces): SettledPlaces {
+export function useRingPlaces(origin: LatLon | undefined): SettledPlaces {
+	const { settled: fileSettled, places } = usePlacesFile();
 	const { status, data: outlines } = useQuery({ ...outlinesQuery(origin ?? { lat: 0, lon: 0 }), enabled: origin !== undefined });
 	return useMemo(() => {
 		const settled = fileSettled && status !== 'pending';

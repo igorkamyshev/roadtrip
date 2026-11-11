@@ -3,10 +3,10 @@
 // the events that follow them (src/analytics/).
 import { useMemo, useState } from 'react';
 import type { RingResponse } from 'worker/api';
+import type { ScreenAnalytics } from '../analytics/screen-analytics.ts';
 import { useScreenAnalytics } from '../analytics/use-screen-analytics.ts';
 import { useCitiesFile, type City } from '../cities/cities.ts';
 import { useRingPlaces } from '../places/origin.ts';
-import { usePlacesFile } from '../places/places.ts';
 import { pointsInRing } from '../points/in-ring.ts';
 import type { PointOfInterest } from '../points/point-of-interest.ts';
 import { ringKey, useCachedHours, useRing } from '../ring/use-ring.ts';
@@ -25,7 +25,7 @@ export interface ShownRing {
 	readonly requestId: string;
 	/** «Повторить»: the request again, an ask of its own for `ring result`. */
 	readonly retry: () => void;
-	readonly analytics: ReturnType<typeof useScreenAnalytics>;
+	readonly analytics: ScreenAnalytics;
 	/** The cities file's cities; undefined until they come. */
 	readonly cities: readonly City[] | undefined;
 	/** The ring on the map: this request's, or the previous one of the same origin standing in for it, striped. */
@@ -48,8 +48,7 @@ export interface ShownRing {
 export function useShownRing({ origin, start, hours, settings }: ScreenStateControls): ShownRing {
 	const ring = useRing(origin, hours, settings);
 	const citiesFile = useCitiesFile();
-	const placesFile = usePlacesFile();
-	const ringPlaces = useRingPlaces(origin, placesFile);
+	const ringPlaces = useRingPlaces(origin);
 	const cachedHours = useCachedHours(origin, settings);
 	const requestId = origin === undefined ? '' : JSON.stringify(ringKey(origin, hours, settings));
 	const [retries, setRetries] = useState(0);
@@ -61,6 +60,7 @@ export function useShownRing({ origin, start, hours, settings }: ScreenStateCont
 		settings,
 		ring,
 		citiesFile,
+		ringPlaces,
 	});
 	const { data } = ring;
 	const geometry = data?.outcome === 'ring' ? data.ring : undefined;
