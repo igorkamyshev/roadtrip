@@ -111,8 +111,8 @@ export function placesMarkdown(report: PlacesReport, brotliBytes: number, budget
 			`больше ${MAX_SQUARE_KM} км² — ${report.tooLarge}, в пределах города — ${report.inCities}, ` +
 			`без дороги ближе ${MAX_ACCESS_METERS / 1000} км — ${report.withoutAccess}, храмы, которые Wikidata не называет монастырём, — ${report.notMonasteries}.`,
 		'',
-		`Клеток контуров: ${report.cells.count.toLocaleString('ru-RU')}, в них контуры ${count(report.cells.outlines, ['места', 'мест', 'мест'])}, ` +
-			`${megabytes(report.cells.bytes)} МБ.`,
+		`Клеток контуров: ${report.cells.count.toLocaleString('ru-RU')}, в них ${count(report.cells.outlines, ['место', 'места', 'мест'])} контуром ` +
+			`и ${count(report.cells.radii, ['место', 'места', 'мест'])} радиусом, ${megabytes(report.cells.bytes)} МБ.`,
 		'',
 		withoutRussian.mostFamous.length > 0 ? `${line} Самые известные: ${examples}.` : line,
 		'',

@@ -109,7 +109,8 @@ describe('the fame key', () => {
 
 /**
  * Near the equator, where 0.01° is 1.11 km: a lake of 11 × 11 km with an island of 4.4 × 4.4 km in it, its point
- * (P625) on the island; a small lake, in no cell; a peak.
+ * (P625) on the island; a small lake of 1 km across, a radius of 1 km + 0.5 km; a peak, a point, of 1 km; a castle the
+ * cell holds neither an outline nor a radius of.
  */
 const bigLake: PlaceOutline = {
 	qid: 1,
@@ -118,10 +119,18 @@ const bigLake: PlaceOutline = {
 		[0.13, 0.13, 0.13, 0.17, 0.17, 0.17, 0.17, 0.13],
 	],
 };
+const ORIGIN_CELL = {
+	outlines: [bigLake],
+	radii: [
+		{ qid: 2, meters: 1500 },
+		{ qid: 3, meters: 1000 },
+	],
+};
 const ORIGIN_CANDIDATES = [
-	{ qid: 1, lat: 0.15, lon: 0.15, type: 'lake' },
-	{ qid: 2, lat: 0.3, lon: 0.3, type: 'lake' },
-	{ qid: 3, lat: 0.4, lon: 0.4, type: 'mountain' },
+	{ qid: 1, lat: 0.15, lon: 0.15 },
+	{ qid: 2, lat: 0.3, lon: 0.3 },
+	{ qid: 3, lat: 0.4, lon: 0.4 },
+	{ qid: 4, lat: 0.5, lon: 0.5 },
 ] as const;
 
 describe('the cells of the outlines', () => {
@@ -133,25 +142,43 @@ describe('the cells of the outlines', () => {
 		expect(placeOutlinesPath(point)).toBe(path);
 	});
 
-	it('write the outlines of a cell in order of Q-id, each ring flat, and read them back as JSON gives them', () => {
+	it('write the outlines and the radii of a cell in order of Q-id, each ring flat, and read them back as JSON gives them', () => {
 		const island: PlaceOutline = { qid: 0, rings: [[0.5, 0.5, 0.5, 0.55, 0.55, 0.5]] };
 
-		const file = encodePlaceOutlines([bigLake, island]);
+		const file = encodePlaceOutlines({
+			outlines: [bigLake, island],
+			radii: [
+				{ qid: 3, meters: 1000 },
+				{ qid: 2, meters: 1500 },
+			],
+		});
 
 		expect(file).toEqual({
-			format: 1,
+			format: 2,
 			outlines: [
 				[0, [0.5, 0.5, 0.5, 0.55, 0.55, 0.5]],
 				[1, [0.1, 0.1, 0.1, 0.2, 0.2, 0.2, 0.2, 0.1], [0.13, 0.13, 0.13, 0.17, 0.17, 0.17, 0.17, 0.13]],
 			],
+			radii: [
+				[2, 1500],
+				[3, 1000],
+			],
 		});
-		expect(decodePlaceOutlines(parsePlaceOutlinesFile(JSON.parse(JSON.stringify(file))))).toEqual([island, bigLake]);
+		expect(decodePlaceOutlines(parsePlaceOutlinesFile(JSON.parse(JSON.stringify(file))))).toEqual({
+			outlines: [island, bigLake],
+			radii: [
+				{ qid: 2, meters: 1500 },
+				{ qid: 3, meters: 1000 },
+			],
+		});
 	});
 
 	it.each([
-		['of another format', { format: 2, outlines: [] }],
-		['with a ring of an odd count of numbers', { format: 1, outlines: [[1, [0.1, 0.1, 0.2]]] }],
-		['with an outline of no ring', { format: 1, outlines: [[1]] }],
+		['of another format', { format: 1, outlines: [], radii: [] }],
+		['with a ring of an odd count of numbers', { format: 2, outlines: [[1, [0.1, 0.1, 0.2]]], radii: [] }],
+		['with an outline of no ring', { format: 2, outlines: [[1]], radii: [] }],
+		['with a radius of no metres', { format: 2, outlines: [], radii: [[1, 'far']] }],
+		['without radii', { format: 2, outlines: [] }],
 	])('are refused %s', (_, json) => {
 		expect(() => parsePlaceOutlinesFile(json)).toThrow(/outlines/u);
 	});
@@ -164,12 +191,13 @@ describe('the origin’s places', () => {
 		['1.1 km outside its edge', { lat: 0.21, lon: 0.15 }, []],
 		// The island is a hole: 2.2 km from its shore, though at the lake's own point.
 		['on its island 2.2 km from the shore', { lat: 0.15, lon: 0.15 }, []],
-		// A small place is a point with 1 km + half of 2 km.
-		['1.9 km from a small place', { lat: 0.317, lon: 0.3 }, [2]],
-		['2.1 km from a small place', { lat: 0.319, lon: 0.3 }, []],
+		// 0.013° and 0.014° are 1.45 km and 1.56 km, either side of the small lake's 1.5 km.
+		['1.45 km from a small place', { lat: 0.313, lon: 0.3 }, [2]],
+		['1.56 km from a small place', { lat: 0.314, lon: 0.3 }, []],
 		['0.9 km from a peak', { lat: 0.408, lon: 0.4 }, [3]],
 		['1.1 km from a peak', { lat: 0.41, lon: 0.4 }, []],
+		['at a place the cell holds no outline or radius of', { lat: 0.5, lon: 0.5 }, []],
 	])('are the places it is in or near: %s', (_, origin, qids) => {
-		expect([...originPlaces(origin, ORIGIN_CANDIDATES, [bigLake])]).toEqual(qids);
+		expect([...originPlaces(origin, ORIGIN_CANDIDATES, ORIGIN_CELL)]).toEqual(qids);
 	});
 });

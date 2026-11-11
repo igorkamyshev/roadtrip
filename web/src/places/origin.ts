@@ -1,8 +1,9 @@
 // The places of the origin (GLOSSARY «Место точки старта», spec #154 «Загрузка», «Отбор мест кольца»): those the
 // origin is inside or near, which no ring shows. The screen tells them by the rule of `data/places-file`
-// (`originPlaces`), from the outlines of the cell of 1° × 1° that holds the origin (`placeOutlinesPath`, data's
-// `build-places`), fetched by the origin's cell into TanStack Query and kept for the session, and from the radius of a
-// small place. Only a cell some outline touches has a file: a 404 is a cell with no outlines, not a failure.
+// (`originPlaces`), from the cell of 1° × 1° that holds the origin (`placeOutlinesPath`, data's `build-places`): the
+// outlines of the large places and the radii of the small ones that touch it, fetched by the origin's cell into
+// TanStack Query and kept for the session. Only a cell some place touches has a file: a 404 is an empty cell, not a
+// failure.
 import { queryOptions, useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import {
@@ -12,17 +13,17 @@ import {
 	placeOutlinesCell,
 	placeOutlinesPath,
 	type Place,
-	type PlaceOutline,
+	type PlaceOutlinesCell,
 } from 'data/places-file';
 import type { LatLon } from '../state/point.ts';
 import { usePlacesFile } from './places.ts';
 
-/** The outlines of the cell that holds `origin`; none for a cell without a file, a failure for any other answer. */
-async function loadOutlines(origin: LatLon): Promise<readonly PlaceOutline[]> {
+/** The cell that holds `origin`; an empty one for a cell without a file, a failure for any other answer. */
+async function loadCell(origin: LatLon): Promise<PlaceOutlinesCell> {
 	const path = placeOutlinesPath(origin);
 	const response = await fetch(path);
 	if (response.status === 404) {
-		return [];
+		return { outlines: [], radii: [] };
 	}
 	if (!response.ok) {
 		throw new Error(`${path}: HTTP ${response.status}`);
@@ -30,10 +31,10 @@ async function loadOutlines(origin: LatLon): Promise<readonly PlaceOutline[]> {
 	return decodePlaceOutlines(parsePlaceOutlinesFile(await response.json()));
 }
 
-const outlinesQuery = (origin: LatLon) =>
+const cellQuery = (origin: LatLon) =>
 	queryOptions({
 		queryKey: ['place-outlines', placeOutlinesCell(origin)],
-		queryFn: async () => loadOutlines(origin),
+		queryFn: async () => loadCell(origin),
 		staleTime: Infinity,
 		gcTime: Infinity,
 		retry: false,
@@ -53,13 +54,13 @@ interface SettledPlaces {
  */
 export function useRingPlaces(origin: LatLon | undefined): SettledPlaces {
 	const { settled: fileSettled, places } = usePlacesFile();
-	const { status, data: outlines } = useQuery({ ...outlinesQuery(origin ?? { lat: 0, lon: 0 }), enabled: origin !== undefined });
+	const { status, data: cell } = useQuery({ ...cellQuery(origin ?? { lat: 0, lon: 0 }), enabled: origin !== undefined });
 	return useMemo(() => {
 		const settled = fileSettled && status !== 'pending';
-		if (places === undefined || outlines === undefined || origin === undefined) {
+		if (places === undefined || cell === undefined || origin === undefined) {
 			return { settled, places: undefined };
 		}
-		const ofOrigin = originPlaces(origin, places, outlines);
+		const ofOrigin = originPlaces(origin, places, cell);
 		return { settled, places: places.filter((place) => !ofOrigin.has(place.qid)) };
-	}, [fileSettled, status, places, outlines, origin]);
+	}, [fileSettled, status, places, cell, origin]);
 }

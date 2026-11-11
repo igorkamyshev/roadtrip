@@ -15,6 +15,9 @@ import {
 	mostFamousFirst,
 	type Place,
 	type PlaceOutline,
+	type PlaceOutlinesCell,
+	placeRadius,
+	type PlaceRadius,
 	PLACE_TYPES,
 	type PlaceType,
 } from './places-file.ts';
@@ -70,8 +73,11 @@ export interface PlacesReport {
 		readonly count: number;
 		readonly mostFamous: readonly { readonly qid: number; readonly name: string }[];
 	};
-	/** The cells of the outlines: how many, how many places' outlines are in them, and their files' bytes in all. */
-	readonly cells: { readonly count: number; readonly outlines: number; readonly bytes: number };
+	/**
+	 * The cells of the outlines: how many, how many places are in them as their outline and how many as a radius, and
+	 * their files' bytes in all.
+	 */
+	readonly cells: { readonly count: number; readonly outlines: number; readonly radii: number; readonly bytes: number };
 }
 
 /** An object of OSM that may be a place. */
@@ -113,7 +119,7 @@ const KIND_ORDER = ['relation', 'way', 'node'] as const;
  */
 export async function buildPlaces(
 	sources: PlacesSources,
-): Promise<{ places: Place[]; cells: Map<string, PlaceOutline[]>; report: PlacesReport }> {
+): Promise<{ places: Place[]; cells: Map<string, PlaceOutlinesCell>; report: PlacesReport }> {
 	const candidates = readCandidates(sources.osm);
 	const sitelinks = await readSitelinks(sources.sitelinks, new Set(candidates.map(({ qid }) => qid)));
 	const famous = candidates.filter(({ qid }) => (sitelinks.get(qid)?.count ?? 0) >= MIN_SITELINKS);
@@ -128,12 +134,8 @@ export async function buildPlaces(
 	const places = typed
 		.map((place) => placeOf(place, items.get(place.candidate.qid), sitelinks.get(place.candidate.qid)))
 		.toSorted(mostFamousFirst);
-	const outlines = typed.flatMap(({ candidate, outline }) =>
-		outline !== undefined && outline.acrossMeters >= MIN_OUTLINE_METERS && outline.rings.length > 0
-			? [{ qid: candidate.qid, rings: outline.rings }]
-			: [],
-	);
-	const cells = outlineCells(outlines);
+	const { outlines, radii } = cellPlaces(typed, places);
+	const cells = outlineCells(outlines, radii);
 	const withoutRussian = places.filter(({ qid, ru }) => ru === '' && !sources.russianNames.has(qid));
 	return {
 		places,
@@ -154,10 +156,31 @@ export async function buildPlaces(
 			cells: {
 				count: cells.size,
 				outlines: outlines.length,
+				radii: radii.length,
 				bytes: [...cells.values()].reduce((sum, cell) => sum + JSON.stringify(encodePlaceOutlines(cell)).length, 0),
 			},
 		},
 	};
+}
+
+/**
+ * What the cells hold of the places (GLOSSARY «Место точки старта»): the outlines from `MIN_OUTLINE_METERS` across,
+ * and of the other places, the small outlines and the places-points, the radius (`placeRadius`) around their point in
+ * the file.
+ */
+function cellPlaces(typed: readonly Typed[], places: readonly Place[]): { outlines: PlaceOutline[]; radii: (PlaceRadius & Point)[] } {
+	const pointOf = new Map(places.map((place) => [place.qid, place]));
+	const outlines: PlaceOutline[] = [];
+	const radii: (PlaceRadius & Point)[] = [];
+	for (const { candidate, outline } of typed) {
+		const point = pointOf.get(candidate.qid);
+		if (outline !== undefined && outline.acrossMeters >= MIN_OUTLINE_METERS && outline.rings.length > 0) {
+			outlines.push({ qid: candidate.qid, rings: outline.rings });
+		} else if (point !== undefined) {
+			radii.push({ qid: candidate.qid, meters: placeRadius(outline?.acrossMeters), lat: point.lat, lon: point.lon });
+		}
+	}
+	return { outlines, radii };
 }
 
 /** A place of the file: at its node's point, or at Wikidata's P625, else a point inside its outline. */

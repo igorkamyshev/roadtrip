@@ -310,7 +310,7 @@ describe('the build-places command', () => {
 				'Не вошли: меньше 10 сайтлинков — 1, без целого контура — 0, больше 2000 км² — 0, в пределах города — 1, без дороги ближе 10 км — 1, ' +
 					'храмы, которые Wikidata не называет монастырём, — 2.',
 				'',
-				'Клеток контуров: 0, в них контуры 0 мест, 0,00 МБ.',
+				'Клеток контуров: 2, в них 0 мест контуром и 6 мест радиусом, 0,00 МБ.',
 				'',
 				'Мест без русского названия, которых нет в таблице `data/place-russian-names.tsv`: 2. Самые известные: Q1008, Jezero Le (Q1012).',
 				'',
@@ -342,9 +342,9 @@ describe('the build-places command', () => {
 			decodePlaceOutlines(
 				parsePlaceOutlinesFile(JSON.parse(readFileSync(join(directory, 'outlines', 'place-outlines', '1_1.json'), 'utf8'))),
 			),
-		).toEqual([{ qid: 2007, rings: [[0.95, 1.05, 0.95, 1.1, 0.995, 1.1, 0.995, 1.05]] }]);
+		).toEqual({ outlines: [{ qid: 2007, rings: [[0.95, 1.05, 0.95, 1.1, 0.995, 1.1, 0.995, 1.05]] }], radii: [] });
 		expect(run.stderr).toContain('1 without a whole outline, 1 over 2000 km²');
-		expect(run.stderr).toMatch(/wrote 3 cells of the outlines of 4 places, 0\.00 MB, to .*place-outlines/u);
+		expect(run.stderr).toMatch(/wrote 3 cells of the outlines of 4 places and the radii of 1, 0\.00 MB, to .*place-outlines/u);
 	});
 
 	// Brotli of quality 11 takes seconds over 0.7 MB.

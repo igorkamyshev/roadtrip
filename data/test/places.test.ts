@@ -220,15 +220,17 @@ describe('the places with an outline', () => {
 		expect(places.get(2002)?.access).toEqual([{ lat: 0.205, lon: 0.55, zone: 'AAA' }]);
 	});
 
-	it('are in the cells of 1° × 1° they touch with 1 km to spare, from 2 km across', async () => {
+	it('are in the cells of 1° × 1° they touch with 1 km to spare, from 2 km across; a smaller one is a radius of 1 km and half its size', async () => {
 		const { cells } = await buildOutlines();
 
-		expect([...cells].map(([cell, outlines]) => [cell, outlines.map(({ qid }) => qid)])).toEqual([
-			['0_0', [2001, 2006]],
-			['0_1', [2001, 2004, 2007]],
-			['1_1', [2007]],
+		expect([...cells].map(([cell, { outlines, radii }]) => [cell, outlines.map(({ qid }) => qid), radii.map(({ qid }) => qid)])).toEqual([
+			['0_0', [2001, 2006], [2002]],
+			['0_1', [2001, 2004, 2007], []],
+			['1_1', [2007], []],
 		]);
-		expect(cells.get('1_1')).toEqual([{ qid: 2007, rings: [[0.95, 1.05, 0.95, 1.1, 0.995, 1.1, 0.995, 1.05]] }]);
+		expect(cells.get('1_1')?.outlines).toEqual([{ qid: 2007, rings: [[0.95, 1.05, 0.95, 1.1, 0.995, 1.1, 0.995, 1.05]] }]);
+		// The small lake is 0.01° across, 1.112 km: 1 km + 0.556 km around its point.
+		expect(cells.get('0_0')?.radii).toEqual([{ qid: 2002, meters: 1556 }]);
 	});
 
 	it('are counted in the report: too large, broken, the cells', async () => {
@@ -242,7 +244,7 @@ describe('the places with an outline', () => {
 			inCities: 1,
 			withoutAccess: 0,
 			places: 5,
-			cells: { count: 3, outlines: 4 },
+			cells: { count: 3, outlines: 4, radii: 1 },
 		});
 	});
 });
@@ -261,8 +263,20 @@ describe('the report of the places', () => {
 			notMonasteries: 1,
 			places: 7,
 			withoutRussian: { count: 1, mostFamous: [{ qid: 1008, name: 'Old Church' }] },
-			cells: { count: 0, outlines: 0, bytes: 0 },
+			// The places are points, each a radius of 1 km: 0.88°E in 0_0, 1.01°E and 1.13°E in 0_1. The files are
+			// {"format":2,"outlines":[],"radii":[…]}, 37 bytes, and 11 a radius and a comma between two: 37 + 4 · 11 + 3
+			// and 37 + 3 · 11 + 2.
+			cells: { count: 2, outlines: 0, radii: 7, bytes: 156 },
 		});
+	});
+
+	it('puts a place that is a point in the cells its radius of 1 km touches', async () => {
+		const { cells } = await build();
+
+		expect([...cells].map(([cell, { radii }]) => [cell, radii])).toEqual([
+			['0_0', [1004, 1005, 1006, 1008].map((qid) => ({ qid, meters: 1000 }))],
+			['0_1', [1001, 1010, 1012].map((qid) => ({ qid, meters: 1000 }))],
+		]);
 	});
 
 	it('leaves out of the places without a Russian name those the table of Russian names has, which the deploy names', async () => {
