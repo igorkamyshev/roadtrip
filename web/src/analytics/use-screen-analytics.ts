@@ -1,5 +1,5 @@
 // The screen's events from its state (screen-analytics.ts says when each goes): the start, the ring asked for and its
-// answer, the cities file and the places file, and the page going away.
+// answer, the cities file and the places a ring from the origin may show, and the page going away.
 import type { UseQueryResult } from '@tanstack/react-query';
 import type { Place } from 'data/places-file';
 import { useEffect, useState } from 'react';
@@ -21,7 +21,8 @@ export interface ScreenAnalyticsInput {
 	readonly settings: Settings;
 	readonly ring: UseQueryResult<RingResponse, RingRequestError>;
 	readonly citiesFile: { readonly settled: boolean; readonly cities: readonly City[] | undefined };
-	readonly placesFile: { readonly settled: boolean; readonly places: readonly Place[] | undefined };
+	/** The places a ring from the start's origin may show: the places file's but the origin's (src/places/origin.ts). */
+	readonly ringPlaces: { readonly settled: boolean; readonly places: readonly Place[] | undefined };
 }
 
 export function useScreenAnalytics({
@@ -32,7 +33,7 @@ export function useScreenAnalytics({
 	settings,
 	ring,
 	citiesFile,
-	placesFile,
+	ringPlaces,
 }: ScreenAnalyticsInput): ScreenAnalytics {
 	const [analytics] = useState(() => new ScreenAnalytics(send));
 
@@ -43,10 +44,10 @@ export function useScreenAnalytics({
 	}, [analytics, citiesFile]);
 
 	useEffect(() => {
-		if (placesFile.settled) {
-			analytics.placesSettled(placesFile.places);
+		if (start !== undefined && ringPlaces.settled) {
+			analytics.placesSettled(start.origin, ringPlaces.places);
 		}
-	}, [analytics, placesFile]);
+	}, [analytics, start, ringPlaces]);
 
 	useEffect(() => {
 		if (start !== undefined) {

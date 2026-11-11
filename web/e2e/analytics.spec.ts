@@ -13,6 +13,7 @@ import {
 	openInProduction,
 	POSTHOG_PROXY,
 	PRODUCTION,
+	servePlaceOutlines,
 	servePlaces,
 	squareRing,
 	test,
@@ -421,6 +422,53 @@ test.describe('ring result', () => {
 		posthog,
 	}) => {
 		await servePlaces(page, undefined);
+		ringApi.respond(() => belgradeRingWithBosnia());
+
+		await openInProduction(page, LINK_3_HOURS_RUS);
+
+		await expect(firstCard(page)).toContainText(/10\s*точек интереса в 2 странах/u);
+		await expect.poll(() => posthog.named('ring result'), SENT).toHaveLength(1);
+		const [result] = posthog.named('ring result');
+		expect(result).toMatchObject({ outcome: 'ring', cities_count: 10, countries_count: 2 });
+		expect(result).not.toHaveProperty('places_count');
+		expect(result).not.toHaveProperty('carousel_places_count');
+	});
+
+	test('does not count the origin’s places, as the first card', async ({ page, ringApi, posthog }) => {
+		// Inside Deliblato Sands (e2e/origin-places.spec.ts), 0.5° around: Pančevo and Smederevo, and Deliblato's access
+		// points, which the screen leaves out.
+		ringApi.respond((call) => ({ ...squareRing(Number(call.lat), Number(call.lon), [0, 0.5]), ...visaRules() }));
+
+		await openInProduction(page, '/#/?p=44.95000,21.10000&h=3&cit=RUS');
+
+		await expect(firstCard(page)).toContainText(/2\s*точки интереса в 1 стране/u);
+		await expect
+			.poll(() => posthog.named('ring result'), SENT)
+			.toEqual([
+				expect.objectContaining({ outcome: 'ring', cities_count: 2, places_count: 0, carousel_places_count: 0, countries_count: 1 }),
+			]);
+	});
+
+	test('waits for the cell of the outlines of the origin', async ({ page, ringApi, posthog }) => {
+		const held = Promise.withResolvers<void>();
+		await page.route('**/data/place-outlines/*', async (route) => {
+			await held.promise;
+			await route.fallback();
+		});
+		ringApi.respond(() => belgradeRing());
+		await openInProduction(page, LINK_3_HOURS_RUS);
+		await expect.poll(() => posthog.named('start set'), SENT).toHaveLength(1);
+		expect(posthog.named('ring result')).toEqual([]);
+
+		held.resolve();
+
+		await expect
+			.poll(() => posthog.named('ring result'), SENT)
+			.toEqual([expect.objectContaining({ outcome: 'ring', cities_count: 10, places_count: 7, carousel_places_count: 5 })]);
+	});
+
+	test('without the cell of the outlines: the cities alone counted, as without the places file', async ({ page, ringApi, posthog }) => {
+		await servePlaceOutlines(page, undefined);
 		ringApi.respond(() => belgradeRingWithBosnia());
 
 		await openInProduction(page, LINK_3_HOURS_RUS);
