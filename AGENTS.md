@@ -51,7 +51,7 @@ A cloud session pushes to the branch it was given, and may not force-push: that 
 
 ### Issue tracker
 
-Issues live in GitHub Issues for `igorkamyshev/roadtrip`. See `docs/agents/issue-tracker.md`.
+Issues live in GitHub Issues for `igorkamyshev/roadtrip`. Before the first call that reads or writes an issue: `docs/agents/issue-tracker.md`.
 
 Every change starts from an issue: file one before the first edit when none exists, and the PR's description says `Closes #N` (or `Part of #N`), which CI's check «Issue» reads. A retro's change is `Part of #N` of the issue it looks back on.
 

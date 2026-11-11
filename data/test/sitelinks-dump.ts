@@ -1,6 +1,10 @@
 // A tiny dump of Wikidata's sitelinks in the layout of `wikidatawiki-latest-wb_items_per_site.sql.gz`: MariaDB's
 // statements, the rows `(ips_row_id, ips_item_id, 'ips_site_id', 'ips_site_page')` in INSERT statements, by default as
-// MariaDB 10.11 writes them (`INSERT INTO … VALUES` on its own line, then a row a line), or in long INSERT lines.
+// MariaDB 10.11 writes them (`INSERT INTO … VALUES` on its own line, then a row a line), or in long INSERT lines. Its
+// header and INSERT line are those of the real dump's head (`fixtures/wikidata/wb_items_per_site-head.sql`, the
+// first rows of the dump of 2026-11, by `curl -r 0-2000000`), so it follows the file it stands for.
+
+import { readFileSync } from 'node:fs';
 
 /** An item's sitelinks: how many, and its ruwiki title among them, if it has one. */
 export interface ItemSitelinks {
@@ -21,7 +25,15 @@ export interface DumpLayout {
 /** A string of MySQL's dump: in quotes, a quote and a backslash escaped. */
 const quoted = (text: string) => `'${text.replaceAll('\\', '\\\\').replaceAll("'", "\\'")}'`;
 
-const INSERT = 'INSERT INTO `wb_items_per_site` VALUES';
+/** The real dump's head, a line each. */
+const SAMPLE = readFileSync(new URL('fixtures/wikidata/wb_items_per_site-head.sql', import.meta.url), 'utf8').split('\n');
+
+/** The real dump's first INSERT line, which opens every statement. */
+const INSERT_AT = SAMPLE.findIndex((line) => line.startsWith('INSERT INTO'));
+const INSERT = SAMPLE[INSERT_AT];
+
+/** The real dump's statements before its rows: the table's structure and the settings. */
+const HEADER = SAMPLE.slice(0, INSERT_AT);
 
 /** The layout of the real dump, 7 rows a statement so that the tests' items take several. */
 const MARIADB_LAYOUT: DumpLayout = { lines: 'rowALine', perStatement: 7 };
@@ -47,21 +59,7 @@ export function sitelinksDump(
 			inserts.push(INSERT, ...statement.map((row, index) => `${row}${index === statement.length - 1 ? ';' : ','}`));
 		}
 	}
-	return [
-		'-- MariaDB dump 10.19  Distrib 10.11.19-MariaDB, for debian-linux-gnu (x86_64)',
-		'DROP TABLE IF EXISTS `wb_items_per_site`;',
-		'CREATE TABLE `wb_items_per_site` (',
-		'  `ips_row_id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,',
-		'  `ips_item_id` int(10) unsigned NOT NULL,',
-		'  `ips_site_id` varbinary(32) NOT NULL,',
-		'  `ips_site_page` varbinary(310) NOT NULL,',
-		'  PRIMARY KEY (`ips_row_id`)',
-		') ENGINE=InnoDB DEFAULT CHARSET=binary;',
-		'/*!40000 ALTER TABLE `wb_items_per_site` DISABLE KEYS */;',
-		...inserts,
-		'/*!40000 ALTER TABLE `wb_items_per_site` ENABLE KEYS */;',
-		'-- Dump completed on 2026-11-01  2:17:12',
-	];
+	return [...HEADER, ...inserts, '/*!40000 ALTER TABLE `wb_items_per_site` ENABLE KEYS */;', '-- Dump completed on 2026-11-01  2:17:12'];
 }
 
 /** The sitelinks of the places of `fixtures/places.osm` (its header), with the ruwiki titles of the tests. */
