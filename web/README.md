@@ -9,6 +9,7 @@ One line per file, so that two changes of the screen seldom touch the same line.
 - `src/main.tsx`:
   - PostHog on the production host (`src/analytics/`, «Analytics» below). posthog-js and the map view with MapLibre are chunks of their own, which the first paint does not wait for: the screen's chunk is 0.44 MB, 138 KB in gzip. The cities and places files are fetched, not bundled.
   - The opening state (`src/state/startup.ts`: the link, else the saved state, else the defaults), then the router (its context says where the opening state came from) and the Query client.
+- `src/session-cache.ts`: what the screen fetches once and keeps for the session in TanStack Query, the rings and the files, takes its options from `KEPT_FOR_THE_SESSION` (never stale nor collected, no retry, no refetch); a file the screen waits for is `Settled` (`settled`, and its `contents` once it came), as `useSettledFile` gives it.
 - `src/router.tsx`: one route `/` with hash history; `validateSearch`, `parseSearch` and `stringifySearch` from `src/state/search.ts` keep the link literal: `/#/?p=44.81760,20.45730&h=3&cit=RUS,SRB&visas=GEO,SCHENGEN`, or `d=2` in place of `h` for a ring of days.
 - `src/state/`: the state in the link and its defaults.
   - `search.ts`: the origin, the slider's cell (`hours` of the state, its ring's upper bound: N, or `HOURS_PER_DAY`·D for day D; `h=N` or `d=D` in the link, never both: both, or either off the scale, give 1 h), the citizenships (Sherpa's passports sorted, `RUS` by default) and the held visas (`rules`' `HELD_VISAS` sorted, none by default and left out of the link then); anything else in `cit` or `visas` takes the default.
@@ -18,7 +19,7 @@ One line per file, so that two changes of the screen seldom touch the same line.
   - `settings.ts`: what besides the origin and N a ring is asked for, the citizenships and the held visas, which `useScreenState` gives as `settings`, one object while they stay.
 - `src/ring/`:
   - `fetch-ring.ts`: the one place a ring request starts and ends.
-  - `use-ring.ts`: the rings in TanStack Query (infinite `staleTime` and `gcTime`, no retries, the previous ring of the same origin as `placeholderData`) and the cells in memory, hours and days, which the slider marks; a ring is asked for with `from` and `to`, the bounds of its cell (`cellRing` of `worker/api`).
+  - `use-ring.ts`: the rings in TanStack Query (`KEPT_FOR_THE_SESSION`, the previous ring of the same origin as `placeholderData`) and the cells in memory, hours and days, which the slider marks; a ring is asked for with `from` and `to`, the bounds of its cell (`cellRing` of `worker/api`).
     - A `visa_rules_missing` is no ring: once the screen asks for something else it is removed from memory, so its hours get no mark and asking for it again asks the Worker (its card says «Попробуйте позже»).
 - `src/start/`: the origin.
   - `geolocation.ts`: the browser's position and why it failed.

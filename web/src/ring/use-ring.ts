@@ -7,6 +7,7 @@
 import { queryOptions, skipToken, useQuery, useQueryClient, type QueryClient, type UseQueryResult } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useSyncExternalStore } from 'react';
 import { cellRing, type RingResponse, SLIDER_CELLS } from 'worker/api';
+import { KEPT_FOR_THE_SESSION } from '../session-cache.ts';
 import { pointText, type LatLon } from '../state/point.ts';
 import type { Settings } from '../state/settings.ts';
 import { fetchRing, type RingRequestError } from './fetch-ring.ts';
@@ -23,11 +24,7 @@ function ringQuery(origin: LatLon | undefined, hours: number, settings: Settings
 			origin === undefined
 				? skipToken
 				: () => fetchRing({ origin, ...cellRing(hours), citizenships: settings.citizenships, visas: settings.visas }),
-		staleTime: Infinity,
-		gcTime: Infinity,
-		retry: false,
-		refetchOnWindowFocus: false,
-		refetchOnReconnect: false,
+		...KEPT_FOR_THE_SESSION,
 		// The previous ring while this one comes, if it was for the same origin: the map shows it striped.
 		placeholderData: (previous, previousQuery) =>
 			origin !== undefined && previousQuery?.queryKey[1] === pointText(origin) ? previous : undefined,

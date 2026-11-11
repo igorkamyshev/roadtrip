@@ -55,27 +55,25 @@ async function coloursOf(page: Page, layer: string, property: string): Promise<s
 		.toSorted();
 }
 
-/** The value of a token of the page's theme (`--nature`), as its stylesheet writes it. */
-async function themeToken(page: Page, name: string): Promise<string> {
-	return page.evaluate((property) => getComputedStyle(document.documentElement).getPropertyValue(property).trim(), name);
+/**
+ * A colour token of the page's theme (`--nature`, `--history`): as its stylesheet writes it, which the map's layers
+ * take, and as the browser computes a colour of it for an element.
+ */
+async function themeColour(page: Page, name: string): Promise<{ readonly written: string; readonly computed: string }> {
+	return page.evaluate((token) => {
+		const probe = document.createElement('i');
+		probe.style.color = `var(${token})`;
+		document.body.append(probe);
+		const computed = getComputedStyle(probe).color;
+		probe.remove();
+		return { written: getComputedStyle(document.documentElement).getPropertyValue(token).trim(), computed };
+	}, name);
 }
 
 /** Where a card's «Маршрут» leads: the destination of its link to Google Maps. */
 async function routeTo(page: Page, name: string): Promise<string | null> {
 	const href = await pointCard(page, name).getByRole('link', { name: 'Маршрут' }).getAttribute('href');
 	return href === null ? null : new URL(href).searchParams.get('destination');
-}
-
-/** The colour the page's theme gives a token (`--nature`, `--history`), as the browser computes a colour. */
-async function tokenColour(page: Page, token: string): Promise<string> {
-	return page.evaluate((name) => {
-		const probe = document.createElement('i');
-		probe.style.color = `var(${name})`;
-		document.body.append(probe);
-		const colour = getComputedStyle(probe).color;
-		probe.remove();
-		return colour;
-	}, token);
 }
 
 /** A card's strip on top: its width and colour. */
@@ -310,17 +308,15 @@ test.describe('the map', () => {
 			await page.goto(LINK_3_HOURS);
 			await expect.poll(async () => (await placesOnMap(page)).length).toBe(8);
 
-			const [nature, history, start] = [
-				await themeToken(page, '--nature'),
-				await themeToken(page, '--history'),
-				await themeToken(page, '--start'),
-			];
+			const [nature, history, start, halo] = await Promise.all(
+				['--nature', '--history', '--start', '--halo'].map(async (token) => (await themeColour(page, token)).written),
+			);
 			expect(await coloursOf(page, 'place-diamonds', 'icon-color')).toEqual([nature, history, start].toSorted());
 			expect(await coloursOf(page, 'place-labels', 'text-color')).toEqual([nature, history].toSorted());
 			expect([
 				await coloursOf(page, 'place-diamonds', 'icon-halo-color'),
 				await coloursOf(page, 'place-labels', 'text-halo-color'),
-			]).toEqual([[await themeToken(page, '--halo')], [await themeToken(page, '--halo')]]);
+			]).toEqual([[halo], [halo]]);
 		});
 	}
 });
@@ -404,7 +400,7 @@ test.describe('the card of a place', () => {
 			expect(await routeTo(page, 'Монастырь Студеница')).toBe('43.486,20.533');
 
 			// Nature green, history terracotta: the theme's tokens, two colours in either scheme; a city has no strip.
-			const [nature, history] = [await tokenColour(page, '--nature'), await tokenColour(page, '--history')];
+			const [nature, history] = [(await themeColour(page, '--nature')).computed, (await themeColour(page, '--history')).computed];
 			expect(nature).not.toBe(history);
 			expect([
 				(await stripOf(page, 'Балатон')).colour,
@@ -417,11 +413,7 @@ test.describe('the card of a place', () => {
 	}
 
 	test('the themes give the groups colours of their own', async ({ page }) => {
-		const tokens = async () =>
-			page.evaluate(() => {
-				const style = getComputedStyle(document.documentElement);
-				return [style.getPropertyValue('--nature').trim(), style.getPropertyValue('--history').trim()];
-			});
+		const tokens = async () => [(await themeColour(page, '--nature')).written, (await themeColour(page, '--history')).written];
 		await page.goto('/');
 		const light = await tokens();
 		await page.emulateMedia({ colorScheme: 'dark' });

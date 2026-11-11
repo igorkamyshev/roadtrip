@@ -15,6 +15,7 @@ import {
 	type Place,
 	type PlaceOutlinesCell,
 } from 'data/places-file';
+import { KEPT_FOR_THE_SESSION, type Settled } from '../session-cache.ts';
 import type { LatLon } from '../state/point.ts';
 import { usePlacesFile } from './places.ts';
 
@@ -35,32 +36,22 @@ const cellQuery = (origin: LatLon) =>
 	queryOptions({
 		queryKey: ['place-outlines', placeOutlinesCell(origin)],
 		queryFn: async () => loadCell(origin),
-		staleTime: Infinity,
-		gcTime: Infinity,
-		retry: false,
-		refetchOnWindowFocus: false,
-		refetchOnReconnect: false,
+		...KEPT_FOR_THE_SESSION,
 	});
-
-/** Places and whether they are settled, as `usePlacesFile` has them. */
-interface SettledPlaces {
-	readonly settled: boolean;
-	readonly places: readonly Place[] | undefined;
-}
 
 /**
  * The places a ring may show: the places file's but the origin's. Settled once the file and the origin's cell are;
  * without the cell, none (the screen shows the cities alone and says nothing of it), as without the file.
  */
-export function useRingPlaces(origin: LatLon | undefined): SettledPlaces {
-	const { settled: fileSettled, places } = usePlacesFile();
+export function useRingPlaces(origin: LatLon | undefined): Settled<readonly Place[]> {
+	const { settled: fileSettled, contents: places } = usePlacesFile();
 	const { status, data: cell } = useQuery({ ...cellQuery(origin ?? { lat: 0, lon: 0 }), enabled: origin !== undefined });
 	return useMemo(() => {
 		const settled = fileSettled && status !== 'pending';
 		if (places === undefined || cell === undefined || origin === undefined) {
-			return { settled, places: undefined };
+			return { settled, contents: undefined };
 		}
 		const ofOrigin = originPlaces(origin, places, cell);
-		return { settled, places: places.filter((place) => !ofOrigin.has(place.qid)) };
+		return { settled, contents: places.filter((place) => !ofOrigin.has(place.qid)) };
 	}, [fileSettled, status, places, cell, origin]);
 }
