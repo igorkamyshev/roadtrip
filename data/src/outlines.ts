@@ -84,10 +84,10 @@ function withoutParts(region: MultiPolygon, parts: readonly { region: MultiPolyg
 }
 
 /**
- * A closed ring simplified by Douglas–Peucker, split at its point farthest from the first; undefined when fewer
- * than three points remain.
+ * A closed ring ([lon, lat] in degrees) simplified by Douglas–Peucker, split at its point farthest from the first;
+ * undefined when fewer than three points remain. The places' outlines are simplified by it too (place-outlines.ts).
  */
-function simplifyRing(ring: readonly Pair[], tolerance: number): Ring | undefined {
+export function simplifyRing(ring: readonly Pair[], tolerance: number): Ring | undefined {
 	const last = ring.length - 1;
 	if (last < 3) {
 		return undefined;

@@ -1,22 +1,26 @@
 // Builds the places file (spec #154 «Сборка мест», amendment «Набор данных» of spec #20): the objects of OSM with a
 // place's tags and wikidata=, from MIN_SITELINKS sitelinks of Wikidata's dump, out of the cities' limits and with access points on
 // the graph's roads, named by Wikidata's labels (asked of the Query Service) and ruwiki's titles, as JSON (a static
-// asset of the Worker, `/data/places.json`). It prints what it did to stderr and fails, writing nothing, when the file
-// is over PLACES_BUDGET_BYTES in brotli; with --report it adds the places to the build report (Markdown).
+// asset of the Worker, `/data/places.json`), and the cells of their outlines beside it, in `place-outlines/` in place
+// of those there were (`/data/place-outlines/<lat>_<lon>.json`). It prints what it did to stderr and fails, writing
+// nothing, when the file is over PLACES_BUDGET_BYTES in brotli; with --report it adds the places to the build report
+// (Markdown).
 //
 //   pnpm --filter data build-places <places.osm.pbf | .osm> <graph file | extract | URL> <cities.json> <out.json>
 //     [--sitelinks <wb_items_per_site.sql.gz | URL>] [--no-wikidata] [--report <report.md>]
 //
 // By default it downloads Wikidata's latest dump of the sitelinks (`wb_items_per_site`, about 2 GB).
-import { appendFileSync, readFileSync, writeFileSync } from 'node:fs';
+import { appendFileSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 import { parseArgs } from 'node:util';
 import { placesMarkdown } from '../build-report.ts';
 import { decodeCities, parseCitiesFile } from '../cities-file.ts';
 import { openOsm } from '../osm/open.ts';
-import { encodePlaces } from '../places-file.ts';
-import { buildPlaces, MAX_ACCESS_METERS, MIN_SITELINKS } from '../places.ts';
+import { encodePlaceOutlines, encodePlaces, PLACE_OUTLINES_PATH, PLACES_PATH } from '../places-file.ts';
+import { buildPlaces, MAX_ACCESS_METERS, MAX_SQUARE_KM, MIN_SITELINKS } from '../places.ts';
 import { wikidataPlaces } from '../wikidata.ts';
 import { brotliBytes, fileLines, log, seconds, sizes, userPath, withLocalFile } from './input.ts';
+// oxlint-disable-next-line import/max-dependencies -- the command wires each of its inputs (OSM, the graph, the cities, the sitelinks, Wikidata) to the builder and writes two outputs, each from its own module
 import { loadGraph } from './load-graph.ts';
 
 /** The file the screen downloads once: 0.6 MB in brotli of quality 11, as the Worker serves it (spec #154 «Сборка мест»). */
@@ -60,7 +64,7 @@ const cities = decodeCities(parseCitiesFile(JSON.parse(readFileSync(userPath(cit
 	}),
 );
 const started = performance.now();
-const { places, report } = await buildPlaces({
+const { places, cells, report } = await buildPlaces({
 	osm: openOsm(userPath(placesOsm)),
 	sitelinks: fileLines(values.sitelinks),
 	wikidata: values['no-wikidata']
@@ -77,7 +81,8 @@ const brotli = brotliBytes(json);
 
 log(`${report.places} places of ${report.objects} objects of ${placesOsm}, in ${seconds(started)}`);
 log(
-	`left out: ${report.belowSitelinks} of fewer than ${MIN_SITELINKS} sitelinks, ${report.inCities} within a city, ` +
+	`left out: ${report.belowSitelinks} of fewer than ${MIN_SITELINKS} sitelinks, ${report.withoutOutline} without a whole outline, ` +
+		`${report.tooLarge} over ${MAX_SQUARE_KM} km², ${report.inCities} within a city, ` +
 		`${report.withoutAccess} with no road within ${MAX_ACCESS_METERS / 1000} km, ${report.notMonasteries} places of worship that are no monastery`,
 );
 const { withoutRussian } = report;
@@ -97,3 +102,13 @@ if (brotli > PLACES_BUDGET_BYTES) {
 }
 writeFileSync(userPath(out), json);
 log(`wrote ${out}: ${sizes(json, brotli)} of ${(PLACES_BUDGET_BYTES / 1e6).toFixed(2)}`);
+// The cells beside the file, as the Worker serves them beside it; those of an earlier build go.
+const outlines = join(dirname(userPath(out)), PLACE_OUTLINES_PATH.slice(PLACES_PATH.lastIndexOf('/') + 1));
+rmSync(outlines, { recursive: true, force: true });
+mkdirSync(outlines, { recursive: true });
+for (const [cell, cellOutlines] of cells) {
+	writeFileSync(join(outlines, `${cell}.json`), JSON.stringify(encodePlaceOutlines(cellOutlines)));
+}
+log(
+	`wrote ${report.cells.count} cells of the outlines of ${report.cells.outlines} places, ${(report.cells.bytes / 1e6).toFixed(2)} MB, to ${outlines}`,
+);
