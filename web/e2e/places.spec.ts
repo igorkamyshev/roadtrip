@@ -15,16 +15,19 @@ import type { Access } from 'worker/api';
 import { BELGRADE, carouselRing, expect, LINK_3_HOURS, OPEN_AROUND_SERBIA, servePlaces, squareRing, test, visaRules } from './fixtures.ts';
 import {
 	chosenCard,
+	citiesOnMap,
 	firstCard,
 	holdTheClock,
 	mapAtRest,
 	moreCard,
 	openTheList,
+	placesOnMap,
 	pointCard,
 	pointCards,
 	read,
 	runUntil,
 	runUntilMapAtRest,
+	tapMap,
 	wentTo,
 } from './screen.ts';
 
@@ -39,6 +42,28 @@ const theList = (page: Page) => page.getByRole('dialog', { name: /^Всё в к�
 /** The names of the list's rows on the page, in order. */
 async function rowNames(page: Page): Promise<string[]> {
 	return theList(page).getByTestId('row-name').allInnerTexts();
+}
+
+/** The names of the places the map marks as chosen. */
+async function chosenOnMap(page: Page): Promise<string[]> {
+	return (await placesOnMap(page)).filter((place) => place.chosen).map((place) => place.name);
+}
+
+/**
+ * The colours a layer of the map gives one of its paint properties, those of its expression's cases, sorted: as the
+ * overlay read them from the theme's tokens.
+ */
+async function coloursOf(page: Page, layer: string, property: string): Promise<string[]> {
+	const paint = await page.evaluate(([id, name]) => window.mapForTests?.getPaintProperty(id, name), [layer, property]);
+	const leaves = (value: unknown): unknown[] => (Array.isArray(value) ? value.flatMap((item) => leaves(item)) : [value]);
+	return leaves(paint)
+		.filter((leaf): leaf is string => typeof leaf === 'string' && /^(?:#|rgb|hsl)/u.test(leaf))
+		.toSorted();
+}
+
+/** The value of a token of the page's theme (`--nature`), as its stylesheet writes it. */
+async function themeToken(page: Page, name: string): Promise<string> {
+	return page.evaluate((property) => getComputedStyle(document.documentElement).getPropertyValue(property).trim(), name);
 }
 
 /** Where a card's «Маршрут» leads: the destination of its link to Google Maps. */
@@ -189,6 +214,7 @@ test.describe('a place chosen', () => {
 
 		await expect(chosenCard(page).getByRole('heading')).toHaveText('Хортобадь');
 		expect(await wentTo(page, { lat: 47.583, lon: 21.151 })).toBeLessThan(25);
+		expect(await chosenOnMap(page)).toEqual(['Хортобадь']);
 	});
 
 	test('in the list of all, with no card, is chosen with no card marked, and the map goes to its access point', async ({ page }) => {
@@ -197,16 +223,112 @@ test.describe('a place chosen', () => {
 
 		expect(await wentTo(page, { lat: 44.098, lon: 21.466 })).toBeLessThan(25);
 		await expect(chosenCard(page)).toHaveCount(0);
+		// Marked on the map, and named there though it has no card.
+		expect((await placesOnMap(page)).filter((place) => place.chosen)).toMatchObject([{ name: 'Монастырь Манасия', label: true }]);
 	});
 
-	test('by scrolling the carousel to its card, and the map goes to its access point', async ({ page }) => {
-		await pointCard(page, 'Монастырь Студеница').evaluate((element) => {
+	test('by scrolling the carousel to its card, marked on the map, and the map goes to its access point', async ({ page }) => {
+		// Đerdap's own point is at the Iron Gates, 0.84° east of its access point at Golubac, where the map goes.
+		await pointCard(page, 'Джердап').evaluate((element) => {
 			element.scrollIntoView({ inline: 'start', block: 'nearest' });
 		});
 
-		await expect(chosenCard(page).getByRole('heading')).toHaveText('Монастырь Студеница');
-		expect(await wentTo(page, { lat: 43.486, lon: 20.533 })).toBeLessThan(25);
+		await expect(chosenCard(page).getByRole('heading')).toHaveText('Джердап');
+		await expect.poll(() => chosenOnMap(page)).toEqual(['Джердап']);
+		expect(await wentTo(page, { lat: 44.664, lon: 21.676 })).toBeLessThan(25);
+
+		// Back to the first card: no place is chosen.
+		await firstCard(page).evaluate((card) => {
+			card.scrollIntoView({ inline: 'start', block: 'nearest' });
+		});
+		await expect.poll(() => chosenOnMap(page)).toEqual([]);
 	});
+
+	test('by a tap on its diamond, with a card: the carousel comes to its card', async ({ page }) => {
+		await tapMap(page, { lat: 43.486, lon: 20.533 });
+
+		await expect(chosenCard(page).getByRole('heading')).toHaveText('Монастырь Студеница');
+		await expect(chosenCard(page)).toBeInViewport({ ratio: 0.9 });
+		await expect.poll(() => chosenOnMap(page)).toEqual(['Монастырь Студеница']);
+	});
+
+	test('by a tap on its diamond, with no card: the list of all opens at it', async ({ page }) => {
+		await tapMap(page, { lat: 44.098, lon: 21.466 });
+
+		const current = theList(page).locator('[aria-current="true"]');
+		await expect(current).toContainText('Монастырь Манасия');
+		await expect(current).toBeInViewport();
+	});
+});
+
+test.describe('the map', () => {
+	test("puts a diamond of its group at each place's access point, named for the places with a card, smaller and unnamed for the others", async ({
+		page,
+		ringApi,
+	}) => {
+		// From 1° to 3°: the 8 places of the ring among its 24 points of interest, all of them among the 250 first. Six
+		// have a card; Manasija is the 16th, the lake of Zvornik the 23rd. Đerdap stands at Golubac and the lake of
+		// Zvornik in Bosnia and Herzegovina, their access points in the ring nearest Belgrade.
+		ringApi.respond(() => carouselRing());
+		await page.goto(LINK_3_HOURS);
+		await expect(pointCards(page)).toHaveCount(12);
+
+		await expect
+			.poll(() => placesOnMap(page))
+			.toEqual([
+				{ name: 'Балатон', at: [18.058, 46.905], group: 'nature', label: true, chosen: false },
+				{ name: 'Хортобадь', at: [21.151, 47.583], group: 'nature', label: true, chosen: false },
+				{ name: 'Монастырь Студеница', at: [20.533, 43.486], group: 'history', label: true, chosen: false },
+				{ name: 'Джердап', at: [21.676, 44.664], group: 'nature', label: true, chosen: false },
+				{ name: 'Лепенски-Вир', at: [22.026, 44.557], group: 'history', label: true, chosen: false },
+				{ name: 'Vjetrenica', at: [17.985, 42.847], group: 'nature', label: true, chosen: false },
+				{ name: 'Монастырь Манасия', at: [21.466, 44.098], group: 'history', label: false, chosen: false },
+				{ name: 'Зворничко-езеро', at: [19.112, 44.38], group: 'nature', label: false, chosen: false },
+			]);
+		// The cities' dots and names are the cities' alone.
+		expect((await citiesOnMap(page)).map((city) => city.name)).toEqual([
+			'Будапешт',
+			'Сараево',
+			'Ниш',
+			'Подгорица',
+			'Дебрецен',
+			'Арад',
+			'Сегед',
+			'Печ',
+			'Тузла',
+			'Кечкемет',
+			'Мостар',
+			'Суботица',
+			'Решица',
+			'Дробета-Турну-Северин',
+			'Осиек',
+			'Lukavac',
+		]);
+	});
+
+	for (const colorScheme of ['light', 'dark'] as const) {
+		test(`colours the diamonds and the names by the theme's tokens: the group's, and the origin's for the chosen diamond (${colorScheme})`, async ({
+			page,
+			ringApi,
+		}) => {
+			await page.emulateMedia({ colorScheme });
+			ringApi.respond(() => carouselRing());
+			await page.goto(LINK_3_HOURS);
+			await expect.poll(async () => (await placesOnMap(page)).length).toBe(8);
+
+			const [nature, history, start] = [
+				await themeToken(page, '--nature'),
+				await themeToken(page, '--history'),
+				await themeToken(page, '--start'),
+			];
+			expect(await coloursOf(page, 'place-diamonds', 'icon-color')).toEqual([nature, history, start].toSorted());
+			expect(await coloursOf(page, 'place-labels', 'text-color')).toEqual([nature, history].toSorted());
+			expect([
+				await coloursOf(page, 'place-diamonds', 'icon-halo-color'),
+				await coloursOf(page, 'place-labels', 'text-halo-color'),
+			]).toEqual([[await themeToken(page, '--halo')], [await themeToken(page, '--halo')]]);
+		});
+	}
 });
 
 test.describe('a place in the ring', () => {

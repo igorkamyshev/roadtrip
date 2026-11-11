@@ -3,18 +3,24 @@
 // 1. the hatching of closed countries and closed territories, `closed-hatch`: the zone outlines of the dataset
 //    (source `zones`, `/data/zones.json`), filtered to the zones `access` closes;
 // 2. the ring: `ring-fill`, or `ring-stripes` (running stripes) while a calculation replaces it, and `ring-line`;
-// 3. the ring's points of interest, cities and places alike for now (source `cities`; the places get diamonds of their
-//    own by spec #154 «Экран», «Карта»): a dot for each of the most famous, `city-dots`, a place's at its access point,
-//    and the names of the carousel's and of the chosen one, `city-labels`; the chosen one larger, in the origin's colour;
-// 4. the origin's marker, `start`.
+// 3. the ring's cities among its most famous points of interest (source `cities`): a dot for each, `city-dots`, and the
+//    names of the carousel's and of the chosen one, `city-labels`; the chosen one larger, in the origin's colour;
+// 4. the ring's places among them (source `places`, spec #154 «Карта»): a diamond of its group's colour at its access
+//    point, outlined in the halo's, `place-diamonds`, smaller for a place with no card; and the names of the
+//    carousel's and of the chosen one in italics of the group's colour, `place-labels`; the chosen one's diamond larger,
+//    in the origin's colour, and its name larger;
+// 5. the origin's marker, `start`.
 //
-// The tests read the sources `ring`, `start`, `zones` and `cities`, the hatching's filter and the layers'
-// visibility, never pixels.
-import type { FeatureCollection, GeoJSON } from 'geojson';
+// The tests read the sources `ring`, `start`, `zones`, `cities` and `places`, the hatching's filter and the layers'
+// visibility and colours, never pixels.
+import type { Feature, FeatureCollection, GeoJSON } from 'geojson';
 import type { ExpressionSpecification, FilterSpecification, GeoJSONSource, Map as MapLibre } from 'maplibre-gl';
+import type { PlaceGroup } from 'data/places-file';
 import type { RingAnswer } from 'worker/api';
 import type { LatLon } from '../state/point.ts';
 import { matchesMedia } from '../media.ts';
+import { squareImage, type SquareImage } from './image.ts';
+import { addPlaceLayers, PLACE_LAYERS, PLACES_SOURCE } from './place-layers.ts';
 
 export type RingGeometry = Extract<RingAnswer, { outcome: 'ring' }>['ring'];
 
@@ -26,6 +32,8 @@ const START_LAYER = 'start';
 const HATCH_LAYER = 'closed-hatch';
 const CITIES_SOURCE = 'cities';
 const CITY_LAYERS = { dots: 'city-dots', labels: 'city-labels' } as const;
+/** The layers a tap or the cursor finds a point of interest on: its dot, diamond or name. */
+const POINT_LAYERS = [CITY_LAYERS.dots, CITY_LAYERS.labels, PLACE_LAYERS.diamonds, PLACE_LAYERS.labels];
 
 /** A point of interest as the map shows it. */
 export interface MapPoint {
@@ -37,6 +45,8 @@ export interface MapPoint {
 	/** Named on the map: a point of the carousel, or the chosen one. */
 	readonly label: boolean;
 	readonly chosen: boolean;
+	/** A place's group, the colour of its diamond and name; undefined for a city. */
+	readonly group: PlaceGroup | undefined;
 }
 
 /** The zone outlines, a static asset of the Worker: the dataset's (data's `zoneOutlines`). */
@@ -53,8 +63,8 @@ const STRIPE_PERIOD = 10;
 const STRIPE_FRAME_MS = 160;
 
 /**
- * The colours of the ring, the marker, the hatching and the cities (`--ring`, `--ring-fill`, `--start`, `--hatch`,
- * `--hatch-veil`, `--city`, `--halo`), from the page's CSS.
+ * The colours of the ring, the marker, the hatching, the cities and the places' groups (`--ring`, `--ring-fill`,
+ * `--start`, `--hatch`, `--hatch-veil`, `--city`, `--halo`, `--nature`, `--history`), from the page's CSS.
  */
 interface OverlayColors {
 	readonly ring: string;
@@ -64,6 +74,8 @@ interface OverlayColors {
 	readonly hatchVeil: string;
 	readonly city: string;
 	readonly halo: string;
+	readonly nature: string;
+	readonly history: string;
 }
 
 function colors(): OverlayColors {
@@ -80,12 +92,15 @@ function colors(): OverlayColors {
 		hatchVeil: read('--hatch-veil', 'rgba(220, 223, 216, .35)'),
 		city: read('--city', '#0e2a5a'),
 		halo: read('--halo', '#f4f6f2'),
+		nature: read('--nature', '#2f7d4a'),
+		history: read('--history', '#a4552e'),
 	};
 }
 
 /** Adds the overlay's sources, images and layers to a map whose style has loaded. */
 export function addOverlay(map: MapLibre): void {
-	const { ring, ringFill, start, hatch, hatchVeil, city, halo } = colors();
+	const palette = colors();
+	const { ring, ringFill, start, hatch, hatchVeil, city, halo } = palette;
 	map.addSource(ZONES_SOURCE, { type: 'geojson', data: EMPTY });
 	map.addSource(RING_SOURCE, { type: 'geojson', data: EMPTY });
 	map.addSource(CITIES_SOURCE, { type: 'geojson', data: EMPTY });
@@ -133,6 +148,7 @@ export function addOverlay(map: MapLibre): void {
 		},
 		paint: { 'text-color': city, 'text-halo-color': halo, 'text-halo-width': 1.5 },
 	});
+	addPlaceLayers(map, palette, EMPTY);
 	map.addLayer({
 		id: START_LAYER,
 		type: 'circle',
@@ -158,16 +174,22 @@ export function showStart(map: MapLibre, origin: LatLon | undefined): void {
 	);
 }
 
-/** Shows the ring's points of interest, the most famous first: their dots, and the names of those with a label. */
+/**
+ * The ring's points of interest, the most famous first: the cities' dots and the places' diamonds, and the names of
+ * those with a label.
+ */
 export function showPoints(map: MapLibre, points: readonly MapPoint[]): void {
-	setData(map, CITIES_SOURCE, {
-		type: 'FeatureCollection',
-		features: points.map(({ key, name, lat, lon, label, chosen }, rank) => ({
+	const cities: Feature[] = [];
+	const places: Feature[] = [];
+	for (const [rank, { key, name, lat, lon, label, chosen, group }] of points.entries()) {
+		(group === undefined ? cities : places).push({
 			type: 'Feature',
-			properties: { key, name, label, chosen, rank },
+			properties: { key, name, label, chosen, rank, group },
 			geometry: { type: 'Point', coordinates: [lon, lat] },
-		})),
-	});
+		});
+	}
+	setData(map, CITIES_SOURCE, { type: 'FeatureCollection', features: cities });
+	setData(map, PLACES_SOURCE, { type: 'FeatureCollection', features: places });
 }
 
 /**
@@ -180,7 +202,7 @@ export function pointAt(map: MapLibre, { x, y }: { readonly x: number; readonly 
 			[x - radius, y - radius],
 			[x + radius, y + radius],
 		],
-		{ layers: [CITY_LAYERS.dots, CITY_LAYERS.labels] },
+		{ layers: POINT_LAYERS },
 	);
 	let found: string | undefined;
 	let best = Infinity;
@@ -287,17 +309,11 @@ function stripes(frame: number, color: string): { width: number; height: number;
  * The hatching's tile, at a pixel ratio of 2: diagonal lines of `line` a quarter of the period wide over a veil of
  * `veil`, seamless in both directions.
  */
-function hatching(line: string, veil: string): { width: number; height: number; data: Uint8Array } {
+function hatching(line: string, veil: string): SquareImage {
 	const size = HATCH_PERIOD * 2;
 	const lineColor = rgba(line);
 	const veilColor = rgba(veil);
-	const data = new Uint8Array(size * size * 4);
-	for (let y = 0; y < size; y++) {
-		for (let x = 0; x < size; x++) {
-			data.set((x + y) % size < size / 4 ? lineColor : veilColor, (y * size + x) * 4);
-		}
-	}
-	return { width: size, height: size, data };
+	return squareImage(size, (x, y) => ((x + y) % size < size / 4 ? lineColor : veilColor));
 }
 
 /** The red, green and blue of a CSS colour, through a canvas so that any CSS form works. */

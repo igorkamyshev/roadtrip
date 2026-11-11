@@ -26,6 +26,7 @@ interface MapForTests {
 	readonly project: (lngLat: [number, number]) => { x: number; y: number };
 	readonly getSource: (id: string) => { readonly getData: () => Promise<GeoJSON> } | undefined;
 	readonly getLayoutProperty: (layer: string, name: string) => unknown;
+	readonly getPaintProperty: (layer: string, name: string) => unknown;
 	readonly getLayer: (layer: string) => unknown;
 	readonly getFilter: (layer: string) => unknown;
 	readonly getBounds: () => {
@@ -316,8 +317,11 @@ async function mapIsUp(page: Page): Promise<void> {
 	await page.waitForFunction(() => window.mapForTests !== undefined);
 }
 
-/** The features of a map source: `ring` (the ring), `start` (the origin's marker) or `cities` (the ring's cities). */
-async function sourceFeatures(page: Page, source: 'ring' | 'start' | 'cities'): Promise<Feature[]> {
+/**
+ * The features of a map source: `ring` (the ring), `start` (the origin's marker), `cities` (the ring's cities) or
+ * `places` (the ring's places).
+ */
+async function sourceFeatures(page: Page, source: 'ring' | 'start' | 'cities' | 'places'): Promise<Feature[]> {
 	await mapIsUp(page);
 	const data = await page.evaluate(async (id) => window.mapForTests?.getSource(id)?.getData(), source);
 	// The screen's sources hold a collection or a single feature (src/map/overlay.ts).
@@ -398,6 +402,26 @@ export async function labelsOnMap(page: Page): Promise<{ labels: string[]; chose
 		labels: cities.filter((city) => city.label).map((city) => city.name),
 		chosen: cities.filter((city) => city.chosen).map((city) => city.name),
 	};
+}
+
+/** A place on the map: a diamond of its group at its access point, [lon, lat], named when it has a card or is chosen. */
+interface PlaceOnMap {
+	readonly name: string;
+	readonly at: number[];
+	readonly group: string;
+	readonly label: boolean;
+	readonly chosen: boolean;
+}
+
+/** The places the map shows, the most famous first (the source `places`). */
+export async function placesOnMap(page: Page): Promise<PlaceOnMap[]> {
+	return (await sourceFeatures(page, 'places')).map(({ properties, geometry }) => ({
+		name: String(properties?.name),
+		at: geometry.type === 'Point' ? geometry.coordinates : [],
+		group: String(properties?.group),
+		label: properties?.label === true,
+		chosen: properties?.chosen === true,
+	}));
 }
 
 /** Taps the map where the point (lat, lon) is, once the map has drawn everything and stopped. */
