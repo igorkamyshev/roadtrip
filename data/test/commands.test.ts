@@ -1,13 +1,16 @@
 // The commands as a person runs them: `ring` writes GeoJSON, `build-graph` a graph file `ring` reads.
 import { execFileSync, spawnSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { gzipSync } from 'node:zlib';
 import { afterAll, describe, expect, it } from 'vitest';
-import { decodeCities, encodeCities, parseCitiesFile } from '../src/cities-file.ts';
+import { type CityRow, decodeCities, encodeCities, parseCitiesFile } from '../src/cities-file.ts';
+import { decodePlaces, parsePlacesFile } from '../src/places-file.ts';
 import { field, items } from 'engine/json';
 import { fixturePath } from './fixture-graph.ts';
+import { PLACES_SITELINKS, sitelinksDump } from './sitelinks-dump.ts';
 
 const command = (name: string, ...args: string[]) =>
 	execFileSync(process.execPath, [fileURLToPath(new URL(`../src/cli/${name}.ts`, import.meta.url)), ...args], {
@@ -28,6 +31,10 @@ const russianNames = (...args: string[]) =>
 	spawnSync(process.execPath, [fileURLToPath(new URL('../src/cli/russian-names.ts', import.meta.url)), ...args], {
 		encoding: 'utf8',
 	});
+
+/** The build-places command as a process, which may fail. */
+const buildPlaces = (...args: string[]) =>
+	spawnSync(process.execPath, [fileURLToPath(new URL('../src/cli/build-places.ts', import.meta.url)), ...args], { encoding: 'utf8' });
 
 /** The cities file a command wrote, its cities biggest first. */
 const writtenCities = (path: string) => decodeCities(parseCitiesFile(JSON.parse(readFileSync(path, 'utf8'))));
@@ -225,6 +232,113 @@ describe('the build-cities command', () => {
 		);
 
 		expect(writtenCities(out).map(([, , local]) => local)).toEqual(['Nicosia', 'Limassol', 'Famagusta', 'Kyrenia']);
+	});
+});
+
+describe('the build-places command', () => {
+	const directory = mkdtempSync(join(tmpdir(), 'roadtrip-commands-'));
+	afterAll(() => {
+		rmSync(directory, { recursive: true });
+	});
+
+	/** The cities file of the cities of places.osm's header. */
+	const citiesFile = (name: string, cities: readonly CityRow[]) => {
+		const path = join(directory, name);
+		writeFileSync(path, JSON.stringify(encodeCities(cities)));
+		return path;
+	};
+	/** The dump of the sitelinks, gzipped as Wikimedia serves it. */
+	const dump = (name: string, sitelinks: Parameters<typeof sitelinksDump>[0]) => {
+		const path = join(directory, name);
+		writeFileSync(path, gzipSync(`${sitelinksDump(sitelinks).join('\n')}\n`));
+		return path;
+	};
+
+	it('writes the places file of the places, the graph, the cities and the sitelinks, and adds the places to the report', () => {
+		const out = join(directory, 'places.json');
+		const report = join(directory, 'report.md');
+		writeFileSync(report, '## Граф дорог\n');
+
+		const run = buildPlaces(
+			fixturePath('places.osm'),
+			fixturePath('places.osm'),
+			citiesFile('cities.json', [
+				[1, '', 'Big', 0.7, 0.93, 1_000_000, 'AAA'],
+				[2, '', 'Small', 0.25, 0.95, 250_000, 'AAA'],
+			]),
+			out,
+			'--sitelinks',
+			dump('sitelinks.sql.gz', PLACES_SITELINKS),
+			'--no-wikidata',
+			'--report',
+			report,
+		);
+
+		expect(run.status).toBe(0);
+		// Without Wikidata no place of worship is a monastery, and the names are ruwiki's titles and OSM's.
+		expect(
+			decodePlaces(parsePlacesFile(JSON.parse(readFileSync(out, 'utf8')))).map(({ qid, ru, local, type }) => [qid, ru, local, type]),
+		).toEqual([
+			[1001, 'Пограничный водопад', 'Granični vodopad', 'waterfall'],
+			[1010, 'Заповедник Би', '', 'national-park'],
+			[1008, '', '', 'ruins'],
+			[1012, '', 'Jezero Le', 'lake'],
+			[1005, 'Каштел', '', 'castle'],
+			[1004, "Д'Арк", '', 'mountain'],
+		]);
+		expect(run.stderr).toContain('6 places of 12 objects');
+		expect(run.stderr).toContain(
+			'left out: 1 of fewer than 10 sitelinks, 1 within a city, 1 with no road within 10 km, 2 places of worship that are no monastery',
+		);
+		expect(run.stderr).toContain('without a Russian name: 2; the most famous: Q1008, Q1012 Jezero Le');
+		expect(run.stderr).toMatch(/wrote .*places\.json: 0\.00 MB, 0\.00 MB in brotli of 0\.60/u);
+		expect(readFileSync(report, 'utf8')).toBe(
+			[
+				'## Граф дорог',
+				'',
+				'## Места',
+				'',
+				'В файле мест 6 мест, 0,00 МБ в brotli при бюджете 0,6 МБ.',
+				'',
+				'Не вошли: меньше 10 сайтлинков — 1, в пределах города — 1, без дороги ближе 10 км — 1, храмы, которые Wikidata не называет монастырём, — 2.',
+				'',
+				'Мест без русского названия: 2. Самые известные: Q1008, Jezero Le (Q1012).',
+				'',
+			].join('\n'),
+		);
+	});
+
+	// Brotli of quality 11 takes seconds over 0.7 MB.
+	it('fails over the budget of 0.6 MB in brotli, printing the size, and writes no file', { timeout: 30_000 }, () => {
+		// 8 000 peaks of random names of 120 of 64 letters, digits and signs, 90 bytes each in brotli: 0.72 MB.
+		const peaks = 8000;
+		let seed = 1;
+		const random = () => {
+			seed = (seed * 48_271) % 2_147_483_647;
+			return seed / 2_147_483_647;
+		};
+		const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
+		const nodes = Array.from({ length: peaks }, (_, index) => {
+			const name = Array.from({ length: 120 }, () => letters[Math.floor(random() * letters.length)]).join('');
+			return `<node id="${10_000 + index}" lat="${(0.2 + (0.6 * index) / peaks).toFixed(6)}" lon="0.88"><tag k="natural" v="peak"/><tag k="name" v="${name}"/><tag k="wikidata" v="Q${10_000 + index}"/></node>`;
+		});
+		const osm = join(directory, 'many-peaks.osm');
+		writeFileSync(osm, readFileSync(fixturePath('places.osm'), 'utf8').replace('<way id="1">', `${nodes.join('\n')}\n<way id="1">`));
+		const out = join(directory, 'too-big.json');
+
+		const run = buildPlaces(
+			osm,
+			fixturePath('places.osm'),
+			citiesFile('no-cities.json', []),
+			out,
+			'--sitelinks',
+			dump('many-sitelinks.sql.gz', Object.fromEntries(Array.from({ length: peaks }, (_, index) => [10_000 + index, { count: 10 }]))),
+			'--no-wikidata',
+		);
+
+		expect(run.status).not.toBe(0);
+		expect(run.stderr).toMatch(/0\.7\d MB in brotli, over the budget of 0\.60 MB/u);
+		expect(existsSync(out)).toBe(false);
 	});
 });
 
