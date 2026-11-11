@@ -1,7 +1,7 @@
 // The points of interest of a ring (GLOSSARY «Точка интереса», spec #154): what the carousel, the list of all, the map,
 // the choice and the events show and count, one list in order of fame. Only the card and a row of the list look at
 // what a point is; the rest take its name, fame, country and point. The cities are the only kind until the places.
-import { cityFame } from 'data/cities-file';
+import { cityFame } from 'data/places-file';
 import type { City } from '../cities/cities.ts';
 
 /** A point of interest of the ring. */

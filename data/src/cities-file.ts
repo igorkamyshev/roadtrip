@@ -58,21 +58,6 @@ export function biggestFirst(one: Ranked, two: Ranked): number {
 	return one.population === two.population ? one.id - two.id : two.population - one.population;
 }
 
-/**
- * A city's fame (GLOSSARY «Известность»; spec #154 «Формат файла мест»): the median sitelinks of a city with that many
- * people, `CITY_FAME_FACTOR` · population^`CITY_FAME_EXPONENT`; the city's own sitelinks play no part. A place's fame
- * is its own sitelinks, weighed against it, so the points of interest of a ring, cities and places, go in one order of
- * fame (spec #20 «Экран», #145–#148). The builder of the places and the screen take it
- * from here; the constants are refitted by hand. It grows with the population, so the cities go by it as
- * `biggestFirst` has them.
- */
-export const CITY_FAME_FACTOR = 0.7019;
-export const CITY_FAME_EXPONENT = 0.3408;
-
-export function cityFame(population: number): number {
-	return CITY_FAME_FACTOR * population ** CITY_FAME_EXPONENT;
-}
-
 /** A row's id and population. */
 function ranked([id, , , , , population]: CityRow): Ranked {
 	return { id, population };

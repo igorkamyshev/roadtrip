@@ -3,7 +3,7 @@
 // polygons. The inputs are lines in GeoNames' own formats (cities1000.txt, alternateNamesV2.txt) and a double of
 // Wikidata; the zones are those of zones.osm (its header has the squares).
 import { describe, expect, it } from 'vitest';
-import { type CityRow, cityFame, decodeCities, encodeCities, parseCitiesFile } from '../src/cities-file.ts';
+import { type CityRow, decodeCities, encodeCities, parseCitiesFile } from '../src/cities-file.ts';
 import { buildCities, type CitiesSources } from '../src/cities.ts';
 import { fixtureGraph } from './fixture-graph.ts';
 
@@ -339,13 +339,5 @@ describe('the cities file', () => {
 			[787657, 'Ниш', 'Niš', 43.325, 21.903, 250_000, 'SRB'],
 			[3194360, 'Нови-Сад', 'Novi Sad', 45.252, 19.837, 215_400, 'SRB'],
 		]);
-	});
-
-	// spec #154 «Формат файла мест»: a city's fame is 0.7019 · population^0.3408, the sitelinks a city of that many people
-	// usually has. By hand: 10^(6·0.3408) = 10^2.0448 ≈ 110.87, × 0.7019 ≈ 77.8; 10^(4·0.3408) = 10^1.3632 ≈ 23.08,
-	// × 0.7019 ≈ 16.2.
-	it("gives a city the fame of the sitelinks a city of its people usually has: a million's 78, ten thousand's 16", () => {
-		expect(cityFame(1_000_000)).toBeCloseTo(77.8, 1);
-		expect(cityFame(10_000)).toBeCloseTo(16.2, 1);
 	});
 });
