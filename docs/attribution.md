@@ -25,6 +25,10 @@ The land cover of the `light` and `dark` flavors (the `landcover` layer, z0–7)
 
 The cities file. [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/legalcode.en) §3(a) asks to name the source, link the licence and «indicate if You modified the Licensed Material»: the file keeps the places of 15 000 people and more and fills a missing Russian name from Wikidata or our table of Russian names, hence «с изменениями». It may be met «in any reasonable manner based on the medium, means, and context», so ⓘ alone would do; the line shows it with the rest.
 
+## Wikidata (CC0)
+
+The places file (ADR 0003): which objects of OSM are places, their fame by the sitelinks of Wikidata's dump `wb_items_per_site`, their Russian and English labels and points, and a city's Russian label where GeoNames has none. [Wikidata's data is CC0](https://www.wikidata.org/wiki/Wikidata:Licensing): «All structured data in the main, property and lexeme namespaces is made available under the Creative Commons CC0 License», so no credit is required. A place's Russian name may be the title of its article in ruwiki, a name and no work of authorship. The places themselves are OSM's objects, whose credit the line gives already. Whether the line names Wikidata too is for the screen's ticket of the places (#160).
+
 ## MapLibre (BSD-3)
 
 Nothing on the map: «Showing the logo of MapLibre is not required for using MapLibre» (`MapOptions.attributionControl`). The control is off (`attributionControl: false`, `web/src/map/use-map.ts`); the licence travels with the bundle.
