@@ -321,8 +321,9 @@ test.describe('geolocation failed', () => {
 });
 
 /**
- * Belgrade's ring 0–1.5° around it, Serbia and Hungary open: worked out from `CITIES`, 9 Serbian cities and Szeged.
- * Not Belgrade, the origin's city.
+ * Belgrade's ring 0–1.5° around it, Serbia and Hungary open: worked out from `CITIES`, 9 Serbian cities and Szeged,
+ * not Belgrade, the origin's city; and of `PLACES` 7 Serbian ones, all but Lepenski Vir (1.57°). The first card counts
+ * the 17 points of interest, `cities_count` the 10 cities.
  */
 const belgradeRing = (source: RingSource = 'calculation'): RingResponse => ({
 	...squareRing(BELGRADE.lat, BELGRADE.lon, [0, 1.5]),
@@ -342,7 +343,7 @@ test.describe('ring result', () => {
 		await page.clock.runFor(1000);
 		await ringApi.answer(belgradeRing());
 		// The answer is in, at the held time, before the clock goes on.
-		await runNowUntil(page, async () => /10\s*городов в 2 странах/u.test(await firstCard(page).innerText()));
+		await runNowUntil(page, async () => /17\s*точек интереса в 2 странах/u.test(await firstCard(page).innerText()));
 		await page.clock.resume();
 
 		await expect.poll(() => posthog.named('ring result'), SENT).toHaveLength(1);
@@ -383,7 +384,7 @@ test.describe('ring result', () => {
 	test('from memory: source memory, wait 0, as it came', async ({ page, ringApi, posthog }) => {
 		ringApi.respond(() => belgradeRing());
 		await openInProduction(page, LINK_3_HOURS_RUS);
-		await expect(firstCard(page)).toContainText(/10\s*городов/u);
+		await expect(firstCard(page)).toContainText(/17\s*точек интереса/u);
 		await dragSlider(page, 5);
 		await expect.poll(() => ringApi.calls, SENT).toHaveLength(2);
 
@@ -502,7 +503,7 @@ test.describe('ring result', () => {
 	test('none while the slider moves: only where it is let go', async ({ page, ringApi, posthog }) => {
 		ringApi.respond(() => belgradeRing());
 		await openInProduction(page, LINK_3_HOURS_RUS);
-		await expect(firstCard(page)).toContainText(/10\s*городов/u);
+		await expect(firstCard(page)).toContainText(/17\s*точек интереса/u);
 
 		await dragSlider(page, 7);
 

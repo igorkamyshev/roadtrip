@@ -9,9 +9,9 @@ import { LocateIcon } from './icons.tsx';
 export type FirstCardState =
 	| { readonly kind: 'no_origin'; readonly geolocationFailed: boolean }
 	| { readonly kind: 'calculating'; readonly hours: number; readonly request: string }
-	/** `points`: how many points of interest the ring holds and in how many countries; undefined until the cities file comes. */
+	/** `points`: how many points of interest the ring holds and in how many countries; undefined until the files come. */
 	| { readonly kind: 'ring'; readonly hours: number; readonly points?: PointsCount }
-	| { readonly kind: 'no_cities' }
+	| { readonly kind: 'no_points' }
 	| { readonly kind: 'empty'; readonly maxHours: number }
 	| { readonly kind: 'no_roads' }
 	| { readonly kind: 'no_ring' }
@@ -44,7 +44,7 @@ export function FirstCard({ state, actions }: { readonly state: FirstCardState; 
 		// Keyed by the request, so that the 5 s count from its start.
 		return <Calculating key={state.request} hours={state.hours} />;
 	}
-	if (state.kind === 'ring' || state.kind === 'no_cities') {
+	if (state.kind === 'ring' || state.kind === 'no_points') {
 		return <RingCard state={state} />;
 	}
 	if (state.kind === 'empty' || state.kind === 'no_roads' || state.kind === 'no_ring') {
@@ -113,13 +113,13 @@ function Calculating({ hours }: { readonly hours: number }): ReactElement {
 	);
 }
 
-/** The ring's summary: its points of interest and their countries once the cities file came; or that it holds none. */
-function RingCard({ state }: { readonly state: StateOf<'ring' | 'no_cities'> }): ReactElement {
-	if (state.kind === 'no_cities') {
+/** The ring's summary: its points of interest and their countries once the files came; or that it holds none. */
+function RingCard({ state }: { readonly state: StateOf<'ring' | 'no_points'> }): ReactElement {
+	if (state.kind === 'no_points') {
 		return (
 			<Card state={state.kind}>
-				<h3>Городов в кольце нет</h3>
-				<p className="muted small">Показываем города больше 15 000 жителей.</p>
+				<h3>Точек интереса в кольце нет</h3>
+				<p className="muted small">Показываем города от 15 000 жителей и известные места.</p>
 			</Card>
 		);
 	}
@@ -130,10 +130,10 @@ function RingCard({ state }: { readonly state: StateOf<'ring' | 'no_cities'> }):
 				<>
 					<div className="big">{state.points.count}</div>
 					<div>
-						{plural(state.points.count, ['город', 'города', 'городов'])} в {state.points.countries}{' '}
+						{plural(state.points.count, ['точка интереса', 'точки интереса', 'точек интереса'])} в {state.points.countries}{' '}
 						{plural(state.points.countries, ['стране', 'странах', 'странах'])}
 					</div>
-					<p className="muted small">Листайте → самые крупные</p>
+					<p className="muted small">Листайте → самое известное</p>
 				</>
 			)}
 		</Card>

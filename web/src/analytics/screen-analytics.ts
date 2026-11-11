@@ -190,9 +190,9 @@ function outcomeOf(
 	if (answer.outcome !== 'ring' || cities === undefined) {
 		return { outcome: answer.outcome, source };
 	}
-	// The countries as the first card counts them, of all the points of interest; the cities alone.
-	const points = pointsInRing(cities, { ring: answer.ring, access: answer.access, origin });
-	// oxlint-disable-next-line typescript/no-unnecessary-condition -- the cities are the only kind until the places of spec #154 «Экран» join them, and `cities_count` stays the cities' alone
+	// The countries as the first card counts them, of the points of interest; the cities alone. The events do not wait
+	// for the places file yet, so they count the cities' points only (the places join them by spec #154 «События (PostHog)»).
+	const points = pointsInRing({ cities, places: [] }, { ring: answer.ring, access: answer.access, origin });
 	const citiesCount = points.filter((point) => point.kind === 'city').length;
 	return { outcome: answer.outcome, source, cities_count: citiesCount, countries_count: countOf(points).countries };
 }

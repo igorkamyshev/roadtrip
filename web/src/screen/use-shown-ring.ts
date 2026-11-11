@@ -5,6 +5,7 @@ import { useMemo, useState } from 'react';
 import type { RingResponse } from 'worker/api';
 import { useScreenAnalytics } from '../analytics/use-screen-analytics.ts';
 import { useCitiesFile, type City } from '../cities/cities.ts';
+import { usePlacesFile } from '../places/places.ts';
 import { pointsInRing } from '../points/in-ring.ts';
 import type { PointOfInterest } from '../points/point-of-interest.ts';
 import { ringKey, useCachedHours, useRing } from '../ring/use-ring.ts';
@@ -33,8 +34,9 @@ export interface ShownRing {
 	/** The zones the answer closes, hatched on the map. */
 	readonly closed: readonly string[];
 	/**
-	 * The ring's points of interest, the most famous first, once the ring is this request's (not an old one) and the
-	 * cities came.
+	 * The ring's points of interest, the most famous first, once the ring is this request's (not an old one), the cities
+	 * came and the places file is settled: the cities alone if it could not be had. Undefined until then, so that the
+	 * carousel is not built anew when the places come.
 	 */
 	readonly shownPoints: readonly PointOfInterest[] | undefined;
 	/** The cells, hours and days, whose rings are in memory for this origin and settings: the slider's marked ones. */
@@ -44,6 +46,7 @@ export interface ShownRing {
 export function useShownRing({ origin, start, hours, settings }: ScreenStateControls): ShownRing {
 	const ring = useRing(origin, hours, settings);
 	const citiesFile = useCitiesFile();
+	const placesFile = usePlacesFile();
 	const cachedHours = useCachedHours(origin, settings);
 	const requestId = origin === undefined ? '' : JSON.stringify(ringKey(origin, hours, settings));
 	const [retries, setRetries] = useState(0);
@@ -61,12 +64,13 @@ export function useShownRing({ origin, start, hours, settings }: ScreenStateCont
 	const answer = data?.outcome === 'visa_rules_missing' ? undefined : data;
 	const access = answer?.access;
 	const { cities } = citiesFile;
+	const { settled: placesSettled, places } = placesFile;
 	const ringPoints = useMemo(
 		() =>
-			cities === undefined || geometry === undefined || access === undefined || origin === undefined
+			cities === undefined || !placesSettled || geometry === undefined || access === undefined || origin === undefined
 				? undefined
-				: pointsInRing(cities, { ring: geometry, access, origin }),
-		[cities, geometry, access, origin],
+				: pointsInRing({ cities, places: places ?? [] }, { ring: geometry, access, origin }),
+		[cities, placesSettled, places, geometry, access, origin],
 	);
 	const closed = useMemo(
 		() => (access === undefined ? [] : Object.keys(access).filter((code) => access[code].mode === 'closed')),

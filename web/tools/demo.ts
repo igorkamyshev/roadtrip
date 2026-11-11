@@ -1,12 +1,13 @@
 // The screen without the Worker, to look at (`pnpm --filter web demo`, tools/demo-cli.ts) and record (tools/record.ts):
 // the build served by Vite's preview server, with the screen tests' doubles of what the Worker serves
 // (e2e/fixtures.ts). `/api/ring` answers a band of its bounds `from` to `to` in tenths of a degree around the origin after
-// `RING_DELAY_MS`, so the calculation shows; the cities are `CITIES` around Belgrade, the zones `ZONE_OUTLINES`, the
-// tiles empty. PostHog stays off, as on any host but production.
+// `RING_DELAY_MS`, so the calculation shows; the cities are `CITIES` around Belgrade, the places `PLACES`, the zones
+// `ZONE_OUTLINES`, the tiles empty. PostHog stays off, as on any host but production.
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { encodeCities } from 'data/cities-file';
+import { encodePlaces } from 'data/places-file';
 import { preview, type PreviewServer } from 'vite';
-import { CITIES, squareRing, ZONE_OUTLINES } from '../e2e/fixtures.ts';
+import { CITIES, PLACES, squareRing, ZONE_OUTLINES } from '../e2e/fixtures.ts';
 
 /** How long the ring double takes to answer. */
 const RING_DELAY_MS = 700;
@@ -31,6 +32,8 @@ function worker(request: IncomingMessage, response: ServerResponse, next: () => 
 		json(response, ZONE_OUTLINES);
 	} else if (url.pathname === '/data/cities.json') {
 		json(response, encodeCities(CITIES));
+	} else if (url.pathname === '/data/places.json') {
+		json(response, encodePlaces(PLACES));
 	} else {
 		next();
 	}

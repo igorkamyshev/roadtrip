@@ -1,5 +1,5 @@
 // The carousel at the bottom of the screen (spec #20 «Экран», «Карусель»): the first card, the cards of the ring's most
-// famous points of interest, and «и ещё K / Все города →» when the ring holds more; with a mouse, its arrows
+// famous points of interest, and «и ещё K / Всё в кольце →» when the ring holds more; with a mouse, its arrows
 // (carousel-arrows.tsx). Its link with the map is src/points/carousel.ts's.
 import type { ReactElement } from 'react';
 import { MoreCard, PointCard } from '../points/point-card.tsx';

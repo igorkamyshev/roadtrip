@@ -3,9 +3,9 @@
 // 1. the hatching of closed countries and closed territories, `closed-hatch`: the zone outlines of the dataset
 //    (source `zones`, `/data/zones.json`), filtered to the zones `access` closes;
 // 2. the ring: `ring-fill`, or `ring-stripes` (running stripes) while a calculation replaces it, and `ring-line`;
-// 3. the ring's points of interest, the cities only for now (source `cities`): a dot for each of the most famous,
-//    `city-dots`, and the names of the carousel's and of the chosen one, `city-labels`; the chosen one larger, in the
-//    origin's colour;
+// 3. the ring's points of interest, cities and places alike for now (source `cities`; the places get diamonds of their
+//    own by spec #154 «Экран», «Карта»): a dot for each of the most famous, `city-dots`, a place's at its access point,
+//    and the names of the carousel's and of the chosen one, `city-labels`; the chosen one larger, in the origin's colour;
 // 4. the origin's marker, `start`.
 //
 // The tests read the sources `ring`, `start`, `zones` and `cities`, the hatching's filter and the layers'
