@@ -18,6 +18,8 @@ export interface PointCardProps {
 	readonly chosen: boolean;
 	/** A tap anywhere on the card but «Маршрут». */
 	readonly onTap: () => void;
+	/** A tap on «Маршрут», which opens the route itself. */
+	readonly onRoute: () => void;
 }
 
 /**
@@ -25,7 +27,7 @@ export interface PointCardProps {
  * place's card has a strip of its group's colour on top (styles.css, `.c-card.nature`, `.c-card.history`); a city's
  * none, so a place is told from a city at a glance.
  */
-export function PointCard({ point, origin, chosen, onTap }: PointCardProps): ReactElement {
+export function PointCard({ point, origin, chosen, onTap, onRoute }: PointCardProps): ReactElement {
 	const classes = ['c-card', 'clickable', point.kind === 'place' ? PLACE_GROUP[point.place.type] : '', chosen ? 'chosen' : ''];
 	return (
 		<div
@@ -49,7 +51,7 @@ export function PointCard({ point, origin, chosen, onTap }: PointCardProps): Rea
 			</div>
 			<div className="acts">
 				{/* A quiet link, not the card's brightest thing (#75). */}
-				<a className="c-route" href={routeUrl(origin, point)} target="_blank" rel="noopener noreferrer">
+				<a className="c-route" href={routeUrl(origin, point)} target="_blank" rel="noopener noreferrer" onClick={onRoute}>
 					Маршрут
 				</a>
 			</div>

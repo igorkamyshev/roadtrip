@@ -3,6 +3,7 @@
 // the events that follow them (src/analytics/).
 import { useMemo, useState } from 'react';
 import type { RingResponse } from 'worker/api';
+import type { ScreenAnalytics } from '../analytics/screen-analytics.ts';
 import { useScreenAnalytics } from '../analytics/use-screen-analytics.ts';
 import { useCitiesFile, type City } from '../cities/cities.ts';
 import { usePlacesFile } from '../places/places.ts';
@@ -24,7 +25,7 @@ export interface ShownRing {
 	readonly requestId: string;
 	/** «Повторить»: the request again, an ask of its own for `ring result`. */
 	readonly retry: () => void;
-	readonly analytics: ReturnType<typeof useScreenAnalytics>;
+	readonly analytics: ScreenAnalytics;
 	/** The cities file's cities; undefined until they come. */
 	readonly cities: readonly City[] | undefined;
 	/** The ring on the map: this request's, or the previous one of the same origin standing in for it, striped. */
@@ -58,6 +59,7 @@ export function useShownRing({ origin, start, hours, settings }: ScreenStateCont
 		settings,
 		ring,
 		citiesFile,
+		placesFile,
 	});
 	const { data } = ring;
 	const geometry = data?.outcome === 'ring' ? data.ring : undefined;

@@ -1,6 +1,7 @@
 // The screen's events from its state (screen-analytics.ts says when each goes): the start, the ring asked for and its
-// answer, the cities file, and the page going away.
+// answer, the cities file and the places file, and the page going away.
 import type { UseQueryResult } from '@tanstack/react-query';
+import type { Place } from 'data/places-file';
 import { useEffect, useState } from 'react';
 import type { RingResponse } from 'worker/api';
 import type { City } from '../cities/cities.ts';
@@ -20,9 +21,19 @@ export interface ScreenAnalyticsInput {
 	readonly settings: Settings;
 	readonly ring: UseQueryResult<RingResponse, RingRequestError>;
 	readonly citiesFile: { readonly settled: boolean; readonly cities: readonly City[] | undefined };
+	readonly placesFile: { readonly settled: boolean; readonly places: readonly Place[] | undefined };
 }
 
-export function useScreenAnalytics({ start, request, retries, hours, settings, ring, citiesFile }: ScreenAnalyticsInput): ScreenAnalytics {
+export function useScreenAnalytics({
+	start,
+	request,
+	retries,
+	hours,
+	settings,
+	ring,
+	citiesFile,
+	placesFile,
+}: ScreenAnalyticsInput): ScreenAnalytics {
 	const [analytics] = useState(() => new ScreenAnalytics(send));
 
 	useEffect(() => {
@@ -30,6 +41,12 @@ export function useScreenAnalytics({ start, request, retries, hours, settings, r
 			analytics.citiesSettled(citiesFile.cities);
 		}
 	}, [analytics, citiesFile]);
+
+	useEffect(() => {
+		if (placesFile.settled) {
+			analytics.placesSettled(placesFile.places);
+		}
+	}, [analytics, placesFile]);
 
 	useEffect(() => {
 		if (start !== undefined) {
