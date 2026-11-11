@@ -9,7 +9,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { type CitiesFile, type CityRow, decodeCities, encodeCities } from './cities-file.ts';
-import type { PlaceRow, PlacesFile } from './places-file.ts';
+import { type PlaceRow, type PlacesFile, QID } from './places-file.ts';
 
 /** The shape of a table: its first line, and its key with the number it stands for in its first group. */
 interface TableShape {
@@ -30,7 +30,7 @@ const CITIES_TABLE: TableShape = {
 const PLACES_TABLE: TableShape = {
 	shipped: join(import.meta.dirname, '../place-russian-names.tsv'),
 	header: 'qid\tname\tru',
-	key: /^Q([1-9]\d*)$/u,
+	key: QID,
 	keyIs: 'Q and a positive integer',
 };
 

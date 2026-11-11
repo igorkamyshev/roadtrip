@@ -7,6 +7,7 @@ import type { Graph } from 'engine/graph';
 import type { Point } from './cities-file.ts';
 import { type AccessPoint, nearOutline, type PlaceOutline } from './places-file.ts';
 import { type NearRoad, RoadIndex } from './road-index.ts';
+import { roundDegrees } from './degrees.ts';
 
 /** A point of a road, degrees, and how far it is from the point asked about. */
 interface RoadPoint {
@@ -56,7 +57,7 @@ function zoneNearest(graph: Graph, index: RoadIndex): (point: Point, pick: PickP
 		});
 		return [...nearest]
 			.toSorted(([zoneOne, one], [zoneTwo, two]) => (one.meters === two.meters ? zoneOne - zoneTwo : one.meters - two.meters))
-			.map(([zone, { lat, lon }]) => ({ lat: round(lat), lon: round(lon), zone: zones[zone] }));
+			.map(([zone, { lat, lon }]) => ({ lat: roundDegrees(lat), lon: roundDegrees(lon), zone: zones[zone] }));
 	};
 }
 
@@ -273,9 +274,4 @@ function gridCells(outline: Outlined): GridCell[] {
 		}
 	}
 	return cells;
-}
-
-/** Degrees to 0.001°, about 100 m: the ring holds the land 1 km around its roads. */
-function round(value: number): number {
-	return Math.round(value * 1000) / 1000;
 }

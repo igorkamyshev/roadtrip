@@ -128,3 +128,24 @@ export function missingRussianNamesMarkdown({ missingRussianNames: { count: miss
 	const examples = biggest.map(({ id, name }) => `${name} (${id})`).join(', ');
 	return ['## Русские названия', '', biggest.length > 0 ? `${line} Самые большие: ${examples}.` : line, ''].join('\n');
 }
+
+/**
+ * Where a version's places came from when their job failed (src/publish.ts): the version before it (`version`), or
+ * nowhere, the version before (`previous`, if any) having none either.
+ */
+export type FailedPlacesOrigin =
+	| { readonly from: 'previous'; readonly version: string }
+	| { readonly from: 'none'; readonly previous: string | undefined };
+
+/** The build report's section on the places when their job failed: where the version's places came from. */
+export function placesFailedMarkdown(places: FailedPlacesOrigin): string {
+	let what: string;
+	if (places.from === 'previous') {
+		what = `файл мест и клетки контуров — из прошлой версии ${places.version}.`;
+	} else if (places.previous === undefined) {
+		what = 'прошлой версии набора нет, так что он выложен без мест.';
+	} else {
+		what = `в прошлой версии ${places.previous} мест нет, так что набор выложен без мест.`;
+	}
+	return ['## Места', '', `Джоба мест упала: ${what}`, ''].join('\n');
+}

@@ -10,6 +10,7 @@ import { tmpdir } from 'node:os';
 import { basename, join } from 'node:path';
 import { COUNTRIES } from 'rules/countries';
 import { field, isRecord, items } from 'engine/json';
+import { type FailedPlacesOrigin, placesFailedMarkdown } from './build-report.ts';
 import { packPlaceOutlines } from './place-outlines-bundle.ts';
 import { PLACE_OUTLINES_PATH, PLACES_PATH } from './places-file.ts';
 import { ZONELESS_COUNTRIES } from './zoneless.ts';
@@ -79,7 +80,7 @@ export async function publishDataset(
 	store: DatasetStore,
 	directory: string,
 	{ log, trial = false, placesFailed = false }: PublishOptions,
-): Promise<{ manifest: Manifest; previous: string | undefined; places: Places }> {
+): Promise<{ manifest: Manifest; previous: string | undefined; places: PlacesOrigin }> {
 	const version = datasetVersion(directory, placesFailed);
 	if (!trial) {
 		checkZones(directory);
@@ -111,19 +112,13 @@ export async function publishDataset(
 	}
 }
 
-/**
- * Where a version's places came from: this build, the version before it (`version`), or nowhere, when their job failed
- * and the version before (`previous`, if any) had none either.
- */
-export type Places =
-	| { readonly from: 'build' }
-	| { readonly from: 'previous'; readonly version: string }
-	| { readonly from: 'none'; readonly previous: string | undefined };
+/** Where a version's places came from: this build, or, when their job failed, the version before or nowhere. */
+export type PlacesOrigin = { readonly from: 'build' } | FailedPlacesOrigin;
 
-const BUILT: Places = { from: 'build' };
+const BUILT: PlacesOrigin = { from: 'build' };
 
 /** The places' files of the current version, by the pointer, for a dataset whose places job failed: those it lends. */
-async function previousPlaces(store: DatasetStore): Promise<{ places: Places; lent: Record<string, FileCheck> }> {
+async function previousPlaces(store: DatasetStore): Promise<{ places: PlacesOrigin; lent: Record<string, FileCheck> }> {
 	const pointer = await store.read(POINTER);
 	if (pointer === undefined) {
 		return { places: { from: 'none', previous: undefined }, lent: {} };
@@ -156,7 +151,7 @@ async function checkPublished(store: DatasetStore, { version, files }: Manifest,
  * the cells packed into one file in `staging`. Without them, the report goes from `staging`, saying where the places
  * are from.
  */
-function localFiles(directory: string, staging: string, places: Places): Map<string, string> {
+function localFiles(directory: string, staging: string, places: PlacesOrigin): Map<string, string> {
 	const paths = new Map<string, string>(DATASET_FILES.map((name) => [name, join(directory, name)]));
 	if (places.from === 'build') {
 		const packed = join(staging, PLACE_OUTLINES_FILE);
@@ -166,19 +161,6 @@ function localFiles(directory: string, staging: string, places: Places): Map<str
 	const report = join(staging, 'report.md');
 	writeFileSync(report, `${readFileSync(join(directory, 'report.md'), 'utf8')}\n${placesFailedMarkdown(places)}`);
 	return paths.set('report.md', report);
-}
-
-/** The build report's section on the places when their job failed. */
-function placesFailedMarkdown(places: Exclude<Places, { from: 'build' }>): string {
-	let what: string;
-	if (places.from === 'previous') {
-		what = `файл мест и клетки контуров — из прошлой версии ${places.version}.`;
-	} else if (places.previous === undefined) {
-		what = 'прошлой версии набора нет, так что он выложен без мест.';
-	} else {
-		what = `в прошлой версии ${places.previous} мест нет, так что набор выложен без мест.`;
-	}
-	return ['## Места', '', `Джоба мест упала: ${what}`, ''].join('\n');
 }
 
 /** A manifest as `publishDataset` writes it; an error naming `key` for anything else. */

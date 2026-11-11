@@ -74,6 +74,9 @@ export function cityFame(population: number): number {
 	return CITY_FAME_SCALE * population ** CITY_FAME_EXPONENT;
 }
 
+/** A Q-id as Wikidata writes it, `Q1029310` (OSM's `wikidata=`, the table of Russian names of places): its number the first group. */
+export const QID = /^Q([1-9]\d*)$/u;
+
 /** A point on a road near a place, where a car gets to it (GLOSSARY «Подъезд»), and the zone of the road. */
 export interface AccessPoint {
 	/** Degrees, to 0.001°. */

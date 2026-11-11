@@ -20,9 +20,11 @@ import {
 	type PlaceRadius,
 	PLACE_TYPES,
 	type PlaceType,
+	QID,
 } from './places-file.ts';
 import { readSitelinks } from './sitelinks.ts';
 import type { WikidataPlace } from './wikidata.ts';
+import { roundDegrees } from './degrees.ts';
 
 /** A place has this many sitelinks or more. */
 export const MIN_SITELINKS = 10;
@@ -191,8 +193,8 @@ function placeOf(place: Typed, item: WikidataPlace | undefined, links: { count: 
 		qid: candidate.qid,
 		ru: russianName(item?.ru, links?.ruwiki),
 		local: item?.en ?? candidate.name,
-		lat: round(point.lat),
-		lon: round(point.lon),
+		lat: roundDegrees(point.lat),
+		lon: roundDegrees(point.lon),
 		sitelinks: links?.count ?? 0,
 		type,
 		access,
@@ -285,7 +287,7 @@ function comesBefore(one: Pick<Typed, 'candidate' | 'type'>, two: Pick<Typed, 'c
 function readCandidates(osm: OsmSource): Candidate[] {
 	const candidates: Candidate[] = [];
 	const add = (tags: Tags, object: Pick<Candidate, 'kind' | 'osmId' | 'point' | 'members'>) => {
-		const qid = Number(/^Q([1-9]\d*)$/u.exec(tags.wikidata ?? '')?.[1]);
+		const qid = Number(QID.exec(tags.wikidata ?? '')?.[1]);
 		const ifMonastery = placeType(tags, true);
 		if (Number.isInteger(qid) && ifMonastery !== undefined) {
 			candidates.push({ qid, name: tags.name ?? '', ...object, ifMonastery, otherwise: placeType(tags, false) });
@@ -354,9 +356,4 @@ const QUALIFIER = /\s*\([^)]*\)$/u;
 function russianName(label: string | undefined, ruwiki: string | undefined): string {
 	const name = (label ?? ruwiki?.replace(QUALIFIER, '') ?? '').trim();
 	return name.charAt(0).toLocaleUpperCase('ru') + name.slice(1);
-}
-
-/** Degrees to 0.001°, about 100 m. */
-function round(degrees: number): number {
-	return Math.round(degrees * 1000) / 1000;
 }

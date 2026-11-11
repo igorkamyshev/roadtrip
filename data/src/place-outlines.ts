@@ -11,6 +11,7 @@ import type { OsmSource, OsmWay } from './osm/source.ts';
 import { simplifyRing } from './outlines.ts';
 import { ORIGIN_PLACE_METERS, type PlaceOutline, placeOutlinesCell, type PlaceRadius } from './places-file.ts';
 import { type Chain, relationRings } from './zones.ts';
+import { roundDegrees } from './degrees.ts';
 
 /** A way of an outline, and whether it bounds a hole (its role in a relation is `inner`). */
 export interface OutlineMember {
@@ -139,7 +140,7 @@ function flatRing({ lat, lon }: Chain): number[] {
 	const pairs = lat.map((latE7, point): Pair => [lon[point] / 1e7, latE7 / 1e7]);
 	const ring: number[] = [];
 	for (const [pointLon, pointLat] of (simplifyRing(pairs, OUTLINE_TOLERANCE_METERS) ?? pairs).slice(0, -1)) {
-		const rounded = [round(pointLat), round(pointLon)];
+		const rounded = [roundDegrees(pointLat), roundDegrees(pointLon)];
 		if (ring.at(-2) !== rounded[0] || ring.at(-1) !== rounded[1]) {
 			ring.push(...rounded);
 		}
@@ -148,11 +149,6 @@ function flatRing({ lat, lon }: Chain): number[] {
 		ring.length -= 2;
 	}
 	return ring;
-}
-
-/** Degrees to 0.001°, about 100 m. */
-function round(degrees: number): number {
-	return Math.round(degrees * 1000) / 1000;
 }
 
 /**
