@@ -46,7 +46,7 @@ export function PointCard({ point, origin, chosen, onTap, onRoute }: PointCardPr
 				<CountryFlag zone={point.zone} />
 			</div>
 			<div className="muted small" data-testid="point-facts">
-				{point.kind === 'city' ? populationLine(point.city.population) : placeType(point)}
+				{point.kind === 'city' ? populationLine(point.city.population) : placeTypeName(point)}
 			</div>
 			<div className="acts">
 				{/* A quiet link, not the card's brightest thing (#75). */}
@@ -79,7 +79,7 @@ function CountryFlag({ zone }: { readonly zone: string }): ReactElement {
 }
 
 /** A place's type, plain text written as a city's population (#167): «Озеро», «Монастырь». No icon. */
-function placeType(point: PlacePoint): string {
+function placeTypeName(point: PlacePoint): string {
 	return PLACE_TYPE_NAMES[point.place.type];
 }
 
@@ -92,7 +92,7 @@ export function PointRowText({ point }: { readonly point: PointOfInterest }): Re
 		<CityRowText city={point.city} />
 	) : (
 		<RowText name={point.name} zone={point.zone}>
-			{placeType(point)}
+			{placeTypeName(point)}
 		</RowText>
 	);
 }

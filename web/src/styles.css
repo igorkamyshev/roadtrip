@@ -510,25 +510,17 @@ a {
 	min-width: 0;
 }
 
-/* A place's row in «Всё в кольце»: its group's ground fades in towards the right edge (#167), over the hover's veil,
-   which is the row's own background (below, «hover»), and under the row's text, positioned after it; a city's row has
-   none. */
-.point-row.nature::before,
-.point-row.history::before {
-	content: '';
-	position: absolute;
-	inset: 0 0 0 auto;
-	width: 40%;
-	background-image: linear-gradient(to right, transparent, var(--group-bg));
-	pointer-events: none;
+/* A place's row in «Всё в кольце»: its group's ground fades in over the right 40 % (#167), the row's own background,
+   under the hover's veil (below, «hover»); a city's row has none. */
+.point-row.nature,
+.point-row.history {
+	--tint: linear-gradient(to right, transparent 60%, var(--group-bg));
+
+	background-image: var(--tint);
 }
 
 .point-row.on .row-name {
 	color: var(--ring);
-}
-
-.point-row .row-main {
-	position: relative;
 }
 
 .point-row .row-main,
@@ -1244,6 +1236,12 @@ a {
 	.pick-item:hover,
 	.row:hover {
 		background-image: linear-gradient(var(--hover), var(--hover));
+	}
+
+	/* A place's row: the veil over its tint. */
+	.point-row.nature:hover,
+	.point-row.history:hover {
+		background-image: linear-gradient(var(--hover), var(--hover)), var(--tint);
 	}
 
 	.tok:not(.static):hover {

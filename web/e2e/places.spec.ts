@@ -10,7 +10,7 @@
 // 29 → 43.5, Lepenski Vir first by its smaller Q-id (Q906669, Q2880621); Arad 169 065 → 42.5; Szeged 160 766 → 41.7;
 // Pécs → 40.3; Tuzla → 40.1; Manasija 25 → 37.5; Kecskemét → 36.7; Mostar → 36.0; Subotica → 35.5; Reşiţa → 33.1;
 // Drobeta-Turnu Severin → 32.9; Osijek → 32.3; the lake of Zvornik 21 → 31.5; Lukavac → 26.9.
-import type { Locator, Page } from '@playwright/test';
+import type { Page } from '@playwright/test';
 import type { Access } from 'worker/api';
 import { BELGRADE, carouselRing, expect, LINK_3_HOURS, OPEN_AROUND_SERBIA, servePlaces, squareRing, test, visaRules } from './fixtures.ts';
 import {
@@ -20,6 +20,7 @@ import {
 	holdTheClock,
 	mapAtRest,
 	moreCard,
+	openHeld,
 	openTheList,
 	placesOnMap,
 	pointCard,
@@ -76,45 +77,62 @@ async function routeTo(page: Page, name: string): Promise<string | null> {
 	return href === null ? null : new URL(href).searchParams.get('destination');
 }
 
+/** How the line under a point's name is written, and the tint of its ground towards the right edge. */
+interface LineUnder {
+	readonly colour: string;
+	readonly size: string;
+	readonly weight: string;
+	/** How far right of the name's first letter the line's starts, in whole pixels: 0 when they start together. */
+	readonly indent: number;
+	/** The last colour of the point's own background, its tint at the right edge, or `none`. */
+	readonly tint: string;
+}
+
 /**
- * How a line's text is written, by its first words: their colour, size and weight, and where on the screen they start.
- * A place's type is written as a city's «Население: …», under its name and from the same left edge.
+ * The lines under the names of these points of interest, in one reading of the page: on their cards in the carousel
+ * (`card`), or in their rows of the open list of all (`row`). A place's type is written as a city's «Население: …».
  */
-async function textOf(line: Locator): Promise<{ colour: string; size: string; weight: string; left: number }> {
-	return line.evaluate((element) => {
-		const words = document
-			.createTreeWalker(element, NodeFilter.SHOW_TEXT, (node) =>
-				node.textContent?.trim() === '' ? NodeFilter.FILTER_SKIP : NodeFilter.FILTER_ACCEPT,
-			)
-			.nextNode();
-		if (words?.parentElement === null || words === null) {
-			throw new Error(`no text in ${element.outerHTML}`);
-		}
-		const range = document.createRange();
-		range.selectNodeContents(words);
-		const style = getComputedStyle(words.parentElement);
-		return { colour: style.color, size: style.fontSize, weight: style.fontWeight, left: range.getBoundingClientRect().left };
-	});
-}
-
-/** The line under a point's name, its look and how far right of the name it starts: 0 when they start together. */
-async function lineUnder(name: Locator, line: Locator): Promise<{ colour: string; size: string; weight: string; indent: number }> {
-	const [named, under] = [await textOf(name), await textOf(line)];
-	return { colour: under.colour, size: under.size, weight: under.weight, indent: Math.round(under.left - named.left) };
-}
-
-/** The row of the open list of all whose name this is. */
-const listRow = (page: Page, name: string): Locator =>
-	theList(page)
-		.getByTestId('point-row')
-		.filter({ has: page.getByTestId('row-name').getByText(name, { exact: true }) });
-
-/** The colour a row of the list of all is tinted with at its right edge, or `none` for a row with no tint. */
-async function tintOf(row: Locator): Promise<string> {
-	return row.evaluate((element) => {
-		const tint = getComputedStyle(element, '::before').backgroundImage;
-		return tint.match(/rgba?\([^)]*\)(?=\)$)/u)?.[0] ?? tint;
-	});
+async function linesUnder(page: Page, where: 'card' | 'row', names: readonly string[]): Promise<LineUnder[]> {
+	const parts =
+		where === 'card'
+			? { point: 'point-card', name: 'h3', line: '[data-testid="point-facts"]' }
+			: { point: 'point-row', name: '[data-testid="row-name"]', line: '[data-testid="row-sub"]' };
+	return page.evaluate(
+		({ parts: { point, name, line }, names: wanted }) => {
+			const points = Array.from(document.querySelectorAll(`[data-testid="${point}"]`));
+			return wanted.map((wantedName) => {
+				const found = points.find((element) => element.querySelector(name)?.textContent.trim() === wantedName);
+				const [nameElement, lineElement] = [found?.querySelector(name), found?.querySelector(line)];
+				if (found === undefined || nameElement === null || nameElement === undefined || lineElement === null || lineElement === undefined) {
+					throw new Error(`No ${point} of «${wantedName}»`);
+				}
+				// The first words of the name and of the line: their text nodes and where they start.
+				const [named, under] = [nameElement, lineElement].map((element) => {
+					const node = document
+						.createTreeWalker(element, NodeFilter.SHOW_TEXT, (text) =>
+							text.textContent?.trim() === '' ? NodeFilter.FILTER_SKIP : NodeFilter.FILTER_ACCEPT,
+						)
+						.nextNode();
+					if (!(node instanceof Text)) {
+						throw new TypeError(`No text in ${element.outerHTML}`);
+					}
+					const range = document.createRange();
+					range.selectNodeContents(node);
+					return { node, left: range.getBoundingClientRect().left };
+				});
+				const style = getComputedStyle(under.node.parentElement ?? lineElement);
+				const ground = getComputedStyle(found).backgroundImage;
+				return {
+					colour: style.color,
+					size: style.fontSize,
+					weight: style.fontWeight,
+					indent: Math.round(under.left - named.left),
+					tint: /rgba?\([^)]*\)(?=\)$)/u.exec(ground)?.[0] ?? ground,
+				};
+			});
+		},
+		{ parts, names },
+	);
 }
 
 /** A card's strip on top: its width and colour. */
@@ -451,12 +469,10 @@ test.describe('the card of a place', () => {
 				(await stripOf(page, 'Будапешт')).width,
 			]).toEqual([nature, nature, history, history, '0px']);
 
-			// Its type in the place of a city's «Население: …», written as it is, from the name's left edge.
-			const facts = async (name: string) =>
-				lineUnder(pointCard(page, name).getByRole('heading'), pointCard(page, name).getByTestId('point-facts'));
-			const population = await facts('Будапешт');
-			expect(population.indent).toBe(0);
-			expect([await facts('Балатон'), await facts('Монастырь Студеница')]).toEqual([population, population]);
+			// Its type in the place of a city's «Население: …», written as it is, from the name's left edge; its group is the
+			// strip, not a tint.
+			const line = { colour: (await themeColour(page, '--muted')).computed, size: '13px', weight: '400', indent: 0, tint: 'none' };
+			await expect.poll(() => linesUnder(page, 'card', ['Будапешт', 'Балатон', 'Монастырь Студеница'])).toEqual([line, line, line]);
 		});
 	}
 
@@ -467,25 +483,23 @@ test.describe('the card of a place', () => {
 		}) => {
 			await page.emulateMedia({ colorScheme });
 			ringApi.respond(() => carouselRing());
-			await page.goto(LINK_3_HOURS);
-			await moreCard(page).click();
+			await openHeld(page, LINK_3_HOURS, '2–3 ч');
+			await openTheList(page);
 
-			const line = async (name: string) =>
-				lineUnder(listRow(page, name).getByTestId('row-name'), listRow(page, name).getByTestId('row-sub'));
-			const population = await line('Будапешт');
-			expect(population.indent).toBe(0);
-			expect([await line('Балатон'), await line('Монастырь Студеница')]).toEqual([population, population]);
-
-			const [natureGround, historyGround] = [
-				(await themeColour(page, '--nature-bg')).computed,
-				(await themeColour(page, '--history-bg')).computed,
-			];
+			// Under a place's name its type, written as a city's «Население: …», from the name's left edge; at the right
+			// edge its group's ground, nature's and history's two of their own; a city's row has no tint.
+			const [muted, natureGround, historyGround] = await Promise.all(
+				['--muted', '--nature-bg', '--history-bg'].map(async (token) => (await themeColour(page, token)).computed),
+			);
 			expect(natureGround).not.toBe(historyGround);
-			expect([
-				await tintOf(listRow(page, 'Балатон')),
-				await tintOf(listRow(page, 'Монастырь Студеница')),
-				await tintOf(listRow(page, 'Будапешт')),
-			]).toEqual([natureGround, historyGround, 'none']);
+			const line = { colour: muted, size: '13px', weight: '400', indent: 0 };
+			await expect
+				.poll(() => linesUnder(page, 'row', ['Будапешт', 'Балатон', 'Монастырь Студеница']))
+				.toEqual([
+					{ ...line, tint: 'none' },
+					{ ...line, tint: natureGround },
+					{ ...line, tint: historyGround },
+				]);
 		});
 	}
 
