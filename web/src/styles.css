@@ -18,8 +18,8 @@
 	--city: #0e2a5a;
 	--halo: #f4f6f2;
 
-	/* The groups of places (spec #154 «Экран»): nature green, history terracotta, the strip on top of a place's card and
-	   its type's chip, on its ground. */
+	/* The groups of places (spec #154 «Экран»): nature green, history terracotta, the strip on top of a place's card;
+	   their grounds, the tint on the right of a place's row in «Всё в кольце». */
 	--nature: #2f7d4a;
 	--nature-bg: #e3efe7;
 	--history: #a4552e;
@@ -508,6 +508,15 @@ a {
 .row-main {
 	flex: 1;
 	min-width: 0;
+}
+
+/* A place's row in «Всё в кольце»: its group's ground fades in over the right 40 % (#167), the row's own background,
+   under the hover's veil (below, «hover»); a city's row has none. */
+.point-row.nature,
+.point-row.history {
+	--tint: linear-gradient(to right, transparent 60%, var(--group-bg));
+
+	background-image: var(--tint);
 }
 
 .point-row.on .row-name {
@@ -1090,8 +1099,8 @@ a {
 	line-height: 1;
 }
 
-/* A place's card (spec #154 «Экран», «Карточка места»): a strip of its group's colour on top, and its type in a chip of
-   that colour; a city's card has neither. No icons. */
+/* A place's card (spec #154 «Экран», «Карточка места»): a strip of its group's colour on top, its type written as a
+   city's population (#167); a city's card has no strip. No icons. */
 .nature {
 	--group: var(--nature);
 	--group-bg: var(--nature-bg);
@@ -1105,17 +1114,6 @@ a {
 .c-card.nature,
 .c-card.history {
 	border-top: 5px solid var(--group);
-}
-
-.type-chip {
-	display: inline-block;
-	padding: 1px 8px;
-	border-radius: 999px;
-	background: var(--group-bg);
-	color: var(--group);
-	font-size: 13px;
-	font-weight: 600;
-	line-height: 18px;
 }
 
 /* The chosen point of interest's card: 2 px of --ring, close; the keyboard's focus looks otherwise (above). */
@@ -1238,6 +1236,12 @@ a {
 	.pick-item:hover,
 	.row:hover {
 		background-image: linear-gradient(var(--hover), var(--hover));
+	}
+
+	/* A place's row: the veil over its tint. */
+	.point-row.nature:hover,
+	.point-row.history:hover {
+		background-image: linear-gradient(var(--hover), var(--hover)), var(--tint);
 	}
 
 	.tok:not(.static):hover {

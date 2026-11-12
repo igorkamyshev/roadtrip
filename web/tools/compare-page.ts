@@ -1,5 +1,5 @@
 // The page of `shots --compare` (tools/shots.ts): its shots before and after side by side, in both themes, the card's
-// first, then the screens, for a private artifact with the PNGs as its files (web/README.md, «Demo»). It meets the
+// first, then the list of all's, then the screens, for a private artifact with the PNGs as its files (web/README.md, «Demo»). It meets the
 // Artifact page's contract: no <html>, <head> or <body>, a <title>, colors as tokens on :root with their dark values
 // twice, the body's own background, 16 px at the sides, and it holds at 400 px wide.
 
@@ -22,6 +22,8 @@ interface ComparePage {
 	readonly links: readonly string[];
 	/** The point of interest of `--card`, whose card was shot too. */
 	readonly card: string | undefined;
+	/** Whether the screen with the list of all open was shot too (`--list`). */
+	readonly list: boolean;
 	readonly shots: readonly Shot[];
 }
 
@@ -83,18 +85,24 @@ function section(heading: string, shots: readonly Shot[], { suffix, what }: { re
 		}),
 	);
 	// The screens of both themes in one row where the page is wide; a card's are wider, a theme a row.
-	const wide = suffix === '' && shots.length > 1;
+	const wide = suffix !== '-card' && shots.length > 1;
 	return `<section><h2>${escapeHtml(heading)}</h2><div class="${wide ? 'pair wide' : 'pair'}">\n${figures.join('\n')}\n</div></section>`;
 }
 
-/** The page: the card's sections first, if a card was shot, then the screens', each link on each viewport. */
-export function comparePage({ title, ref, links, card, shots }: ComparePage): string {
+/**
+ * The page: the card's sections first, if a card was shot, then the list of all's, if it was, then the screens', each
+ * link on each viewport.
+ */
+export function comparePage({ title, ref, links, card, list, shots }: ComparePage): string {
 	const groups = [...Map.groupBy(shots, (shot) => `${shot.link}-${shot.width}x${shot.height}`).values()];
 	const where = ([shot]: readonly Shot[]): string => `${shot.width}×${shot.height}${links.length > 1 ? `, ссылка ${shot.link}` : ''}`;
 	const cards =
 		card === undefined
 			? []
 			: groups.map((group) => section(`Карточка «${card}», ${where(group)}`, group, { suffix: '-card', what: `карточка «${card}»` }));
+	const lists = list
+		? groups.map((group) => section(`«Всё в кольце», ${where(group)}`, group, { suffix: '-list', what: '«Всё в кольце»' }))
+		: [];
 	const screens = groups.map((group) => section(`Весь экран, ${where(group)}`, group, { suffix: '', what: 'весь экран' }));
 	const linkList = links.map((link, at) => `${links.length > 1 ? `${at + 1}: ` : ''}<code>${escapeHtml(link)}</code>`).join(', ');
 	return [
@@ -107,6 +115,7 @@ export function comparePage({ title, ref, links, card, shots }: ComparePage): st
 		`<p>До — <code>${escapeHtml(ref)}</code>, после — рабочая копия. Снято на демо (<code>pnpm --filter web demo</code>), поэтому карта пустая. ${links.length > 1 ? 'Ссылки' : 'Ссылка'}: ${linkList}.</p>`,
 		'</header>',
 		...cards,
+		...lists,
 		...screens,
 		'</main>',
 		'',

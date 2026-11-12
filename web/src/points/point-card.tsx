@@ -22,9 +22,9 @@ export interface PointCardProps {
 }
 
 /**
- * The card of a point of interest: its name and flag, then a city's population or a place's type, and «Маршрут». A
- * place's card has a strip of its group's colour on top (styles.css, `.c-card.nature`, `.c-card.history`); a city's
- * none, so a place is told from a city at a glance.
+ * The card of a point of interest: its name and flag, then a city's population or a place's type, written alike, and
+ * «Маршрут». A place's card has a strip of its group's colour on top (styles.css, `.c-card.nature`, `.c-card.history`);
+ * a city's none, so a place is told from a city at a glance.
  */
 export function PointCard({ point, origin, chosen, onTap, onRoute }: PointCardProps): ReactElement {
 	const classes = ['c-card', 'clickable', point.group ?? '', chosen ? 'chosen' : ''];
@@ -46,7 +46,7 @@ export function PointCard({ point, origin, chosen, onTap, onRoute }: PointCardPr
 				<CountryFlag zone={point.zone} />
 			</div>
 			<div className="muted small" data-testid="point-facts">
-				{point.kind === 'city' ? populationLine(point.city.population) : <TypeChip point={point} />}
+				{point.kind === 'city' ? populationLine(point.city.population) : placeTypeName(point)}
 			</div>
 			<div className="acts">
 				{/* A quiet link, not the card's brightest thing (#75). */}
@@ -78,18 +78,21 @@ function CountryFlag({ zone }: { readonly zone: string }): ReactElement {
 	);
 }
 
-/** A place's type, a chip in its group's colour: «Озеро», «Монастырь». No icon. */
-function TypeChip({ point }: { readonly point: PlacePoint }): ReactElement {
-	return <span className={`type-chip ${point.group}`}>{PLACE_TYPE_NAMES[point.place.type]}</span>;
+/** A place's type, plain text written as a city's population (#167): «Озеро», «Монастырь». No icon. */
+function placeTypeName(point: PlacePoint): string {
+	return PLACE_TYPE_NAMES[point.place.type];
 }
 
-/** A point of interest in a row of the list of all: a city's as in the search, a place's name and flag over its type. */
+/**
+ * A point of interest in a row of the list of all: a city's as in the search, a place's name and flag over its type;
+ * its group's tint on the right is the row's (points-sheet.tsx, styles.css `.point-row.nature`).
+ */
 export function PointRowText({ point }: { readonly point: PointOfInterest }): ReactElement {
 	return point.kind === 'city' ? (
 		<CityRowText city={point.city} />
 	) : (
 		<RowText name={point.name} zone={point.zone}>
-			<TypeChip point={point} />
+			{placeTypeName(point)}
 		</RowText>
 	);
 }
@@ -111,7 +114,9 @@ function RowText({ name, zone, children }: { readonly name: string; readonly zon
 				{name}
 			</span>{' '}
 			<CountryFlag zone={zone} />
-			<span className="row-sub">{children}</span>
+			<span className="row-sub" data-testid="row-sub">
+				{children}
+			</span>
 		</span>
 	);
 }

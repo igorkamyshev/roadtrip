@@ -20,6 +20,7 @@ import {
 	holdTheClock,
 	mapAtRest,
 	moreCard,
+	openHeld,
 	openTheList,
 	placesOnMap,
 	pointCard,
@@ -74,6 +75,64 @@ async function themeColour(page: Page, name: string): Promise<{ readonly written
 async function routeTo(page: Page, name: string): Promise<string | null> {
 	const href = await pointCard(page, name).getByRole('link', { name: 'Маршрут' }).getAttribute('href');
 	return href === null ? null : new URL(href).searchParams.get('destination');
+}
+
+/** How the line under a point's name is written, and the tint of its ground towards the right edge. */
+interface LineUnder {
+	readonly colour: string;
+	readonly size: string;
+	readonly weight: string;
+	/** How far right of the name's first letter the line's starts, in whole pixels: 0 when they start together. */
+	readonly indent: number;
+	/** The last colour of the point's own background, its tint at the right edge, or `none`. */
+	readonly tint: string;
+}
+
+/**
+ * The lines under the names of these points of interest, in one reading of the page: on their cards in the carousel
+ * (`card`), or in their rows of the open list of all (`row`). A place's type is written as a city's «Население: …».
+ */
+async function linesUnder(page: Page, where: 'card' | 'row', names: readonly string[]): Promise<LineUnder[]> {
+	const parts =
+		where === 'card'
+			? { point: 'point-card', name: 'h3', line: '[data-testid="point-facts"]' }
+			: { point: 'point-row', name: '[data-testid="row-name"]', line: '[data-testid="row-sub"]' };
+	return page.evaluate(
+		({ parts: { point, name, line }, names: wanted }) => {
+			const points = Array.from(document.querySelectorAll(`[data-testid="${point}"]`));
+			return wanted.map((wantedName) => {
+				const found = points.find((element) => element.querySelector(name)?.textContent.trim() === wantedName);
+				const [nameElement, lineElement] = [found?.querySelector(name), found?.querySelector(line)];
+				if (found === undefined || nameElement === null || nameElement === undefined || lineElement === null || lineElement === undefined) {
+					throw new Error(`No ${point} of «${wantedName}»`);
+				}
+				// The first words of the name and of the line: their text nodes and where they start.
+				const [named, under] = [nameElement, lineElement].map((element) => {
+					const node = document
+						.createTreeWalker(element, NodeFilter.SHOW_TEXT, (text) =>
+							text.textContent?.trim() === '' ? NodeFilter.FILTER_SKIP : NodeFilter.FILTER_ACCEPT,
+						)
+						.nextNode();
+					if (!(node instanceof Text)) {
+						throw new TypeError(`No text in ${element.outerHTML}`);
+					}
+					const range = document.createRange();
+					range.selectNodeContents(node);
+					return { node, left: range.getBoundingClientRect().left };
+				});
+				const style = getComputedStyle(under.node.parentElement ?? lineElement);
+				const ground = getComputedStyle(found).backgroundImage;
+				return {
+					colour: style.color,
+					size: style.fontSize,
+					weight: style.fontWeight,
+					indent: Math.round(under.left - named.left),
+					tint: /rgba?\([^)]*\)(?=\)$)/u.exec(ground)?.[0] ?? ground,
+				};
+			});
+		},
+		{ parts, names },
+	);
 }
 
 /** A card's strip on top: its width and colour. */
@@ -132,7 +191,7 @@ test.describe('the carousel and «Всё в кольце»', () => {
 			'Тузла',
 			'Монастырь Манасия',
 		]);
-		// A place's row: its name and flag, and under them the chip of its type; a city's, its population.
+		// A place's row: its name and flag, and under them its type; a city's, its population.
 		const rows = theList(page).getByTestId('point-row');
 		expect([await read(rows.nth(0)), await read(rows.nth(1))]).toEqual(['Балатон 🇭🇺 Озеро', 'Будапешт 🇭🇺 Население: 1,7 млн']);
 
@@ -377,7 +436,7 @@ test.describe('a place in the ring', () => {
 
 test.describe('the card of a place', () => {
 	for (const colorScheme of ['light', 'dark'] as const) {
-		test(`has the chip of its type, the strip of its group, the flag of its access point's country, and leads to that point (${colorScheme})`, async ({
+		test(`has its type written as a city's population, the strip of its group, the flag of its access point's country, and leads to that point (${colorScheme})`, async ({
 			page,
 			ringApi,
 		}) => {
@@ -409,6 +468,38 @@ test.describe('the card of a place', () => {
 				(await stripOf(page, 'Лепенски-Вир')).colour,
 				(await stripOf(page, 'Будапешт')).width,
 			]).toEqual([nature, nature, history, history, '0px']);
+
+			// Its type in the place of a city's «Население: …», written as it is, from the name's left edge; its group is the
+			// strip, not a tint.
+			const line = { colour: (await themeColour(page, '--muted')).computed, size: '13px', weight: '400', indent: 0, tint: 'none' };
+			await expect.poll(() => linesUnder(page, 'card', ['Будапешт', 'Балатон', 'Монастырь Студеница'])).toEqual([line, line, line]);
+		});
+	}
+
+	for (const colorScheme of ['light', 'dark'] as const) {
+		test(`in a row of «Всё в кольце» has its type written as a city's population, and its group's tint on the right (${colorScheme})`, async ({
+			page,
+			ringApi,
+		}) => {
+			await page.emulateMedia({ colorScheme });
+			ringApi.respond(() => carouselRing());
+			await openHeld(page, LINK_3_HOURS, '2–3 ч');
+			await openTheList(page);
+
+			// Under a place's name its type, written as a city's «Население: …», from the name's left edge; at the right
+			// edge its group's ground, nature's and history's two of their own; a city's row has no tint.
+			const [muted, natureGround, historyGround] = await Promise.all(
+				['--muted', '--nature-bg', '--history-bg'].map(async (token) => (await themeColour(page, token)).computed),
+			);
+			expect(natureGround).not.toBe(historyGround);
+			const line = { colour: muted, size: '13px', weight: '400', indent: 0 };
+			await expect
+				.poll(() => linesUnder(page, 'row', ['Будапешт', 'Балатон', 'Монастырь Студеница']))
+				.toEqual([
+					{ ...line, tint: 'none' },
+					{ ...line, tint: natureGround },
+					{ ...line, tint: historyGround },
+				]);
 		});
 	}
 
