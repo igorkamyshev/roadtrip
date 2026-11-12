@@ -324,7 +324,8 @@ describe('traceToExceptions', () => {
 	test.each<[string, Partial<TraceItem>]>([
 		['another request to the Worker', otherRequest],
 		['an RPC into the EngineContainer', { ...containerAlarm, event: { rpcMethod: 'calculate' } }],
-		// The Worker's call into the Container, cut off with the ring request the person left: kept as an error (#151)
+		// The Worker's call into the Container, cut off with the ring request the person left: kept as an error
+		// (#151). Catches POST /ring added to the expected cancellations, or every EngineContainer run matched
 		['the calculation in the EngineContainer', { ...containerAlarm, event: fetchEvent('POST', 'http://engine/ring') }],
 		['an alarm of another Durable Object', { ...containerAlarm, entrypoint: 'OtherObject' }],
 		['a ring request of another worker', { ...ringRequest, scriptName: 'other-worker' }],
@@ -336,6 +337,7 @@ describe('traceToExceptions', () => {
 		expect(event.properties.entrypoint).toBe(run.entrypoint);
 	});
 
+	// Catches responseStreamDisconnected expected on every entry instead of tiles only
 	test.each<[string, Partial<TraceItem>]>([
 		['a ring request', ringRequest],
 		['another request to the Worker', otherRequest],
@@ -355,6 +357,7 @@ describe('traceToExceptions', () => {
 		expect(firstException(event)).toMatchObject({ type: 'exceededCpu', mechanism: { synthetic: true } });
 	});
 
+	// The tile's row catches the waitUntil line checked only for some entries, or after the match on an entry
 	test.each<[string, Partial<TraceItem>]>([
 		['ring request', ringRequest],
 		['tile request', tileRequest],
