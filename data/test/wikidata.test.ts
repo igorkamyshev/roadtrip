@@ -115,6 +115,14 @@ interface Item {
 	readonly points?: readonly string[];
 	/** Whether it is an instance of Q44613, a monastery. */
 	readonly monastery?: boolean;
+	/** Its classes (P31): each its Q-id and English label, if it has one; several make several rows. */
+	readonly instanceOf?: readonly (readonly [qid: number, label?: string])[];
+	/** Whether it has P279, a class itself. */
+	readonly subclass?: boolean;
+	/** Whether it is an instance of Q4167410, a disambiguation page. */
+	readonly disambiguation?: boolean;
+	/** Whether a class of it (P31, then P279 up to any depth) is Q486972 or Q56061, a settlement or an administrative unit. */
+	readonly settlement?: boolean;
 }
 
 /** A literal of a SPARQL answer in JSON. */
@@ -124,11 +132,23 @@ const literal = (value: string, language?: string) => ({
 	...(language === undefined ? {} : { 'xml:lang': language }),
 });
 
-/** The rows of the answer for an item: one, or one per point, as SPARQL's OPTIONAL gives them. */
-function itemRows(qid: number, { ru, en, points = [], monastery = false }: Item): Record<string, unknown>[] {
+/** A boolean of a SPARQL answer in JSON. */
+const boolean = (value: boolean) => ({ type: 'literal', datatype: 'http://www.w3.org/2001/XMLSchema#boolean', value: String(value) });
+
+/** An item's URI, as the answer binds it. */
+const entity = (qid: number) => ({ type: 'uri', value: `http://www.wikidata.org/entity/Q${qid}` });
+
+/** The rows of the answer for an item: one, or one per point and class, as SPARQL's OPTIONAL gives them. */
+function itemRows(
+	qid: number,
+	{ ru, en, points = [], monastery = false, instanceOf = [], subclass = false, disambiguation = false, settlement = false }: Item,
+): Record<string, unknown>[] {
 	const row: Record<string, unknown> = {
-		item: { type: 'uri', value: `http://www.wikidata.org/entity/Q${qid}` },
-		monastery: { type: 'literal', datatype: 'http://www.w3.org/2001/XMLSchema#boolean', value: String(monastery) },
+		item: entity(qid),
+		monastery: boolean(monastery),
+		subclass: boolean(subclass),
+		disambiguation: boolean(disambiguation),
+		settlement: boolean(settlement),
 	};
 	if (ru !== undefined) {
 		row.ru = literal(ru, 'ru');
@@ -136,17 +156,49 @@ function itemRows(qid: number, { ru, en, points = [], monastery = false }: Item)
 	if (en !== undefined) {
 		row.en = literal(en, 'en');
 	}
-	return points.length === 0 ? [row] : points.map((point) => Object.assign({}, row, { point: literal(point) }));
+	const withPoints = points.length === 0 ? [row] : points.map((point) => ({ ...row, point: literal(point) }));
+	return instanceOf.length === 0
+		? withPoints
+		: withPoints.flatMap((pointRow) =>
+				instanceOf.map(([classQid, label]) => ({
+					...pointRow,
+					class: entity(classQid),
+					...(label === undefined ? {} : { classLabel: literal(label, 'en') }),
+				})),
+			);
 }
+
+/** The items the query names by their own Q-ids, not those of the classes it asks of (Q44613, Q4167410, Q486972, Q56061). */
+const ASKED_OF = new Set([44_613, 4_167_410, 486_972, 56_061]);
+
+/**
+ * How the query binds each doubt of an item, as the service would read it: a doubt the query does not bind so is
+ * never true in the answer, so a query that asks P31 for P279 or another class of settlements finds no doubt.
+ */
+const DOUBT_CLAUSES = {
+	subclass: /BIND\(EXISTS \{ \?item wdt:P279 \[\] \} AS \?subclass\)/u,
+	disambiguation: /BIND\(EXISTS \{ \?item wdt:P31 wd:Q4167410 \} AS \?disambiguation\)/u,
+	settlement:
+		/BIND\(EXISTS \{ \?item wdt:P31\/wdt:P279\* wd:Q486972 \} \|\| EXISTS \{ \?item wdt:P31\/wdt:P279\* wd:Q56061 \} AS \?settlement\)/u,
+} as const;
 
 /** The query service for the places: items by Q-id, each asked for answered with its rows. */
 function placesService(known: Record<number, Item>) {
 	const queries: number[][] = [];
 	const fetch = (_: string | URL | Request, init?: RequestInit) => {
 		const sparql = new URLSearchParams(typeof init?.body === 'string' ? init.body : '').get('query') ?? '';
-		const qids = [...sparql.matchAll(/wd:Q(\d+)/gu)].map((match) => Number(match[1])).filter((qid) => qid !== 44_613);
+		const qids = [...sparql.matchAll(/wd:Q(\d+)/gu)].map((match) => Number(match[1])).filter((qid) => !ASKED_OF.has(qid));
 		queries.push(qids);
-		const bindings = qids.flatMap((qid) => itemRows(qid, known[qid] ?? {}));
+		const asked = (doubt: keyof typeof DOUBT_CLAUSES) => DOUBT_CLAUSES[doubt].test(sparql);
+		const bindings = qids.flatMap((qid) => {
+			const item = known[qid] ?? {};
+			return itemRows(qid, {
+				...item,
+				subclass: asked('subclass') && item.subclass === true,
+				disambiguation: asked('disambiguation') && item.disambiguation === true,
+				settlement: asked('settlement') && item.settlement === true,
+			});
+		});
 		return Promise.resolve(Response.json({ results: { bindings } }));
 	};
 	return { fetch, queries };
@@ -164,9 +216,45 @@ describe("Wikidata's items of the places", () => {
 		const items = await wikidataPlaces(qids, { fetch: service.fetch, sleep: clock().sleep });
 
 		expect(service.queries.map((query) => query.length)).toEqual([400, 1]);
-		expect(items.get(1)).toEqual({ ru: 'Бледское озеро', en: 'Lake Bled', point: { lat: 46.363, lon: 14.094 }, monastery: false });
-		expect(items.get(2)).toEqual({ ru: undefined, en: 'Manasija', point: undefined, monastery: true });
-		expect(items.get(401)).toEqual({ ru: undefined, en: undefined, point: undefined, monastery: false });
+		expect([items.get(1), items.get(2), items.get(401)]).toEqual([
+			{ ru: 'Бледское озеро', en: 'Lake Bled', point: { lat: 46.363, lon: 14.094 }, monastery: false, instanceOf: [], doubts: [] },
+			{ ru: undefined, en: 'Manasija', point: undefined, monastery: true, instanceOf: [], doubts: [] },
+			{ ru: undefined, en: undefined, point: undefined, monastery: false, instanceOf: [], doubts: [] },
+		]);
+	});
+
+	it('are in doubt as a class (P279), a disambiguation page (Q4167410) or a settlement (P31 to Q486972 or Q56061), with the labels of their classes', async () => {
+		const service = placesService({
+			// Lime kiln, a class.
+			59_772: { en: 'lime kiln', subclass: true, instanceOf: [[16_889_133, 'class']] },
+			// Wayne, a page of several.
+			2_625_806: { en: 'Wayne', disambiguation: true, instanceOf: [[4_167_410, 'Wikimedia disambiguation page']] },
+			// Calstock, a village and a civil parish.
+			744_317: {
+				en: 'Calstock',
+				settlement: true,
+				points: ['Point(-4.21 50.497)', 'Point(-4.2 50.5)'],
+				instanceOf: [
+					[532, 'village'],
+					[1_115_575, 'civil parish'],
+				],
+			},
+			// Petra: an archaeological site, and a city of old, which a settlement's class holds too.
+			5788: { en: 'Petra', settlement: true, instanceOf: [[839_954, 'archaeological site'], [15_661_340]] },
+			// Lake Bled, a lake.
+			1_029_310: { en: 'Lake Bled', instanceOf: [[23_397, 'lake']] },
+		});
+
+		const items = await wikidataPlaces([59_772, 2_625_806, 744_317, 5788, 1_029_310], { fetch: service.fetch, sleep: clock().sleep });
+
+		expect([...items].map(([qid, { instanceOf, doubts }]) => [qid, instanceOf, doubts])).toEqual([
+			[59_772, ['class'], ['class']],
+			[2_625_806, ['Wikimedia disambiguation page'], ['disambiguation']],
+			[744_317, ['village', 'civil parish'], ['settlement']],
+			// A class without an English label is its Q-id.
+			[5788, ['archaeological site', 'Q15661340'], ['settlement']],
+			[1_029_310, ['lake'], []],
+		]);
 	});
 
 	it('take the first point of an item with several', async () => {

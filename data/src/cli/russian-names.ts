@@ -7,37 +7,19 @@
 // A file is a cities file or a places file by what it holds; a directory stands for its cities.json and, when it
 // holds one, its places.json (a dataset without places has none). By default the directory fetch-dataset fills,
 // web/public/data/, and the shipped tables: russian-names.tsv for the cities, place-russian-names.tsv for the places.
-import { existsSync, readFileSync, statSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { parseArgs } from 'node:util';
 import { field } from 'engine/json';
 import { parseCitiesFile } from '../cities-file.ts';
 import { parsePlacesFile } from '../places-file.ts';
 import { readPlaceRussianNames, readRussianNames, withPlaceRussianNames, withRussianNames } from '../russian-names.ts';
-import { log, userPath } from './input.ts';
-
-const ROOT = join(import.meta.dirname, '../../..');
+import { fetchedFiles, log, userPath } from './input.ts';
 
 const { values, positionals } = parseArgs({
 	allowPositionals: true,
 	options: { names: { type: 'string' }, 'place-names': { type: 'string' } },
 });
-const given = positionals.length === 0 ? [join(ROOT, 'web/public/data')] : positionals.map((path) => userPath(path));
-
-/** The files a path stands for: a directory's cities file and places file, if it has one, or the file itself. */
-function filesOf(path: string): string[] {
-	if (!statSync(path).isDirectory()) {
-		return [path];
-	}
-	const places = join(path, 'places.json');
-	if (existsSync(places)) {
-		return [join(path, 'cities.json'), places];
-	}
-	log(`no places file in ${path}: only the cities named`);
-	return [join(path, 'cities.json')];
-}
-
-const files = given.flatMap((path) => filesOf(path));
+const files = fetchedFiles(positionals, ['cities.json']);
 const citiesTable = values.names === undefined ? undefined : userPath(values.names);
 const placesTable = values['place-names'] === undefined ? undefined : userPath(values['place-names']);
 

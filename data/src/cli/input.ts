@@ -1,5 +1,5 @@
 import { spawn } from 'node:child_process';
-import { createReadStream, createWriteStream, mkdtempSync, rmSync } from 'node:fs';
+import { createReadStream, createWriteStream, existsSync, mkdtempSync, rmSync, statSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, join, resolve } from 'node:path';
 import { createInterface } from 'node:readline';
@@ -107,6 +107,31 @@ async function localCopy(pathOrUrl: string): Promise<{ path: string; remove: () 
 
 export function log(line: string): void {
 	process.stderr.write(`${line}\n`);
+}
+
+/** The directory `fetch-dataset` fills, where the deploy's steps after it work by default. */
+const FETCHED = join(import.meta.dirname, '../../../web/public/data');
+
+/**
+ * The files a step of the deploy after `fetch-dataset` takes, of the paths given (`fetch-dataset`'s directory for
+ * none): a file itself, a directory its files `named` and its `places.json` when it holds one (a dataset without places
+ * has none, which is no error).
+ */
+export function fetchedFiles(given: readonly string[], named: readonly string[]): string[] {
+	const paths = given.length === 0 ? [FETCHED] : given.map((path) => userPath(path));
+	return paths.flatMap((path) => {
+		if (!statSync(path).isDirectory()) {
+			return [path];
+		}
+		const files = named.map((name) => join(path, name));
+		const places = join(path, 'places.json');
+		if (existsSync(places)) {
+			files.push(places);
+		} else {
+			log(`no places file in ${path}`);
+		}
+		return files;
+	});
 }
 
 /** The size of a file the screen downloads, as it is and in brotli, as the Worker serves it: `1.83 MB, 0.60 MB in brotli` for the world's cities file. */

@@ -1,0 +1,3083 @@
+qid	name	decision
+Q591	Fontgombault Abbey	keep
+Q760	Saint Lucia	keep
+Q784	Dominica	keep
+Q3594	Rocca de' Giorgi	out
+Q3620	Sapinuwa	keep
+Q4111	Jiuzhaigou Valley	keep
+Q4127	Lake Constance	keep
+Q4152	Neuschwanstein Castle	keep
+Q4522	Ujung Kulon National Park	keep
+Q4523	Chogha Zanbil	keep
+Q5690	Sparta	keep
+Q5699	Ur	keep
+Q5724	Anuradhapura	keep
+Q5725	Mohenjo-daro	keep
+Q5736	Amarna	keep
+Q5743	Ebla	keep
+Q5747	Palmyra	keep
+Q5780	Meroë	keep
+Q5788	Petra	keep
+Q5859	Chichen Itza	keep
+Q7143	Schenkon	out
+Q9297	Russky Sever National Park	keep
+Q9443	Lothal	keep
+Q9468	Dholavira	keep
+Q9820	C/c	out
+Q9966	Texel	keep
+Q10079	Schouwen-Duiveland	keep
+Q10763	Frohburg	out
+Q10823	Lugnano in Teverina	out
+Q11845	Castle of Coca	keep
+Q12323	dam	out
+Q12501	Great Wall of China	keep
+Q12919	Majuro	keep
+Q14375	Lake Neuchâtel	keep
+Q14379	Lake Maggiore	keep
+Q14381	Lake Lucerne	keep
+Q14407	Lake Zurich	keep
+Q14418	Lake Lugano	keep
+Q14429	Lake Biel	keep
+Q14436	Lake Zug	keep
+Q14442	Lake Brienz	keep
+Q14444	Walensee	keep
+Q14448	Lake Murten	keep
+Q14459	Lake Sempach	keep
+Q14465	Lake Hallwil	keep
+Q14472	Lac de Joux	keep
+Q14497	Greifensee	keep
+Q14505	Lake Sarnen	keep
+Q14509	Lake Baldegg	keep
+Q14907	Sankt Ingbert	out
+Q15885	Kostanjevica na Krki	out
+Q17054	Martinique	keep
+Q17350	Cremolino	out
+Q17586	Teos	keep
+Q17662	San Giorgio Monferrato	out
+Q18258	Castell de Mur	out
+Q19053	Mystras	keep
+Q19838	Palace of Venaria	keep
+Q19846	Agliè Castle	keep
+Q19851	Castle of Racconigi	keep
+Q19854	Castle Pollenzo	keep
+Q19947	Wheathampstead	out
+Q20375	Prunetto	out
+Q20492	Bechyně	out
+Q20518	San Giustino	out
+Q22491	Steige	out
+Q22647	Troy	keep
+Q23397	lake	out
+Q23513	Phong Nha – Ke Bang National Park	keep
+Q23868	Brest Fortress	keep
+Q24252	Qesem Cave	keep
+Q25104	Lütje Hörn	keep
+Q25230	Guernsey	keep
+Q25496	Bat, Al-Khutm and Al-Ayn archaeological sites	keep
+Q25528	Saba	keep
+Q26137	Zyuratkul National Park	keep
+Q26180	Sint Eustatius	keep
+Q26237	Hawara	keep
+Q28337	shoal	out
+Q29894	Orava Castle	keep
+Q30990	Plymouth	keep
+Q31063	Christmas Island	keep
+Q33186	Bobovac	keep
+Q34023	tumulus	out
+Q34038	waterfall	out
+Q34497	Saint Helena	keep
+Q35509	cave	out
+Q35666	glacier	out
+Q38888	Olympia	keep
+Q40080	beach	out
+Q40544	Ala-Archa National Park	keep
+Q42090	Los Haitises National Park	keep
+Q42195	petroglyph	out
+Q43048	Rhodes	keep
+Q43374	Dunollie Castle	keep
+Q44112	Cyrene	keep
+Q45196	Lalouvesc	out
+Q45826	Apollonia	keep
+Q45829	Ptolemais	keep
+Q45949	Preah Vihear Temple	keep
+Q46197	Ascension Island	keep
+Q47020	Bachkovo Monastery	keep
+Q47611	Ephesus	keep
+Q47796	Modlin Fortress	keep
+Q48153	Alexander von Humboldt National Park	keep
+Q48567	Picos de Europa National Park	keep
+Q48675	West Island	keep
+Q50712	Ehrenbreitstein Fortress	keep
+Q51001	Rozhdestveno	out
+Q51370	Manoppello	out
+Q51679	Saipan	keep
+Q51934	Mattinata	out
+Q52163	Monteroni di Lecce	out
+Q52437	Murano	keep
+Q52534	Brienza	out
+Q52590	Lauria	out
+Q52631	Ibiza	keep
+Q52636	Menorca	keep
+Q52684	Tolve	out
+Q53919	Morano Calabro	out
+Q54239	Othonoi	keep
+Q55085	Rocca San Felice	out
+Q55288	Province of Ávila	out
+Q55379	Candelaria	out
+Q55849	Apollosa	out
+Q55854	Yapeyú	out
+Q55975	Sant'Agata de' Goti	out
+Q56924	El-Lahun	keep
+Q57803	Tantallon Castle	keep
+Q57953	Schwarzenberg	out
+Q58116	Kachaghakaberd	keep
+Q58131	Əsgəran Fortress	keep
+Q58749	Piedimonte Matese	out
+Q58905	Teano	out
+Q59174	Capernaum	keep
+Q59772	lime kiln	out
+Q60167	Leeuwin-Naturaliste National Park	keep
+Q60491	Rozafa Fortress	keep
+Q61529	Simlipal National Park	keep
+Q61535	Gunung Mulu National Park	keep
+Q61750	Tiwanaku	keep
+Q61757	Hortobágy National Park	keep
+Q63524	Royal Abbey of Hautecombe	keep
+Q64597	Huntly Castle	keep
+Q65349	Bashtovë Fortress	keep
+Q66226	Tenna	out
+Q68472	Great Otway National Park	keep
+Q69513	Pena Palace	keep
+Q70086	Groix	keep
+Q71356	Île-aux-Moines	keep
+Q72432	Procida	keep
+Q75459	Delphi	keep
+Q77221	Oppidum d'Ensérune	keep
+Q79160	Kisimul Castle	keep
+Q79217	Predjama Castle	keep
+Q79753	Saklıkent Canyon	keep
+Q80343	West Cape Howe National Park	keep
+Q82371	Semenic-Cheile Carașului National Park	keep
+Q83397	Swiss National Park	keep
+Q92089	Fort Boyard	keep
+Q92383	ringfort	out
+Q93257	Lichtenberg	out
+Q94668	Alahan Monastery	keep
+Q94781	Akusekijima	keep
+Q101635	Wielkopolska National Park	keep
+Q104784	Lord Howe Island	keep
+Q105310	Buchlov	keep
+Q107370	Thingvellir National Park	keep
+Q107635	Baekdu Mountain	keep
+Q111833	Montefiore Conca	out
+Q112738	Castle of Xabier	keep
+Q112854	Manuel Antonio National Park	keep
+Q113523	Royal National Park	keep
+Q115139	Sarvestan Palace	keep
+Q115591	Stirling Range National Park	keep
+Q116661	Loch Lomond and The Trossachs National Park	keep
+Q116715	Akagera National Park	keep
+Q117583	Cabañeros National Park	keep
+Q119150	Björnlandet National Park	keep
+Q119771	Notion	keep
+Q120414	Isalo National Park	keep
+Q125085	Lomsdal–Visten National Park	keep
+Q125333	Mũi Cà Mau National Park	keep
+Q125335	Veruela Abbey	keep
+Q127322	Oulanka National Park	keep
+Q128092	Itri	out
+Q129072	Persepolis	keep
+Q129902	Capitol Reef National Park	keep
+Q130254	Sirwah	keep
+Q130718	Deogyusan National Park	keep
+Q131681	reservoir	out
+Q131875	Udawalawe National Park	keep
+Q132272	Kish	keep
+Q132472	Mieza	keep
+Q132564	Mycenae	keep
+Q133502	Warren National Park	keep
+Q133575	Cave of Altamira	keep
+Q140033	Glenveagh National Park	keep
+Q140673	Bur Dubai	out
+Q140998	Ostroh Castle	keep
+Q141012	Khotyn Fortress	keep
+Q141735	Whanganui National Park	keep
+Q142819	Priene	keep
+Q144672	Nassau Castle	keep
+Q144880	Zakynthos	keep
+Q145728	Castro of Zambujal	keep
+Q146695	Phú Quốc	keep
+Q146924	Roman limes	out
+Q152660	Sequoia National Park	keep
+Q152820	Cuyahoga Valley National Park	keep
+Q152994	De Groote Peel National Park	keep
+Q153426	Eltz Castle	keep
+Q154504	Siegfried Line	keep
+Q154678	Tuzly Lagoons National Nature Park	keep
+Q155188	Rohtas Fort	keep
+Q155266	Cunnawarra National Park	keep
+Q156457	Hohenzollern Castle	keep
+Q156803	Moritzburg Castle	keep
+Q156882	Samos	keep
+Q157886	Maulbronn Monastery	keep
+Q159829	Wysoka	out
+Q159971	Lemberk Castle	keep
+Q160483	Chios	keep
+Q160713	Convent of St. Mariestern	keep
+Q163515	Isle Royale National Park	keep
+Q164205	Justiniana Prima	keep
+Q164798	Folgefonna National Park	keep
+Q165069	Miramare Castle	keep
+Q165414	Hedeby	keep
+Q167217	Abu Musa Island	keep
+Q168159	Anglesey	keep
+Q168272	Zbrasov aragonite caves	keep
+Q168518	Uruk	keep
+Q169460	Miletus	keep
+Q170047	Samarra	keep
+Q170129	Corbet	out
+Q172125	Lascaux	keep
+Q173148	Delos	keep
+Q173527	Knossos	keep
+Q174228	Caparaó National Park	keep
+Q174250	Vanoise National Park	keep
+Q174270	Amorium	keep
+Q174779	Batalha Monastery	keep
+Q175033	Affligem Abbey	keep
+Q175688	Congaree National Park	keep
+Q175708	Doi Pha Hom Pok National Park	keep
+Q176458	Til Barsip	keep
+Q176792	Silent Valley National Park	keep
+Q177061	Amiternum	keep
+Q177549	Krak des Chevaliers	keep
+Q177800	Fort St. James	out
+Q178522	Dunstaffnage Castle	keep
+Q178813	Herculaneum	keep
+Q179049	nature reserve	out
+Q179062	Schloss Weißenstein	keep
+Q180709	Grande Chartreuse	keep
+Q181007	Hattusa	keep
+Q181109	Acanthus	keep
+Q181933	Rajaji National Park	keep
+Q182565	Phuket	keep
+Q182941	Inis Oírr	keep
+Q182981	Junkerdal National Park	keep
+Q185111	Tobago	keep
+Q185287	Burg Freundsberg	keep
+Q185602	Jostedalsbreen National Park	keep
+Q186312	Masada	keep
+Q186373	Oenoanda	keep
+Q186536	Fort Douaumont	keep
+Q186685	marae	out
+Q187039	Sapientza	keep
+Q187471	Ithaca	keep
+Q187592	Sjunkhatten National Park	keep
+Q187864	Nukuoro	keep
+Q188358	Dürnstein castle ruins	keep
+Q188395	Nippur	keep
+Q188694	Butrint	keep
+Q189849	Plitvice Lakes National Park	keep
+Q190060	Citadel of the Hồ Dynasty	keep
+Q190138	Lefkada	keep
+Q191369	Ugarit	keep
+Q191385	Tsepina	keep
+Q191504	Leptis Magna	keep
+Q191824	Redwood National Park	keep
+Q192541	Ctesiphon	keep
+Q192764	Kaziranga National Park	keep
+Q193325	Merv	keep
+Q194451	Coll	keep
+Q194810	Atarneus	keep
+Q195128	Abu Salabikh	keep
+Q196042	Agaléga	keep
+Q200521	Brimstone Hill Fortress National Park	keep
+Q201001	Flavia Solva	keep
+Q201689	La Palma	keep
+Q202098	Ruy Mountain	keep
+Q202422	Salamis Island	keep
+Q202845	Tongariro National Park	keep
+Q203014	Francois Peron National Park	keep
+Q203767	Vis	keep
+Q203979	Milos	keep
+Q204152	Giglio	keep
+Q204412	Terschelling	keep
+Q204989	Saint Kitts	keep
+Q205325	Zion National Park	keep
+Q205558	Spiš Castle	keep
+Q205952	Hawaiʻi Volcanoes National Park	keep
+Q206194	Citadelle Laferrière	keep
+Q206245	Citadel of Jaca	keep
+Q206508	Mountain Zebra National Park	keep
+Q207330	Lagash	keep
+Q207724	Masai Mara	keep
+Q207794	Nevis	keep
+Q207851	Vlieland	keep
+Q207945	Monastery of Saint John of Rila	keep
+Q208011	Schiermonnikoog	keep
+Q208177	Birka	keep
+Q208259	Ameland	keep
+Q208566	Scyros	keep
+Q208668	Rodrigues	keep
+Q209217	Great Zimbabwe	keep
+Q209643	Mir Castle Complex	keep
+Q210065	Eridu	keep
+Q210957	Antonine Wall	keep
+Q211252	Madinat Al-Zahra	keep
+Q211318	Bichvinta	out
+Q212096	Kastellorizo	keep
+Q213362	Castle of Elvas	keep
+Q213707	Grímsey	keep
+Q213902	Folegandros	keep
+Q213916	Vergina	out
+Q214944	Göbekli Tepe	keep
+Q215003	Belém Tower	keep
+Q216993	Ios	keep
+Q217058	Castle Stalker	keep
+Q217379	Tiryns	keep
+Q217667	Elis	keep
+Q219525	Anazarbus	keep
+Q219562	Bryce Canyon National Park	keep
+Q220301	Cluny Abbey	keep
+Q220583	Sybaris	keep
+Q221742	Chýnovská jeskyně	keep
+Q222321	Parsowo	out
+Q222695	Grand Teton National Park	keep
+Q223726	Hill of Crosses	keep
+Q223969	Arches National Park	keep
+Q230025	Pasargadae	keep
+Q231324	Anjouan	keep
+Q233121	Patara	keep
+Q233579	Dunadd	keep
+Q235878	Kevladev National Park	keep
+Q237128	Mesa Verde National Park	keep
+Q237614	Nimrud	keep
+Q238906	Mu Ko Chang National Park	keep
+Q239304	Crater Lake National Park	keep
+Q241960	Cheile Bicazului-Hășmaș National Park	keep
+Q242681	Mammoth Cave National Park	keep
+Q244746	Larsa	keep
+Q244762	Mari	keep
+Q244978	Grande Comore	keep
+Q246121	Kéran National Park	keep
+Q248269	Turňa Castle	keep
+Q248735	Lietava Castle	keep
+Q249207	Sela	out
+Q249707	Phaistos	keep
+Q249954	Ba 349 Natter	out
+Q251999	Uluṟu-Kata Tjuṯa National Park	keep
+Q253208	Dur-Sharrukin	keep
+Q253241	Su Nuraxi di Barumini	keep
+Q253455	Dudhwa National Park	keep
+Q253517	Cape Breton Highlands National Park	keep
+Q253893	ice house	out
+Q254767	Schlitters	out
+Q256790	Fenestrelle Fort	keep
+Q257210	Marksburg	keep
+Q257598	Gros Morne National Park	keep
+Q258217	Burghausen Castle	keep
+Q259971	Andechs Abbey	keep
+Q260494	Bakhchisaray Cave Monastery	keep
+Q261243	Dmanisi	out
+Q261795	Montdardier	out
+Q262432	Der	keep
+Q264599	Sümeg Castle	keep
+Q266558	Lissos	keep
+Q266627	Villardiegua de la Ribera	out
+Q266698	Karlštejn Castle	keep
+Q267394	Serra da Capivara National Park	keep
+Q268282	Gonâve Island	keep
+Q268533	Žemaitija National Park	keep
+Q269470	Castle of Biar	keep
+Q270220	Luni	out
+Q271087	Ånderdalen National Park	keep
+Q271797	Mohéli	keep
+Q272153	Sigiriya	keep
+Q272699	Çavuştepe	keep
+Q272720	Çayönü	keep
+Q272968	Velia	keep
+Q273195	Carlsbad Caverns National Park	keep
+Q275128	Caernarfon Castle	keep
+Q277145	Tbilisi National Park	keep
+Q277414	Cardada	keep
+Q277531	Citadel of Salah Ed-Din	keep
+Q277598	Nusa Dua	out
+Q277755	New Forest	keep
+Q278988	Nekhen	keep
+Q279191	Sagalassos	keep
+Q281623	Enniskillen Castle	keep
+Q283680	Carchemish	keep
+Q284817	Sehlabathebe National Park	keep
+Q287522	Nymphaion	keep
+Q287883	Pyhä-Häkki National Park	keep
+Q292246	L'Ile-aux-Marins	keep
+Q298270	Össjö	out
+Q301376	Buffavento Castle	keep
+Q301996	Murud-Janjira	keep
+Q302905	Lebedus	keep
+Q304823	Abae	keep
+Q305880	Black Canyon of the Gunnison National Park	keep
+Q305949	Petrified Forest National Park	keep
+Q306139	Valmagne Abbey	keep
+Q306193	Channel Islands National Park	keep
+Q306216	Badlands National Park	keep
+Q309172	Kwajalein Atoll	keep
+Q309282	Avaris	keep
+Q310049	Bara	keep
+Q310799	Al-Hirah	keep
+Q312445	Château de Dinan	keep
+Q313071	Lake Nakuru National Park	keep
+Q313960	Regenwurmlager	keep
+Q314258	Loccum Abbey	keep
+Q314563	Karlsburg Castle	keep
+Q314855	Burg	keep
+Q315120	Maus Castle	keep
+Q315790	Barili	out
+Q316822	Reuland Castle	keep
+Q317096	Habsburg Castle	keep
+Q317253	Øvre Pasvik National Park	keep
+Q318338	Jesús de Tavarangüé	keep
+Q318357	Abel Tasman National Park	keep
+Q318861	Theresienstadt Small Fortress	keep
+Q319242	Caesarea Maritima	keep
+Q319327	Abercrombie River National Park	keep
+Q319356	Aberdare National Park	keep
+Q321200	Abijatta-Shalla National Park	keep
+Q325468	Kabah	keep
+Q325652	Tinian	keep
+Q327328	stoa	out
+Q328595	Carisbrooke Castle	keep
+Q329967	Paestum	keep
+Q331409	Cro-Magnon rock shelter	keep
+Q331488	Abritus	keep
+Q332784	esker	out
+Q333661	Cahokia	keep
+Q333832	Aulne Abbey	keep
+Q333946	Siachen Glacier	keep
+Q333980	Royal Saint-Peter's abbey of Jumièges	keep
+Q334008	Abbaye Saint-Honorat de Lérins	keep
+Q334026	Mariawald Abbey	keep
+Q334051	Abbey of Monte Cassino	keep
+Q334060	Montmajour Abbey	keep
+Q334099	Orval Abbey	keep
+Q334174	Territorial Abbey of Saint-Maurice	keep
+Q334263	Fontfroide Abbey	keep
+Q334274	Seckau Abbey	keep
+Q334738	Margarita Island	keep
+Q336446	Abydos	keep
+Q337028	Gir National Park	keep
+Q337396	Acadia National Park	keep
+Q340005	Červený Kláštor	keep
+Q340747	Akhziv National Park	keep
+Q353184	Thoricus	keep
+Q353318	Addo Elephant National Park	keep
+Q354820	Dinas Emrys	keep
+Q356427	Adršpach-Teplice Rocks	keep
+Q357325	Rock Island	out
+Q358715	Platja de Palma i Pla de Sant Jordi	out
+Q358729	Val Grande National Park	keep
+Q360129	Wieżyca	keep
+Q362553	Fort Niagara	keep
+Q366074	Švihov Castle	keep
+Q366444	Landštejn Castle	keep
+Q366448	Houska Castle	keep
+Q366535	Mikulov Castle	keep
+Q366683	Rydboholm Castle	keep
+Q366697	Hrubý Rohozec	keep
+Q367781	Rudkhan Castle	keep
+Q368628	Sicyon	keep
+Q369655	Gesäuse National Park	keep
+Q370159	Bako National Park	keep
+Q370338	Qüxü County	out
+Q370370	Mont Péko National Park	keep
+Q370501	Guadalupe Mountains National Park	keep
+Q370664	Châteaux de Lastours	keep
+Q371063	Calatrava la Vieja	keep
+Q372647	Chillon Castle	keep
+Q374096	Chauvet Cave	keep
+Q375387	Koli National Park	keep
+Q376699	Castle of Pierrefonds	keep
+Q377323	Zátor	out
+Q378940	Adulis	keep
+Q379652	Philippi	keep
+Q379948	San Pellegrino Pass	keep
+Q380298	Laxenburg castles	keep
+Q380497	Aeculanum	keep
+Q380844	Cassope	keep
+Q382227	Gargano National Park	keep
+Q384739	Wilsons Promontory National Park	keep
+Q385021	Tazekka National Park	keep
+Q385655	Walls of Jerusalem National Park	keep
+Q386630	Őrség National Park	keep
+Q387818	Świętokrzyski National Park	keep
+Q388279	Port-Cros National Park	keep
+Q388705	Norham Castle	keep
+Q388902	Schallaburg	keep
+Q389707	Kaboré Tambi National Park	keep
+Q389930	Castro de Elviña	keep
+Q390275	Bran Castle	keep
+Q391205	Island of Šarengrad	keep
+Q391215	Volubilis	keep
+Q391316	Porto Torres	out
+Q391929	Tiveden National Park	keep
+Q392725	Shuruppak	keep
+Q393044	Woody Island (SCS)	keep
+Q393191	Aggersborg	keep
+Q393255	Żytelkowo	out
+Q393311	Žabljak Crnojevića	keep
+Q393841	Dead Cities	keep
+Q397035	Șoimoș	out
+Q398525	Agulhas National Park	keep
+Q398648	Aguntum	keep
+Q400200	Aukštaitija National Park	keep
+Q402848	Launceston Castle	keep
+Q403166	Ai	keep
+Q404200	Aigai	keep
+Q411571	Aizanoi	keep
+Q413452	Suyab	keep
+Q416296	Plešivec	out
+Q420810	Acrocorinth	keep
+Q421232	Akrotiri	keep
+Q421395	Lympne Castle	keep
+Q426073	Ikara-Flinders Ranges National Park	keep
+Q426875	Mulberry harbour	out
+Q427357	Rörö	keep
+Q427360	Niedernhausen	out
+Q427746	Nunney Castle	keep
+Q429059	Dvin	keep
+Q429430	Symi	keep
+Q429470	Theniet El Had National Park	keep
+Q433032	Gamla Uppsala	keep
+Q433112	Old Dongola	keep
+Q441542	Altinum	keep
+Q441890	Little Desert National Park	keep
+Q447212	Altıntepe	keep
+Q448527	Tegernsee Abbey	keep
+Q449088	Stahleck Castle	keep
+Q450038	Beuron Archabbey	keep
+Q451181	Wettin Castle	keep
+Q452767	Youth Protection Camp Uckermark	keep
+Q454510	Amantia	keep
+Q454707	Steigerwald Nature Park	keep
+Q455933	Amaya	keep
+Q457057	Amberd	keep
+Q457362	Djemila	keep
+Q457882	Glass House Mountains National Park	keep
+Q458167	Ambohimanga	keep
+Q458423	Amboseli National Park	keep
+Q458776	Fakhr-al-Din al-Maani Castle	keep
+Q459629	Timgad	keep
+Q460230	Jaromarsburg	keep
+Q463141	Doñana National Park	keep
+Q463937	Saint Thomas	keep
+Q464266	Dura-Europos	keep
+Q464918	Abbey of Fontenay	keep
+Q464923	Bassae	keep
+Q464936	Xanthos	keep
+Q464942	Garajonay National Park	keep
+Q465639	Borgeby Castle	keep
+Q465960	Jesuit missions among the Guaraní	keep
+Q466614	Hatra	keep
+Q471153	Pannonian Limes	out
+Q471359	tobruk	out
+Q471765	Xanadu	keep
+Q472588	Fort Batenstein	keep
+Q474205	Iguazú National Park	keep
+Q474886	Danube-Auen National Park	keep
+Q476142	Ndere Island	keep
+Q476446	Écrins National Park	keep
+Q476801	Beaufort Castle	keep
+Q477898	Bishapur	keep
+Q478280	Cuc Phuong National Park	keep
+Q478335	Rakvere Castle	keep
+Q478784	Fort Amsterdam	keep
+Q480993	Fort Snelling	keep
+Q481758	Pantelleria	keep
+Q486383	Skipness Castle	keep
+Q486587	Findlater Castle	keep
+Q488070	Hallyeohaesang National Park	keep
+Q489724	Sela	keep
+Q490102	Valday Iversky Monastery	keep
+Q490583	Phthiotic Thebes	keep
+Q490975	Gayasan National Park	keep
+Q491005	Virgin Islands National Park	keep
+Q491322	Grodziec Castle	keep
+Q491567	Gyeongju National Park	keep
+Q491972	Mount William National Park	keep
+Q492130	Antipsara	keep
+Q492185	River Gambia National Park	keep
+Q493428	Mistretta	out
+Q494689	Juwangsan National Park	keep
+Q494786	Ganghwa Island	keep
+Q495086	Bolton Castle	keep
+Q495217	Sacro Convento	keep
+Q499499	Namaqua National Park	keep
+Q499552	Zhoukoudian site	keep
+Q500367	Qal'at Bani Hammad	keep
+Q500397	Bwindi Impenetrable National Park	keep
+Q501259	Isin	keep
+Q501773	Bethsaida	keep
+Q503525	Luambe National Park	keep
+Q504315	Simien Mountains National Park	keep
+Q505703	Apollonia	keep
+Q506046	Stična abbey	keep
+Q506465	Reichsburg Cochem	keep
+Q506511	Manas National Park	keep
+Q508040	Koutammakou	keep
+Q508186	Casmenae	keep
+Q508458	Diana Fortress	keep
+Q508519	Trosky Castle	keep
+Q508815	Carnuntum	keep
+Q508866	Nakijin Castle	keep
+Q509365	Charsianon	out
+Q510882	Phnom Kulen National Park	keep
+Q511254	Chojnik Castle	keep
+Q511688	Castle of Gormaz	keep
+Q512373	Balga castle	keep
+Q513610	St. Marienthal Abbey	keep
+Q513788	Quadra Island	keep
+Q514388	Loch Leven Castle	keep
+Q515047	Grampians (Gariwerd) National Park	keep
+Q515105	Dunstanburgh Castle	keep
+Q516573	Fortaleza de Sagres	keep
+Q516668	Aggtelek National Park	keep
+Q519078	Wildenstein Castle	keep
+Q519254	Fort William Henry	keep
+Q520383	Weissach	out
+Q522630	Komine Castle	keep
+Q523286	Hambach Castle	keep
+Q524338	Kórnik Castle	keep
+Q524956	Dorrigo National Park	keep
+Q525635	Monmouth Castle	keep
+Q527809	Kalymnos	keep
+Q528071	Lnáře	out
+Q529237	Anemurium	keep
+Q532367	Sankt Blasien Abbey in the Black Forest	keep
+Q532466	Castra Vetera	keep
+Q532627	Blair Castle	keep
+Q534596	Tel Be'er Sheva	keep
+Q535915	Somogyhárságy	out
+Q535982	Lystra	keep
+Q536598	Klazomenai	keep
+Q536703	Arcipelago di La Maddalena National Park	keep
+Q536865	Angelokastro	keep
+Q538605	Kültepe	keep
+Q539538	Beeston Castle	keep
+Q540237	Fountains Abbey	keep
+Q540964	Harlech Castle	keep
+Q541856	Canyonlands National Park	keep
+Q542329	Saalburg Roman Fort	keep
+Q543334	Montégut	out
+Q543703	Danube-Ipoly National Park	keep
+Q543764	Groß Raden Archaeological Open Air Museum	keep
+Q546010	Ani	keep
+Q546547	Cosa	keep
+Q546628	Morimond Abbey	keep
+Q548153	Periyar National Park	keep
+Q548283	Tjebu	keep
+Q548780	Little Solsbury Hill	keep
+Q548862	Burnum	keep
+Q549295	Rāzna National Park	keep
+Q550389	Réunion National Park	keep
+Q550407	Corella	out
+Q552305	Meersburg Castle	keep
+Q555923	Mopsuestia	keep
+Q556632	Thursday Island	keep
+Q558514	Qal'eh Dokhtar	keep
+Q559202	Trifels Castle	keep
+Q560385	Island of Vukovar	keep
+Q561860	Lehnin Abbey	keep
+Q564868	Linlithgow Palace	keep
+Q565345	Falkland Palace	keep
+Q567525	Bouillon Castle	keep
+Q567635	Katz Castle	keep
+Q567643	Rheinfels Castle	keep
+Q568264	Buila-Vânturarița National Park	keep
+Q568611	Cannae	keep
+Q568693	Kakum National Park	keep
+Q569037	Friedrichswerth	out
+Q569069	Mavrovo National Park	keep
+Q569107	Anshan Persia	keep
+Q569960	Hamra National Park	keep
+Q571082	Antandrus	keep
+Q572193	Alden Biesen Castle	keep
+Q573222	Troyan Monastery	keep
+Q573241	Muráň Castle	keep
+Q573635	Rheinstein Castle	keep
+Q573643	Kyburg Castle	keep
+Q573688	Burg Castle	keep
+Q573708	Schloss Mespelbrunn	keep
+Q573931	Itasy	out
+Q575249	Alalakh	keep
+Q576369	Ludlow Castle	keep
+Q576534	Château de Coucy	keep
+Q576569	Château de Beauregard, Loire Valley	keep
+Q577273	Bitchū Matsuyama Castle	keep
+Q579405	Antioch on the Maeander	keep
+Q579468	Antioch of Pisidia	keep
+Q579961	Château d'Ancy-le-Franc	keep
+Q580404	Muddus National Park	keep
+Q581494	Troezen	out
+Q582205	Northumberland National Park	keep
+Q583518	Georgian Bay Islands National Park	keep
+Q584605	Nuzi	keep
+Q585317	Rottnest Island	keep
+Q586112	Amini Island	keep
+Q586786	Cape Range National Park	keep
+Q591025	Patvinsuo National Park	keep
+Q591283	Lake Mburo National Park	keep
+Q591296	Pontigny Abbey	keep
+Q591878	Northern Velebit National Park	keep
+Q592319	Krásna Hôrka Castle	keep
+Q592741	Toro Toro National Park	keep
+Q593737	Sestos	keep
+Q594263	Archipelago National Park	keep
+Q595329	Phaselis	keep
+Q597347	Ferentium	keep
+Q597606	Château Pèlerin	keep
+Q599132	Bunratty Castle	keep
+Q599462	Termessus	keep
+Q601742	Alexandreion	keep
+Q602689	Eriskay	keep
+Q602768	Mangetti National Park	keep
+Q603303	Grabštejn	keep
+Q603886	Bourtzi	keep
+Q603931	Platamon Castle	keep
+Q605408	Bastam Citadel	keep
+Q606000	Babia Góra National Park	keep
+Q606233	Veliki Tabor Castle	keep
+Q606295	Banias	keep
+Q606341	Palamidi	keep
+Q606749	Villarrica National Park	keep
+Q607126	Fénis Castle	keep
+Q607339	Threave Castle	keep
+Q607612	Poloniny National Park	keep
+Q608095	Kaunos	keep
+Q609225	Clervaux Abbey	keep
+Q609353	Tatra National Park	keep
+Q609383	Biebrza National Park	keep
+Q609669	Frangokastello	keep
+Q609713	Toprakkale	out
+Q610371	Augusta Raurica	keep
+Q610818	Mues	out
+Q611989	Chaco National Park	keep
+Q612364	Čachtice Castle	keep
+Q612901	National Park Thayatal	keep
+Q613251	Band-e Amir National Park	keep
+Q613888	Bieszczady National Park	keep
+Q614041	Baranów Sandomierski Castle	keep
+Q614743	Drawa National Park	keep
+Q615449	Cyzicus	keep
+Q615735	Berg Castle	keep
+Q617550	Apamea	keep
+Q617635	Aparados da Serra National Park	keep
+Q618092	Ujście Warty National Park	keep
+Q618174	Gorce National Park	keep
+Q618495	Aphrodisias	keep
+Q618600	Makronisos	keep
+Q619001	Stołowe Mountains National Park	keep
+Q619007	Ojców National Park	keep
+Q619061	Kampinos National Park	keep
+Q619131	Kimmerikon	keep
+Q619707	Sippar	keep
+Q620392	Wolin National Park	keep
+Q620407	Wigry National Park	keep
+Q620593	Göreme National Park	keep
+Q621423	Karkonosze National Park	keep
+Q622234	Aptera	keep
+Q622640	Oxyrhynchus	keep
+Q622739	Narew National Park	keep
+Q622777	Magura National Park	keep
+Q623407	Numantia	keep
+Q623519	Isterberg	out
+Q625105	Polesie National Park	keep
+Q625172	Serra do Itajaí National Park	keep
+Q625500	Pieniny National Park	keep
+Q625533	Brodie Castle	keep
+Q626232	Castle of Almodóvar del Río	keep
+Q626392	Roztocze National Park	keep
+Q627928	Babak Castle	keep
+Q628375	Château de Puivert	keep
+Q628622	Hurst Castle	keep
+Q629436	Morne Trois Pitons National Park	keep
+Q631183	Risnjak National Park	keep
+Q631407	Resafa	keep
+Q631432	Soluntum	keep
+Q631473	Sudeley Castle	keep
+Q631981	Ubajara National Park	keep
+Q633344	Kakenstorf	out
+Q633738	Schmilau	out
+Q633757	Aspendos	keep
+Q634183	Puyehue National Park	keep
+Q635414	Vesuvius National Park	keep
+Q636450	Monasterboice	keep
+Q636506	Gla	keep
+Q636655	Mgahinga Gorilla National Park	keep
+Q636823	Thousand Islands National Park	keep
+Q637827	Wewelsburg	keep
+Q638506	Lockwisch	out
+Q639100	Principality of Reuss-Gera	out
+Q639208	Bodiam Castle	keep
+Q639934	Rungholt	keep
+Q640665	V-3 cannon	keep
+Q643017	Neusiedler See-Seewinkel National Park	keep
+Q643478	Guy Fawkes River National Park	keep
+Q643667	Arevik National Park	keep
+Q643731	Spøttrup Borg	keep
+Q644872	Terqa	keep
+Q645234	Tegea	keep
+Q645898	Bauska Castle	keep
+Q647777	Lençóis Maranhenses National Park	keep
+Q647886	Castle of Diósgyőr	keep
+Q647896	Sillyon	keep
+Q648787	Jodensavanne	keep
+Q649045	Navalvillar de Pela	out
+Q649680	Bach Ma National Park	keep
+Q650053	Bibracte	keep
+Q650474	Hohenstaufen Castle	keep
+Q650992	El Kala National Park	keep
+Q651314	Pirin National Park	keep
+Q652792	Mixco Viejo	keep
+Q654443	Certosa di Pavia	keep
+Q654569	Château de Montreuil-Bellay	keep
+Q654851	Golden Gate Highlands National Park	keep
+Q655127	Chinkultic	keep
+Q655377	Camdeboo National Park	keep
+Q655633	Pernštejn Castle	keep
+Q656576	Doi Inthanon National Park	keep
+Q657455	Karanis	keep
+Q657892	Château du Lude	keep
+Q661711	Alkhanay National Park	keep
+Q662843	Seekarköpfe	keep
+Q663484	Rodna National Park	keep
+Q664877	Railay Beach	keep
+Q665110	Bandipur National Park	keep
+Q665266	IX Fort	keep
+Q665611	Burg Seebenstein	keep
+Q666044	Pieljekaise National Park	keep
+Q666388	Mercatale in Val di Pesa	out
+Q667469	Shannon National Park	keep
+Q667507	Lake Powell	keep
+Q667763	Château de Quéribus	keep
+Q667811	Vindonissa, Celtic oppidum / Roman legionary camp / civilian settlement	keep
+Q668250	Tarasp Castle	keep
+Q668647	Lenzburg Castle	keep
+Q669194	Monastery of Leyre	keep
+Q669547	Wieringen	keep
+Q669642	Burg Kreuzenstein	keep
+Q672368	Castillo de San Felipe de Lara	keep
+Q673704	Port-du-Salut Abbey	keep
+Q673786	Aarburg Castle	keep
+Q674141	Territorial Abbey of Wettingen-Mehrerau	keep
+Q674543	Glanum	keep
+Q675018	Goseck circle	keep
+Q675259	Dartmouth Castle	keep
+Q675636	Ancient Argishtikhinili	keep
+Q676203	Machu Picchu	keep
+Q676206	Saguaro National Park	keep
+Q676462	Armadale Castle	keep
+Q677175	Nora	keep
+Q677211	Leontopolis	keep
+Q678484	Laufen Castle	keep
+Q678714	Berwick Castle	keep
+Q678744	Alas Purwo National Park	keep
+Q679173	Jasmund National Park	keep
+Q679248	Hochosterwitz Castle	keep
+Q679305	Cyme	keep
+Q680215	Aigle Castle	keep
+Q680312	Conguillío National Park	keep
+Q680313	Alta Murgia National Park	keep
+Q680322	Qalhat	keep
+Q680644	Gvozdansko Castle	keep
+Q680789	Lavazè Pass	keep
+Q681210	Châteauvillain	out
+Q681554	Toron	keep
+Q681677	Lockenhaus Castle	keep
+Q681861	Nuestra Señora de Loreto	keep
+Q681948	Hardegg Castle	keep
+Q682189	Lac de la Gruyère	keep
+Q683244	Sentinum	keep
+Q684121	Ytre Hvaler National Park	keep
+Q684663	Rosenburg Castle	keep
+Q684986	Gonars concentration camp	keep
+Q685318	Mactan	keep
+Q685448	Prora	keep
+Q685479	Tingo María National Park	keep
+Q686047	Kalkalpen National Park	keep
+Q686088	Llogara National Park	keep
+Q686143	Fürsteneck Castle	keep
+Q686787	Schloss Esterházy	keep
+Q687104	Trizonia island	keep
+Q687186	Schloss Wilhelmshöhe	keep
+Q688846	Sihlsee	keep
+Q689454	Danevirke	keep
+Q689583	Döllersheim	keep
+Q689981	Tschanüff Castle	keep
+Q690035	Kadesh	keep
+Q690575	Knidos	keep
+Q691575	Caherconree	keep
+Q691597	Sonfjället National Park	keep
+Q691966	Castle of the counts of Gruyères	keep
+Q692847	Segesta	keep
+Q693998	Klooga concentration camp	keep
+Q694090	Žovnek Castle	keep
+Q694782	Vaduz Castle	keep
+Q694888	Herreninsel	keep
+Q695880	Kellerwald-Edersee National Park	keep
+Q696014	Hohe Tauern National Park	keep
+Q696951	Pfalzgrafenstein Castle	keep
+Q697030	Burg Güssing	keep
+Q697421	Göttweig Abbey	keep
+Q697766	Eberbach Abbey	keep
+Q698689	Aggstein Castle	keep
+Q699474	Liechtenstein Castle	keep
+Q700204	Salzburger Lungau and Kärntner Nockberge	keep
+Q700384	Hammershus	keep
+Q700562	Königstein Fortress	keep
+Q700580	Fort Breendonk	keep
+Q700639	Landskron Castle	keep
+Q700670	Bernstein Castle	keep
+Q700709	Kufstein Fortress	keep
+Q701525	Lower Oder Valley National Park	keep
+Q701582	Virunum	keep
+Q701698	Kinmen National Park	keep
+Q702001	Ottobeuren Abbey	keep
+Q702489	Berchtesgaden National Park	keep
+Q702495	Müritz National Park	keep
+Q702528	Hainich National Park	keep
+Q702540	Harz National Park	keep
+Q702566	Saxon Switzerland National Park	keep
+Q702906	Frankenstein Castle	keep
+Q703967	Iriomote-Ishigaki National Park	keep
+Q704124	Bavarian Forest National Park	keep
+Q704167	Arsameia	keep
+Q705097	Eifel National Park	keep
+Q706310	Seoraksan National Park	keep
+Q707427	Taroko National Park	keep
+Q707982	Kenting National Park	keep
+Q707996	Shei-Pa National Park	keep
+Q708477	Western Pomerania Lagoon Area National Park	keep
+Q711685	Nagoya Castle	keep
+Q712300	Arthur's Pass National Park	keep
+Q714783	Gripsholm Castle	keep
+Q715124	Teide National Park	keep
+Q716667	Arundel Castle	keep
+Q716801	Arusha National Park	keep
+Q717804	Jirisan National Park	keep
+Q718048	Arycanda	keep
+Q719815	Perge	keep
+Q720583	Tigranocerta	keep
+Q721468	Mes Aynak	keep
+Q722107	Nevytsky Castle	keep
+Q725274	Ashford Castle, County Mayo	keep
+Q726733	Dochiariou monastery	keep
+Q728519	Oricum	keep
+Q729136	limestone pavement	out
+Q732249	Portchester Castle	keep
+Q732723	Paklenica	keep
+Q732732	Gnatia	keep
+Q732908	Hermopolis	keep
+Q733659	Satpura National Park	keep
+Q733676	Djoudj National Bird Sanctuary	keep
+Q733798	Iulia Valentia Banasa	keep
+Q734970	Taliesin	keep
+Q735229	Port Campbell National Park	keep
+Q735774	Quilmes Ruins	keep
+Q736689	Tharros	keep
+Q737517	Fort Sumter	keep
+Q737624	Vieques	keep
+Q738103	Snæfellsjökull National Park	keep
+Q738109	Książ Castle and park complex	keep
+Q738428	Dzūkija National Park	keep
+Q738435	Pyrénées National Park	keep
+Q738716	Kenozyorsky National Park	keep
+Q739391	Shiretoko National Park	keep
+Q739507	Great Wall of Gorgan	keep
+Q739779	Kythnos	keep
+Q739802	Sarmizegetusa Regia	keep
+Q739851	Mae Wong National Park	keep
+Q739993	Nairobi National Park	keep
+Q740076	Nea Moni of Chios	keep
+Q740138	Tel Hazor	keep
+Q740250	Château de Tarascon	keep
+Q740279	Fanes-Sennes-Prags Nature Park	keep
+Q741219	Asseria	keep
+Q741610	Ordesa y Monte Perdido National Park	keep
+Q742315	Iguaçu National Park	keep
+Q742538	Plataea	keep
+Q743012	Šariš Castle	keep
+Q743754	Gauja National Park	keep
+Q743908	Filicudi	keep
+Q743970	Filfla	keep
+Q744016	Konopiště Castle	keep
+Q744099	hillfort	out
+Q744317	Calstock	out
+Q746423	Compton Castle	keep
+Q746460	Norfolk Island National Park	keep
+Q746876	Leeds Castle	keep
+Q746983	Dunnottar Castle	keep
+Q747306	Fort la Latte	keep
+Q747714	Rádlo	out
+Q748637	Rila National Park	keep
+Q750012	Ravel	out
+Q750313	Calydon	keep
+Q751181	Kelimutu National Park	keep
+Q751274	Lamington National Park	keep
+Q752721	Carew Castle	keep
+Q753714	Kalø Castle	keep
+Q753794	Atauro	keep
+Q754314	Tusculum	keep
+Q754658	Tilghman Island	keep
+Q755738	Athribis	keep
+Q756790	Kilimanjaro National Park	keep
+Q756815	Beaumaris Castle	keep
+Q756830	Conwy Castle	keep
+Q756957	Hasankeyf	keep
+Q757067	Saint John Abbey	keep
+Q760412	Aughnanure Castle	keep
+Q760459	Augrabies Falls National Park	keep
+Q761227	Garphyttan National Park	keep
+Q761264	Fulufjället National Park	keep
+Q761460	Kerkennah	keep
+Q762107	Shaba National Reserve	keep
+Q762945	Rukatunturi	keep
+Q763034	Nawegaon National Park	keep
+Q763742	Bar Lev Line	out
+Q764573	Cahir Castle	keep
+Q765829	Etsaut	out
+Q767089	Salamis	keep
+Q767661	Karkaraly National Park	keep
+Q767948	Fiľakovo Castle	keep
+Q767968	Turbessel	keep
+Q769197	Selge	keep
+Q769303	Château du Rivau	keep
+Q769365	Château de Montpoupon	keep
+Q769604	Parco naturale provinciale dell' Adamello Brenta	keep
+Q769690	Zvíkov Castle	keep
+Q770982	Teberda National Park	keep
+Q771059	Al-Ukhaidir Fortress	keep
+Q771373	Beelu National Park	keep
+Q771389	Teck	keep
+Q771935	Santa Maria de Montserrat	keep
+Q772781	Yeni-Kale	keep
+Q773878	Poás Volcano National Park	keep
+Q774339	Godin Tepe	keep
+Q774464	Zuid-Kennemerland National Park	keep
+Q775202	Saddle Peak National Park	keep
+Q775595	Gulf Islands National Park Reserve	keep
+Q775712	Rožmberk Castle	keep
+Q775829	Vápenná	out
+Q777183	Rocky Mountain National Park	keep
+Q778224	Alabanda	keep
+Q778912	Eski-Kermen	keep
+Q778921	Aspromonte National Park	keep
+Q779211	New Slains Castle	keep
+Q779678	La Trappe Abbey	keep
+Q780117	Limyra	keep
+Q781463	Phoenice	keep
+Q782719	Old Sarum	keep
+Q783267	Sidi Toui National Park	keep
+Q784621	Souss-Massa National Park	keep
+Q785544	Olesko Castle	keep
+Q785823	Kohunlich	keep
+Q786075	Château de Brissac	keep
+Q786888	Azuchi Castle	keep
+Q788080	Kommos	keep
+Q791635	Awash National Park	keep
+Q791665	Abdah	keep
+Q794830	Aşıklı Höyük	keep
+Q795176	Kejimkujik National Park	keep
+Q797417	Ba'ja	keep
+Q797693	Dzharylhach National Nature Park	keep
+Q798606	Sant Pere de Rodes	keep
+Q799012	Badgingarra National Park	keep
+Q799921	Bagras	keep
+Q800201	Puerto del Hambre	keep
+Q803903	Bainbridge Island	keep
+Q804269	Bakchias	keep
+Q804731	Bald Rock National Park	keep
+Q805409	Wild Nephin National Park	keep
+Q805847	Balvenie Castle	keep
+Q806310	Bandhavgarh National Park	keep
+Q808168	Bargylia	keep
+Q808934	Barrington Tops National Park	keep
+Q808968	Barron Gorge National Park	keep
+Q810981	Battle Abbey	keep
+Q812903	Beaghmore	keep
+Q813485	Beaver Island	keep
+Q816295	Belvoir Castle	keep
+Q816395	Beowa National Park	keep
+Q816437	Skara Brae	keep
+Q817286	Beni Hasan	keep
+Q819050	Berenice Troglodytica	keep
+Q819281	Mount Arbel	keep
+Q824602	Puerto Princesa Subterranean River National Park	keep
+Q827174	Berry Pomeroy Castle	keep
+Q827519	Hartz Mountains National Park	keep
+Q827526	Mole Creek Karst National Park	keep
+Q827962	Perito Moreno National Park	keep
+Q828155	Krka National Park	keep
+Q828291	Los Alerces National Park	keep
+Q828353	Lago Puelo National Park	keep
+Q828404	Yoho National Park	keep
+Q828531	Laguna Blanca National Park	keep
+Q828601	El Rey National Park	keep
+Q828642	Río Pilcomayo National Park	keep
+Q828709	Tierra del Fuego National Park	keep
+Q828918	El Palmar National Park	keep
+Q829012	Los Arrayanes National Park	keep
+Q829128	Baritú National Park	keep
+Q829228	Lihué Calel National Park	keep
+Q829260	Calilegua National Park	keep
+Q829299	Glücksburg Castle	keep
+Q829305	Sierra de las Quijadas National Park	keep
+Q829341	Predelta National Park	keep
+Q829474	Los Cardones National Park	keep
+Q829609	Quebrada del Condorito National Park	keep
+Q829771	Mburucuyá National Park	keep
+Q829805	El Leoncito National Park	keep
+Q829872	Monte León National Park	keep
+Q829966	Campos del Tuyú National Park	keep
+Q830083	Bosques Petrificados de Jaramillo National Park	keep
+Q830583	Plattspitzen	keep
+Q830976	Devín Castle	keep
+Q832244	Devil's Dykes	out
+Q833207	Leap Castle	keep
+Q834336	Bomarsund	keep
+Q834379	Javorina	out
+Q834893	Kinabalu Park	keep
+Q835404	Hohenasperg	keep
+Q835966	Alesia	keep
+Q838256	Ferapontov Monastery	keep
+Q839031	Soko Grad	keep
+Q840904	Phu Hin Rong Kla National Park	keep
+Q841926	Grouse Mountain	keep
+Q843034	Doi Suthep-Pui National Park	keep
+Q843075	National Park of American Samoa	keep
+Q843261	Cîteaux Abbey	keep
+Q844533	Fort Beauséjour	keep
+Q845229	Santa Catalina Island	keep
+Q846127	Stageira	keep
+Q846305	Tsuwano Castle	keep
+Q846901	Senegambian stone circles	keep
+Q847016	ponor	out
+Q847246	Emmaus Nicopolis	keep
+Q847285	Kunashir Island	keep
+Q847690	Gran Paradiso National Park	keep
+Q848509	Lachish	keep
+Q849280	San Esteban National Park	keep
+Q849441	Saint John	keep
+Q849517	Visoki Dečani	keep
+Q849709	Laodicea on the Lycus	keep
+Q849861	Donnington Castle	keep
+Q852735	Kasserine	out
+Q853354	Iviron Monastery	keep
+Q853946	Girsu	keep
+Q854843	Kamarina	keep
+Q855003	Defence Line of Amsterdam	keep
+Q855548	Bükk National Park	keep
+Q856665	Gombe National Park	keep
+Q857504	Egeskov Castle	keep
+Q857845	Ai-Khanoum	keep
+Q859811	Cetin Castle	keep
+Q860500	Augusta Bilbilis	keep
+Q862157	Mingan Archipelago National Park Reserve	keep
+Q862251	Istakhr	keep
+Q862260	Kouchibouguac National Park	keep
+Q862265	Mount Revelstoke National Park	keep
+Q864799	Šumava National Park	keep
+Q865506	Etajima	keep
+Q866080	Biscayne National Park	keep
+Q866154	Haapsalu Castle	keep
+Q866902	Rothesay Castle	keep
+Q867361	Cilento, Vallo di Diano and Alburni National Park	keep
+Q867443	Satava	keep
+Q868799	San Ignacio Miní	keep
+Q869540	Kleine Scheidegg	keep
+Q870148	Monte Verità	keep
+Q870354	Hallwyl Castle	keep
+Q872115	Riegersburg Castle	keep
+Q874734	Dětenice Castle	keep
+Q874746	Burgruine Rauhenstein	keep
+Q875733	Schloss Bruck	keep
+Q875740	Burg Mauterndorf	keep
+Q877023	Hohenwerfen Castle	keep
+Q877030	Forchtenstein Castle	keep
+Q879629	Ilha Grande National Park	keep
+Q880724	Blackbuck National Park	keep
+Q880788	Anholt Castle	keep
+Q881739	Blarney Castle	keep
+Q882447	Blue Lagoon National Park	keep
+Q887049	Blåfjella–Skjækerfjella National Park	keep
+Q887291	Nevada State Route 375	out
+Q888390	Bobastro	keep
+Q891409	Bolków Castle	keep
+Q891589	Azov National Nature Park	keep
+Q891918	Sofiero Palace	keep
+Q892884	Bontebok National Park	keep
+Q893073	Boonoo Boonoo National Park	keep
+Q893086	Boorabbin National Park	keep
+Q893143	Booti Booti National Park	keep
+Q893407	Border Ranges National Park	keep
+Q894433	Bosjökloster	keep
+Q894937	Bou-Hedma National Park	keep
+Q894991	Bouddi National Park	keep
+Q895413	Bowen Island	keep
+Q897169	Braemar Castle	keep
+Q897349	Körös-Maros National Park	keep
+Q897538	Bramber Castle	keep
+Q897623	Fertő-Hanság National Park	keep
+Q899545	Culzean Castle	keep
+Q902778	Waterton Lakes National Park	keep
+Q903323	Kootenay National Park	keep
+Q903630	Halabiye	keep
+Q905433	Breheimen National Park	keep
+Q906973	Murramarang National Park	keep
+Q907974	Tell Tayinat	keep
+Q908860	Hacılar Mound	keep
+Q909286	Dos Pilas	keep
+Q909755	Desembarco del Granma National Park	keep
+Q910189	Castillo de San Pedro de la Roca	keep
+Q910253	Kisurra	keep
+Q910505	Tmutarakan	keep
+Q911413	Simonopetra monastery	keep
+Q911428	Ravanica	keep
+Q911432	Vatopedi Monastery	keep
+Q911714	Laugharne Castle	keep
+Q912447	Chinon Castle	keep
+Q912934	San Pietro Island	keep
+Q913070	Bäckaskog Castle	keep
+Q913099	Herodium	keep
+Q913308	Chlemoutsi	keep
+Q913429	Atil	keep
+Q913819	North Hero	keep
+Q913981	Urquhart Castle	keep
+Q916681	Nerik	keep
+Q917162	Halki	keep
+Q917653	Brisbane Water National Park	keep
+Q917730	Hacienda La Primavera	out
+Q917814	Stari Ras	keep
+Q917896	Castillo de Belmonte	keep
+Q918064	William Bay National Park	keep
+Q918230	Roman villa	out
+Q918673	Camano Island	keep
+Q919194	Kimolos	keep
+Q921279	Cliviger	out
+Q921344	Veveří Castle	keep
+Q922097	Castle of the Marquises of the Vélez	keep
+Q922422	Warkworth Castle	keep
+Q922736	Niumi National Park	keep
+Q922898	Kiskunság National Park	keep
+Q923355	Broch of Gurness	keep
+Q923561	Nesactium	keep
+Q924769	Pampus	keep
+Q925214	Tasman National Park	keep
+Q926768	Tahaa	keep
+Q927265	Cuéllar Castle	keep
+Q927690	Leivonmäki National Park	keep
+Q928662	Brook Farm	keep
+Q930677	Freycinet National Park	keep
+Q931172	Vulci	keep
+Q931770	Papa Westray	keep
+Q932736	Volcanoes National Park	keep
+Q933459	Goeree-Overflakkee	keep
+Q934019	Nelson Lakes National Park	keep
+Q934922	Tintagel Castle	keep
+Q935435	Lauca National Park	keep
+Q935675	Pagae	keep
+Q935973	Läckö Castle	keep
+Q936623	Kings Canyon National Park	keep
+Q937131	Helvetinjärvi National Park	keep
+Q937190	Verrès Castle	keep
+Q937204	Lummi Island	keep
+Q938685	Khami	keep
+Q939186	Monastery of Santa María de Huerta	keep
+Q940492	Bouzov Castle	keep
+Q941989	Saiful Muluk National Park	keep
+Q942122	Sapucaia do Sul	out
+Q942395	Grand Island	keep
+Q943153	Nardaran Fortress	keep
+Q943637	Nicopolis	keep
+Q943794	Pidhirtsi Castle	keep
+Q944329	Mount Rainier National Park	keep
+Q944515	Alba Fucens	keep
+Q944597	Peyrepertuse	keep
+Q944813	Gonio	keep
+Q946244	São Joaquim National Park	keep
+Q946702	Dunrobin Castle	keep
+Q947645	Château de Montrichard	keep
+Q947730	Montour Falls	out
+Q947912	Fort Eben-Emael	keep
+Q948585	Heathcote National Park	keep
+Q949090	Rota	keep
+Q949297	Jim Corbett National Park	keep
+Q950048	Château de Billy	keep
+Q950398	Písac	out
+Q951156	Grodno Castle	keep
+Q951551	Sochi National Park	keep
+Q952173	Selinunte	keep
+Q952748	Comana	keep
+Q953092	Abisko National Park	keep
+Q953889	Santisteban del Puerto	out
+Q954095	Mercer Island	keep
+Q954593	Fort Patience	keep
+Q954639	Hafjell	out
+Q955861	Rondane National Park	keep
+Q956929	Budderoo National Park	keep
+Q957486	Marmara district	keep
+Q957573	Serpentine National Park	keep
+Q958003	Veľká Fatra National Park	keep
+Q958356	Lesueur National Park	keep
+Q959733	Maglič	keep
+Q959799	Antigonia	keep
+Q959927	Chrea	out
+Q962373	Dalby Söderskog National Park	keep
+Q965829	Fort de Tancrémont	keep
+Q966038	Pavlopetri	keep
+Q967055	Karakalou Monastery	keep
+Q968431	Roquepertuse	keep
+Q969047	Patriarchate of Peć	keep
+Q975250	Butrint National Park	keep
+Q975775	Monte Verde	keep
+Q975868	Castle of Cardona	keep
+Q976038	Château de Montgeoffroy	keep
+Q977740	Amotape Hills National Park	keep
+Q983717	Sapiranga	out
+Q984315	Qalb Loze	keep
+Q984550	Rolante	out
+Q985484	Manzanar	keep
+Q985596	Farsala	out
+Q986419	Mafra	out
+Q988400	Mangup	keep
+Q990128	Erawan National Park	keep
+Q991459	Bruce Peninsula National Park	keep
+Q992221	Kamilari	out
+Q993154	Tomorr Mountain National Park	keep
+Q994006	Minowa Castle	keep
+Q994711	Vermand	out
+Q995736	Nekresi	keep
+Q997317	Caher Island	keep
+Q1001533	Lyctus	keep
+Q1001903	Buffalo Springs National Reserve	keep
+Q1003498	Franja Partisan Hospital	keep
+Q1004160	Monolithos	out
+Q1004189	Frösön	keep
+Q1007550	Irakleia	keep
+Q1009360	Bundjalung National Park	keep
+Q1009384	Weno	keep
+Q1010677	Pudacuo National Park	keep
+Q1010703	Château d'Aguilar	keep
+Q1010879	Château d'Arques	keep
+Q1010933	Beaufort Castle	keep
+Q1010951	Beckov Castle	keep
+Q1010980	Belvoir Fortress	keep
+Q1011026	Château de Beynac	keep
+Q1011118	Blatnica Castle	keep
+Q1011162	Bourscheid Castle	keep
+Q1011302	Bítov Castle	keep
+Q1011357	Château de Castelnaud-la-Chapelle	keep
+Q1011361	Château de Châlus-Chabrol	keep
+Q1011390	Château de Clisson	keep
+Q1011544	Ein Gedi	keep
+Q1011625	Eketorp Fort	keep
+Q1011692	Château de Falaise	keep
+Q1011703	Larochette Castle	keep
+Q1011806	Château de Foix	keep
+Q1011985	Château de Gisors	keep
+Q1012141	Gutenberg Castle	keep
+Q1012308	Helfštýn	keep
+Q1012374	Hikone Castle	keep
+Q1012711	Kokořín Castle	keep
+Q1012726	Kost Castle	keep
+Q1012797	Ostia	keep
+Q1012808	Křivoklát Castle	keep
+Q1012861	Larissa Fortress	keep
+Q1012864	Château de Langoiran	keep
+Q1013039	Loket Castle	keep
+Q1013093	New Castle of Manzanares el Real	keep
+Q1013167	Murol Castle	keep
+Q1013191	Château de Montségur	keep
+Q1013196	Château de Najac	keep
+Q1013209	Nakagusuku Castle	keep
+Q1013287	Luz	out
+Q1013458	Orlík Castle	keep
+Q1013468	Kaymaklı	out
+Q1013472	Palanok Castle	keep
+Q1013495	Peñafiel Castle	keep
+Q1013541	Puilaurens Castle	keep
+Q1013551	Poenari Castle	keep
+Q1013619	Raseborg Castle	keep
+Q1014187	Střekov Castle	keep
+Q1014197	Strečno Castle	keep
+Q1014225	Kalapodi	keep
+Q1014245	Château de Termes	keep
+Q1014312	Czocha Castle	keep
+Q1014361	Valdštejn Castle	keep
+Q1014364	Varbola Stronghold	keep
+Q1014402	Vianden Castle	keep
+Q1014446	Castle of Vêves	keep
+Q1014747	Český Šternberk Castle	keep
+Q1014752	Červený Kameň Castle	keep
+Q1015454	Styrsö	keep
+Q1016042	La Cruz	out
+Q1016047	San Javier	out
+Q1017261	Rotava	out
+Q1018863	Chýnov	out
+Q1019321	Stará Červená Voda	out
+Q1020241	Børgefjell National Park	keep
+Q1020498	Agen-d'Aveyron	out
+Q1021796	Porto Palermo Fortress	keep
+Q1022117	Messene	keep
+Q1022920	Coloane	keep
+Q1023846	Panemunė Castle	keep
+Q1024723	Monastery of San Pedro de Cardeña	keep
+Q1024886	Arsuf	keep
+Q1025082	Cadbury Castle	keep
+Q1025398	Caerlaverock Castle	keep
+Q1025825	Shahr-e Sukhteh	keep
+Q1027253	Calleva Atrebatum	keep
+Q1027914	Gran Sasso e Monti della Laga National Park	keep
+Q1028367	Ras Muhammad National Park	keep
+Q1028479	Guadeloupe National Park	keep
+Q1029322	Denisova Cave	keep
+Q1029710	Kamorta Island	keep
+Q1033649	Canossa Castle	keep
+Q1033978	Canvey Island	keep
+Q1034179	Chagres and Fort San Lorenzo	keep
+Q1034253	Cape Le Grand National Park	keep
+Q1034366	Cape Canaveral Launch Complex 5	keep
+Q1034392	Cléire	keep
+Q1035333	Henri Pittier National Park	keep
+Q1036410	Yoshida-Kōriyama Castle	keep
+Q1039004	Gassantoda Castle	keep
+Q1039186	Zincirli Höyük	keep
+Q1042740	San Andrés Castle	keep
+Q1043128	Shikotan	keep
+Q1046930	Rello	out
+Q1047734	Ertis	out
+Q1048693	Castell y Bere	keep
+Q1048809	Aragonese Castle	keep
+Q1048852	Donnafugata Castle	keep
+Q1049198	Castillo de La Calahorra	keep
+Q1049220	Castillo de Mequinenza	keep
+Q1049248	Fortress of Saint Barbara	keep
+Q1049259	Loarre Castle	keep
+Q1049410	Castle Fraser	keep
+Q1049450	Castle Menzies	keep
+Q1049485	Castle Rising Castle	keep
+Q1049531	Castle Tioram	keep
+Q1049589	Castle of Mey	keep
+Q1049645	Yoshinogari site	keep
+Q1049903	Castro of Baroña	keep
+Q1050154	Cat Island	keep
+Q1051820	Certosa di Padula	keep
+Q1051873	Cavernas do Peruaçu National Park	keep
+Q1051919	Cawdor Castle	keep
+Q1052012	Cayo Coco	keep
+Q1052031	Cayo Sabinal	keep
+Q1053661	Westland Tai Poutini National Park	keep
+Q1056344	Florence Charterhouse	keep
+Q1058770	Metapontum	keep
+Q1059426	Suzdal Kremlin	keep
+Q1059628	Terminal Island	keep
+Q1059902	Pantokratoros monastery	keep
+Q1061061	Château de Loches	keep
+Q1062208	Chāñhu-daro	keep
+Q1063366	Charles Darwin National Park	keep
+Q1064401	Charles Fort	keep
+Q1064830	Hagi Castle	keep
+Q1067065	Xenophontos monastery	keep
+Q1068128	Ateret Fortress	keep
+Q1070187	Chepstow Castle	keep
+Q1072570	Ľubovňa Castle	keep
+Q1072838	Pollino National Park	keep
+Q1072990	Chillingham Castle	keep
+Q1074177	Zabala	keep
+Q1074719	Chiricahua National Park	keep
+Q1075023	Chitwan National Park	keep
+Q1075151	Paparoa National Park	keep
+Q1076030	Machalilla National Park	keep
+Q1077596	Lake Malawi National Park	keep
+Q1079286	Skarð	keep
+Q1080511	Krastets	out
+Q1080683	Tatra National Park	keep
+Q1085735	Maiella National Park	keep
+Q1086637	Dolomiti Bellunesi National Park	keep
+Q1089780	Christmas Island National Park	keep
+Q1090492	Château Gaillard	keep
+Q1090706	Fort de Joux	keep
+Q1091298	Sila National Park	keep
+Q1092772	Circesium	keep
+Q1094262	Citânia de Briteiros	keep
+Q1094889	Los Nevados National Natural Park	keep
+Q1096108	Kutha	keep
+Q1096530	La Motte-Feuilly	out
+Q1097024	Tunku Abdul Rahman National Park	keep
+Q1100519	Dalverzin Tepe	keep
+Q1108708	Vufflens Castle	keep
+Q1109724	Dovrefjell–Sunndalsfjella National Park	keep
+Q1110806	Oescus	keep
+Q1111568	Arcipelago Toscano National Park	keep
+Q1113318	Drents-Friese Wold National Park	keep
+Q1118312	Brothers of Christian Instruction of Ploërmel	out
+Q1122053	Yuraygir National Park	keep
+Q1122852	Fadak	out
+Q1123694	Lauhanvuori National Park	keep
+Q1124254	Huerquehue National Park	keep
+Q1126279	Connemara National Park	keep
+Q1126874	Torndirrup National Park	keep
+Q1127232	Tuart Forest National Park	keep
+Q1129421	Convent of the Capuchos	keep
+Q1129899	Coorong National Park	keep
+Q1130056	Yalgorup National Park	keep
+Q1130900	Eucla National Park	keep
+Q1131218	Minami Alps National Park	keep
+Q1132024	Kirishima-Kinkōwan National Park	keep
+Q1132683	Hever Castle	keep
+Q1132770	Quriwayrachina, La Convención	keep
+Q1132798	Sepphoris	keep
+Q1133188	Moszna Castle	keep
+Q1134243	Chesterbrook	out
+Q1134517	Ba Vi National Park	keep
+Q1134731	Mount Gede-Pangrango National Park	keep
+Q1135017	Mount Ciremai National Park	keep
+Q1135025	Bromo Tengger Semeru National Park	keep
+Q1135796	Naracoorte Caves National Park	keep
+Q1136193	Gortyn	keep
+Q1136747	Serra do Cipó National Park	keep
+Q1137401	Shenandoah National Park	keep
+Q1137542	Fuji-Hakone-Izu National Park	keep
+Q1137640	Haleakalā National Park	keep
+Q1137657	Great Basin National Park	keep
+Q1137669	Theodore Roosevelt National Park	keep
+Q1137913	Hoang Lien National Park	keep
+Q1138453	Cradle Mountain-Lake St Clair National Park	keep
+Q1138741	Craigievar Castle	keep
+Q1139896	Criccieth Castle	keep
+Q1140030	Restormel Castle	keep
+Q1140663	Croajingolong National Park	keep
+Q1140986	Osiou Gregoriou monastery	keep
+Q1140993	Crooked Island	keep
+Q1141145	Korela Fortress	keep
+Q1141326	Sainte-Geneviève-sur-Argence	out
+Q1142110	Crustumerium	keep
+Q1142488	Colophon	keep
+Q1143049	Château de Montsoreau	keep
+Q1143112	Toshima	keep
+Q1143233	Olbia	keep
+Q1143416	Hot Springs National Park	keep
+Q1143974	Matsumae Castle	keep
+Q1144734	Genting Highlands	out
+Q1146583	Hedingham Castle	keep
+Q1149473	Qasr al-Hayr al-Sharqi	keep
+Q1149573	Chihaya Castle	keep
+Q1150673	Penang Island	keep
+Q1153938	Point Pelee National Park	keep
+Q1154052	Santa Rosa National Park	keep
+Q1154474	Asine	keep
+Q1155369	Hundred Islands National Park	keep
+Q1156555	Aso Kujū National Park	keep
+Q1156688	Unzen-Amakusa National Park	keep
+Q1156717	Dachigam National Park	keep
+Q1156906	Iwakuni Castle	keep
+Q1157644	Daintree National Park	keep
+Q1157659	Daisetsuzan National Park	keep
+Q1157663	Daishan County	out
+Q1160017	Perim	keep
+Q1160195	Mantineia	keep
+Q1161253	Glacier National Park	keep
+Q1163005	Triglav National Park	keep
+Q1163542	Lassen Volcanic National Park	keep
+Q1164460	Histria	keep
+Q1165053	Werakata National Park	keep
+Q1165056	Georges River National Park	keep
+Q1166100	Castle of Rocca Calascio	keep
+Q1171924	Dascylium	keep
+Q1183365	Turmanin	keep
+Q1185674	Nyáregyháza	out
+Q1186381	Bezděz Castle	keep
+Q1186781	Tápiószentmárton	out
+Q1186885	Denbigh Castle	keep
+Q1187793	Skansin	keep
+Q1187900	Karimunjawa National Park	keep
+Q1187903	Mount Halimun Salak National Park	keep
+Q1188983	Barnwell Castle	keep
+Q1189526	Arenal Volcano National Park	keep
+Q1193166	Pordoi Pass	keep
+Q1194178	Biarezinski Biosphere Reserve	keep
+Q1194252	Eravikulam National Park	keep
+Q1195682	Sawayama Castle	keep
+Q1195800	Myus	keep
+Q1196243	Emar	keep
+Q1196356	Iwamura Castle	keep
+Q1200164	White Sands National Park	keep
+Q1201664	Develtos	keep
+Q1205897	Tonaki	keep
+Q1207562	Dhanushkodi	keep
+Q1207619	Dharug National Park	keep
+Q1209241	Diawling National Park	keep
+Q1209353	Dibru-Saikhowa National Park	keep
+Q1216712	Brassac	out
+Q1221032	North Tawton	out
+Q1225209	Tayrona National Natural Park	keep
+Q1226281	Castell Dinas Brân	keep
+Q1226855	monastery of San Salvador de Oña	keep
+Q1229367	Empúries	keep
+Q1229422	Lampsacus	keep
+Q1231539	Kameiros	keep
+Q1231824	Viminacium	keep
+Q1231952	Divjakë-Karavasta National Park	keep
+Q1232248	Djukbinj National Park	keep
+Q1232816	Maiden Castle	keep
+Q1233131	Vindolanda	keep
+Q1233504	Vespella de Gaià	out
+Q1236430	Reccopolis	keep
+Q1236511	Corfe Castle	keep
+Q1236744	Pan de Azúcar National Park	keep
+Q1238713	Abacaenum	keep
+Q1243563	Dora	keep
+Q1244809	Médanos de Coro National Park	keep
+Q1245463	Sénanque Abbey	keep
+Q1246283	Kumbhalgarh	keep
+Q1247496	Rievaulx Abbey	keep
+Q1249329	Camlough	out
+Q1249761	Gunung Palung National Park	keep
+Q1251931	Douglas-Apsley National Park	keep
+Q1252656	Doumeira Islands	keep
+Q1252715	Doune Castle	keep
+Q1255386	Golestan National Park	keep
+Q1255597	Rock of Cashel	keep
+Q1257228	Samobor Castle	keep
+Q1258055	Đerdap National Park	keep
+Q1258339	Con Dao National Park	keep
+Q1258880	Biogradska Gora	keep
+Q1262718	Duart Castle	keep
+Q1262800	Sutjeska National Park	keep
+Q1263502	Duck Key	keep
+Q1265826	Dunguaire Castle	keep
+Q1266074	Gorkhi-Terelj National Park	keep
+Q1266167	Dunluce Castle	keep
+Q1266330	Dunvegan Castle	keep
+Q1266400	Moore River National Park	keep
+Q1266612	Tara National Park	keep
+Q1269394	Scone Palace	keep
+Q1270469	Tresticklan National Park	keep
+Q1271457	Kantara Castle	keep
+Q1272538	Dąbroszyn, Lubusz Voivodeship	out
+Q1275686	Hillsborough Castle	keep
+Q1276455	Møysalen National Park	keep
+Q1278115	Fort Ross	keep
+Q1280258	Fruška Gora National Park	keep
+Q1280770	Armaztsikhe	keep
+Q1282606	Eday	keep
+Q1287526	Opis	keep
+Q1288177	Lovćen National Park	keep
+Q1290149	Federal People's Republic of Yugoslavia	out
+Q1294175	Udzungwa Mountains National Park	keep
+Q1295864	El Cajas National Park	keep
+Q1298247	Egmont National Park	keep
+Q1306110	La Campana National Park	keep
+Q1309632	Castra Gerulata	keep
+Q1309649	Sucidava	keep
+Q1309657	Castrum Segontium	keep
+Q1309695	Castra Celemantia	keep
+Q1309736	Richborough Roman Fort	keep
+Q1313383	Mont Orgueil	keep
+Q1314033	Abila	keep
+Q1314367	Prince Edward Island National Park	keep
+Q1317636	Pleuron	keep
+Q1318314	Château d'Ainay-le-Vieil	keep
+Q1318387	Fort São Sebastião de Xama	keep
+Q1318876	Pinara	keep
+Q1320427	Alnwick Castle	keep
+Q1320619	Mary River National Park	keep
+Q1321012	Shatsk National Natural Park	keep
+Q1321758	National Park - Fir of Hotova	keep
+Q1322082	Rignac	out
+Q1322496	Ku-ring-gai Chase National Park	keep
+Q1322807	Doi Khun Tan National Park	keep
+Q1322836	Doi Phu Kha National Park	keep
+Q1322853	Ta Phraya National Park	keep
+Q1322875	Doi Luang National Park	keep
+Q1324235	El Haouaria	out
+Q1324805	Guadarrama National Park	keep
+Q1324870	Elaiussa Sebaste	keep
+Q1325310	Appennino Lucano - Val d'Agri - Lagonegrese National Park	keep
+Q1326272	Saturna Island	keep
+Q1328347	Eleutherna (ancient city)	keep
+Q1330400	Topes de Collantes	keep
+Q1330939	Yarkhoto	keep
+Q1331433	Elk Island National Park	keep
+Q1332374	Hoge Kempen National Park	keep
+Q1333237	Helorus	keep
+Q1334313	Wind Cave National Park	keep
+Q1339871	Ein Avdat	keep
+Q1340405	Abbey of Santo Domingo de Silos	keep
+Q1343275	Lake Louise	out
+Q1343280	Egkomi Ammochostou	keep
+Q1348441	Gath	keep
+Q1351150	Slovak Karst National Park	keep
+Q1351318	Uplistsikhe	keep
+Q1356828	Nyungwe Forest	keep
+Q1360116	Noosa National Park	keep
+Q1361187	Stratonicea	keep
+Q1361580	Viroconium Cornoviorum	keep
+Q1361820	Kuelap	keep
+Q1362749	Montréal Castle	keep
+Q1362815	Nambung National Park	keep
+Q1363360	circular rampart	out
+Q1363688	Ancient Corinth	keep
+Q1366015	La Santísima Trinidad del Paraná	keep
+Q1368788	Voyageurs National Park	keep
+Q1368807	Cévennes National Park	keep
+Q1371168	Stobi	keep
+Q1372270	Bad-tibira	keep
+Q1375099	Euromus	keep
+Q1376597	Château de Troussay	keep
+Q1377160	Château du Plessis-Bourré	keep
+Q1377263	Powis Castle	keep
+Q1377651	Laiwangi Wanggameti National Park	keep
+Q1380189	Olympos	keep
+Q1381311	West Bali National Park	keep
+Q1381341	Garden Route National Park	keep
+Q1381840	Mount Rinjani National Park	keep
+Q1381855	Evenburg	keep
+Q1389060	Royal Monastery of San Juan de la Peña	keep
+Q1391645	Shushensky Bor National Park	keep
+Q1393407	Alexandria Troas	keep
+Q1393701	Chavash Varmane Bor National Park	keep
+Q1395739	Ķemeri National Park	keep
+Q1397298	pheasantry	out
+Q1398891	Store Mosse National Park	keep
+Q1402157	Koporye	keep
+Q1404574	Femundsmarka National Park	keep
+Q1404704	Nimrod Fortress	keep
+Q1407535	Venta Icenorum	keep
+Q1408844	Antimachia	out
+Q1408860	Bohus Fortress	keep
+Q1408867	Carlsten Fortress	keep
+Q1408951	Nehaj Fortress	keep
+Q1408968	Shumen Fortress	keep
+Q1408970	Skhvilo Castle	keep
+Q1408976	Fort Srebrna Góra	keep
+Q1408994	Ujarma Fortress	keep
+Q1412043	Phlius	keep
+Q1412667	St. George Island	keep
+Q1412844	Sharr Mountains National Park	keep
+Q1416937	Duchcov Chateau	keep
+Q1418789	Fire Island	keep
+Q1419214	Sayil	keep
+Q1419982	Okehampton Castle	keep
+Q1420248	Hoşap Castle	keep
+Q1420336	Sierra de las Nieves National Park	keep
+Q1421202	Cát Tiên National Park	keep
+Q1422235	Pembroke Castle	keep
+Q1422693	Terra Nova National Park	keep
+Q1422898	Ruínas de León Viejo	keep
+Q1425154	Gennargentu National Park	keep
+Q1425191	Sibillini Mountains National Park	keep
+Q1426028	Manusela National Park	keep
+Q1426031	Manupeu Tanah Daru National Park	keep
+Q1426184	Panská skála	keep
+Q1426707	Fort George	keep
+Q1427206	Aketajawe-Lolobata National Park	keep
+Q1427246	Fort Metal Cross	keep
+Q1427976	Indravati National Park	keep
+Q1428780	Flinders Chase National Park	keep
+Q1429179	Pyhä-Luosto National Park	keep
+Q1429234	Křivoklátsko Protected Landscape Area	keep
+Q1429741	Semuliki National Park	keep
+Q1431121	St Michael's Mount	keep
+Q1431132	Grotta del Cavallo	keep
+Q1431148	Mackinac Island	keep
+Q1431228	Rincón de la Vieja National Park	keep
+Q1431801	Fort Ricasoli	keep
+Q1431866	Syedra	keep
+Q1434186	Halaesa	keep
+Q1434255	Shapinsay	keep
+Q1435159	Fogo Island	keep
+Q1435698	Phu Kradueng National Park	keep
+Q1436362	Falerii Novi	keep
+Q1436575	Stapleton International Airport	out
+Q1437338	Forillon National Park	keep
+Q1438478	Fort Chambray	keep
+Q1438561	Ifrane National Park	keep
+Q1438624	Fort Matanzas National Monument	keep
+Q1438639	Fort Monroe	keep
+Q1438683	Fort Pulaski National Monument	keep
+Q1438745	Fort Saint Elmo	keep
+Q1438776	Fort Ticonderoga	keep
+Q1438801	Fort Vaux	keep
+Q1438865	Fort de Roppe	keep
+Q1438951	Kosterhavet National Park	keep
+Q1438999	Abruzzo, Lazio and Molise National Park	keep
+Q1439379	Tintern Abbey	keep
+Q1439593	Fotheringhay Castle	keep
+Q1443478	Nahal Me'arot Nature Reserve	keep
+Q1444561	Kolkheti National Park	keep
+Q1451798	Josselin Castle	keep
+Q1453755	Fregellae	keep
+Q1455960	Freya radar	out
+Q1457087	Krzeszów Abbey	keep
+Q1457477	Megara Hyblaea	keep
+Q1465468	Narawntapu National Park	keep
+Q1466242	Ranthambore National Park	keep
+Q1466687	Gezer	keep
+Q1470066	Aigüestortes i Estany de Sant Maurici National Park	keep
+Q1472026	Gabriola Island	keep
+Q1473095	Soberanía National Park	keep
+Q1473283	Valkenburg Castle	keep
+Q1473700	Karaburun-Sazan National Marine Park	keep
+Q1473702	Peneda-Gerês National Park	keep
+Q1473924	Grand Turk	keep
+Q1474238	Fundy National Park	keep
+Q1474721	Itatiaia National Park	keep
+Q1475037	Middle Caicos	keep
+Q1475754	Greater and Lesser Tunbs	keep
+Q1476429	Vardøhus	keep
+Q1476495	Huai Nam Dang National Park	keep
+Q1476888	Tankwa Karoo National Park	keep
+Q1477613	Rumkale	keep
+Q1478367	Mahale Mountains National Park	keep
+Q1478633	Fyrkat	keep
+Q1479356	Château de Talcy	keep
+Q1480481	Kanha National Park	keep
+Q1480521	Timanfaya National Park	keep
+Q1481707	New Elfsborg Fortress	keep
+Q1482013	Trakai Island Castle	keep
+Q1485119	St Donat's Castle	keep
+Q1487492	Les Combarelles	keep
+Q1493071	Llandovery Castle	keep
+Q1493784	Chemtou	keep
+Q1494110	Gardens of Stone National Park	keep
+Q1496277	Gauḍa	keep
+Q1498242	Ranomafana National Park	keep
+Q1500580	Tebtunis	keep
+Q1502156	Heraclea Minoa	keep
+Q1505272	Vashon	keep
+Q1505447	Stora Sjöfallet National Park	keep
+Q1505461	Färnebofjärden National Park	keep
+Q1507799	Slovak Paradise National Park	keep
+Q1508342	Manorbier Castle	keep
+Q1509537	Takalik Abaj	keep
+Q1511987	Kinchega National Park	keep
+Q1515255	Valkmusa National Park	keep
+Q1516747	Château de Commarque	keep
+Q1517348	Château de Châteauneuf	keep
+Q1517526	Berbak National Park	keep
+Q1517532	Bunaken	keep
+Q1517548	Bukit Tigapuluh National Park	keep
+Q1517552	Batang Gadis National Park	keep
+Q1517576	Rawa Aopa Watumohai National Park	keep
+Q1518981	Château de Puymartin	keep
+Q1519037	Petra	keep
+Q1519747	Sajama National Park	keep
+Q1520200	Nagarhole National Park	keep
+Q1520216	Tablas de Daimiel National Park	keep
+Q1520511	Curonian Spit National Park	keep
+Q1521388	Mokala National Park	keep
+Q1521938	Lurë-Dejë Mountain National Park	keep
+Q1524213	Mamure Castle	keep
+Q1524221	Staňkovice	out
+Q1524366	Blackness Castle	keep
+Q1525964	Mae Ping National Park	keep
+Q1527101	Kupientyn	out
+Q1529151	Glamis Castle	keep
+Q1530442	Söderåsen National Park	keep
+Q1530863	Yala National Park	keep
+Q1531449	Glimmingehus	keep
+Q1534693	Nino Konis Santana National Park	keep
+Q1535042	Mercantour National Park	keep
+Q1535148	Islet of Rolas	keep
+Q1535717	Ljubostinja	keep
+Q1536858	Khao Phra Wihan National Park	keep
+Q1537215	Cat Ba National Park	keep
+Q1537463	Goobang National Park	keep
+Q1539772	Trakai Historical National Park	keep
+Q1539984	Rimatara	keep
+Q1541584	Taymouth Castle	keep
+Q1542545	Poliochne	keep
+Q1543598	Grasslands National Park	keep
+Q1544161	Tyresta National Park	keep
+Q1545224	Borjomi-Kharagauli National Park	keep
+Q1546685	Keep River National Park	keep
+Q1547646	Alexander Morrison National Park	keep
+Q1548392	Sharuhen	keep
+Q1548414	Château d'Azay-le-Ferron	keep
+Q1550380	Grumentum	keep
+Q1551834	Orongo	keep
+Q1552366	Château du Haut-Koenigsbourg	keep
+Q1557392	Gutulia National Park	keep
+Q1557685	Guédelon Castle	keep
+Q1559296	Gökçeada district	keep
+Q1561524	Zakouma National Park	keep
+Q1566469	Stenshuvud National Park	keep
+Q1567025	Malá Fatra National Park	keep
+Q1568129	Ängsö National Park	keep
+Q1568376	Litchfield National Park	keep
+Q1568583	Heraclea Lucania	keep
+Q1570081	Hakusan National Park	keep
+Q1570283	Mayne Island	keep
+Q1570772	French Island	keep
+Q1571728	Krzyżtopór	keep
+Q1572525	Słowiński National Park	keep
+Q1572650	Kula	out
+Q1573530	Nightcap National Park	keep
+Q1573866	Killarney National Park	keep
+Q1573938	Jekyll Island	keep
+Q1574010	Mljet Nacionalni Park	keep
+Q1578584	Jotunheimen National Park	keep
+Q1579682	Lal Suhanra National Park	keep
+Q1579766	Los Millares	keep
+Q1581582	Myall Lakes National Park	keep
+Q1583181	Sigeion	keep
+Q1583627	Xuan Thuy National Park	keep
+Q1584528	Khara-Khoto	keep
+Q1584818	Kolossi Castle	keep
+Q1584994	Hardknott Roman Fort	keep
+Q1585849	Kidwelly Castle	keep
+Q1585938	Rhuddlan Castle	keep
+Q1587207	High Point	keep
+Q1587429	Thethi National Park	keep
+Q1587862	Guanacaste National Park	keep
+Q1588963	Hattah - Kulkyne National Park	keep
+Q1589069	murus Gallicus	out
+Q1589230	Borgholm Castle	keep
+Q1592677	Põltsamaa Castle	keep
+Q1594614	Rocca Maggiore	keep
+Q1600845	Reinheimen National Park	keep
+Q1603133	Hell's Gate National Park	keep
+Q1605678	El Real de la Jara	out
+Q1607758	Heracleion	keep
+Q1607763	Heraclea Sintica	keep
+Q1613640	Hermitage Castle	keep
+Q1615584	Heshbon	keep
+Q1616654	Providenciales	keep
+Q1619225	Bory Tucholskie National Park	keep
+Q1623374	Hoge Veluwe National Park	keep
+Q1628126	Atlantic Islands of Galicia National Park	keep
+Q1630245	Horton Plains National Park	keep
+Q1631766	Amboró National Park	keep
+Q1632400	Hoyocasero	out
+Q1632423	Wallingford Castle	keep
+Q1635824	Namadgi National Park	keep
+Q1636168	Qasr Mshatta	keep
+Q1636296	Hulhumalé	keep
+Q1636479	Monterreal Castle	keep
+Q1636810	Saiwa Swamp National Park	keep
+Q1638741	Portland Castle	keep
+Q1639106	Khustain Nuruu National Park	keep
+Q1639481	Appleby Castle	keep
+Q1639749	Thy National Park	keep
+Q1639811	Paluma Range National Park	keep
+Q1640800	Victoria Falls National Park	keep
+Q1642019	Hälsö	keep
+Q1643261	Slītere National Park	keep
+Q1643467	Kibyra	keep
+Q1643937	Trespaderne	out
+Q1644230	Hönö	keep
+Q1647822	Nam Nao National Park	keep
+Q1650222	Yanachaga–Chemillén National Park	keep
+Q1650661	Château de Combourg	keep
+Q1651245	Cotapata National Park and Integrated Management Natural Area	keep
+Q1651251	Iñao National Park and Integrated Management Natural Area	keep
+Q1651298	Lauwersmeer National Park	keep
+Q1651303	Dwingelderveld National Park	keep
+Q1651381	Schiermonnikoog National Park	keep
+Q1651436	De Alde Feanen National Park	keep
+Q1651472	Tesso Nilo National Park	keep
+Q1653275	Caminreal	out
+Q1653954	IJsselmonde	out
+Q1654198	Tirol Castle	keep
+Q1655395	Ietas	keep
+Q1656624	Idalion	keep
+Q1658146	Tell Beydar	keep
+Q1658753	Cíes Islands	keep
+Q1659846	Balawat	keep
+Q1661434	Anaimalai Tiger Reserve	keep
+Q1663657	Vittskövle Castle	keep
+Q1668419	Paleo Trikeri	keep
+Q1668658	Marahoué National Park	keep
+Q1670728	Mungo National Park	keep
+Q1673336	Osowiec-Twierdza	keep
+Q1673711	Isangano National Park	keep
+Q1674047	Isla Suárez/Ilha de Guajará-Mirim	keep
+Q1677131	Túcume	keep
+Q1681445	Yamit	keep
+Q1682878	Munzur Valley National Park	keep
+Q1682960	Janowa Góra	out
+Q1691460	Op Luang National Park	keep
+Q1702747	Nevado Tres Cruces National Park	keep
+Q1702789	Las Palmas de Cocalán National Park	keep
+Q1702806	Drentsche Aa National Park	keep
+Q1702815	Weerribben-Wieden National Park	keep
+Q1702823	Sallandse Heuvelrug National Park	keep
+Q1702833	De Biesbosch National Park	keep
+Q1702843	Dunes of Texel National Park	keep
+Q1702870	Bosque Fray Jorge National Park	keep
+Q1702875	Volcán Isluga National Park	keep
+Q1702881	Hornopirén National Park	keep
+Q1702892	Chiloé National Park	keep
+Q1702917	Nahuelbuta National Park	keep
+Q1702923	Alerce Andino National Park	keep
+Q1702950	De Maasduinen National Park	keep
+Q1703007	Llanos de Challe National Park	keep
+Q1703011	Queulat National Park	keep
+Q1703017	Oosterschelde National Park	keep
+Q1703055	Veluwezoom National Park	keep
+Q1703071	Meinweg National Park	keep
+Q1705802	Paikend	keep
+Q1708353	Harsud	out
+Q1720688	Tamassos	keep
+Q1722083	Kalbarri National Park	keep
+Q1723746	Kanger Ghati National Park	keep
+Q1724661	Pyrgi	keep
+Q1725911	Valbonë Valley National Park	keep
+Q1728921	Karakuş	keep
+Q1734287	Karoo National Park	keep
+Q1734540	Pleterje Charterhouse	keep
+Q1735335	Kastelholm Castle	keep
+Q1737079	Kauhaneva–Pohjankangas National Park	keep
+Q1737898	Keibul Lamjao National Park	keep
+Q1740765	Kiang West National Park	keep
+Q1740785	Kibale National Park	keep
+Q1740874	Kidepo Valley National Park	keep
+Q1741175	Lierne National Park	keep
+Q1741258	Kilchurn Castle	keep
+Q1741270	Kildrummy Castle	keep
+Q1741475	Kilwa Kisiwani	keep
+Q1749869	Caçapava do Sul	out
+Q1752037	Praia da Rocha	keep
+Q1753496	Serra dos Órgãos National Park	keep
+Q1754183	Skuleskogen National Park	keep
+Q1756002	Jequeri	out
+Q1756189	Alvastra Abbey	keep
+Q1756401	Pacific Rim National Park Reserve	keep
+Q1757296	Soli	keep
+Q1757413	Braulio Carrillo National Park	keep
+Q1757808	Vadstena Castle	keep
+Q1758189	Slane Castle	keep
+Q1758359	Pech Merle cave	keep
+Q1758442	Muckross Abbey	keep
+Q1758944	Rottumeroog	keep
+Q1759455	Larnach Castle	keep
+Q1759993	Segóbriga	keep
+Q1760482	Uppåkra	out
+Q1760508	Khao Sam Roi Yot National Park	keep
+Q1760520	Khao Sok	keep
+Q1760813	West Coast National Park	keep
+Q1761032	Appennino Tosco-Emiliano National Park	keep
+Q1761393	Roslin Castle	keep
+Q1763364	Rapa Nui National Park	keep
+Q1764282	Balasagun	keep
+Q1767601	Low Tatras National Park	keep
+Q1767946	Koluvere Castle	keep
+Q1768091	Kuressaare Castle	keep
+Q1768553	Rhamnous	keep
+Q1769639	Misje	keep
+Q1772369	Boali	out
+Q1774167	Cleonae	keep
+Q1774870	Cilgerran Castle	keep
+Q1775543	Lubiąż Abbey	keep
+Q1775664	Mogiła Abbey	keep
+Q1775814	Monastery of Piedra	keep
+Q1775925	Monastery of San Millán de Yuso	keep
+Q1777895	La Alberguería de Argañán	out
+Q1778838	Matobo National Park	keep
+Q1779332	Nysa	keep
+Q1779534	Sungir	keep
+Q1779681	Kolovesi National Park	keep
+Q1780430	Pieskowa Skała	keep
+Q1782806	Yenişarbademli	out
+Q1783680	Pieniny National Park	keep
+Q1783768	Pinnacles National Park	keep
+Q1784196	Kora National Park	keep
+Q1784847	Korup National Park	keep
+Q1785592	Kourion	keep
+Q1785861	Losiny Ostrov National Park	keep
+Q1787326	Château de Fougères-sur-Bièvre	keep
+Q1787671	Foreste Casentinesi, Monte Falterona, Campigna National Park	keep
+Q1788306	Tocra	out
+Q1789059	Ogmore Castle	keep
+Q1789926	Château de Flers	keep
+Q1789966	Kronplatz	keep
+Q1793036	Pühtitsa Convent	keep
+Q1793853	Masirah Island	keep
+Q1796355	Royal Cemetery at Ur	keep
+Q1798539	La Mauricie National Park	keep
+Q1799531	Labraunda	keep
+Q1800487	Lagodekhi Protected Areas	keep
+Q1801490	Lampron	keep
+Q1805723	Laüs	keep
+Q1807000	Lato	keep
+Q1807458	Knutstorp Castle	keep
+Q1807870	Saepinum	keep
+Q1810964	Walpole-Nornalup National Park	keep
+Q1812387	Claypotts Castle	keep
+Q1812832	Housesteads Roman Fort	keep
+Q1815090	Pálava Protected Landscape Area	keep
+Q1815268	Nuuksio National Park	keep
+Q1815305	Isker	keep
+Q1815574	Château de Biron	keep
+Q1815612	Namdapha National Park	keep
+Q1817242	Ao Phang Nga National Park	keep
+Q1817250	Qilakitsoq	keep
+Q1817735	Bayanaul National Park	keep
+Q1818746	Sambor Prei Kuk	keep
+Q1818761	regional natural park	out
+Q1818952	Table Mountain National Park	keep
+Q1826180	Lindenfels	out
+Q1826934	Linnansaari National Park	keep
+Q1848058	Springbrook National Park	keep
+Q1848789	Alinda	keep
+Q1850440	Nazino affair	out
+Q1851195	Pallas-Yllästunturi National Park	keep
+Q1851352	Cotopaxi National Park	keep
+Q1852361	Mount Hotham	keep
+Q1855987	Ross Castle	keep
+Q1856209	Sozopolis	keep
+Q1856344	Mosynopolis	keep
+Q1857888	Qal'at Ja'bar	keep
+Q1858071	Panna National Park	keep
+Q1859459	Château de la Brède	keep
+Q1878714	Lycosura	keep
+Q1879294	Great Chishill	out
+Q1880010	Pueblo Pintado	out
+Q1885989	Nangar National Park	keep
+Q1886487	Cinque Terre National Park	keep
+Q1887045	Central Balkan National Park	keep
+Q1887432	Sylvan	out
+Q1891413	Skokloster Castle	keep
+Q1891711	Stelvio National Park	keep
+Q1892156	Mapungubwe National Park	keep
+Q1892280	Marakele National Park	keep
+Q1892445	Zama Regia	keep
+Q1892609	Villa Armira (Ivaylovgrad)	keep
+Q1893174	Gola Dzierżoniowska Castle	keep
+Q1893297	Pembrokeshire Coast National Park	keep
+Q1902867	Sainte Marie de La Tourette	keep
+Q1904065	Malmön	keep
+Q1905973	Mount Field National Park	keep
+Q1908809	Mathraki	keep
+Q1915216	Pythagoreion	keep
+Q1923521	Drum Castle	keep
+Q1929766	Kirirom National Park	keep
+Q1933754	Claros	keep
+Q1934034	Telendos	keep
+Q1934670	Royal Palace of Olite	keep
+Q1936320	Llansteffan Castle	keep
+Q1937879	troy town	out
+Q1943549	Perperikon	keep
+Q1947692	Morgantina	keep
+Q1950308	Mount Frankland National Park	keep
+Q1950327	Mount Kaputar National Park	keep
+Q1950336	Aoraki / Mount Cook National Park	keep
+Q1955420	Dirleton Castle	keep
+Q1957163	Kızkalesi	keep
+Q1963564	Fort Goede Hoop	keep
+Q1964047	Orford Castle	keep
+Q1964467	Nancowry Island	keep
+Q1965099	Ballindalloch Castle	keep
+Q1965841	Aydon Castle	keep
+Q1968747	Ba Bể National Park	keep
+Q1968749	Barra Honda National Park	keep
+Q1968761	Chae Son National Park	keep
+Q1968766	Carara National Park	keep
+Q1968775	Chaloem Rattanakosin National Park	keep
+Q1968784	Dajti National Park	keep
+Q1968796	Fir of Drenovë National Park	keep
+Q1968801	Cutervo National Park	keep
+Q1968824	Khao Khitchakut National Park	keep
+Q1968833	Khlong Lan National Park	keep
+Q1968858	Curonian Spit National Park	keep
+Q1968934	Amber Mountain National Park	keep
+Q1968939	Monfragüe National Park	keep
+Q1968946	Muránska planina National Park	keep
+Q1968948	Black Forest National Park	keep
+Q1968973	Pha Taem National Park	keep
+Q1968993	Norra Kvill National Park	keep
+Q1968995	Shtamë Pass National Park	keep
+Q1969004	Sai Yok National Park	keep
+Q1969017	Shebenik National Park	keep
+Q1969050	Sierra Nevada National and Natural Park	keep
+Q1969315	Strömsholm	out
+Q1970612	Puez-Geisler Nature Park	keep
+Q1970644	Solnechny, Tver Oblast	out
+Q1971757	Castle of Silves	keep
+Q1973358	Siponto	keep
+Q1974611	Serafimo-Diveyevsky Monastery	keep
+Q1974677	Steinvikholm Castle	keep
+Q1975734	Castle Campbell	keep
+Q1979628	Svirzh Castle	keep
+Q1980552	Matara	keep
+Q1982368	New England National Park	keep
+Q1982506	Monastery of Saint John the Theologian	keep
+Q1984244	Dilijan National Park	keep
+Q1985561	Lubcha Castle	keep
+Q1985853	White Castle	keep
+Q1986928	Yungbulakang Palace	keep
+Q1987323	Nicopolis ad Istrum	keep
+Q1988622	Codnor Castle	keep
+Q1989158	Pindus National Park	keep
+Q1989613	Bashkiria National Park	keep
+Q1992720	Nimule National Park	keep
+Q1999046	The Broads	keep
+Q2002148	Panopeus	keep
+Q2005166	Alexandria on the Caucasus	keep
+Q2006345	Podyjí National Park	keep
+Q2007231	Château des Milandes	keep
+Q2007716	Smilkov	out
+Q2008008	São Nicolau	out
+Q2009037	Weedon Bec	out
+Q2016002	İztuzu Beach	keep
+Q2016870	Oiniadai	keep
+Q2017367	Oknö	keep
+Q2023266	Hithadhoo	keep
+Q2026185	Bamburgh Castle	keep
+Q2026205	Halshany Castle	keep
+Q2026789	Anacopia Fortress	keep
+Q2027374	Manderley Castle	keep
+Q2028082	Arikok National Park	keep
+Q2036701	Santa María la Mayor	keep
+Q2037533	Kozarnika, Dimovo Municipality	keep
+Q2037692	Shivta	keep
+Q2040163	Valdaysky National Park	keep
+Q2040708	Tübän Kama National Park	keep
+Q2043817	Krkonoše National Park	keep
+Q2043976	Catimbau National Park	keep
+Q2046710	Bogenšperk Castle	keep
+Q2049047	Bled Castle	keep
+Q2054002	Pico Bonito National Park	keep
+Q2054006	Santa Teresa National Park	keep
+Q2060046	Château de Roquetaillade	keep
+Q2060243	Delgatie Castle	keep
+Q2060502	Serra Geral National Park	keep
+Q2062241	Pucará de Tilcara	keep
+Q2064328	Tarnawa Niżna	out
+Q2064455	Dźwiniacz Górny	out
+Q2064469	Dydiowa	out
+Q2064792	Torronsuo National Park	keep
+Q2065395	Shahbulag Castle	keep
+Q2065939	Spina	keep
+Q2066368	Tiengemeten	keep
+Q2072918	Windjana Gorge National Park	keep
+Q2073299	Duffield Castle	keep
+Q2075107	Turaida Castle	keep
+Q2075994	VT-line	keep
+Q2078555	Dolbadarn Castle	keep
+Q2086109	Araklovon Castle	keep
+Q2088795	Gerdkuh	keep
+Q2089479	Sigulda Medieval Castle	keep
+Q2092494	Nuestra Señora de Santa Ana	keep
+Q2093778	Brazilian Island	keep
+Q2097015	Ruissalo	keep
+Q2097137	Vashlovani National Park	keep
+Q2100836	Tantura	keep
+Q2106892	Powderham Castle	keep
+Q2110026	Wallops Island	keep
+Q2121495	Qasr Azraq	keep
+Q2121746	Koi Krylgan Kala	keep
+Q2128700	Fort Macleod	out
+Q2145629	Aberdour Castle	keep
+Q2147028	Niedzica Castle	keep
+Q2156810	De Zoom - Kalmthoutse Heide	keep
+Q2160653	Peckforton Castle	keep
+Q2164919	Český Krumlov Castle	keep
+Q2167586	Corycus	keep
+Q2175522	Qal'at Najm	keep
+Q2184812	Drumlanrig Castle	keep
+Q2206135	Château de Bonaguil	keep
+Q2207006	Białogórze	out
+Q2207146	Fort St Angelo	keep
+Q2211116	Satala	keep
+Q2215268	Olous	keep
+Q2215523	Saltspring Island	keep
+Q2222392	Sangyar	out
+Q2224564	Saranta Kolones	keep
+Q2232673	Tauresium	keep
+Q2235383	Puurijärvi-Isosuo National Park	keep
+Q2236298	Shio-Mgvime monastery	keep
+Q2240326	Blatná Chateau	keep
+Q2241121	Château de Fénelon	keep
+Q2243270	Darłowo Castle	keep
+Q2255867	Fort Bard	keep
+Q2262528	Entella	keep
+Q2265646	Hluchov	out
+Q2266463	Chapada Diamantina National Park	keep
+Q2266782	Seiland National Park	keep
+Q2269548	Sempre Vivas National Park	keep
+Q2271910	Alexander-Svirsky Monastery	keep
+Q2274046	Serre Chevalier	out
+Q2275648	Castell Aberlleiniog	keep
+Q2276731	Duino Castle	keep
+Q2278449	Broughty Castle	keep
+Q2278554	Muness Castle	keep
+Q2278591	Scalloway Castle	keep
+Q2284484	Traianoupoli	keep
+Q2299200	Star Carr	keep
+Q2301986	Halton Castle	keep
+Q2302532	Saint Hilarion Castle	keep
+Q2303857	Trelleborg	keep
+Q2313367	Rokua National Park	keep
+Q2314132	Klików	out
+Q2316992	Limes Tripolitanus	keep
+Q2330097	Tonowas	keep
+Q2340037	Buxa Tiger Reserve	keep
+Q2340545	Lochranza Castle	keep
+Q2343313	Amathus	keep
+Q2351225	Brough Castle	keep
+Q2353949	Brännö	keep
+Q2355776	Nosy Komba	keep
+Q2357073	Baduy	out
+Q2357510	Harbour Island	keep
+Q2359730	Stymphalos	keep
+Q2368947	Lismore Castle	keep
+Q2369922	Dolwyddelan Castle	keep
+Q2371954	Pendennis Castle	keep
+Q2372700	Mudumalai National Park	keep
+Q2373236	Edzell Castle	keep
+Q2373398	Kali Tiger Reserve	keep
+Q2374273	Soroca Fort	keep
+Q2375961	El Yunque National Forest	keep
+Q2378279	Päijänne National Park	keep
+Q2379846	Golub-Dobrzyń Castle	keep
+Q2382682	Doonagore Castle	keep
+Q2383968	Port-à-Piment	out
+Q2385597	Zbarazh Castle	keep
+Q2387627	Medzhybizh Fortress	keep
+Q2389189	Doe Castle	keep
+Q2391522	Mamshit	keep
+Q2391603	Inkerman Cave Monastery	keep
+Q2397554	Bhagwan Mahaveer Sanctuary and Mollem National Park	keep
+Q2398213	Kurjenrahka National Park	keep
+Q2402247	Tell el-Balamun	keep
+Q2402271	Tell es-Safi	out
+Q2407530	Beit Guvrin National Park	keep
+Q2410850	Santiago	out
+Q2411012	Santa Rosa	out
+Q2411979	Castro of Santa Trega	keep
+Q2412005	Bothwell Castle	keep
+Q2413248	Cayo Romano	keep
+Q2418337	Kozara National Park	keep
+Q2419871	Birr Castle	keep
+Q2420598	Repovesi National Park	keep
+Q2421766	Black River Gorges National Park	keep
+Q2425762	Zhovkva Castle	keep
+Q2426916	Muiderslot	keep
+Q2427533	Mariy Chodra National Park	keep
+Q2428291	Valmiki National Park	keep
+Q2428630	Corfinium	keep
+Q2443559	Toprak-kala	keep
+Q2447969	Ammersoyen Castle	keep
+Q2450709	Waimanalo Beach	out
+Q2456319	Hisham's Palace	keep
+Q2469418	Kursi	keep
+Q2469996	Domogled-Valea Cernei National Park	keep
+Q2470661	Narachanski National Park	keep
+Q2474005	Washington Slagbaai National Park	keep
+Q2474542	Derawar Fort	keep
+Q2478899	Khertvisi	keep
+Q2482587	Martinsthorpe	out
+Q2485097	Marojejy National Park	keep
+Q2489316	Petkeljärvi National Park	keep
+Q2495429	Akhsikath	keep
+Q2499392	Gasr Al-Hajj	out
+Q2500961	Elizabeth Castle	keep
+Q2503140	Osowiec Fortress	keep
+Q2505824	Paphos Castle	keep
+Q2507221	Husøy	keep
+Q2518014	Terina	keep
+Q2524183	Framlingham Castle	keep
+Q2538648	Wad ban Naqa	keep
+Q2542462	Ulëz	out
+Q2543161	Walmer Castle	keep
+Q2546988	Cahuita National Park	keep
+Q2549607	Jozani Chwaka Bay National Park	keep
+Q2551859	Miraflores Charterhouse	keep
+Q2552418	Ardvreck Castle	keep
+Q2553819	Ekenäs Archipelago National Park	keep
+Q2556336	Lamayuru Monastery	keep
+Q2556953	White Desert	keep
+Q2558854	Lintula Holy Trinity Convent	keep
+Q2570108	Fefan	keep
+Q2571376	San Ignacio	out
+Q2572177	Sariska Tiger Reserve	keep
+Q2577195	Olyka Castle	keep
+Q2577744	Ingarö	keep
+Q2580089	Djurdjura National Park	keep
+Q2580141	Bhitarkanika National Park	keep
+Q2580972	Capera	keep
+Q2584510	Čabraď Castle	keep
+Q2586542	Nokalakevi	keep
+Q2586650	Björkö	keep
+Q2588520	Bannerghatta National Park	keep
+Q2594448	Shravasti	keep
+Q2596678	Konevsky Monastery	keep
+Q2599326	Castle of Almourol	keep
+Q2600427	Calanques National Park	keep
+Q2600596	Ananuri	keep
+Q2604975	Madhav National Park	keep
+Q2606800	Tiilikkajärvi National Park	keep
+Q2606958	Liesjärvi National Park	keep
+Q2606971	Isojärvi National Park	keep
+Q2614456	Candleston Castle	keep
+Q2614463	Kenfig Castle	keep
+Q2615364	Drakolimni	keep
+Q2616577	KW Line	keep
+Q2623278	Paanajärvi National Park	keep
+Q2625399	Khaptad national park	keep
+Q2625461	Golubac	keep
+Q2625806	Wayne	out
+Q2626066	Gnezdovo	keep
+Q2627072	Lindisfarne Castle	keep
+Q2627611	Vaxholm Fortress	keep
+Q2628361	Tattershall Castle	keep
+Q2629582	Bač Fortress	keep
+Q2629776	Pskovo-Pechersky Dormition Monastery	keep
+Q2630723	Raglan Castle	keep
+Q2631476	Rayen Citadel	keep
+Q2634480	Farfa Abbey	keep
+Q2636096	Ancaster	out
+Q2637887	Llawhaden Castle	keep
+Q2639563	Tadoba-Andhari Tiger Reserve	keep
+Q2641320	Pourtalet mountain pass	keep
+Q2641970	Deosai National Park	keep
+Q2648069	Podocarpus National Park	keep
+Q2648427	Yacurí National Park	keep
+Q2652207	Herstmonceux Castle	keep
+Q2652794	Medininkai Castle	keep
+Q2654850	Chamla	out
+Q2656838	Kosava Castle	keep
+Q2658050	Dubno Castle	keep
+Q2658641	Hiidenportti National Park	keep
+Q2658740	Tsaparang	keep
+Q2659104	Biržai Castle	keep
+Q2660524	Peel Castle	keep
+Q2660882	Ubeidiya	keep
+Q2661377	Syöte National Park	keep
+Q2663176	St. Angelo Fort	keep
+Q2663264	Betla National Park	keep
+Q2664184	Belezma National Park	keep
+Q2664193	Gouraya National Park	keep
+Q2664197	Tlemcen National Park	keep
+Q2664904	Baghaberd	keep
+Q2665757	Piquillacta	keep
+Q2668473	Kelleys Island	keep
+Q2669063	Vansda National Park	keep
+Q2670896	Ksar Ouled Soltane	keep
+Q2671600	Chrea National Park	keep
+Q2671615	Taza National Park	keep
+Q2671865	Praia da Luz	out
+Q2672127	Grotte de Spy	keep
+Q2680003	Stora Dyrön	keep
+Q2682930	Kullö	keep
+Q2688361	Benito Juárez National Park	keep
+Q2696684	Smailholm Tower	keep
+Q2700205	Château de Menthon-Saint-Bernard	keep
+Q2704850	Castell Coch	keep
+Q2705370	Middleham Castle	keep
+Q2706740	Château de Belcastel	keep
+Q2707725	Tylisos	out
+Q2711269	Ankoko Island	keep
+Q2712312	Klis Fortress	keep
+Q2713117	Dinefwr Castle	keep
+Q2714663	Fort de Brégançon	keep
+Q2720864	Pench National Park	keep
+Q2721494	Salamajärvi National Park	keep
+Q2722153	Riisitunturi National Park	keep
+Q2722164	Seitseminen National Park	keep
+Q2724481	Marine National Park, Gulf of Kutch	keep
+Q2724682	Clunia	keep
+Q2728339	Peristera	keep
+Q2738134	Circeo National Park	keep
+Q2739189	Liwonde National Park	keep
+Q2741018	Boukornine National Park	keep
+Q2741891	Petrelë Fortress	keep
+Q2742973	Castro of San Cibrao de Las	keep
+Q2746237	Torre	keep
+Q2748806	Crathes Castle	keep
+Q2753067	Bar'am National Park	keep
+Q2778348	Deir Rafat	keep
+Q2781974	Kinbane Castle	keep
+Q2786026	Kreva Castle	keep
+Q2789683	Duffus Castle	keep
+Q2820502	Alet Cathedral	keep
+Q2822644	Acaray	keep
+Q2827860	Aigosthena	keep
+Q2829204	Anbar	keep
+Q2861005	Argilus	keep
+Q2876258	Raqch'i	keep
+Q2895643	Benagil	keep
+Q2896085	Atlit Yam	keep
+Q2900289	Radal Siete Tazas National Park	keep
+Q2908652	Amona	out
+Q2908710	Samakh	keep
+Q2911822	Nabi Rubin	keep
+Q2912547	Fiq	out
+Q2915013	ʿAin Mallaha	keep
+Q2915222	Belogradchik Fortress	keep
+Q2915678	Iqrit	keep
+Q2916570	Khirbat Jiddin	out
+Q2916736	Timnah	keep
+Q2917375	Al-Dawayima	keep
+Q2917523	Castillo de Jagua	keep
+Q2918965	Ayn Ghazal	keep
+Q2928281	Bunyu	keep
+Q2943426	Cayo Santa María	keep
+Q2967821	Castle Rushen	keep
+Q2968039	Ackergill Tower	keep
+Q2968219	Esch-sur-Sûre Castle	keep
+Q2968274	Ichijōdani Asakura Family Historic Ruins	keep
+Q2968289	Itter Castle	keep
+Q2968336	Ostrožac Castle	keep
+Q2968590	Bolsover Castle	keep
+Q2968597	Bodelwyddan Castle	keep
+Q2968700	Brougham Castle	keep
+Q2968744	Caldicot Castle	keep
+Q2968747	Camber Castle	keep
+Q2969121	Deganwy Castle	keep
+Q2969165	Dunbar Castle	keep
+Q2969173	Dunster Castle	keep
+Q2969293	Fyvie Castle	keep
+Q2969507	Krasiczyn Castle	keep
+Q2970158	Norviliškės Castle	keep
+Q2970215	Pevensey Castle	keep
+Q2970221	Peniscola Castle	keep
+Q2970599	St. Philip's Castle	keep
+Q2970742	Château de Suscinio	keep
+Q2971472	Château des Baux	keep
+Q2975928	An-Nekhel Fortress	keep
+Q2979068	Cliff Palace	keep
+Q2979712	Balpakram National Park	keep
+Q2979723	Galathea National Park	keep
+Q2982230	Puracé National Natural Park	keep
+Q2985097	Sultanpur National Park	keep
+Q2985148	Gorumara National Park	keep
+Q2985156	Kalesar National Park	keep
+Q2985193	Singalila National Park	keep
+Q2985390	Mukurthi National Park	keep
+Q2985788	Neora Valley National Park	keep
+Q2988995	Pukará de Quitor	keep
+Q2989157	Nameri National Park	keep
+Q2989176	Orang National Park	keep
+Q2991256	Asen's Fortress	keep
+Q2996387	Saray-Jük	keep
+Q3046485	Easdale	keep
+Q3057404	Erraid	keep
+Q3070774	Machadodorp	out
+Q3077873	Cozia National Park	keep
+Q3077898	Fort Julien	keep
+Q3078387	Fort du Portalet	keep
+Q3079099	Angelina National Forest	keep
+Q3081107	Ceahlău National Park	keep
+Q3084668	Kibira National Park	keep
+Q3085068	Ilino	out
+Q3091738	Assagny National Park	keep
+Q3091762	Mount Manipur National Park	keep
+Q3091867	Mathikettan Shola National Park	keep
+Q3092341	Sanjay National Park	keep
+Q3107493	Umm el-Jimal	keep
+Q3108092	Sanctuary of Arantzazu	keep
+Q3112563	Popova Šapka	keep
+Q3123440	Cangandala National Park	keep
+Q3123450	Mupa National Park	keep
+Q3128707	Havešová	keep
+Q3132083	Al Hoceima National Park	keep
+Q3148672	Resarö	keep
+Q3174875	Nokrek National Park	keep
+Q3174893	Sri Venkateswara National Park	keep
+Q3178225	Pipa Beach	keep
+Q3179197	Quissama National Park	keep
+Q3179381	Una National Park	keep
+Q3180048	Pandosia	keep
+Q3182544	Grutas de Cacahuamilpa National Park	keep
+Q3182749	Kamerlengo Castle	keep
+Q3185775	Kulhudhuffushi	keep
+Q3189896	Juliobriga	keep
+Q3192698	Kankí	out
+Q3192881	Kakavaberd	keep
+Q3208509	La Désirade	keep
+Q3236497	Les Éboulements	out
+Q3239505	Castello di Otranto	keep
+Q3241847	Bolingbroke Castle	keep
+Q3242261	Ayubia National Park	keep
+Q3243503	Margala Hills National Park	keep
+Q3249446	Green Turtle Cay	keep
+Q3263231	Kryspinów	out
+Q3285556	Mandore	keep
+Q3299266	Kanina Fortress	keep
+Q3302476	Khenifiss National Park	keep
+Q3305786	Mende	keep
+Q3306356	Chirk Castle	keep
+Q3306921	Cividade de Terroso	keep
+Q3308988	Laguna Lachuá	keep
+Q3329986	Национальный парк "Смоленское Поозерье"	keep
+Q3330156	Pampadum Shola National Park	keep
+Q3333420	Anamudi Shola National Park	keep
+Q3350362	Jaldapara National Park	keep
+Q3351830	Wadden Sea National Park	keep
+Q3357447	Ostrvica	out
+Q3360051	Sipoonkorpi National Park	keep
+Q3364411	Dzanga-Ndoki National Park	keep
+Q3364421	Mochima National Park	keep
+Q3364442	Chambi National Park	keep
+Q3364446	Durmitor National Park	keep
+Q3364448	Fulufjellet National Park	keep
+Q3364450	Gugamal National Park	keep
+Q3364480	Shirui National Park	keep
+Q3364482	Taganai National Park	keep
+Q3364499	Forêts National Park	keep
+Q3364505	Wicklow Mountains National Park	keep
+Q3364517	Haut Atlas Oriental National Park	keep
+Q3364519	Pelister National Park	keep
+Q3364523	Skadar Lake National Park	keep
+Q3364527	Mahatma Gandhi Marine National Park	keep
+Q3375188	Chiaksan National Park	keep
+Q3395078	Castle da Rocha Forte	keep
+Q3395294	Cardigan Castle	keep
+Q3396162	Srebrenik Fortress	keep
+Q3396212	Ram Fortress	keep
+Q3397542	Snežnik Castle	keep
+Q3400816	Montgomery Castle	keep
+Q3402579	Brežice Castle	keep
+Q3402778	Grosmont Castle	keep
+Q3403319	Oxwich Castle	keep
+Q3403691	Carreg Cennen Castle	keep
+Q3405245	Vivari Fortress	keep
+Q3436990	Trakai Peninsula Castle	keep
+Q3446446	Yushan National Park	keep
+Q3449505	Verona Island	keep
+Q3476289	Shaw Island	keep
+Q3485434	Chengjiang Fossil Site	keep
+Q3488567	Chagres National Park	keep
+Q3488750	Tematín	keep
+Q3489535	Solnitsata	keep
+Q3491338	České Švýcarsko National Park	keep
+Q3493915	Mirów Castle	keep
+Q3497827	Anderson Island	keep
+Q3502432	Lednica Landscape Park	keep
+Q3505873	Rara National Park	keep
+Q3509540	Bobolice Castle	keep
+Q3512102	Bibione	out
+Q3514386	Knin Fortress	keep
+Q3515283	Galičica National Park	keep
+Q3519346	Bekal Fort	keep
+Q3519548	Thamusida	keep
+Q3520074	Shivneri Fort	keep
+Q3520635	Chandragiri Fort	keep
+Q3524793	Wilpattu National Park	keep
+Q3529269	Tipasa	keep
+Q3536493	Gingee Fort	keep
+Q3545099	Kuwaykat	keep
+Q3555008	Karabiga	out
+Q3555617	Acronauplia	keep
+Q3560405	Brasília National Park	keep
+Q3571719	Castle of Zafra	keep
+Q3572674	Royal Monastery of Santa María de Sigena	keep
+Q3582929	Pratapgad	keep
+Q3593402	Puget Island Census Designated Place	keep
+Q3595357	Pallipuram Fort	keep
+Q3605584	Adramyttion	keep
+Q3607385	Akrai	keep
+Q3626515	Raigad Fort	keep
+Q3630501	Asirgarh Fort	keep
+Q3630997	Kalinjar Fort	keep
+Q3634572	Barbalissos	keep
+Q3634988	Barikot	out
+Q3645592	Algeti National Park	keep
+Q3646287	Tmogvi	keep
+Q3646784	Cerro Cora National Park	keep
+Q3654770	Campovalano	out
+Q3656045	Râșnov Citadel	keep
+Q3662370	Scaligero Castle	keep
+Q3662597	Donegal Castle	keep
+Q3662690	Castle of Melfi	keep
+Q3662856	St Mawes Castle	keep
+Q3663554	Endau-Rompin National Park	keep
+Q3694892	Attock Fort	keep
+Q3695333	Lulusar-Dudipatsar National Park	keep
+Q3695606	South Downs National Park	keep
+Q3695769	Chittorgarh Fort	keep
+Q3695993	Ruvubu National Park	keep
+Q3696259	Chandoli National Park	keep
+Q3738207	Cerro Castillo National Park	keep
+Q3743102	Azov-Syvash National Nature Park	keep
+Q3773755	Kuusisto Castle	keep
+Q3774735	Qasr Tuba	keep
+Q3777131	Spike Island	keep
+Q3798865	Jaunpils Castle	keep
+Q3811187	Castle of Marvão	keep
+Q3814386	Kellis	keep
+Q3818331	Chesters Roman Fort	keep
+Q3826507	Sighnaq	keep
+Q3827807	Karnala Fort	keep
+Q3827817	Khānderi Island	keep
+Q3836325	Epizephyrian Locris	keep
+Q3848929	Smbataberd	keep
+Q3861984	Sveta Gora	out
+Q3878801	Netum	keep
+Q3887171	Littlejohn Island	keep
+Q3890699	Penelakut Island	keep
+Q3895694	Burren National Park	keep
+Q3895701	Bidoup Núi Bà National Park	keep
+Q3896391	Morrocoy National Park	keep
+Q3913561	Brandenbourg Castle	keep
+Q3917680	Pripyatsky National Park	keep
+Q3919081	Church of Nativity of Virgin Mary in Muravanka	keep
+Q3920231	Otočec Castle	keep
+Q3920888	Daugmale hill fort	keep
+Q3944984	Portuguese Castle	keep
+Q4057547	Buddhistic cloister of Ajina-Tepa	keep
+Q4060505	Alaniya National Park	keep
+Q4068363	Arabat Fortress	keep
+Q4084055	Berdavan Fortress	keep
+Q4086076	Besh-Aral State Nature Reserve	keep
+Q4098398	Buzuluksky Bor National Park	keep
+Q4099294	Burabay National Park	keep
+Q4119405	Nabih Saleh	keep
+Q4135567	Genoese Fortress	keep
+Q4143004	National Nature Park Homilsha Woods	keep
+Q4166525	Deir Alla	out
+Q4166544	Hatta	keep
+Q4174808	Russian Fort Elizabeth	keep
+Q4175884	Nový zámok	keep
+Q4181673	Żurawin, Podkarpackie Voivodeship	out
+Q4185855	Pennard Castle	keep
+Q4185858	Prudhoe Castle	keep
+Q4185866	Ford Castle	keep
+Q4199195	Ile-Alatau National Park	keep
+Q4205498	Ichnia National Nature Park	keep
+Q4215646	Carpathian National Nature Park	keep
+Q4220378	Kiik-Koba	keep
+Q4227524	Kokshetau National Park	keep
+Q4228940	Kölsay Lakes National Park	keep
+Q4235785	Kostyonki–Borshchyovo archaeological complex	keep
+Q4252610	Ladoga Skerries National Park	keep
+Q4265984	Łokieć	out
+Q4280677	Mokrice Castle	keep
+Q4288990	Mezyn National Nature Park	keep
+Q4290708	Meotyda National Nature Park	keep
+Q4292620	Meshchyora National Park	keep
+Q4301479	Gouverneto Monastery	keep
+Q4315024	Las Baulas National Marine Park	keep
+Q4315066	Sloboda National Nature Park	keep
+Q4315069	National Nature Park Northern Podillia	keep
+Q4318334	Nechkinsky National Park	keep
+Q4318770	Lower Dniester National Nature Park	keep
+Q4336921	Orlovskoye Polesye	keep
+Q4340381	Okhlebinino	out
+Q4351267	Langtang National Park	keep
+Q4351857	Parsa National Park	keep
+Q4359113	Abu Musa	out
+Q4365056	Pleshcheyevo Ozero National Park	keep
+Q4376878	National Nature Park Charming Harbor	keep
+Q4379004	Pripyshminskiye Bory National Park	keep
+Q4379413	Prielbrusye National Park	keep
+Q4392418	Putin's Palace	keep
+Q4405258	Sayram-Ugam National Park	keep
+Q4406360	Samarskaya Luka National Park	keep
+Q4408855	Sary-Chelek Nature Reserve	keep
+Q4409147	Sawran	keep
+Q4411008	Sviyazhsk Assumption Monastery	keep
+Q4411701	National Nature Park Holy Mountains	keep
+Q4411838	Sebezhsky National Park	keep
+Q4420168	Synevyr National Nature Park	keep
+Q4425090	Smolny National Park	keep
+Q4442880	Krasnoyarsk Stolby National Park	keep
+Q4455958	Tarnawa Wyżna	out
+Q4469149	Ugra National Park	keep
+Q4469611	Uzhanskyi National Nature Park	keep
+Q4496816	Khvalynsky National Park	keep
+Q4497261	Chęciny Castle	keep
+Q4507523	Charyn National Park	keep
+Q4536055	Yavoriv National Nature Park	keep
+Q4583646	Raby Castle	keep
+Q4583667	Algrøyna	keep
+Q4700793	Akhta	out
+Q4702414	Al-Ghabisiyya	keep
+Q4706020	Alamut Castle	keep
+Q4736972	Altos de Nsork National Park	keep
+Q4739129	Amaghu	out
+Q4742194	Antisana National Park	keep
+Q4770630	Ansembourg Castle	keep
+Q4784468	Araucárias National Park	keep
+Q4838944	Baciki Średnie	out
+Q4845607	Cerro El Copey National Park	keep
+Q4845617	Guatopo National Park	keep
+Q4845620	Yurubí National Park	keep
+Q4845766	El Guacharo National Park	keep
+Q4847102	Parque Nacional Cumbres de Monterrey	keep
+Q4852226	Ballymoon Castle	keep
+Q4866018	Barycz Valley Landscape Park	keep
+Q4874905	Bayt Nabala	keep
+Q4891993	Berkeley Castle	keep
+Q4901824	Bhirrana	keep
+Q4919619	Bjni Fortress	keep
+Q4922606	Mu Ko Lanta National Park	keep
+Q4923842	Blagaj Fortress	keep
+Q4924594	Blakely Island	keep
+Q4925853	Kui Buri National Park	keep
+Q4925863	Phu Sang National Park	keep
+Q4925892	Pang Sida National Park	keep
+Q4930049	Blue and John Crow Mountains National Park	keep
+Q4930309	Kep National Park	keep
+Q4930319	Preah Monivong National Park	keep
+Q4930573	Ream National Park	keep
+Q4948619	Bothal Castle	keep
+Q4948647	Bothnian Sea National Park	keep
+Q4983547	Buckton Castle	keep
+Q4988996	Prespa National Park	keep
+Q4991900	Fort Aguada	keep
+Q4992715	Ängsö Castle	keep
+Q4994368	Mols Bjerge National Park	keep
+Q5002745	Butrón	keep
+Q5024786	Calzada District	out
+Q5046041	Carrawburgh	keep
+Q5057521	Celaque National Park	keep
+Q5072892	Chapada dos Guimarães National Park	keep
+Q5092017	Chermakavan	out
+Q5103844	Chogha Mish	keep
+Q5131949	Clervaux Castle	keep
+Q5191298	Crystal Mountains National Park	keep
+Q5196587	Cusuco National Park	keep
+Q5252529	Deir al-Dubban	keep
+Q5298134	Dornoch Castle	keep
+Q5306985	Dreros	keep
+Q5351426	El Imposible National Park	keep
+Q5435410	Farleigh Hungerford Castle	keep
+Q5439646	Featherstone Castle	keep
+Q5470838	Bourtange Fortress	keep
+Q5518433	Galepsus	keep
+Q5533392	Kinneret	keep
+Q5556110	Halidzor Fortress	keep
+Q5566582	Glamoč Fortress	keep
+Q5574254	Gniew Castle	keep
+Q5583571	Goodrich Castle	keep
+Q5617142	Sierra de San Pedro Mártir National Park	keep
+Q5617576	Gulf of Mannar Marine National Park	keep
+Q5619647	Suwałki Landscape Park	keep
+Q5642786	Hallasan National Park	keep
+Q5721394	Shahid Kazemi Dam	out
+Q5731882	Hephaistia	keep
+Q5757525	Portumna Castle	keep
+Q5765225	Labanoras Regional Park	keep
+Q5775863	Cochiti Lake	out
+Q5860679	Lepreon	keep
+Q5884534	Holt Castle	keep
+Q5902477	Horadis	out
+Q6023179	Indiana Dunes National Park	keep
+Q6025863	Karatepe-Aslantaş National Park	keep
+Q6031479	Lake Gala National Park	keep
+Q6063031	Tikal National Park	keep
+Q6063070	Pico Basilé National Park	keep
+Q6095201	Küre Mountains National Park	keep
+Q6111771	Ludza Castle	keep
+Q6121227	Taijiang National Park	keep
+Q6344558	Cabyle	keep
+Q6362859	Kangra Fort, Himachal Pradesh	keep
+Q6374041	Kasarnaba	out
+Q6378421	Sevan National Park	keep
+Q6378661	Kaudulla National Park	keep
+Q6380677	Tenczyn Castle	keep
+Q6395453	Ketron Island	keep
+Q6403227	Khutir Nadia	out
+Q6421781	Knaresborough Castle	keep
+Q6427843	Kolovrat	out
+Q6443439	Kumana National Park	keep
+Q6465411	La Tigra National Park	keep
+Q6476662	Lake Lorelei	out
+Q6481581	Lambsar Castle	keep
+Q6515926	Sandøya	keep
+Q6590002	Shambe National Park	keep
+Q6629903	San Antonio Missions National Historical Park	keep
+Q6645746	Richmond Castle	keep
+Q6652728	Thong Pha Phum National Park	keep
+Q6652784	Namtok Mae Surin National Park	keep
+Q6667935	Lohagad	keep
+Q6681036	Lori Berd Fortress	keep
+Q6688385	Udegeyskaya Legenda National Park	keep
+Q6695262	Lubiechowo, West Pomeranian Voivodeship	out
+Q6743326	Mali i Gramës	keep
+Q6746629	Cocentaina Castle	keep
+Q6799898	Sierra del Lacandón	keep
+Q6870388	Białowieża National Park	keep
+Q6904640	Monte Alén National Park	keep
+Q6935640	Muncaster Castle	keep
+Q6958106	Naejangsan National Park	keep
+Q6974736	Dvorichna National Nature Park	keep
+Q6981621	Yedigöller National Park	keep
+Q6989380	En Esur	keep
+Q7077223	Odaesan National Park	keep
+Q7084800	Old Navarino Castle	keep
+Q7116379	Oystermouth Castle	keep
+Q7131008	Panhala Fort	keep
+Q7162231	Penang National Park	keep
+Q7171054	Perumbalam	keep
+Q7185999	Philmont Scout Ranch	keep
+Q7190130	Eshkol National Park	keep
+Q7193301	Pigeon Island National Park	keep
+Q7227798	Pongara National Park	keep
+Q7253230	Kopaonik National Park	keep
+Q7265904	Qala-i-Jangi	keep
+Q7265911	Qalaat al-Madiq	keep
+Q7272590	Quiriquina Island	keep
+Q7286112	Rajgad Fort	keep
+Q7293050	Ranigat	keep
+Q7315400	Syniohora National Nature Park	keep
+Q7417108	Sandwip Upazila	out
+Q7431167	Schengen Castle	keep
+Q7452686	Serangan	keep
+Q7455205	Serra da Bodoquena National Park	keep
+Q7455207	Bocaina Mountain National Park	keep
+Q7455211	Serra da Canastra National Park	keep
+Q7496115	Shichirigahama	keep
+Q7511632	Sierra de Agalta National Park	keep
+Q7534629	Skenfrith Castle	keep
+Q7535853	Skipton Castle	keep
+Q7590832	St. Nicholas Fortress	keep
+Q7618555	Stokesay Castle	keep
+Q7643009	Superagui National Park	keep
+Q7684735	Taposiris Magna	keep
+Q7697547	Tell es-Sawwan	keep
+Q7799960	Ti'inik	out
+Q7825964	Torna Fort	keep
+Q7860562	Tynningö	keep
+Q7861533	Tyritake	keep
+Q7917433	Nakhal Fort	keep
+Q7941869	Vorotnaberd	keep
+Q7969192	Old Wardour Castle	keep
+Q7996904	Whittington Castle	keep
+Q8013060	Takeda Castle	keep
+Q8049393	Yarmouth Castle	keep
+Q8071903	Zilkale	keep
+Q8704043	King John's Castle	keep
+Q9055961	Jaragua National Park	keep
+Q9067090	Hlane Royal National Park	keep
+Q9197683	Tytuvėnai Regional Park	keep
+Q9386509	Castle Bolczów	keep
+Q9386639	Gołuchów Castle	keep
+Q9704508	Neidpath Castle	keep
+Q10283837	Nossa Senhora da Graça Fort	keep
+Q10345244	Sete Cidades National Park	keep
+Q10345249	Monte Pascoal National Park	keep
+Q10594802	Kongernes Nordsjælland	keep
+Q10661138	Sandby borg	keep
+Q11088230	Ming Great Wall	keep
+Q11104236	Matsushiro Castle	keep
+Q11465642	Yakushima National Park	keep
+Q11697913	Palo Verde National Park	keep
+Q11838960	Floors Castle	keep
+Q11936307	Madauros	keep
+Q11946159	Rohtasgarh Fort	keep
+Q11955121	Prokletije National Park	keep
+Q12062114	Mount Kembla	keep
+Q12065255	Paphos Archaeological Park	keep
+Q12086753	Bile Ozero National Nature Park	keep
+Q12095915	Hetman National Nature Park	keep
+Q12096652	Holosiivskyi National Nature Park	keep
+Q12100547	Derman-Ostroh National Nature Park	keep
+Q12100595	Desna-Stara Huta National Nature Park	keep
+Q12114457	Kremenets Mountains National Nature Park	keep
+Q12125635	National History Park	keep
+Q12132935	Tusheti National Park	keep
+Q12132938	National Nature Park Bug Gard	keep
+Q12132939	National Nature Park Ivory Coast of Sviatoslav	keep
+Q12132940	National Nature Park Zalissia	keep
+Q12132941	Dniester Canyon National Nature Park	keep
+Q12132942	Zacharovany Krai National Nature Park	keep
+Q12132944	National Nature Park Prypiat-Stokhid	keep
+Q12140602	Pyriatyn National Nature Park	keep
+Q12169715	Cheremosh National Nature Park	keep
+Q12170402	Ciocanu	out
+Q12212349	Deir Hajla	keep
+Q12501413	National Nature Park Skole Beskids	keep
+Q12643002	Susedgrad	keep
+Q12771305	Medeon	keep
+Q12863044	Natlismtsemeli monastery	keep
+Q12868759	Samshvilde	keep
+Q12873561	Anactorium	keep
+Q12876746	Schinias Marathon National Park	keep
+Q12885741	Pheneos	keep
+Q13081405	Borač Castle	keep
+Q13220079	Ichkeul National Park	keep
+Q13291063	Torrechiara Castle	keep
+Q13413791	Sindhudurg Fort	keep
+Q13469680	Belavezhskaya Pushcha National Park	keep
+Q13470393	Braslaw Lakes National Park	keep
+Q14201945	Montfort Castle	keep
+Q14206230	Belum Temenggor Forest Reserve	keep
+Q14915623	Færder National Park	keep
+Q15052206	Bannau Brycheiniog National Park	keep
+Q15061692	Bhangarh Fort	keep
+Q15107343	Ballyloughan Castle	keep
+Q15252301	Mayon Volcano Natural Park	keep
+Q15252338	Maze National Park	keep
+Q15253488	Minneriya National Park	keep
+Q15265868	Pendragon Castle	keep
+Q15604669	Yamagata Castle	keep
+Q15727412	Ancient City of Bosra	keep
+Q15838244	Orhei National Park	keep
+Q15894675	Kerama Shotō National Park	keep
+Q15932056	Venta Silurum	keep
+Q16364478	Avranlo Fortress	keep
+Q16377805	Shaori fortress	keep
+Q16508549	Kazbegi National Park	keep
+Q16586347	Boa Nova national park	keep
+Q16682903	Oleshky Sands National Nature Park	keep
+Q16708777	Lower Polissia National Nature Park	keep
+Q16891508	Gagron Fort	keep
+Q16911654	Laguna del Laja National Park	keep
+Q17393446	Hunsrück-Hochwald National Park	keep
+Q17567402	Borthwick Castle	keep
+Q17674633	Kirby Muxloe Castle	keep
+Q18481085	Alto Cariri National Park	keep
+Q18530072	Raka Castle	keep
+Q18533909	Divje babe	keep
+Q18623932	Dashtadem Fortress	keep
+Q18639920	Yervandashat	keep
+Q18662323	Teijo National Park	keep
+Q18681728	Southern Konnevesi National Park	keep
+Q18715649	Erzi	out
+Q19376740	Kafta Sheraro National Park	keep
+Q19818469	Pazin Castle	keep
+Q19966843	El Avila National park	keep
+Q20008722	Velleia	keep
+Q20573269	Kotor Castle	keep
+Q20650897	Dilek Peninsula-Büyük Menderes Delta National Park	keep
+Q20816698	Eilean Donan Castle	keep
+Q21155924	Ogrodzieniec Castle	keep
+Q21484382	Djebel Aissa National Park	keep
+Q22080882	Lusaka National Park	keep
+Q22306440	Serra do Gandarela National Park	keep
+Q23988114	Caldera de Taburiente National Park	keep
+Q24036336	Shimao	keep
+Q24235830	Zambezi National Park	keep
+Q24704727	New Navarino Fortress	keep
+Q24937778	Gamsutl	out
+Q24953272	Dadia-Lefkimi-Soufli Forest National Park	keep
+Q25069728	Assos Castle	keep
+Q26764589	Tel Ashkelon National Park	keep
+Q26810464	Rouge National Urban Park	keep
+Q26928875	National park Bjeshkët e Nemuna	keep
+Q27027158	National Park Åsnen	keep
+Q27134534	Yanbaru National Park	keep
+Q28033153	Jomfruland national park	keep
+Q28752819	Hossa National Park	keep
+Q28806346	Zerzevan Castle	keep
+Q30610827	Kapilavastu	keep
+Q42434557	Antissa	keep
+Q43174653	Baelo Claudia	keep
+Q43951417	Daorson	keep
+Q47003097	Alerce Costero National Park	keep
+Q55634648	Tell el-Hammam	keep
+Q56322109	Gadara	keep
+Q57961021	Lechaeum	keep
+Q60626286	Ghoramara	keep
+Q61088536	Forest City	out
+Q63284212	Boikivshchyna National Nature Park	keep
+Q64027559	Atashgah Castle	keep
+Q65203551	National park Drina	keep
+Q66942507	Conímbriga	keep
+Q88667786	Daulatabad Fort	keep
+Q97616842	Carteia	keep
+Q101094405	Castillo de San Marcos	keep
+Q107112206	Raimona National Park	keep
+Q130019294	Maputo National Park	keep
