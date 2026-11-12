@@ -2,7 +2,7 @@ import { afterEach, describe, expect, test, vi } from 'vitest';
 
 import worker from './index';
 
-// A run of the roadtrip Worker that logged one error
+// A run of the roadtrip Worker's main handler, whose entrypoint the runtime leaves empty, that logged one error
 const FAILED_RUN: TraceItem = {
 	event: null,
 	eventTimestamp: Date.parse('2026-11-04T10:00:00.000Z'),
@@ -10,7 +10,6 @@ const FAILED_RUN: TraceItem = {
 	exceptions: [],
 	diagnosticsChannelEvents: [],
 	scriptName: 'roadtrip',
-	entrypoint: 'default',
 	outcome: 'ok',
 	executionModel: 'stateless',
 	truncated: false,

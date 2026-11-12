@@ -12,9 +12,9 @@ Some runs end `canceled` on a normal day, so for them that outcome alone sends n
 
 - The alarm of `EngineContainer`. `@cloudflare/containers` cancels it whenever the container stops, after `sleepAfter` or for a new image (ytc saw this on every stop).
 - `GET /api/ring` when the person left before the answer. The browser reports such a request as `abandoned`.
-- `GET /tiles/…` that MapLibre dropped as the map moved.
+- `GET /tiles/…` that MapLibre dropped as the map moved. Such a tile also ends `responseStreamDisconnected` when its body from R2 was already on the way; that outcome is expected for tiles only.
 
-ytc's other entry, its Workflow, has no counterpart here. A run whose `waitUntil` work the runtime cut off after 30 s is always an error, because the background Sherpa refresh or a PostHog send hung. These entries come from how the libraries and the browser behave, not yet from prod: after launch, check the `canceled` runs in Cloudflare's invocation log against PostHog. The list names the Container class and the routes, so a rename in the Worker changes it too.
+The runtime leaves the entrypoint of the main handler's runs empty, so an empty one matches the entries of `default`; the event's `entrypoint` stays as the runtime gave it. ytc's other entry, its Workflow, has no counterpart here. The Worker's `POST /ring` into `EngineContainer` ends `canceled` with a ring request the person left, and stays an error. A run whose `waitUntil` work the runtime cut off after 30 s is always an error, because the background Sherpa refresh or a PostHog send hung. The entries were checked against prod's events in PostHog (#151). The list names the Container class and the routes, so a rename in the Worker changes it too.
 
 Along the way it:
 
