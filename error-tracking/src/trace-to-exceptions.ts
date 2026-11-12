@@ -8,8 +8,8 @@ import { scrubContextValue, scrubString } from './scrub';
 // 2. Each error log is a handled error (handled: true): type, message and stack
 //    from errorInfo; without an Error argument, a LoggedError with the log text.
 // 3. A run whose outcome is not ok, with empty exceptions[], is a synthetic
-//    exception typed as the outcome, except a `canceled` run of those that end
-//    so on a normal run too (EXPECTED_CANCELLATIONS).
+//    exception typed as the outcome, except a cut-off run of those that end so
+//    on a normal run too (EXPECTED_CANCELLATIONS).
 // 4. The same (type, message) within one run is one event: "log and rethrow"
 //    is not doubled, and the browser's ids, log text and context move to the
 //    event kept.
@@ -67,32 +67,47 @@ const MAX_ID_LENGTH = 1_000;
 /** Context keys that tie the error to the browser instead of becoming fields. */
 const BROWSER_KEYS = new Set(['distinct_id', 'session_id']);
 
-/** A worker's entrypoint and trigger, as the event's `worker`, `entrypoint` and `trigger` name them. */
-type ExpectedCancellation = Readonly<{ worker: string; entrypoint: string; trigger: RegExp }>;
+/**
+ * A worker's entrypoint and trigger, as the event's `worker`, `entrypoint` and `trigger` name them, and the outcomes
+ * its normal run ends with when cut off.
+ */
+type ExpectedCancellation = Readonly<{ worker: string; entrypoint: string; trigger: RegExp; outcomes: readonly string[] }>;
 
-// Runs whose `canceled` is no error: they end so on a normal run, and a failure
-// in them reaches PostHog as its own exception or error log. Any other run cut
-// off midway is still a synthetic exception. Reviewed for roadtrip (#26) from
-// ytc's list, which held its container's alarm and a Workflow (roadtrip has no
-// Workflows). Not seen in prod yet: check PostHog and Cloudflare's invocation
-// log after launch. The Durable Object migration pins the class name, and the
-// routes are the spec's: a rename in the worker package changes this list too.
+// The entrypoint of a worker's main handler. The runtime leaves a TraceItem's
+// entrypoint empty for its runs (a tile's and a ring request's in prod, #151),
+// so an empty one is matched as this.
+const DEFAULT_ENTRYPOINT = 'default';
+
+// Runs whose cut-off outcomes, `canceled` for most, are no error: they end so
+// on a normal run, and a failure in them reaches PostHog as its own exception or
+// error log. Any other run cut off midway is still a synthetic exception.
+// Reviewed for roadtrip (#26) from ytc's list, which held its container's alarm
+// and a Workflow (roadtrip has no Workflows); the routes' entries were then
+// checked against PostHog's events from prod (#151). The Durable Object migration pins the class name, and
+// the routes are the spec's: a rename in the worker package changes this list too.
 const EXPECTED_CANCELLATIONS: readonly ExpectedCancellation[] = [
 	// @cloudflare/containers keeps the container's Durable Object awake with a
 	// loop of alarms. When the container stops (sleepAfter ran out, or a new
 	// image replaces it), the alarm then waiting ends canceled: ytc saw it end
 	// so (about 100 ms, no CPU) on every stop. A container that crashes is
 	// reported by onStop or onError, and a failed ring by the Worker that asked.
-	{ worker: 'roadtrip', entrypoint: 'EngineContainer', trigger: /^alarm$/u },
+	{ worker: 'roadtrip', entrypoint: 'EngineContainer', trigger: /^alarm$/u, outcomes: ['canceled'] },
 	// The person left the page before the ring came: the browser reports it as
 	// `abandoned`. A calculation can wait minutes in the Container's queue, so
 	// this is common and nothing to fix. What failed in such a run is logged.
-	// When the Worker's call into EngineContainer turns out to end canceled with
-	// it, that call's trigger joins this list (#27).
-	{ worker: 'roadtrip', entrypoint: 'default', trigger: /^GET \/api\/ring$/u },
+	// The Worker's call into EngineContainer, POST /ring, ends canceled with it
+	// a moment later (seen in prod, #151), and stays a synthetic exception: the
+	// Owner keeps it out of this list.
+	{ worker: 'roadtrip', entrypoint: DEFAULT_ENTRYPOINT, trigger: /^GET \/api\/ring$/u, outcomes: ['canceled'] },
 	// MapLibre aborts the tile requests it no longer needs whenever the map
-	// moves, so the Worker's read from R2 is cut off.
-	{ worker: 'roadtrip', entrypoint: 'default', trigger: /^GET \/tiles\//u },
+	// moves, so the Worker's read from R2 is cut off: `canceled`, or
+	// `responseStreamDisconnected` when its body was already on the way.
+	{
+		worker: 'roadtrip',
+		entrypoint: DEFAULT_ENTRYPOINT,
+		trigger: /^GET \/tiles\//u,
+		outcomes: ['canceled', 'responseStreamDisconnected'],
+	},
 ];
 
 // The runtime's line when it cancels waitUntil work that outlived the run's 30 s
@@ -244,15 +259,17 @@ function failedOutcomeCandidates(item: TraceItem): Candidate[] {
 }
 
 function isExpectedCancellation(item: TraceItem): boolean {
-	if (item.outcome !== 'canceled') {
-		return false;
-	}
 	if (item.logs.some((log) => logText(log).includes(WAIT_UNTIL_CUT_OFF))) {
 		return false;
 	}
 	const trigger = describeTrigger(item.event) ?? '';
+	const entrypoint = item.entrypoint ?? DEFAULT_ENTRYPOINT;
 	return EXPECTED_CANCELLATIONS.some(
-		(expected) => expected.worker === item.scriptName && expected.entrypoint === item.entrypoint && expected.trigger.test(trigger),
+		(expected) =>
+			expected.outcomes.includes(item.outcome) &&
+			expected.worker === item.scriptName &&
+			expected.entrypoint === entrypoint &&
+			expected.trigger.test(trigger),
 	);
 }
 

@@ -21,6 +21,7 @@ function fetchEvent(method: string, url: string): TraceItemFetchEventInfo {
 	return { request, response: { status: 500 } };
 }
 
+// A run of the Worker's main handler: the runtime leaves its entrypoint empty (#151)
 function traceItem(overrides: Partial<TraceItem> = {}): TraceItem {
 	return {
 		event: fetchEvent('GET', RING_URL),
@@ -29,7 +30,6 @@ function traceItem(overrides: Partial<TraceItem> = {}): TraceItem {
 		exceptions: [],
 		diagnosticsChannelEvents: [],
 		scriptName: 'roadtrip',
-		entrypoint: 'default',
 		scriptVersion: { id: 'v-123' },
 		outcome: 'ok',
 		executionModel: 'stateless',
@@ -104,7 +104,6 @@ describe('traceToExceptions', () => {
 			timestamp: new Date(T0 + 2).toISOString(),
 			properties: {
 				worker: 'roadtrip',
-				entrypoint: 'default',
 				execution_model: 'stateless',
 				outcome: 'exception',
 				release: 'v-123',
@@ -113,6 +112,8 @@ describe('traceToExceptions', () => {
 				$process_person_profile: false,
 			},
 		});
+		// The main handler's empty entrypoint stays empty: the event says what the runtime gave
+		expect(event.properties.entrypoint).toBeUndefined();
 		// Without a distinct_id the event is personless: a one-off distinct_id
 		expect(event.distinct_id).toBe(event.uuid);
 
@@ -285,12 +286,24 @@ describe('traceToExceptions', () => {
 	const ringRequest = { event: fetchEvent('GET', RING_URL) } satisfies Partial<TraceItem>;
 	const tileRequest = { event: fetchEvent('GET', 'https://roadtrip.kamyshev.me/tiles/6/35/22') } satisfies Partial<TraceItem>;
 
+	test.each<[string, string, Partial<TraceItem>]>([
+		[
+			'the EngineContainer alarm (@cloudflare/containers stops the container after sleepAfter or for a new image)',
+			'canceled',
+			containerAlarm,
+		],
+		['a ring request the person left before the answer', 'canceled', ringRequest],
+		['a tile request MapLibre dropped as the map moved', 'canceled', tileRequest],
+		['a tile request MapLibre dropped while its body came from R2', 'responseStreamDisconnected', tileRequest],
+	])('%s that ends %s is not an error', (_kind, outcome, run) => {
+		expect(traceToExceptions(traceItem({ ...run, outcome }))).toEqual([]);
+	});
+
 	test.each<[string, Partial<TraceItem>]>([
-		['the EngineContainer alarm (@cloudflare/containers stops the container after sleepAfter or for a new image)', containerAlarm],
-		['a ring request the person left before the answer', ringRequest],
-		['a tile request MapLibre dropped as the map moved', tileRequest],
-	])('%s that ends canceled is not an error', (_kind, run) => {
-		expect(traceToExceptions(traceItem({ ...run, outcome: 'canceled' }))).toEqual([]);
+		['a ring request', ringRequest],
+		['a tile request', tileRequest],
+	])("%s of the main handler named 'default', should the runtime start naming it, that ends canceled is not an error", (_kind, run) => {
+		expect(traceToExceptions(traceItem({ ...run, entrypoint: 'default', outcome: 'canceled' }))).toEqual([]);
 	});
 
 	test('an error logged in a canceled ring request is sent without a synthetic exception', () => {
@@ -311,12 +324,27 @@ describe('traceToExceptions', () => {
 	test.each<[string, Partial<TraceItem>]>([
 		['another request to the Worker', otherRequest],
 		['an RPC into the EngineContainer', { ...containerAlarm, event: { rpcMethod: 'calculate' } }],
+		// The Worker's call into the Container, cut off with the ring request the person left: kept as an error
+		// (#151). Catches POST /ring added to the expected cancellations, or every EngineContainer run matched
+		['the calculation in the EngineContainer', { ...containerAlarm, event: fetchEvent('POST', 'http://engine/ring') }],
 		['an alarm of another Durable Object', { ...containerAlarm, entrypoint: 'OtherObject' }],
 		['a ring request of another worker', { ...ringRequest, scriptName: 'other-worker' }],
 	])('%s that ends canceled is still a synthetic exception', (_kind, run) => {
 		const event = onlyEvent(traceToExceptions(traceItem({ ...run, outcome: 'canceled' })));
 
 		expect(firstException(event)).toMatchObject({ type: 'canceled', mechanism: { handled: false, synthetic: true } });
+		// The entrypoint the runtime named, or none for the main handler
+		expect(event.properties.entrypoint).toBe(run.entrypoint);
+	});
+
+	// Catches responseStreamDisconnected expected on every entry instead of tiles only
+	test.each<[string, Partial<TraceItem>]>([
+		['a ring request', ringRequest],
+		['another request to the Worker', otherRequest],
+	])('%s whose response stream the browser dropped is still a synthetic exception', (_kind, run) => {
+		const event = onlyEvent(traceToExceptions(traceItem({ ...run, outcome: 'responseStreamDisconnected' })));
+
+		expect(firstException(event)).toMatchObject({ type: 'responseStreamDisconnected', mechanism: { handled: false, synthetic: true } });
 	});
 
 	test.each<[string, Partial<TraceItem>]>([
@@ -329,7 +357,11 @@ describe('traceToExceptions', () => {
 		expect(firstException(event)).toMatchObject({ type: 'exceededCpu', mechanism: { synthetic: true } });
 	});
 
-	test('a canceled ring request whose waitUntil work the runtime cut off is still a synthetic exception', () => {
+	// The tile's row catches the waitUntil line checked only for some entries, or after the match on an entry
+	test.each<[string, Partial<TraceItem>]>([
+		['ring request', ringRequest],
+		['tile request', tileRequest],
+	])('a canceled %s whose waitUntil work the runtime cut off is still a synthetic exception', (_kind, run) => {
 		// The background Sherpa refresh and the PostHog sends run in waitUntil, which gets 30 s after
 		// the person leaves; past that the runtime cancels it and logs this line (Workers docs, «Context»)
 		const cutOff: TraceLog = {
@@ -338,7 +370,7 @@ describe('traceToExceptions', () => {
 			message: ['waitUntil() tasks did not complete within the allowed time after invocation end and have been cancelled.'],
 		};
 
-		const event = onlyEvent(traceToExceptions(traceItem({ ...ringRequest, outcome: 'canceled', logs: [cutOff] })));
+		const event = onlyEvent(traceToExceptions(traceItem({ ...run, outcome: 'canceled', logs: [cutOff] })));
 
 		expect(firstException(event)).toMatchObject({ type: 'canceled', mechanism: { handled: false, synthetic: true } });
 	});
