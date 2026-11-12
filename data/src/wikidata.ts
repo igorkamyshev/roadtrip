@@ -1,6 +1,6 @@
 // Wikidata's Query Service (CC0), asked by ids, 400 a query: the Russian labels of cities by their GeoNames id, P1566
 // (#6, «Обогащение из Wikidata»), for the cities GeoNames has no Russian name of; and the labels, point and class of
-// places by their Q-id (ADR 0003). The Query Service lets a client one minute of processing a minute and answers 429
+// places by their Q-id (ADR 0003), with what makes a place's item doubtful (#169). The Query Service lets a client one minute of processing a minute and answers 429
 // past it (https://www.mediawiki.org/wiki/Wikidata_Query_Service/User_Manual), so the queries go one after another and
 // wait as long as it says.
 import { field, isRecord, items } from 'engine/json';
@@ -20,6 +20,12 @@ const USER_AGENT = 'roadtrip-data/0 (https://github.com/igorkamyshev/roadtrip; m
 
 /** Wikidata's item of a monastery: a place of worship is a monastery only when it is one (ADR 0003). */
 const MONASTERY = 'Q44613';
+
+/** A disambiguation page: an item of several things, no place. */
+const DISAMBIGUATION = 'Q4167410';
+
+/** A human settlement and an administrative territorial entity: an item of a class under them may be a village, not the place. */
+const SETTLEMENTS = ['Q486972', 'Q56061'] as const;
 
 export interface WikidataDeps {
 	readonly fetch: typeof fetch;
@@ -63,35 +69,95 @@ export interface WikidataPlace {
 	readonly point: { readonly lat: number; readonly lon: number } | undefined;
 	/** Whether it is an instance (P31) of Q44613, a monastery. */
 	readonly monastery: boolean;
+	/** Its classes (P31), each by its English label, else its Q-id: what a person reads to judge a doubt. */
+	readonly instanceOf: readonly string[];
+	/**
+	 * Why the item may be of something other than the object of OSM that names it (data/AGENTS.md, «Places file»), so
+	 * the table of exclusions of places is to decide on it; none for most. Wikidata only finds these: its classes are
+	 * noisy (ADR 0003), so Petra and Yosemite are settlements too.
+	 */
+	readonly doubts: readonly PlaceDoubt[];
 }
+
+/**
+ * A doubt of a place's item: `class`, it has P279 (lime kiln); `disambiguation`, an instance of Q4167410 (Wayne);
+ * `settlement`, a class of it (P31, then P279 to any depth) is one of `SETTLEMENTS` (Calstock).
+ */
+export type PlaceDoubt = 'class' | 'disambiguation' | 'settlement';
+
+/** The doubts in the order the report counts them. */
+export const PLACE_DOUBTS: readonly PlaceDoubt[] = ['class', 'disambiguation', 'settlement'];
 
 /** The items of the places by Q-id (a number: 1029310 for Q1029310); an item Wikidata lacks is not in the map. */
 export async function wikidataPlaces(qids: readonly number[], deps: WikidataDeps): Promise<Map<number, WikidataPlace>> {
 	const places = new Map<number, WikidataPlace>();
 	for (let start = 0; start < qids.length; start += BATCH) {
 		for (const binding of await query(placesOf(qids.slice(start, start + BATCH)), deps)) {
-			const qid = Number(/\/Q(\d+)$/u.exec(binding.item ?? '')?.[1]);
-			if (!Number.isInteger(qid)) {
+			const qid = entityQid(binding.item);
+			if (qid === undefined) {
 				throw new TypeError(`Wikidata answered a row without ?item: ${JSON.stringify(binding)}`);
 			}
-			// Another row of the item: its next point.
-			if (!places.has(qid)) {
-				places.set(qid, { ru: binding.ru, en: binding.en, point: wktPoint(binding.point), monastery: binding.monastery === 'true' });
-			}
+			// Another row of the item, of its next point or class: the first point stays, the class is added.
+			const place = places.get(qid) ?? placeOf(binding);
+			const instanceOf = classOf(binding);
+			places.set(
+				qid,
+				instanceOf === undefined || place.instanceOf.includes(instanceOf)
+					? place
+					: { ...place, instanceOf: [...place.instanceOf, instanceOf] },
+			);
 		}
 		deps.log?.(`Wikidata: ${Math.min(start + BATCH, qids.length)} of ${qids.length} places asked`);
 	}
 	return places;
 }
 
+/** The number of an item's URI, `http://www.wikidata.org/entity/Q44613`; undefined for none. */
+function entityQid(uri: string | undefined): number | undefined {
+	const qid = Number(/\/Q(\d+)$/u.exec(uri ?? '')?.[1]);
+	return Number.isInteger(qid) ? qid : undefined;
+}
+
+/** A place of an item's first row, its classes but the row's own. */
+function placeOf(binding: Binding): WikidataPlace {
+	const doubtOf: Record<PlaceDoubt, string | undefined> = {
+		class: binding.subclass,
+		disambiguation: binding.disambiguation,
+		settlement: binding.settlement,
+	};
+	return {
+		ru: binding.ru,
+		en: binding.en,
+		point: wktPoint(binding.point),
+		monastery: binding.monastery === 'true',
+		instanceOf: [],
+		doubts: PLACE_DOUBTS.filter((doubt) => doubtOf[doubt] === 'true'),
+	};
+}
+
+/** The class (P31) of a row: its English label, else its Q-id; undefined for a row without one. */
+function classOf({ class: uri, classLabel }: Binding): string | undefined {
+	const qid = entityQid(uri);
+	return classLabel ?? (qid === undefined ? undefined : `Q${qid}`);
+}
+
+/**
+ * A row per item, point and class (P31). The doubts are bound before the OPTIONALs, once per item: the path to a
+ * settlement walks the classes' tree up from the item.
+ */
 function placesOf(qids: readonly number[]): string {
+	const [settlement, territory] = SETTLEMENTS;
 	return [
-		'SELECT ?item ?ru ?en ?point ?monastery WHERE {',
+		'SELECT ?item ?ru ?en ?point ?monastery ?subclass ?disambiguation ?settlement ?class ?classLabel WHERE {',
 		`VALUES ?item { ${qids.map((qid) => `wd:Q${qid}`).join(' ')} }`,
+		`BIND(EXISTS { ?item wdt:P31 wd:${MONASTERY} } AS ?monastery)`,
+		'BIND(EXISTS { ?item wdt:P279 [] } AS ?subclass)',
+		`BIND(EXISTS { ?item wdt:P31 wd:${DISAMBIGUATION} } AS ?disambiguation)`,
+		`BIND(EXISTS { ?item wdt:P31/wdt:P279* wd:${settlement} } || EXISTS { ?item wdt:P31/wdt:P279* wd:${territory} } AS ?settlement)`,
 		'OPTIONAL { ?item rdfs:label ?ru FILTER(LANG(?ru) = "ru") }',
 		'OPTIONAL { ?item rdfs:label ?en FILTER(LANG(?en) = "en") }',
 		'OPTIONAL { ?item wdt:P625 ?point }',
-		`BIND(EXISTS { ?item wdt:P31 wd:${MONASTERY} } AS ?monastery)`,
+		'OPTIONAL { ?item wdt:P31 ?class OPTIONAL { ?class rdfs:label ?classLabel FILTER(LANG(?classLabel) = "en") } }',
 		'}',
 	].join(' ');
 }

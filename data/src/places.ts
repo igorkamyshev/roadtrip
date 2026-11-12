@@ -23,7 +23,9 @@ import {
 	QID,
 } from './places-file.ts';
 import { readSitelinks } from './sitelinks.ts';
+import { type PlaceDecision, type Undecided, undecidedPlaces } from './place-exclusions.ts';
 import type { WikidataPlace } from './wikidata.ts';
+// oxlint-disable-next-line import/max-dependencies -- the builder joins OSM, the sitelinks, the outlines, the cities, the roads, Wikidata and the table of exclusions, each from its own module
 import { roundDegrees } from './degrees.ts';
 
 /** A place has this many sitelinks or more. */
@@ -51,6 +53,8 @@ export interface PlacesSources {
 	readonly cities: readonly Placed[];
 	/** The table of Russian names of places (`readPlaceRussianNames`), which the deploy puts in: the file leaves it out, the report counts the places it lacks. */
 	readonly russianNames: ReadonlyMap<number, string>;
+	/** The table of exclusions of places (`readPlaceExclusions`): the places it puts out are left out; the report counts the places in doubt it has no word on. */
+	readonly exclusions: ReadonlyMap<number, PlaceDecision>;
 }
 
 export interface PlacesReport {
@@ -70,11 +74,15 @@ export interface PlacesReport {
 	readonly notMonasteries: number;
 	/** The places in the file: one per item. */
 	readonly places: number;
+	/** Left out, the places the table of exclusions puts out. */
+	readonly excluded: number;
 	/** The places without a Russian name that the table of Russian names lacks: how many, and the most famous of them with their local names. */
 	readonly withoutRussian: {
 		readonly count: number;
 		readonly mostFamous: readonly { readonly qid: number; readonly name: string }[];
 	};
+	/** The places in doubt that the table of exclusions has no word on, which stay in the file. */
+	readonly undecided: Undecided;
 	/**
 	 * The cells of the outlines: how many, how many places are in them as their outline and how many as a radius, and
 	 * their files' bytes in all.
@@ -132,7 +140,8 @@ export async function buildPlaces(
 	const accessOf = placeAccess(sources.graph, outOfCities);
 	const reached = outOfCities.map((place) => ({ ...place, access: accessOf(place) })).filter(({ access }) => access.length > 0);
 	const items = await sources.wikidata([...new Set(reached.map(({ candidate }) => candidate.qid))]);
-	const { typed, notMonasteries } = onePerItem(reached, items);
+	const { typed: ofItems, notMonasteries } = onePerItem(reached, items);
+	const typed = ofItems.filter(({ candidate }) => sources.exclusions.get(candidate.qid) !== 'out');
 	const places = typed
 		.map((place) => placeOf(place, items.get(place.candidate.qid), sitelinks.get(place.candidate.qid)))
 		.toSorted(mostFamousFirst);
@@ -151,10 +160,12 @@ export async function buildPlaces(
 			withoutAccess: outOfCities.length - reached.length,
 			notMonasteries,
 			places: places.length,
+			excluded: ofItems.length - typed.length,
 			withoutRussian: {
 				count: withoutRussian.length,
 				mostFamous: withoutRussian.slice(0, MOST_FAMOUS_WITHOUT_RUSSIAN).map(({ qid, local }) => ({ qid, name: local })),
 			},
+			undecided: undecidedPlaces(places, items, sources.exclusions),
 			cells: {
 				count: cells.size,
 				outlines: outlines.length,

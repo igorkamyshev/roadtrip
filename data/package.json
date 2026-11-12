@@ -14,6 +14,7 @@
 		"build-graph": "node src/cli/build-graph.ts",
 		"build-places": "node src/cli/build-places.ts",
 		"engine-fingerprint": "node src/cli/engine-fingerprint.ts",
+		"exclude-places": "node src/cli/exclude-places.ts",
 		"fetch-dataset": "node src/cli/fetch-dataset.ts",
 		"publish-dataset": "node src/cli/publish-dataset.ts",
 		"region": "node src/cli/region.ts",

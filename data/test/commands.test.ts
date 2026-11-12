@@ -32,6 +32,12 @@ const russianNames = (...args: string[]) =>
 		encoding: 'utf8',
 	});
 
+/** The exclude-places command as a process, which may fail. */
+const excludePlaces = (...args: string[]) =>
+	spawnSync(process.execPath, [fileURLToPath(new URL('../src/cli/exclude-places.ts', import.meta.url)), ...args], {
+		encoding: 'utf8',
+	});
+
 /** The build-places command as a process, which may fail. */
 const buildPlaces = (...args: string[]) =>
 	spawnSync(process.execPath, [fileURLToPath(new URL('../src/cli/build-places.ts', import.meta.url)), ...args], { encoding: 'utf8' });
@@ -293,8 +299,10 @@ describe('the build-places command', () => {
 		expect(run.stderr).toContain('6 places of 12 objects');
 		expect(run.stderr).toContain(
 			'left out: 1 of fewer than 10 sitelinks, 0 without a whole outline, 0 over 2000 km², 1 within a city, 1 with no road within 10 km, ' +
-				'2 places of worship that are no monastery',
+				'2 places of worship that are no monastery, 0 out by the table of exclusions of places',
 		);
+		// Without Wikidata, no doubt of an item.
+		expect(run.stderr).toContain('in doubt and not in the table of exclusions of places: 0 (class 0, disambiguation 0, settlement 0)');
 		expect(run.stderr).toContain(
 			'without a Russian name and not in the table of Russian names of places: 2; the most famous: Q1008, Q1012 Jezero Le',
 		);
@@ -308,11 +316,13 @@ describe('the build-places command', () => {
 				'В файле мест 6 мест, 0,00 МБ в brotli при бюджете 0,6 МБ.',
 				'',
 				'Не вошли: меньше 10 сайтлинков — 1, без целого контура — 0, больше 2000 км² — 0, в пределах города — 1, без дороги ближе 10 км — 1, ' +
-					'храмы, которые Wikidata не называет монастырём, — 2.',
+					'храмы, которые Wikidata не называет монастырём, — 2, убраны таблицей исключений — 0.',
 				'',
 				'Клеток контуров: 2, в них 0 мест контуром и 6 мест радиусом, 0,00 МБ.',
 				'',
 				'Мест без русского названия, которых нет в таблице `data/place-russian-names.tsv`: 2. Самые известные: Q1008, Jezero Le (Q1012).',
+				'',
+				'Кандидатов в исключения без решения в таблице `data/place-exclusions.tsv`: 0 (класс — 0, страница неоднозначности — 0, селение — 0).',
 				'',
 			].join('\n'),
 		);
@@ -556,5 +566,99 @@ describe('the russian-names command', () => {
 		]);
 		expect(run.stderr).toContain('2 cities named');
 		expect(run.stderr).toContain('1 places named');
+	});
+});
+
+describe('the exclude-places command', () => {
+	const directory = mkdtempSync(join(tmpdir(), 'roadtrip-commands-'));
+	afterAll(() => {
+		rmSync(directory, { recursive: true });
+	});
+
+	/**
+	 * A places file as R2 holds it: Lake Garda, the ruins of Calstock whose item is the village (Q744317, between the
+	 * two by Q-id) and Lovćen. Indented, so that a command that rewrites it at all changes its bytes.
+	 */
+	const fetchedPlaces = (name: string) => {
+		const path = join(directory, name);
+		const access = [{ lat: 45.6, lon: 10.6, zone: 'ITA' }];
+		writeFileSync(
+			path,
+			JSON.stringify(
+				encodePlaces([
+					{ qid: 6386, ru: 'Гарда', local: 'Lake Garda', lat: 45.65, lon: 10.667, sitelinks: 90, type: 'lake', access },
+					{ qid: 744_317, ru: 'Калсток', local: 'Calstock', lat: 50.497, lon: -4.21, sitelinks: 25, type: 'ruins', access },
+					{ qid: 1_430_120, ru: '', local: 'Lovćen', lat: 42.4, lon: 18.817, sitelinks: 40, type: 'national-park', access },
+				]),
+				undefined,
+				'\t',
+			),
+		);
+		return path;
+	};
+	const table = (name: string, lines: readonly string[]) => {
+		const path = join(directory, name);
+		writeFileSync(path, `${lines.join('\n')}\n`);
+		return path;
+	};
+
+	it('takes the places the table puts out from the places file, keeps the others by their Q-ids, and counts the out Q-ids the file lacks', () => {
+		const places = fetchedPlaces('places.json');
+		const exclusions = table('exclusions.tsv', [
+			'qid\tname\tdecision',
+			'Q6386\tLake Garda\tkeep',
+			'Q59772\tlime kiln\tout',
+			'Q744317\tCalstock\tout',
+		]);
+
+		const run = excludePlaces(places, '--table', exclusions);
+
+		expect(run.status).toBe(0);
+		// The wrong way this catches: a command that drops Calstock's row and leaves Lovćen's difference from it.
+		expect(writtenPlaces(places)).toEqual([
+			[6386, 'Гарда', 'Lake Garda'],
+			[1_430_120, '', 'Lovćen'],
+		]);
+		expect(run.stderr).toContain('1 places taken out; out Q-ids of the table not in the file: 1');
+	});
+
+	// The wrong way these catch: a command that writes the places file before it has checked the whole table.
+	it.each([
+		['a decision of neither out nor keep', ['qid\tname\tdecision', 'Q6386\tLake Garda\tkeep', 'Q744317\tCalstock\tmaybe'], 3],
+		['a key without Q', ['qid\tname\tdecision', '744317\tCalstock\tout'], 2],
+		['a repeated Q-id', ['qid\tname\tdecision', 'Q744317\tCalstock\tout', 'Q744317\tCalstock\tkeep'], 3],
+		["the Russian names' header", ['qid\tname\tru', 'Q744317\tCalstock\tout'], 1],
+	])('fails on a table with %s, naming its line, and leaves the places file as it was', (_, lines, line) => {
+		const places = fetchedPlaces('untouched.json');
+		const before = readFileSync(places);
+
+		const run = excludePlaces(places, '--table', table('bad.tsv', lines));
+
+		expect(run.status).not.toBe(0);
+		expect(run.stderr).toContain(`line ${line}`);
+		expect(readFileSync(places)).toEqual(before);
+	});
+
+	it('reads the shipped table without --table: Calstock is out of it', () => {
+		const places = fetchedPlaces('shipped.json');
+
+		const run = excludePlaces(places);
+
+		expect(run.status).toBe(0);
+		expect(writtenPlaces(places).map(([qid]) => qid)).toEqual([6386, 1_430_120]);
+	});
+
+	it("takes the places out of a directory's places file, and does nothing in one without, as fetch-dataset leaves one of a dataset without places", () => {
+		const withPlaces = mkdtempSync(join(directory, 'with-places-'));
+		writeFileSync(join(withPlaces, 'places.json'), readFileSync(fetchedPlaces('directory-places.json')));
+		const withoutPlaces = mkdtempSync(join(directory, 'without-places-'));
+		const exclusions = table('directory.tsv', ['qid\tname\tdecision', 'Q744317\tCalstock\tout']);
+
+		const run = excludePlaces(withPlaces, withoutPlaces, '--table', exclusions);
+
+		expect(run.status).toBe(0);
+		expect(writtenPlaces(join(withPlaces, 'places.json')).map(([qid]) => qid)).toEqual([6386, 1_430_120]);
+		expect(readdirSync(withoutPlaces)).toEqual([]);
+		expect(run.stderr).toContain('no places file');
 	});
 });

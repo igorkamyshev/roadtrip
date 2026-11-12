@@ -4,8 +4,10 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import type { PlaceDecision } from '../src/place-exclusions.ts';
 import type { Place } from '../src/places-file.ts';
 import { openOsm } from '../src/osm/open.ts';
+import { placesMarkdown } from '../src/build-report.ts';
 import { buildPlaces, placeFilterTags, type PlacesSources } from '../src/places.ts';
 import type { WikidataPlace } from '../src/wikidata.ts';
 import { fixtureGraph, fixturePath } from './fixture-graph.ts';
@@ -21,13 +23,14 @@ const CITIES = [
 
 /** What the double of Wikidata knows of each item. */
 const ITEMS: Readonly<Partial<Record<number, Partial<WikidataPlace>>>> = {
-	1001: { ru: 'Пограничный водопад', en: 'Border Falls' },
-	1005: { ru: 'Замок Каштел', en: 'Castle Hill' },
+	1001: { ru: 'Пограничный водопад', en: 'Border Falls', instanceOf: ['waterfall', 'municipality'], doubts: ['settlement'] },
+	// A castle whose item is the village it is in.
+	1005: { ru: 'Замок Каштел', en: 'Castle Hill', instanceOf: ['village', 'civil parish'], doubts: ['settlement'] },
 	1006: { ru: 'монастырь Святого Саввы', monastery: true },
 	1008: { en: 'Old Church' },
 	1010: { en: 'Bee Reserve' },
-	1012: { ru: 'Озеро Ле' },
-	1004: { en: 'High Peak' },
+	1012: { ru: 'Озеро Ле', instanceOf: ['lake'], doubts: ['class'] },
+	1004: { en: 'High Peak', instanceOf: ['Wikimedia disambiguation page', 'village'], doubts: ['disambiguation', 'settlement'] },
 };
 
 /** The double of Wikidata, recording the Q-ids it is asked for. */
@@ -37,19 +40,25 @@ function wikidata(asked: number[][] = []): PlacesSources['wikidata'] {
 		return Promise.resolve(
 			new Map(
 				qids.map((qid) => {
-					const { ru, en, monastery = false } = ITEMS[qid] ?? {};
-					return [qid, { ru, en, point: undefined, monastery }];
+					const { ru, en, monastery = false, instanceOf = [], doubts = [] } = ITEMS[qid] ?? {};
+					return [qid, { ru, en, point: undefined, monastery, instanceOf, doubts }];
 				}),
 			),
 		);
 	};
 }
 
-function build(
-	sitelinks: Readonly<Record<number, ItemSitelinks>> = PLACES_SITELINKS,
-	asked: number[][] = [],
-	russianNames: ReadonlyMap<number, string> = new Map(),
-) {
+function build({
+	sitelinks = PLACES_SITELINKS,
+	asked = [],
+	russianNames = new Map(),
+	exclusions = new Map(),
+}: {
+	readonly sitelinks?: Readonly<Record<number, ItemSitelinks>>;
+	readonly asked?: number[][];
+	readonly russianNames?: ReadonlyMap<number, string>;
+	readonly exclusions?: ReadonlyMap<number, PlaceDecision>;
+} = {}) {
 	return buildPlaces({
 		osm: openOsm(fixturePath('places.osm')),
 		sitelinks: ReadableStream.from(sitelinksDump(sitelinks)),
@@ -57,6 +66,7 @@ function build(
 		graph,
 		cities: CITIES,
 		russianNames,
+		exclusions,
 	});
 }
 
@@ -69,6 +79,7 @@ async function sitelinksOf(dump: readonly string[]) {
 		graph,
 		cities: CITIES,
 		russianNames: new Map(),
+		exclusions: new Map(),
 	});
 	return places.map(({ qid, sitelinks, ru }) => [qid, sitelinks, ru]);
 }
@@ -140,7 +151,7 @@ describe('the places', () => {
 	it('ask Wikidata only of the items left after the sitelinks, the cities and the roads', async () => {
 		const asked: number[][] = [];
 
-		await build(PLACES_SITELINKS, asked);
+		await build({ asked });
 
 		expect(asked.flat().toSorted((one, two) => one - two)).toEqual([1001, 1004, 1005, 1006, 1007, 1008, 1010, 1012]);
 	});
@@ -152,7 +163,7 @@ describe('the places', () => {
 	});
 
 	it('leave out an item of fewer than 10 sitelinks', async () => {
-		const { places } = await build({ ...PLACES_SITELINKS, 1004: { count: 9 } });
+		const { places } = await build({ sitelinks: { ...PLACES_SITELINKS, 1004: { count: 9 } } });
 
 		expect(places.map(({ qid }) => qid)).not.toContain(1004);
 	});
@@ -173,10 +184,15 @@ describe('the places with an outline', () => {
 			osm: openOsm(fixturePath('place-outlines.osm')),
 			sitelinks: ReadableStream.from(sitelinksDump(OUTLINE_SITELINKS)),
 			wikidata: (qids) =>
-				Promise.resolve(new Map(qids.map((qid) => [qid, { ru: undefined, en: undefined, point: POINTS[qid], monastery: false }]))),
+				Promise.resolve(
+					new Map(
+						qids.map((qid) => [qid, { ru: undefined, en: undefined, point: POINTS[qid], monastery: false, instanceOf: [], doubts: [] }]),
+					),
+				),
 			graph: outlinesGraph,
 			cities: [{ lat: 0.8, lon: 0.3, population: 1_000_000 }],
 			russianNames: new Map(),
+			exclusions: new Map(),
 		});
 
 	it('are the closed ways and relations of a place’s tags, up to 2 000 km², not wholly within a city’s limits', async () => {
@@ -270,6 +286,65 @@ describe('the places with an outline', () => {
 	});
 });
 
+describe('the table of exclusions of places', () => {
+	/** Castle Hill's item is a village; Old Church is no doubt of Wikidata's, but out by hand; the lake is checked. */
+	const TABLE = new Map<number, PlaceDecision>([
+		[1005, 'out'],
+		[1008, 'out'],
+		[1012, 'keep'],
+	]);
+
+	it('leaves out of the file and the cells a place it puts out; a place it keeps and one it has no word on stay', async () => {
+		const { places, cells } = await build({ exclusions: TABLE });
+
+		expect([
+			places.map(({ qid }) => qid),
+			[...cells.values()].flatMap(({ radii }) => radii.map(({ qid }) => qid)).toSorted((one, two) => one - two),
+		]).toEqual([
+			[1001, 1010, 1006, 1012, 1004],
+			[1001, 1004, 1006, 1010, 1012],
+		]);
+	});
+
+	it('is counted in the report: the places it put out, and those Wikidata doubts it has no word on, by doubt, the most famous named', async () => {
+		const { report } = await build({ exclusions: TABLE });
+
+		expect([report.places, report.excluded, report.undecided]).toEqual([
+			5,
+			2,
+			{
+				count: 2,
+				byDoubt: { class: 0, disambiguation: 1, settlement: 2 },
+				mostFamous: [
+					{ qid: 1001, name: 'Border Falls', type: 'waterfall', instanceOf: ['waterfall', 'municipality'], doubts: ['settlement'] },
+					{
+						qid: 1004,
+						name: 'High Peak',
+						type: 'mountain',
+						instanceOf: ['Wikimedia disambiguation page', 'village'],
+						doubts: ['disambiguation', 'settlement'],
+					},
+				],
+			},
+		]);
+	});
+});
+
+describe('the build report of the table of exclusions', () => {
+	it('counts the places it put out with the others left out, and names the most famous places in doubt it has no word on', async () => {
+		const { report } = await build({ exclusions: new Map([[1005, 'out']]) });
+
+		const markdown = placesMarkdown(report, 0, 600_000);
+
+		expect(markdown).toContain('храмы, которые Wikidata не называет монастырём, — 1, убраны таблицей исключений — 1.');
+		expect(markdown).toContain(
+			'Кандидатов в исключения без решения в таблице `data/place-exclusions.tsv`: 3 (класс — 1, страница неоднозначности — 1, селение — 2). ' +
+				'Самые известные: Border Falls (Q1001, waterfall, P31: waterfall, municipality), Jezero Le (Q1012, lake, P31: lake), ' +
+				'High Peak (Q1004, mountain, P31: Wikimedia disambiguation page, village).',
+		);
+	});
+});
+
 describe('the world build', () => {
 	it('keeps for the places the objects with the keys and values of every type’s tags, no more', () => {
 		// The job `extract`'s `osmium tags-filter` of places: `nwr/<key>=<value>,<value>…` after its name.
@@ -296,7 +371,25 @@ describe('the report of the places', () => {
 			withoutAccess: 1,
 			notMonasteries: 1,
 			places: 7,
+			excluded: 0,
 			withoutRussian: { count: 1, mostFamous: [{ qid: 1008, name: 'Old Church' }] },
+			// Every place Wikidata doubts, the table having no word on them.
+			undecided: {
+				count: 4,
+				byDoubt: { class: 1, disambiguation: 1, settlement: 3 },
+				mostFamous: [
+					{ qid: 1001, name: 'Border Falls', type: 'waterfall', instanceOf: ['waterfall', 'municipality'], doubts: ['settlement'] },
+					{ qid: 1012, name: 'Jezero Le', type: 'lake', instanceOf: ['lake'], doubts: ['class'] },
+					{ qid: 1005, name: 'Castle Hill', type: 'castle', instanceOf: ['village', 'civil parish'], doubts: ['settlement'] },
+					{
+						qid: 1004,
+						name: 'High Peak',
+						type: 'mountain',
+						instanceOf: ['Wikimedia disambiguation page', 'village'],
+						doubts: ['disambiguation', 'settlement'],
+					},
+				],
+			},
 			// The places are points, each a radius of 1 km: 0.88°E in 0_0, 1.01°E and 1.13°E in 0_1. The files are
 			// {"format":2,"outlines":[],"radii":[…]}, 37 bytes, and 11 a radius and a comma between two: 37 + 4 · 11 + 3
 			// and 37 + 3 · 11 + 2.
@@ -314,7 +407,7 @@ describe('the report of the places', () => {
 	});
 
 	it('leaves out of the places without a Russian name those the table of Russian names has, which the deploy names', async () => {
-		const { places, report } = await build(PLACES_SITELINKS, [], new Map([[1008, 'Старая церковь']]));
+		const { places, report } = await build({ russianNames: new Map([[1008, 'Старая церковь']]) });
 
 		expect(report.withoutRussian).toEqual({ count: 0, mostFamous: [] });
 		// The file keeps Wikidata's and ruwiki's names: the deploy puts the table over them.

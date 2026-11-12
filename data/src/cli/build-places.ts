@@ -1,8 +1,8 @@
 // Builds the places file (spec #154 «Сборка мест», amendment «Набор данных» of spec #20): the objects of OSM with a
 // place's tags and wikidata=, from MIN_SITELINKS sitelinks of Wikidata's dump, out of the cities' limits and with access points on
-// the graph's roads, named by Wikidata's labels (asked of the Query Service) and ruwiki's titles, as JSON (a static
-// asset of the Worker, `/data/places.json`), and the cells of their outlines beside it, in `place-outlines/` in place
-// of those there were (`/data/place-outlines/<lat>_<lon>.json`). It prints what it did to stderr and fails, writing
+// the graph's roads, without those the table of exclusions of places puts out, named by Wikidata's labels (asked of
+// the Query Service) and ruwiki's titles, as JSON (a static asset of the Worker, `/data/places.json`), and the cells
+// of their outlines beside it, in `place-outlines/` in place of those there were (`/data/place-outlines/<lat>_<lon>.json`). It prints what it did to stderr and fails, writing
 // nothing, when the file is over PLACES_BUDGET_BYTES in brotli; with --report it adds the places to the build report
 // (Markdown).
 //
@@ -18,9 +18,10 @@ import { decodeCities, parseCitiesFile } from '../cities-file.ts';
 import { openOsm } from '../osm/open.ts';
 import { encodePlaceOutlines, encodePlaces, PLACE_OUTLINES_PATH, PLACES_PATH } from '../places-file.ts';
 import { buildPlaces, MAX_ACCESS_METERS, MAX_SQUARE_KM, MIN_SITELINKS } from '../places.ts';
+import { readPlaceExclusions } from '../place-exclusions.ts';
 import { readPlaceRussianNames } from '../russian-names.ts';
-import { wikidataPlaces } from '../wikidata.ts';
-// oxlint-disable-next-line import/max-dependencies -- the command wires each of its inputs (OSM, the graph, the cities, the sitelinks, Wikidata, the table of names) to the builder and writes two outputs, each from its own module
+// oxlint-disable-next-line import/max-dependencies -- the command wires each of its inputs (OSM, the graph, the cities, the sitelinks, Wikidata, the tables of names and of exclusions) to the builder and writes two outputs, each from its own module
+import { PLACE_DOUBTS, wikidataPlaces } from '../wikidata.ts';
 import { brotliBytes, fileLines, log, seconds, sizes, userPath, withLocalFile } from './input.ts';
 import { loadGraph } from './load-graph.ts';
 
@@ -77,6 +78,7 @@ const { places, cells, report } = await buildPlaces({
 	graph,
 	cities,
 	russianNames: readPlaceRussianNames(),
+	exclusions: readPlaceExclusions(),
 });
 const json = JSON.stringify(encodePlaces(places));
 const brotli = brotliBytes(json);
@@ -85,13 +87,24 @@ log(`${report.places} places of ${report.objects} objects of ${placesOsm}, in ${
 log(
 	`left out: ${report.belowSitelinks} of fewer than ${MIN_SITELINKS} sitelinks, ${report.withoutOutline} without a whole outline, ` +
 		`${report.tooLarge} over ${MAX_SQUARE_KM} km², ${report.inCities} within a city, ` +
-		`${report.withoutAccess} with no road within ${MAX_ACCESS_METERS / 1000} km, ${report.notMonasteries} places of worship that are no monastery`,
+		`${report.withoutAccess} with no road within ${MAX_ACCESS_METERS / 1000} km, ${report.notMonasteries} places of worship that are no monastery, ` +
+		`${report.excluded} out by the table of exclusions of places`,
 );
 const { withoutRussian } = report;
 log(
 	`without a Russian name and not in the table of Russian names of places: ${withoutRussian.count}${withoutRussian.mostFamous
 		.map(({ qid, name }, index) => `${index === 0 ? '; the most famous: ' : ', '}Q${qid}${name === '' ? '' : ` ${name}`}`)
 		.join('')}`,
+);
+const { undecided } = report;
+log(
+	`in doubt and not in the table of exclusions of places: ${undecided.count} (${PLACE_DOUBTS.map((doubt) => `${doubt} ${undecided.byDoubt[doubt]}`).join(', ')})` +
+		undecided.mostFamous
+			.map(
+				({ qid, name, type, instanceOf }, index) =>
+					`${index === 0 ? '; the most famous: ' : ', '}Q${qid} ${name} (${type}; ${instanceOf.join(', ')})`,
+			)
+			.join(''),
 );
 if (values.report !== undefined) {
 	// After the graph's and the cities' parts.

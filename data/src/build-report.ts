@@ -3,6 +3,7 @@
 import type { BuildReport } from './build-graph.ts';
 import type { CitiesReport } from './cities.ts';
 import { MAX_ACCESS_METERS, MAX_SQUARE_KM, MIN_SITELINKS, type PlacesReport } from './places.ts';
+import { PLACE_DOUBTS, type PlaceDoubt } from './wikidata.ts';
 
 const plural = new Intl.PluralRules('ru');
 
@@ -92,10 +93,34 @@ export function cityPartsMarkdown({ cityParts, biggestCityParts }: CitiesReport)
 /** Bytes as megabytes in Russian, to 0.01: «0,58». */
 const megabytes = (bytes: number) => (bytes / 1e6).toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
+/** The words of the doubts of a place's item in the report. */
+const DOUBT_WORDS: Readonly<Record<PlaceDoubt, string>> = {
+	class: 'класс',
+	disambiguation: 'страница неоднозначности',
+	settlement: 'селение',
+};
+
+/**
+ * The places in doubt that the table of exclusions of places has no word on: the places to decide on in it
+ * (data/AGENTS.md, «Places file»), the most famous with their type and Wikidata's classes.
+ */
+function undecidedMarkdown({ count: undecided, byDoubt, mostFamous }: PlacesReport['undecided']): string {
+	const doubts = PLACE_DOUBTS.map((doubt) => `${DOUBT_WORDS[doubt]} — ${byDoubt[doubt].toLocaleString('ru-RU')}`).join(', ');
+	const line = `Кандидатов в исключения без решения в таблице \`data/place-exclusions.tsv\`: ${undecided.toLocaleString('ru-RU')} (${doubts}).`;
+	const examples = mostFamous
+		.map(
+			({ qid, name, type, instanceOf }) =>
+				`${name === '' ? '' : `${name} `}(Q${qid}, ${type}, P31: ${instanceOf.length === 0 ? 'нет' : instanceOf.join(', ')})`,
+		)
+		.join(', ');
+	return mostFamous.length > 0 ? `${line} Самые известные: ${examples}.` : line;
+}
+
 /**
  * The places file's part of the report (spec #154 «Сборка мест»): how many places, what was left out, the size, the
  * cells of the outlines, the places without a Russian name that the table of Russian names of places lacks, the
- * places to add to it (data/AGENTS.md, «Places file»).
+ * places to add to it, and the places in doubt that the table of exclusions has no word on (data/AGENTS.md, «Places
+ * file»).
  */
 export function placesMarkdown(report: PlacesReport, brotliBytes: number, budgetBytes: number): string {
 	const { withoutRussian } = report;
@@ -109,12 +134,15 @@ export function placesMarkdown(report: PlacesReport, brotliBytes: number, budget
 		'',
 		`Не вошли: меньше ${MIN_SITELINKS} сайтлинков — ${report.belowSitelinks}, без целого контура — ${report.withoutOutline}, ` +
 			`больше ${MAX_SQUARE_KM} км² — ${report.tooLarge}, в пределах города — ${report.inCities}, ` +
-			`без дороги ближе ${MAX_ACCESS_METERS / 1000} км — ${report.withoutAccess}, храмы, которые Wikidata не называет монастырём, — ${report.notMonasteries}.`,
+			`без дороги ближе ${MAX_ACCESS_METERS / 1000} км — ${report.withoutAccess}, храмы, которые Wikidata не называет монастырём, — ${report.notMonasteries}, ` +
+			`убраны таблицей исключений — ${report.excluded}.`,
 		'',
 		`Клеток контуров: ${report.cells.count.toLocaleString('ru-RU')}, в них ${count(report.cells.outlines, ['место', 'места', 'мест'])} контуром ` +
 			`и ${count(report.cells.radii, ['место', 'места', 'мест'])} радиусом, ${megabytes(report.cells.bytes)} МБ.`,
 		'',
 		withoutRussian.mostFamous.length > 0 ? `${line} Самые известные: ${examples}.` : line,
+		'',
+		undecidedMarkdown(report.undecided),
 		'',
 	].join('\n');
 }
