@@ -89,6 +89,26 @@ for (const { title, places, deliblato } of [
 	});
 }
 
+// Inside Deliblato, out of the places file: the cell still holds its outline, and the ring and the first card are as
+// with Deliblato in the file and the origin in it (the first test). The wrong way this catches: a screen that shows or
+// counts the origin's place by the cell's Q-id the file lacks.
+test('a place out of the places file that the origin is inside is nowhere, and the first card counts as without it', async ({
+	page,
+	ringApi,
+}) => {
+	await servePlaces(
+		page,
+		PLACES.filter(({ qid }) => qid !== 129_979),
+	);
+	ringApi.respond((call) => ({ ...bandFromOrigin(3)(call), ...visaRules(OPEN_AROUND_SERBIA) }));
+	await page.goto('/#/?p=44.95000,21.10000&h=3');
+
+	await expect.poll(() => read(firstCard(page))).toBe('В кольце 2–3 ч 32 точки интереса в 6 странах Листайте → самое известное');
+	await expect.poll(async () => [(await citiesOnMap(page)).length, (await placesOnMap(page)).length]).toEqual([24, 8]);
+	await moreCard(page).click();
+	expect((await rowNames(page)).includes('Делиблатские пески')).toBe(false);
+});
+
 // Manasija (44.1009°N) is a small place: its cell holds a radius of 1.3 km around its point (`PLACE_CELLS`). 0.011241°
 // and 0.012141° north of it are 1.25 km and 1.35 km.
 for (const { title, link, cards } of [

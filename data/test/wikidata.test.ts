@@ -171,6 +171,17 @@ function itemRows(
 /** The items the query names by their own Q-ids, not those of the classes it asks of (Q44613, Q4167410, Q486972, Q56061). */
 const ASKED_OF = new Set([44_613, 4_167_410, 486_972, 56_061]);
 
+/**
+ * How the query binds each doubt of an item, as the service would read it: a doubt the query does not bind so is
+ * never true in the answer, so a query that asks P31 for P279 or another class of settlements finds no doubt.
+ */
+const DOUBT_CLAUSES = {
+	subclass: /BIND\(EXISTS \{ \?item wdt:P279 \[\] \} AS \?subclass\)/u,
+	disambiguation: /BIND\(EXISTS \{ \?item wdt:P31 wd:Q4167410 \} AS \?disambiguation\)/u,
+	settlement:
+		/BIND\(EXISTS \{ \?item wdt:P31\/wdt:P279\* wd:Q486972 \} \|\| EXISTS \{ \?item wdt:P31\/wdt:P279\* wd:Q56061 \} AS \?settlement\)/u,
+} as const;
+
 /** The query service for the places: items by Q-id, each asked for answered with its rows. */
 function placesService(known: Record<number, Item>) {
 	const queries: number[][] = [];
@@ -178,7 +189,16 @@ function placesService(known: Record<number, Item>) {
 		const sparql = new URLSearchParams(typeof init?.body === 'string' ? init.body : '').get('query') ?? '';
 		const qids = [...sparql.matchAll(/wd:Q(\d+)/gu)].map((match) => Number(match[1])).filter((qid) => !ASKED_OF.has(qid));
 		queries.push(qids);
-		const bindings = qids.flatMap((qid) => itemRows(qid, known[qid] ?? {}));
+		const asked = (doubt: keyof typeof DOUBT_CLAUSES) => DOUBT_CLAUSES[doubt].test(sparql);
+		const bindings = qids.flatMap((qid) => {
+			const item = known[qid] ?? {};
+			return itemRows(qid, {
+				...item,
+				subclass: asked('subclass') && item.subclass === true,
+				disambiguation: asked('disambiguation') && item.disambiguation === true,
+				settlement: asked('settlement') && item.settlement === true,
+			});
+		});
 		return Promise.resolve(Response.json({ results: { bindings } }));
 	};
 	return { fetch, queries };

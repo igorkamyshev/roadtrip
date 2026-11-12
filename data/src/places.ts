@@ -1,7 +1,8 @@
 // The places file (spec #154 «Сборка мест», amendment «Набор данных» of spec #20, ADR 0003): the objects of OSM with a
 // place's tags and wikidata=, nodes, closed ways and relations, their fame by Wikidata's sitelinks, their names by
 // Wikidata's labels and ruwiki's titles, up to an area, out of the cities' limits and with access points on the
-// graph's roads; and the cells of the outlines, for the origin's places. The format is `places-file.ts`.
+// graph's roads, but those the table of exclusions of places puts out (`place-exclusions.ts`); and the cells of the
+// outlines, for the origin's places. The format is `places-file.ts`.
 import type { Graph } from 'engine/graph';
 import { outlineAccess, pointAccess } from './access-points.ts';
 import { cityAround, distanceKm, limitsKm, type Placed, type Point } from './cities-file.ts';
@@ -140,8 +141,8 @@ export async function buildPlaces(
 	const accessOf = placeAccess(sources.graph, outOfCities);
 	const reached = outOfCities.map((place) => ({ ...place, access: accessOf(place) })).filter(({ access }) => access.length > 0);
 	const items = await sources.wikidata([...new Set(reached.map(({ candidate }) => candidate.qid))]);
-	const { typed: ofItems, notMonasteries } = onePerItem(reached, items);
-	const typed = ofItems.filter(({ candidate }) => sources.exclusions.get(candidate.qid) !== 'out');
+	const { typed: withExcluded, notMonasteries } = onePerItem(reached, items);
+	const typed = withExcluded.filter(({ candidate }) => sources.exclusions.get(candidate.qid) !== 'out');
 	const places = typed
 		.map((place) => placeOf(place, items.get(place.candidate.qid), sitelinks.get(place.candidate.qid)))
 		.toSorted(mostFamousFirst);
@@ -160,7 +161,7 @@ export async function buildPlaces(
 			withoutAccess: outOfCities.length - reached.length,
 			notMonasteries,
 			places: places.length,
-			excluded: ofItems.length - typed.length,
+			excluded: withExcluded.length - typed.length,
 			withoutRussian: {
 				count: withoutRussian.length,
 				mostFamous: withoutRussian.slice(0, MOST_FAMOUS_WITHOUT_RUSSIAN).map(({ qid, local }) => ({ qid, name: local })),
