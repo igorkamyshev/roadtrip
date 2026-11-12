@@ -10,7 +10,7 @@
 // 29 → 43.5, Lepenski Vir first by its smaller Q-id (Q906669, Q2880621); Arad 169 065 → 42.5; Szeged 160 766 → 41.7;
 // Pécs → 40.3; Tuzla → 40.1; Manasija 25 → 37.5; Kecskemét → 36.7; Mostar → 36.0; Subotica → 35.5; Reşiţa → 33.1;
 // Drobeta-Turnu Severin → 32.9; Osijek → 32.3; the lake of Zvornik 21 → 31.5; Lukavac → 26.9.
-import type { Page } from '@playwright/test';
+import type { Locator, Page } from '@playwright/test';
 import type { Access } from 'worker/api';
 import { BELGRADE, carouselRing, expect, LINK_3_HOURS, OPEN_AROUND_SERBIA, servePlaces, squareRing, test, visaRules } from './fixtures.ts';
 import {
@@ -76,6 +76,47 @@ async function routeTo(page: Page, name: string): Promise<string | null> {
 	return href === null ? null : new URL(href).searchParams.get('destination');
 }
 
+/**
+ * How a line's text is written, by its first words: their colour, size and weight, and where on the screen they start.
+ * A place's type is written as a city's «Население: …», under its name and from the same left edge.
+ */
+async function textOf(line: Locator): Promise<{ colour: string; size: string; weight: string; left: number }> {
+	return line.evaluate((element) => {
+		const words = document
+			.createTreeWalker(element, NodeFilter.SHOW_TEXT, (node) =>
+				node.textContent?.trim() === '' ? NodeFilter.FILTER_SKIP : NodeFilter.FILTER_ACCEPT,
+			)
+			.nextNode();
+		if (words?.parentElement === null || words === null) {
+			throw new Error(`no text in ${element.outerHTML}`);
+		}
+		const range = document.createRange();
+		range.selectNodeContents(words);
+		const style = getComputedStyle(words.parentElement);
+		return { colour: style.color, size: style.fontSize, weight: style.fontWeight, left: range.getBoundingClientRect().left };
+	});
+}
+
+/** The line under a point's name, its look and how far right of the name it starts: 0 when they start together. */
+async function lineUnder(name: Locator, line: Locator): Promise<{ colour: string; size: string; weight: string; indent: number }> {
+	const [named, under] = [await textOf(name), await textOf(line)];
+	return { colour: under.colour, size: under.size, weight: under.weight, indent: Math.round(under.left - named.left) };
+}
+
+/** The row of the open list of all whose name this is. */
+const listRow = (page: Page, name: string): Locator =>
+	theList(page)
+		.getByTestId('point-row')
+		.filter({ has: page.getByTestId('row-name').getByText(name, { exact: true }) });
+
+/** The colour a row of the list of all is tinted with at its right edge, or `none` for a row with no tint. */
+async function tintOf(row: Locator): Promise<string> {
+	return row.evaluate((element) => {
+		const tint = getComputedStyle(element, '::before').backgroundImage;
+		return tint.match(/rgba?\([^)]*\)(?=\)$)/u)?.[0] ?? tint;
+	});
+}
+
 /** A card's strip on top: its width and colour. */
 async function stripOf(page: Page, name: string): Promise<{ width: string; colour: string }> {
 	return pointCard(page, name).evaluate((card) => {
@@ -132,7 +173,7 @@ test.describe('the carousel and «Всё в кольце»', () => {
 			'Тузла',
 			'Монастырь Манасия',
 		]);
-		// A place's row: its name and flag, and under them the chip of its type; a city's, its population.
+		// A place's row: its name and flag, and under them its type; a city's, its population.
 		const rows = theList(page).getByTestId('point-row');
 		expect([await read(rows.nth(0)), await read(rows.nth(1))]).toEqual(['Балатон 🇭🇺 Озеро', 'Будапешт 🇭🇺 Население: 1,7 млн']);
 
@@ -377,7 +418,7 @@ test.describe('a place in the ring', () => {
 
 test.describe('the card of a place', () => {
 	for (const colorScheme of ['light', 'dark'] as const) {
-		test(`has the chip of its type, the strip of its group, the flag of its access point's country, and leads to that point (${colorScheme})`, async ({
+		test(`has its type written as a city's population, the strip of its group, the flag of its access point's country, and leads to that point (${colorScheme})`, async ({
 			page,
 			ringApi,
 		}) => {
@@ -409,6 +450,42 @@ test.describe('the card of a place', () => {
 				(await stripOf(page, 'Лепенски-Вир')).colour,
 				(await stripOf(page, 'Будапешт')).width,
 			]).toEqual([nature, nature, history, history, '0px']);
+
+			// Its type in the place of a city's «Население: …», written as it is, from the name's left edge.
+			const facts = async (name: string) =>
+				lineUnder(pointCard(page, name).getByRole('heading'), pointCard(page, name).getByTestId('point-facts'));
+			const population = await facts('Будапешт');
+			expect(population.indent).toBe(0);
+			expect([await facts('Балатон'), await facts('Монастырь Студеница')]).toEqual([population, population]);
+		});
+	}
+
+	for (const colorScheme of ['light', 'dark'] as const) {
+		test(`in a row of «Всё в кольце» has its type written as a city's population, and its group's tint on the right (${colorScheme})`, async ({
+			page,
+			ringApi,
+		}) => {
+			await page.emulateMedia({ colorScheme });
+			ringApi.respond(() => carouselRing());
+			await page.goto(LINK_3_HOURS);
+			await moreCard(page).click();
+
+			const line = async (name: string) =>
+				lineUnder(listRow(page, name).getByTestId('row-name'), listRow(page, name).getByTestId('row-sub'));
+			const population = await line('Будапешт');
+			expect(population.indent).toBe(0);
+			expect([await line('Балатон'), await line('Монастырь Студеница')]).toEqual([population, population]);
+
+			const [natureGround, historyGround] = [
+				(await themeColour(page, '--nature-bg')).computed,
+				(await themeColour(page, '--history-bg')).computed,
+			];
+			expect(natureGround).not.toBe(historyGround);
+			expect([
+				await tintOf(listRow(page, 'Балатон')),
+				await tintOf(listRow(page, 'Монастырь Студеница')),
+				await tintOf(listRow(page, 'Будапешт')),
+			]).toEqual([natureGround, historyGround, 'none']);
 		});
 	}
 

@@ -1,5 +1,5 @@
-// What the screen calls a place's type (spec #154 «Экран», «Карточка места»): its chip on the card and in a row of the
-// list of all, the names of the amendment's types.
+// What the screen calls a place's type (spec #154 «Экран», «Карточка места»): the line under its name on the card and in
+// a row of the list of all, written as a city's population (#167), the names of the amendment's types.
 import type { PlaceType } from 'data/places-file';
 
 export const PLACE_TYPE_NAMES: Readonly<Record<PlaceType, string>> = {

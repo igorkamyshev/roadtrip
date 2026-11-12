@@ -1,5 +1,5 @@
 // `pnpm --filter web shots <out-dir> [<link>…] [--viewport <W>x<H>,…] [--theme light|dark|both] [--wait <ms>]
-// [--card <name>] [--compare <ref> [--title <title>]] [--window]`: PNGs of the screen without the Worker (tools/demo.ts),
+// [--card <name>] [--list] [--compare <ref> [--title <title>]] [--window]`: PNGs of the screen without the Worker (tools/demo.ts),
 // for a PR's «Evidence» or a look at a layout (web/README.md, «Demo»). It builds the client, serves it with the doubles,
 // and in Chromium opens each link (the part from `/#/`; by default Belgrade at 6 h, a ring with cities and places) on
 // each viewport in each theme, at deviceScaleFactor 2, and shoots it once the first card is no longer calculating, the
@@ -8,6 +8,7 @@
 //
 // `--card <name>` first scrolls the carousel until the card of that point of interest (its heading) is the chosen one,
 // as a person would, and also shoots the card alone, to `…-<theme>-card.png`; a ring without that card fails.
+// `--list` then opens «Всё в кольце» by «и ещё» and shoots the screen with it open too, to `…-<theme>-list.png`.
 // `--compare <ref>` also builds the client of git ref `<ref>` (`origin/main`) in a worktree of its own, removed at the
 // end, serves it with this checkout's doubles and shoots it the same way: its files are `before-…`, this checkout's
 // `after-…`, and `index.html` (tools/compare-page.ts) puts them side by side, titled `--title`, for a private artifact.
@@ -44,6 +45,8 @@ interface Run {
 	readonly wait: number;
 	/** The point of interest of `--card`. */
 	readonly card: string | undefined;
+	/** `--list`: shoot the list of all open too. */
+	readonly list: boolean;
 	/** Where each shot's page opens and is shot: headless, or in a window (`--window`). */
 	readonly pages: Pages;
 }
@@ -77,8 +80,14 @@ async function chooseCard(page: Page, name: string, path: string): Promise<Locat
 	return card;
 }
 
-/** Opens the shot's link on `side` on its viewport and theme, waits for the ring (and the card), `wait` ms more, and writes the PNGs. */
-async function shoot({ out, wait, card, pages }: Run, { side, shot }: { readonly side: Side; readonly shot: Shot }): Promise<string[]> {
+/**
+ * Opens the shot's link on `side` on its viewport and theme, waits for the ring (and the card), `wait` ms more, and
+ * writes the PNGs: the screen, the card, and the screen with the list of all open.
+ */
+async function shoot(
+	{ out, wait, card, list, pages }: Run,
+	{ side, shot }: { readonly side: Side; readonly shot: Shot },
+): Promise<string[]> {
 	const page = await pages.open(shot);
 	await page.goto(new URL(shot.path, side.base).href);
 	const firstCard = page.getByTestId('first-card');
@@ -101,6 +110,14 @@ async function shoot({ out, wait, card, pages }: Run, { side, shot }: { readonly
 			path: cardFile,
 			clip: { x: box.x - margin, y: box.y - margin, width: box.width + 2 * margin, height: box.height + 2 * margin },
 		});
+	}
+	if (list) {
+		// «и ещё», the carousel's last card; the list opens with no animation.
+		await page.getByRole('button', { name: /и ещё/u }).click();
+		await page.getByRole('dialog', { name: /^Всё в кольце/u }).waitFor({ timeout: READY_TIMEOUT_MS });
+		const listFile = join(out, `${side.prefix}${shot.name}-list.png`);
+		files.push(listFile);
+		await pages.shoot(page, listFile);
 	}
 	await pages.release(page);
 	return files;
@@ -159,6 +176,7 @@ const { values, positionals } = parseArgs({
 		theme: { type: 'string', default: 'light' },
 		wait: { type: 'string', default: '0' },
 		card: { type: 'string' },
+		list: { type: 'boolean', default: false },
 		compare: { type: 'string' },
 		title: { type: 'string', default: 'Скриншоты до и после' },
 		window: { type: 'boolean', default: false },
@@ -176,7 +194,7 @@ if (
 	!viewports.every((size) => size.length === 2 && size.every((side) => Number.isInteger(side) && side > 0))
 ) {
 	throw new Error(
-		'Usage: pnpm --filter web shots <out-dir> [<link>…] [--viewport <W>x<H>,…] [--theme light|dark|both] [--wait <ms>] [--card <name>] [--compare <ref> [--title <title>]] [--window]',
+		'Usage: pnpm --filter web shots <out-dir> [<link>…] [--viewport <W>x<H>,…] [--theme light|dark|both] [--wait <ms>] [--card <name>] [--list] [--compare <ref> [--title <title>]] [--window]',
 	);
 }
 
@@ -210,7 +228,7 @@ try {
 						{ base: old.base, prefix: 'before-' },
 						{ base: after.base, prefix: 'after-' },
 					];
-		await shootAll({ out, wait, card: values.card, pages }, { sides, shots });
+		await shootAll({ out, wait, card: values.card, list: values.list, pages }, { sides, shots });
 	} finally {
 		await pages.close();
 		await after.close();
@@ -222,6 +240,6 @@ try {
 
 if (values.compare !== undefined) {
 	const page = join(out, 'index.html');
-	writeFileSync(page, comparePage({ title: values.title, ref: values.compare, links: paths, card: values.card, shots }));
+	writeFileSync(page, comparePage({ title: values.title, ref: values.compare, links: paths, card: values.card, list: values.list, shots }));
 	process.stdout.write(`${page}\n`);
 }

@@ -48,7 +48,7 @@ export function PointsSheet({ points, hours, chosen, onPick, onClose }: PointsSh
 						<button
 							key={point.key}
 							type="button"
-							className={isChosen ? 'row point-row on' : 'row point-row'}
+							className={['row', 'point-row', point.group ?? '', isChosen ? 'on' : ''].filter((name) => name !== '').join(' ')}
 							data-testid="point-row"
 							aria-current={isChosen ? 'true' : undefined}
 							style={{ transform: `translateY(${item.start}px)` }}

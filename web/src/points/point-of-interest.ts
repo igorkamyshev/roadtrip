@@ -28,8 +28,8 @@ interface PointBase {
 }
 
 /**
- * A point of interest of the ring: a city or a place. A place has its group, the colour of its card's strip, its chip,
- * its diamond and its name on the map; a city none.
+ * A point of interest of the ring: a city or a place. A place has its group, the colour of its card's strip, of the tint
+ * of its row in the list of all, of its diamond and its name on the map; a city none.
  */
 export type PointOfInterest =
 	| (PointBase & { readonly kind: 'city'; readonly group: undefined; readonly city: City })
